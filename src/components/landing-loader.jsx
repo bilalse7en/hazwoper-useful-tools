@@ -9,6 +9,7 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 	const [distance,setDistance]=useState(0);
 	const [gameState,setGameState]=useState('playing'); // playing, paused, failed, completed
 	const [popup,setPopup]=useState(null);
+	const [isPopupActive,setIsPopupActive]=useState(false);
 	const [exit,setExit]=useState(false);
 
 	const [highScore,setHighScore]=useState(0);
@@ -29,6 +30,19 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 		keys: {},
 		lastBanked: null
 	});
+
+	useEffect(() => {
+		if(popup&&popup.type==='success'&&!popup.isFinal) {
+			setIsPopupActive(true);
+			const timer=setTimeout(() => {
+				setIsPopupActive(false);
+				setTimeout(() => setPopup(null),600);
+			},2000);
+			return () => clearTimeout(timer);
+		} else if(popup) {
+			setIsPopupActive(true);
+		}
+	},[popup]);
 
 	useEffect(() => {
 		const savedHS=localStorage.getItem('runner_high_score');
@@ -184,12 +198,14 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 
 						// Update High Score
 						const finalDist=Math.floor(game.current.distance);
+						let isNewRecord=false;
 						if(finalDist>highScore) {
 							setHighScore(finalDist);
 							localStorage.setItem('runner_high_score',finalDist.toString());
+							isNewRecord=true;
 						}
 
-						triggerFailure();
+						triggerFailure(isNewRecord);
 					}
 
 					if(obs.x<-100) game.current.obstacles.splice(index,1);
@@ -226,7 +242,7 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 			setPopup({type: 'success',title,content,accessRole: role,isFinal});
 		};
 
-		const triggerFailure=() => {
+		const triggerFailure=(isNewRecord=false) => {
 			let role=null;
 			let msg="You popped a bubble. Access denied.";
 			const currentDist=Math.floor(game.current.distance);
@@ -244,8 +260,8 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 
 			setPopup({
 				type: 'failure',
-				title: "MISSION FAILED!",
-				content: msg,
+				title: isNewRecord? "NEW RECORD SET!":"MISSION FAILED!",
+				content: isNewRecord? `Spectacular flight! You set a new record of ${currentDist}KM! ${msg}`:msg,
 				accessRole: role
 			});
 		};
@@ -311,10 +327,10 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 				}
 			`}</style>
 
-			{/* HUD */}
-			<div className="absolute top-8 left-8 z-10 flex flex-col gap-3">
+			{/* HUD - Hidden when playing */}
+			<div className={`absolute top-8 left-8 z-10 flex flex-col gap-3 transition-all duration-700 ${gameState==='playing'? 'opacity-0 -translate-y-10 pointer-events-none':'opacity-100 translate-y-0'}`}>
 				<div className="flex items-center gap-4 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-2xl">
-					<div className="bg-sky-500/20 p-2 rounded-lg">
+					<div className="bg-sky-500/90 p-2 rounded-lg">
 						<Rocket className="w-6 h-6 text-sky-400" />
 					</div>
 					<div>
@@ -323,11 +339,18 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 					</div>
 				</div>
 
-				<div className="flex items-center gap-4 bg-slate-900/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/5">
-					<Trophy className="w-4 h-4 text-yellow-500" />
-					<div>
-						<p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">High Score</p>
-						<p className="text-sm font-black text-white font-mono">{highScore} KM</p>
+				<div className="group relative flex items-center gap-4 bg-slate-900/60 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 transition-all hover:bg-slate-900/80 hover:border-yellow-500/30">
+					<div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
+					<div className="relative flex items-center gap-4">
+						<div className="bg-yellow-500/90 p-2 rounded-lg">
+							<Trophy className="w-5 h-5 text-yellow-500" />
+						</div>
+						<div>
+							<p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Personal Best</p>
+							<p className="text-xl font-black text-white font-mono flex items-baseline gap-1">
+								{highScore} <span className="text-[10px] text-slate-600">KM</span>
+							</p>
+						</div>
 					</div>
 				</div>
 
@@ -342,80 +365,89 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 				)}
 			</div>
 
-			{/* Milestones */}
-			<div className="absolute top-8 right-8 z-10 space-y-2">
+			{/* Milestones - Hidden when playing */}
+			<div className={`absolute top-8 right-8 z-10 space-y-2 transition-all duration-700 ${gameState==='playing'? 'opacity-0 translate-x-10 pointer-events-none':'opacity-100 translate-x-0'}`}>
 				{[200,300,500].map(m => (
-					<div key={m} className={`flex items-center gap-3 transition-all duration-500 px-4 py-2 rounded-full border ${distance>=m? 'bg-green-500/20 border-green-500/50 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.2)]':'bg-slate-900/40 border-white/5 text-slate-600'}`}>
+					<div key={m} className={`flex items-center gap-3 transition-all duration-500 px-4 py-2 rounded-full border ${distance>=m? 'bg-green-500/90 border-green-500/50 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.2)]':'bg-slate-900/40 border-white/5 text-slate-600'}`}>
 						<Trophy className={`w-3 h-3 ${distance>=m? 'animate-bounce':''}`} />
 						<span className="text-[9px] font-black tracking-widest">{m}KM MILESTONE</span>
 					</div>
 				))}
 			</div>
 
-			{/* Controls Hint */}
-			<div className="absolute bottom-10 left-10 z-10 opacity-40 hover:opacity-100 transition-opacity">
+			{/* Controls Hint - Hidden when playing */}
+			<div className={`absolute bottom-10 left-10 z-10 transition-opacity duration-700 ${gameState==='playing'? 'opacity-0 pointer-events-none':'opacity-40 hover:opacity-100'}`}>
 				<div className="grid grid-cols-3 gap-1">
 					<div /> <kbd className="bg-slate-800 p-2 rounded text-xs text-white text-center">W</kbd> <div />
 					<kbd className="bg-slate-800 p-2 rounded text-xs text-white text-center">A</kbd>
 					<kbd className="bg-slate-800 p-2 rounded text-xs text-white text-center">S</kbd>
-					<kbd className="bg-slate-800 p-2 rounded text-xs text-white text-center">D</kbd>
+					<kbd className="bg-slate-800 p-1 rounded text-xs text-white text-center">D</kbd>
 				</div>
 			</div>
 
 			{/* Non-intrusive Transparent Notifications */}
 			{popup&&(
-				<div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-md animate-in slide-in-from-bottom-10 duration-500">
-					<div className={`relative overflow-hidden rounded-3xl backdrop-blur-xl border border-white/10 p-6 shadow-2xl transition-all ${popup.type==='failure'? 'bg-red-500/5':'bg-yellow-500/5'}`}>
-						{/* Animated Background Glow - Very Subtle */}
-						<div className={`absolute -inset-20 blur-3xl opacity-10 animate-pulse ${popup.type==='failure'? 'bg-red-600':'bg-yellow-400'}`}></div>
+				<div className={`absolute bottom-20 left-1/2 -translate-x-1/2 z-50 w-full max-w-lg transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${isPopupActive? 'opacity-100 translate-y-0 scale-100':'opacity-0 -translate-y-20 scale-95 pointer-events-none'}`}>
+					<div className={`group relative overflow-hidden rounded-[2.5rem] border p-1 shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all ${popup.type==='failure'? 'border-red-500/30 bg-red-500/10':'border-yellow-500/30 bg-yellow-500/10'}`}>
 
-						<div className="relative flex items-center gap-5">
-							<div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${popup.type==='failure'? 'bg-red-500/80 outline outline-1 outline-white/20':'bg-yellow-500/80 outline outline-1 outline-white/20'}`}>
-								{popup.type==='failure'? <AlertTriangle className="w-8 h-8 text-white" />:<Shield className="w-8 h-8 text-slate-900" />}
+						{/* Animated Background Glow */}
+						<div className={`absolute -inset-20 blur-[100px] opacity-20 group-hover:opacity-30 transition-opacity animate-pulse ${popup.type==='failure'? 'bg-red-600':'bg-yellow-400'}`}></div>
+
+						{/* Decorative Background Text */}
+						<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none overflow-hidden h-full w-full opacity-10 flex items-center justify-center">
+							<span className={`text-8xl font-black uppercase italic tracking-tighter whitespace-nowrap ${popup.type==='failure'? 'text-red-500':'text-yellow-500'}`}>
+								{popup.type==='failure'? 'FAILED':'REWARD'}
+							</span>
+						</div>
+
+						<div className={`relative rounded-[2.25rem] p-7 flex items-center gap-6 ${popup.type==='failure'? 'bg-red-500/5':'bg-white/5'}`}>
+							<div className={`relative w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-2xl transition-transform group-hover:scale-110 ${popup.type==='failure'? 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/20':'bg-gradient-to-br from-yellow-400 to-amber-500 shadow-yellow-500/20'}`}>
+								{popup.type==='failure'? <AlertTriangle className="w-9 h-9 text-white" />:<Trophy className="w-9 h-9 text-slate-950" />}
+								<div className="absolute -inset-1 bg-inherit rounded-inherit blur-md opacity-40"></div>
 							</div>
 
 							<div className="flex-1 min-w-0">
-								<h3 className={`text-xl font-black tracking-tight leading-none mb-1 uppercase italic ${popup.type==='failure'? 'text-red-500':'text-white'}`}>
-									{popup.type==='failure'? 'GAME OVER':popup.title}
+								<h3 className={`text-2xl font-black tracking-tighter leading-none mb-1.5 uppercase italic drop-shadow-lg ${popup.type==='failure'? 'text-red-500':'text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-white'}`}>
+									{popup.type==='failure'? 'MISSION FAILED':popup.title}
 								</h3>
-								<p className="text-slate-300 text-sm font-medium line-clamp-2">
+								<p className="text-slate-200 text-sm font-semibold leading-relaxed drop-shadow-sm">
 									{popup.content}
 								</p>
 							</div>
 
-							<div className="flex flex-col gap-2">
+							<div className="flex flex-col gap-2.5 min-w-[140px]">
 								{popup.type==='failure'? (
-									<div className="flex flex-col gap-2">
+									<>
 										<button
 											onClick={handleContinue}
-											className="whitespace-nowrap bg-white text-slate-950 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider hover:bg-red-50 transition-colors shadow-lg"
+											className="w-full relative group/btn overflow-hidden bg-white text-slate-950 px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all hover:scale-105 active:scale-95 shadow-[0_10px_20px_rgba(255,255,255,0.1)]"
 										>
-											{popup.accessRole? "CLAIM REWARD":"BACK TO LOGIN"}
+											<span className="relative z-10">{popup.accessRole? "CLAIM REWARD":"BACK TO LOGIN"}</span>
+											<div className="absolute inset-0 bg-gradient-to-r from-red-100 to-white opacity-0 group-hover/btn:opacity-100 transition-opacity"></div>
 										</button>
 										<button
 											onClick={() => window.location.reload()}
-											className="whitespace-nowrap bg-white/10 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+											className="w-full bg-white/10 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all backdrop-blur-sm"
 										>
 											RETRY MISSION
 										</button>
-									</div>
+									</>
 								):(
-									<div className="flex flex-col gap-2">
+									<>
 										<button
 											onClick={handleClaim}
-											className="whitespace-nowrap bg-white text-slate-950 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider hover:bg-yellow-400 transition-colors shadow-lg"
+											className="w-full relative group/btn overflow-hidden bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-950 px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all hover:scale-105 active:scale-95 shadow-[0_10px_20px_rgba(234,179,8,0.2)]"
 										>
-											CLAIM & ENTER
+											<span className="relative z-10">CLAIM & ENTER</span>
+											<div className="absolute inset-0 bg-white/20 opacity-0 group-hover/btn:opacity-100 transition-opacity"></div>
 										</button>
-										{!popup.isFinal&&(
-											<button
-												onClick={handleContinuePlaying}
-												className="whitespace-nowrap bg-white/10 text-white px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
-											>
-												CONTINUE
-											</button>
-										)}
-									</div>
+										<button
+											onClick={handleContinuePlaying}
+											className="w-full bg-white/10 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all backdrop-blur-sm"
+										>
+											CONTINUE
+										</button>
+									</>
 								)}
 							</div>
 						</div>
