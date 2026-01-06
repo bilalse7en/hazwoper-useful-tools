@@ -72,7 +72,7 @@
 	--sidebar: rgba(255, 255, 255, 0.85);
 	--glow-color: rgba(15, 23, 42, 0.1);
 	--glow-size: 0px;
-	/* Glass shadow - black for light theme */
+	/* Glass shadow - subtle dark for light theme visibility */
 	--glass-shadow-color: 0, 0, 0;
 	--glass-shadow-highlight: 255, 255, 255;
 }
@@ -224,12 +224,20 @@
 	/* Glass panel with theme-aware shadows - white on dark, black on light */
 	.glass-panel {
 		background: var(--card);
-		backdrop-filter: blur(24px) saturate(180%);
-		-webkit-backdrop-filter: blur(24px) saturate(180%);
+		backdrop-filter: blur(24px) saturate(200%);
+		-webkit-backdrop-filter: blur(24px) saturate(200%);
 		border: 1px solid var(--border);
+	}
+
+	/* Only apply heavy inset shadows to default (light) and .dark themes */
+	:root .glass-panel,
+	.dark .glass-panel,
+	:root .glass-panel-deep,
+	.dark .glass-panel-deep {
 		box-shadow:
-			inset 0 1px 1px rgba(var(--glass-shadow-highlight), 0.1),
-			inset 0 20px 60px rgba(var(--glass-shadow-color), 0.15);
+			inset 0 1px 2px rgba(var(--glass-shadow-highlight), 0.4),
+			inset 0 0 20px rgba(var(--glass-shadow-color), 0.05),
+			inset 0 30px 60px rgba(var(--glass-shadow-color), 0.08);
 	}
 
 	.glass-panel-deep {
@@ -237,9 +245,6 @@
 		backdrop-filter: blur(32px) saturate(200%);
 		-webkit-backdrop-filter: blur(32px) saturate(200%);
 		border: 1px solid var(--border);
-		box-shadow:
-			inset 0 1px 1px rgba(var(--glass-shadow-highlight), 0.08),
-			inset 0 40px 100px rgba(var(--glass-shadow-color), 0.2);
 	}
 
 	.sidebar-wrapper {

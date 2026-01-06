@@ -60,6 +60,8 @@ const MODELS=[
 	{id: "image-gen",label: "Image Generator",icon: ImageIcon,provider: "AI Horde"},
 ];
 
+const LOGO_URL="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif";
+
 const CodeBlock=({children,language}) => {
 	const [expanded,setExpanded]=useState(false);
 	const [showFullView,setShowFullView]=useState(false);
@@ -494,7 +496,7 @@ export function AIAssistant() {
 			}
 
 			// Use OpenRouter with free models
-			const authKey=openRouterKey||'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';
+			const authKey=openRouterKey;
 			const fallbackModels=[
 				selectedModel,
 				"meta-llama/llama-3.3-70b-instruct:free",
@@ -504,46 +506,108 @@ export function AIAssistant() {
 				"qwen/qwen-2-7b-instruct:free"
 			].filter((v,i,a) => a.indexOf(v)===i);
 
-			let lastError=null;
-			for(const modelToTry of fallbackModels) {
-				try {
-					const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
-						method: "POST",
-						headers: {
-							"Authorization": `Bearer ${authKey}`,
-							"HTTP-Referer": window.location.origin,
-							"X-Title": "AI Universe",
-							"Content-Type": "application/json"
-						},
-						body: JSON.stringify({
-							"model": modelToTry,
-							"messages": promptMessages
-						})
-					});
+			// Try OpenRouter if key exists
+			if(authKey) {
+				let lastError=null;
+				for(const modelToTry of fallbackModels) {
+					try {
+						const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
+							method: "POST",
+							headers: {
+								"Authorization": `Bearer ${authKey}`,
+								"HTTP-Referer": window.location.origin,
+								"X-Title": "AI Universe",
+								"Content-Type": "application/json"
+							},
+							body: JSON.stringify({
+								"model": modelToTry,
+								"messages": promptMessages
+							})
+						});
 
-					const data=await response.json();
+						const data=await response.json();
 
-					if(!response.ok) {
-						lastError=data.error?.message||`Model ${modelToTry} unavailable`;
-						console.warn(`Model ${modelToTry} failed:`,lastError);
+						if(!response.ok) {
+							lastError=data.error?.message||`Model ${modelToTry} unavailable`;
+							console.warn(`Model ${modelToTry} failed:`,lastError);
+							continue;
+						}
+
+						const aiMessage={
+							role: "assistant",
+							content: data.choices?.[0]?.message?.content||"No response received.",
+							timestamp: new Date(),
+							model: modelToTry.split('/')[1]?.replace(':free','')
+						};
+						setMessages(prev => [...prev,aiMessage]);
+						return;
+					} catch(fetchError) {
+						lastError=fetchError.message;
+						console.warn(`Fetch error for ${modelToTry}:`,fetchError);
 						continue;
 					}
-
-					const aiMessage={
-						role: "assistant",
-						content: data.choices?.[0]?.message?.content||"No response received.",
-						timestamp: new Date(),
-						model: modelToTry.split('/')[1]?.replace(':free','')
-					};
-					setMessages(prev => [...prev,aiMessage]);
-					return;
-				} catch(fetchError) {
-					lastError=fetchError.message;
-					console.warn(`Fetch error for ${modelToTry}:`,fetchError);
-					continue;
 				}
 			}
-			throw new Error(lastError||"All models are currently unavailable.");
+
+			// 🚀 Fallback to Pollinations.ai (FREE, RELIABLE, NO KEY)
+			try {
+				// Use 'llama' for Llama 3.3 if selected, otherwise fallback to high-quality defaults
+				const fallbackModelName=selectedModel.includes('llama')? 'llama':'openai';
+
+				// Using the more robust "direct" method for anonymous fallback
+				const pollinationsResponse=await fetch("https://text.pollinations.ai/",{
+					method: "POST",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({
+						messages: promptMessages,
+						model: fallbackModelName,
+						seed: Math.floor(Math.random()*1000000),
+						json: false // Ensure we get plain text to avoid complex parsing
+					})
+				});
+
+				if(!pollinationsResponse.ok) throw new Error("Primary fallback failed");
+
+				const pollinationsText=await pollinationsResponse.text();
+
+				// If we get the "IMPORTANT NOTICE" text, it means the JSON endpoint is being restricted
+				// We'll catch this and move to the "Direct URL" string-based fallback
+				if(pollinationsText.includes("IMPORTANT NOTICE")) {
+					throw new Error("Provider returned deprecation notice");
+				}
+
+				const aiMessage={
+					role: "assistant",
+					content: pollinationsText,
+					timestamp: new Date(),
+					model: "Intelligence Free"
+				};
+				setMessages(prev => [...prev,aiMessage]);
+			} catch(pollError) {
+				// 🛡️ Final Resort: The legacy direct prompt method (usually most reliable for anonymous)
+				try {
+					const lastMsg=currentInput||"hello";
+					const modelStr=selectedModel.includes('llama')? "llama":"openai";
+					const directUrl=`https://text.pollinations.ai/${encodeURIComponent(lastMsg)}?model=${modelStr}&system=${encodeURIComponent("You are AI Universe, a helpful assistant. Be professional and accurate.")}`;
+
+					const directResponse=await fetch(directUrl);
+					const directText=await directResponse.text();
+
+					// Final validation
+					if(directText.includes("IMPORTANT NOTICE")) {
+						throw new Error("Final fallback failed");
+					}
+
+					setMessages(prev => [...prev,{
+						role: "assistant",
+						content: directText,
+						timestamp: new Date(),
+						model: "Sync Free"
+					}]);
+				} catch(finalError) {
+					throw new Error("All free AI clusters are currently busy. Please try again in 30 seconds or add your own key in Settings.");
+				}
+			}
 		} catch(error) {
 			setMessages(prev => [...prev,{role: "assistant",content: `Error: ${error.message}`,timestamp: new Date()}]);
 		} finally {
@@ -561,7 +625,7 @@ export function AIAssistant() {
 	};
 
 	return (
-		<div className="flex h-[90vh] w-full bg-card/40 backdrop-blur-xl rounded-[2rem] border border-border/50 overflow-hidden shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08),inset_0_20px_60px_rgba(var(--glass-shadow-color),0.08)]">
+		<div className="flex h-[90vh] w-full glass-panel-deep rounded-[2.5rem] overflow-hidden shadow-2xl">
 
 			{/* Sidebar */}
 			<div className={cn(
@@ -569,18 +633,18 @@ export function AIAssistant() {
 				sidebarOpen? "flex absolute z-50 h-full lg:relative":"hidden lg:flex"
 			)}>
 				<div className="p-4">
-					<div className="flex items-center gap-2 mb-4">
-						<div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center">
-							<Sparkles className="h-4 w-4 text-primary-foreground" />
+					<div className="flex items-center gap-3 mb-6 p-2 rounded-2xl bg-primary/5 border border-primary/10">
+						<div className="h-10 w-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 ring-1 ring-primary/20 bg-black">
+							<img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
 						</div>
 						<div>
-							<h1 className="text-sm font-black uppercase tracking-tight">AI Universe</h1>
-							<p className="text-[8px] text-muted-foreground uppercase tracking-wider">Neural Hub</p>
+							<h1 className="text-[11px] font-black uppercase tracking-tighter text-foreground">AI Universe</h1>
+							<p className="text-[7px] text-primary/70 font-black uppercase tracking-[0.2em]">Neural Intelligence</p>
 						</div>
 					</div>
 
-					<Button className="w-full h-10 rounded-xl text-[10px] font-black uppercase tracking-wider bg-primary/20 hover:bg-primary/30 text-primary border border-primary/20 shadow-lg shadow-primary/5 mb-4" onClick={createNewSession}>
-						<Plus className="h-3 w-3 mr-2" /> New Chat
+					<Button className="w-full h-10 rounded-xl text-[10px] font-black uppercase tracking-wider bg-primary text-primary-foreground shadow-xl shadow-primary/20 mb-4 transition-all hover:scale-[1.02] active:scale-[0.98]" onClick={createNewSession}>
+						<Plus className="h-4 w-4 mr-2" /> New Chat
 					</Button>
 				</div>
 
@@ -625,14 +689,19 @@ export function AIAssistant() {
 				<div className="p-4 border-t border-border/50">
 					<Dialog>
 						<DialogTrigger asChild>
-							<Button variant="ghost" className="w-full justify-start gap-2 h-9 text-[10px] font-bold">
-								<Settings2 className="h-3 w-3" /> Settings
+							<Button variant="ghost" className="w-full justify-start gap-2 h-9 text-[10px] font-black uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all rounded-xl">
+								<Settings2 className="h-3.5 w-3.5" /> Settings
 							</Button>
 						</DialogTrigger>
 						<DialogContent className="rounded-2xl">
-							<DialogHeader>
-								<DialogTitle>API Settings</DialogTitle>
-								<DialogDescription>Configure your OpenRouter API key</DialogDescription>
+							<DialogHeader className="flex flex-row items-center gap-4">
+								<div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-lg">
+									<ShieldCheck className="h-6 w-6 text-primary" />
+								</div>
+								<div>
+									<DialogTitle className="text-lg font-black uppercase tracking-tight">Intelligence Config</DialogTitle>
+									<DialogDescription className="text-[9px] uppercase font-bold tracking-widest text-primary/60">Secure Neural Encryption</DialogDescription>
+								</div>
 							</DialogHeader>
 							<div className="space-y-4 py-4">
 								<div className="space-y-2">
@@ -650,51 +719,78 @@ export function AIAssistant() {
 							</div>
 						</DialogContent>
 					</Dialog>
+
+					<div className="mt-4 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-primary/5 border border-primary/10 select-none">
+						<div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+						<span className="text-[7px] font-black uppercase tracking-[0.2em] text-primary/60">Neural Active & Secure</span>
+					</div>
 				</div>
 			</div>
 
-			{/* Main Content */}
-			<div className="flex-1 flex flex-col min-w-0">
-
+			{/* Main Chat Area */}
+			<div className="flex-1 flex flex-col min-w-0 bg-black/5">
 				{/* Header */}
-				<header className="h-12 border-b border-border/50 flex items-center justify-between px-4 bg-card/40 backdrop-blur-xl shrink-0">
-					<div className="flex items-center gap-2">
-						<Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={() => setSidebarOpen(!sidebarOpen)}>
-							<Menu className="h-4 w-4" />
-						</Button>
-						<Select value={selectedModel} onValueChange={setSelectedModel}>
-							<SelectTrigger className="w-[180px] h-8 text-[10px] font-black uppercase rounded-lg">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{MODELS.map(m => (
-									<SelectItem key={m.id} value={m.id} className="text-xs">
-										<div className="flex items-center gap-2">
-											<m.icon className="h-3 w-3" />
-											<span>{m.label}</span>
-										</div>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
+				<header className="h-16 border-b border-border/50 px-6 flex items-center justify-between glass-panel shrink-0 select-none">
+					<div className="flex items-center gap-4">
+						<div className="lg:hidden h-9 w-9 rounded-xl bg-card border border-border/50 flex items-center justify-center" onClick={() => setSidebarOpen(!sidebarOpen)}>
+							<Menu className="h-5 w-5 text-primary" />
+						</div>
+						<div className="flex items-center gap-3">
+							<div className="h-9 w-9 rounded-xl overflow-hidden border border-primary/20 shadow-lg">
+								<img src={LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
+							</div>
+							<div>
+								<div className="flex items-center gap-2">
+									<h2 className="text-sm font-black uppercase tracking-tight">Intelligence Hub</h2>
+									<div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+										<div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />
+										<span className="text-[8px] font-black uppercase text-green-500 tracking-widest">Online</span>
+									</div>
+								</div>
+								{selectedModel&&(
+									<p className="text-[9px] text-muted-foreground uppercase font-medium tracking-wider flex items-center gap-1">
+										<Zap className="h-2.5 w-2.5 text-primary" /> Powered by {MODELS.find(m => m.id===selectedModel)?.label}
+									</p>
+								)}
+							</div>
+						</div>
 					</div>
-					<div className="flex items-center gap-1 px-2 h-6 bg-green-500/10 rounded-full border border-green-500/20">
-						<span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-						<span className="text-[8px] font-black text-green-500 uppercase">Online</span>
-					</div>
+					<Select value={selectedModel} onValueChange={setSelectedModel}>
+						<SelectTrigger className="w-[180px] h-9 text-[10px] font-black uppercase rounded-lg">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{MODELS.map(m => (
+								<SelectItem key={m.id} value={m.id} className="text-xs">
+									<div className="flex items-center gap-2">
+										<m.icon className="h-3 w-3" />
+										<span>{m.label}</span>
+									</div>
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</header>
 
 				{/* Messages */}
-				<div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+				<div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth bg-black/5">
 					{messages.length===0? (
-						<div className="h-full flex flex-col items-center justify-center text-center p-4">
-							<div className="p-6 rounded-2xl bg-card/40 border border-border/50 mb-4">
-								<Bot className="h-12 w-12 text-primary" />
+						<div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-8 animate-in-card">
+							<div className="relative group">
+								<div className="absolute inset-0 bg-primary/20 blur-3xl group-hover:bg-primary/30 transition-all duration-500 rounded-full" />
+								<div className="relative h-24 w-24 rounded-[2.5rem] overflow-hidden border-2 border-primary/20 shadow-2xl transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+									<img src={LOGO_URL} alt="Branding" className="w-full h-full object-cover" />
+								</div>
 							</div>
-							<h2 className="text-2xl font-black uppercase tracking-tight mb-1">AI Universe</h2>
-							<p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-6">Neural Workstation</p>
-
-							<div className="grid grid-cols-2 gap-2 w-full max-w-sm">
+							<div className="space-y-4 max-w-sm">
+								<h2 className="text-3xl font-black uppercase tracking-tighter text-foreground drop-shadow-xl">
+									Neural <span className="text-primary">Intelligence</span>
+								</h2>
+								<p className="text-xs text-muted-foreground font-medium leading-relaxed">
+									Welcome to your premium AI companion. Ask questions, generate code, or create stunning visuals with our integrated neural network.
+								</p>
+							</div>
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
 								{[
 									{t: "Code",i: Terminal,c: "Write a JS function"},
 									{t: "Image",i: ImageIcon,c: "Generate a sunset"},
@@ -715,8 +811,11 @@ export function AIAssistant() {
 					):(
 						messages.map((m,i) => (
 							<div key={i} className={cn("flex gap-2",m.role==="user"? "flex-row-reverse":"")}>
-								<div className={cn("h-8 w-8 shrink-0 rounded-xl flex items-center justify-center text-[9px] font-black",m.role==="user"? "bg-primary text-primary-foreground":"bg-card border border-border/50")}>
-									{m.role==="user"? "U":<Bot className="h-4 w-4" />}
+								<div className={cn(
+									"h-8 w-8 rounded-xl flex items-center justify-center shrink-0 border border-border/50 shadow-sm",
+									m.role==="user"? "bg-primary text-primary-foreground overflow-hidden":"bg-black/50 overflow-hidden"
+								)}>
+									{m.role==="user"? "U":<img src={LOGO_URL} alt="Assistant" className="w-full h-full object-cover" />}
 								</div>
 
 								<div className={cn("flex-1 min-w-0 max-w-[85%] space-y-2",m.role==="user"? "items-end":"")}>
