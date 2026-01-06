@@ -1,4 +1,4 @@
-export const USERS = {
+export const USERS={
 	admin: {
 		username: 'admin',
 		password: 'Bilal@7',
@@ -19,34 +19,35 @@ export const USERS = {
 	}
 };
 
-export const ROLES = {
+export const ROLES={
 	admin: ['*'],
-	blog_creator: ['blog', 'html-cleaner', 'image-converter'],
-	content_creator: ['course', 'glossary', 'resources', 'html-cleaner', 'image-converter']
+	blog_creator: ['blog','html-cleaner','image-converter','video-compressor'],
+	content_creator: ['course','glossary','resources','html-cleaner','image-converter','video-compressor']
 };
 
-export const NAV_ITEMS = [
-	{ id: "course", label: "Web Content Generator", icon: "GraduationCap" },
-	{ id: "glossary", label: "Glossary Generator", icon: "BookOpen" },
-	{ id: "resources", label: "Resource Generator", icon: "FileSpreadsheet" },
-	{ id: "blog", label: "Blog Generator", icon: "PenTool" },
-	{ id: "html-cleaner", label: "HTML Cleaner", icon: "Code" },
-	{ id: "image-converter", label: "Image Converter", icon: "ImageIcon" },
+export const NAV_ITEMS=[
+	{id: "course",label: "Web Content Generator",icon: "GraduationCap"},
+	{id: "glossary",label: "Glossary Generator",icon: "BookOpen"},
+	{id: "resources",label: "Resource Generator",icon: "FileSpreadsheet"},
+	{id: "blog",label: "Blog Generator",icon: "PenTool"},
+	{id: "html-cleaner",label: "HTML Cleaner",icon: "Code"},
+	{id: "image-converter",label: "Image Converter",icon: "ImageIcon"},
+	{id: "video-compressor",label: "Video Compressor",icon: "Video"},
 ];
 
-export function authenticate(username, password) {
-	const user = USERS[username];
-	if (user && user.password === password) {
-		const { password, ...safeUser } = user;
+export function authenticate(username,password) {
+	const user=USERS[username];
+	if(user&&user.password===password) {
+		const {password,...safeUser}=user;
 		return safeUser;
 	}
 	return null;
 }
 
-export function hasAccess(role, featureId) {
-	if (!role) return false;
-	const allowed = ROLES[role];
-	if (!allowed) return false;
-	if (allowed.includes('*')) return true;
+export function hasAccess(role,featureId) {
+	if(!role) return false;
+	const allowed=ROLES[role];
+	if(!allowed) return false;
+	if(allowed.includes('*')) return true;
 	return allowed.includes(featureId);
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Eye, Copy, X } from "lucide-react";
-import { useState } from "react";
+import {Button} from "@/components/ui/button";
+import {Sheet,SheetContent,SheetHeader,SheetTitle} from "@/components/ui/sheet";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {Eye,Copy,X} from "lucide-react";
+import {useState} from "react";
 
 export function PreviewDrawer({
 	open,
@@ -14,26 +14,26 @@ export function PreviewDrawer({
 	onCopy,
 	data
 }) {
-	const [copied, setCopied] = useState(false);
+	const [copied,setCopied]=useState(false);
 
-	const handleCopy = async () => {
-		if (content) {
+	const handleCopy=async () => {
+		if(content) {
 			await navigator.clipboard.writeText(content);
 			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
+			setTimeout(() => setCopied(false),2000);
 			onCopy?.();
 		}
 	};
 
-	const copyText = async (text) => {
+	const copyText=async (text) => {
 		await navigator.clipboard.writeText(text);
 	};
 
-	const isFaqView = title?.toLowerCase().includes('faq') && Array.isArray(data) && data.length > 0;
+	const isFaqView=title?.toLowerCase().includes('faq')&&Array.isArray(data)&&data.length>0;
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent side="right" className="w-full sm:w-[600px] sm:max-w-[80vw] p-0">
+			<SheetContent side="right" className="w-full sm:w-[80vw] p-0" data-hide-default-close="true">
 				<SheetHeader className="flex flex-row items-center justify-between border-b border-border p-4">
 					<div className="flex items-center gap-2">
 						<Eye className="h-5 w-5 text-primary" />
@@ -43,29 +43,38 @@ export function PreviewDrawer({
 						<Button
 							variant="outline"
 							size="sm"
+							onClick={() => onOpenChange(false)}
+							className="gap-2"
+						>
+							<X className="h-4 w-4" />
+							Close
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
 							onClick={handleCopy}
 							className="gap-2"
 						>
 							<Copy className="h-4 w-4" />
-							{copied ? 'Copied!' : 'Copy Code'}
+							{copied? 'Copied!':'Copy Code'}
 						</Button>
 					</div>
 				</SheetHeader>
 				<ScrollArea className="h-[calc(100vh-80px)]">
 					<div className="p-6">
-						{isFaqView ? (
+						{isFaqView? (
 							<div className="space-y-4">
 								<div className="alert alert-info bg-muted p-4 rounded-lg mb-4 text-sm text-muted-foreground border">
 									<p className="font-semibold mb-1">Interactive FAQ Mode</p>
 									<p>Use the buttons below to copy individual questions (text) or answers (HTML).</p>
 								</div>
-								{data.map((faq, idx) => (
+								{data.map((faq,idx) => (
 									<div key={idx} className="bg-card border rounded-lg p-4 shadow-sm">
 										<div className="flex flex-col gap-4">
 											{/* Question Section */}
 											<div className="flex justify-between items-start gap-4">
 												<div className="flex-1">
-													<span className="text-xs text-muted-foreground font-semibold uppercase mb-1 block">Question {idx + 1}</span>
+													<span className="text-xs text-muted-foreground font-semibold uppercase mb-1 block">Question {idx+1}</span>
 													<p className="font-medium text-foreground">{faq.question}</p>
 												</div>
 												<Button
@@ -83,8 +92,8 @@ export function PreviewDrawer({
 											{/* Answer Section */}
 											<div className="flex justify-between items-start gap-4">
 												<div className="flex-1">
-													<span className="text-xs text-muted-foreground font-semibold uppercase mb-1 block">Answer {idx + 1}</span>
-													<div className="text-sm text-muted-foreground line-clamp-3 bg-muted/30 p-2 rounded" dangerouslySetInnerHTML={{ __html: faq.answer }} />
+													<span className="text-xs text-muted-foreground font-semibold uppercase mb-1 block">Answer {idx+1}</span>
+													<div className="text-sm text-muted-foreground line-clamp-3 bg-muted/30 p-2 rounded" dangerouslySetInnerHTML={{__html: faq.answer}} />
 												</div>
 												<Button
 													size="sm"
@@ -99,10 +108,10 @@ export function PreviewDrawer({
 									</div>
 								))}
 							</div>
-						) : (
+						):(
 							<div
 								className="preview-container prose prose-sm dark:prose-invert max-w-none rounded-lg border border-border p-6"
-								dangerouslySetInnerHTML={{ __html: content || '' }}
+								dangerouslySetInnerHTML={{__html: content||''}}
 							/>
 						)}
 					</div>

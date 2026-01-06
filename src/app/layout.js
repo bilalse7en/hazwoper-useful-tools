@@ -1,7 +1,6 @@
 import {Inter,JetBrains_Mono,Orbitron,Space_Grotesk,Exo_2,Chakra_Petch} from "next/font/google";
 import {ThemeProvider} from "@/components/theme-provider";
 import {BackgroundSpace} from "@/components/background-space";
-import {CustomCursor} from "@/components/custom-cursor";
 import "./globals.css";
 
 const inter=Inter({
@@ -50,15 +49,15 @@ export default function RootLayout({children}) {
 		<html lang="en" suppressHydrationWarning>
 			<body
 				className={`${inter.variable} ${jetbrainsMono.variable} ${orbitron.variable} ${spaceGrotesk.variable} ${exo2.variable} ${chakraPetch.variable} font-sans antialiased`}
+				suppressHydrationWarning
 			>
 				<ThemeProvider
 					attribute="class"
-					defaultTheme="dark"
-					enableSystem={false}
+					defaultTheme="system"
+					enableSystem={true}
 					themes={['light','dark','nebula','inferno','toxic','synthwave','aurora']}
 					storageKey="content-suite-theme"
 				>
-					<CustomCursor />
 					<BackgroundSpace />
 					{children}
 				</ThemeProvider>

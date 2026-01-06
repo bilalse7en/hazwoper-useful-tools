@@ -4,6 +4,7 @@ import {useState,useEffect} from "react";
 import {cn} from "@/lib/utils";
 import {AppSidebar} from "@/components/app-sidebar";
 import {MobileHeader} from "@/components/mobile-header";
+import {BrandLogo} from "@/components/brand-logo";
 import {LandingLoader} from "@/components/landing-loader";
 import {SimpleLoader} from "@/components/simple-loader";
 import {AntigravityExperience} from "@/components/antigravity-experience";
@@ -17,7 +18,9 @@ import {
 	GlossaryGenerator,
 	ResourceGenerator,
 	HTMLCleaner,
-	ImageConverter
+	ImageConverter,
+	VideoCompressor,
+	AIAssistant
 } from "@/components/generators";
 
 export default function Home() {
@@ -180,6 +183,10 @@ export default function Home() {
 			return <HTMLCleaner />;
 		case "image-converter":
 			return <ImageConverter />;
+		case "video-compressor":
+			return <VideoCompressor />;
+		case "ai-assistant":
+			return <AIAssistant />;
 		default:
 			return <CourseGenerator />;
 		}
@@ -197,8 +204,10 @@ export default function Home() {
 			return "Blog Generator";
 		case "html-cleaner":
 			return "HTML Cleaner";
-		case "image-converter":
-			return "Image Converter";
+		case "video-compressor":
+			return "Video Compressor";
+		case "ai-assistant":
+			return "AI UNIVERSE - Neural Hub";
 		default:
 			return "Course Content Generator";
 		}
@@ -231,23 +240,24 @@ export default function Home() {
 						isLoading&&!user? "opacity-0":"opacity-100"
 					)}>
 						{/* Desktop Sidebar */}
-						<div className="hidden lg:block">
-							<AppSidebar
-								activeTab={activeTab}
-								onTabChange={setActiveTab}
-								collapsed={sidebarCollapsed}
-								onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-								onThemeToggle={() => setThemeDialogOpen(true)}
-								user={user}
-								onLogout={handleLogout}
-							/>
-						</div>
+						<AppSidebar
+							activeTab={activeTab}
+							onTabChange={setActiveTab}
+							collapsed={sidebarCollapsed}
+							onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+							onThemeToggle={() => setThemeDialogOpen(true)}
+							user={user}
+							onLogout={handleLogout}
+							className="hidden lg:block fixed left-0 top-0 z-40 h-screen"
+						/>
 
 						{/* Mobile Header */}
 						<MobileHeader
 							activeTab={activeTab}
 							onTabChange={setActiveTab}
 							onThemeToggle={() => setThemeDialogOpen(true)}
+							user={user}
+							onLogout={handleLogout}
 						/>
 
 						{/* Main Content */}
@@ -259,17 +269,16 @@ export default function Home() {
 						>
 							<ScrollArea className="h-screen">
 								{/* Hero Section */}
-								<div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent py-12 lg:py-16 hero-section animate-in-card">
+								<div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent py-8 lg:py-16 hero-section animate-in-card">
 									<div className="container mx-auto px-4 text-center">
-										<img
-											src="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif"
-											alt="Content Suite Logo"
-											className="mx-auto mb-6 h-24 w-24 rounded-full shadow-lg ring-4 ring-primary/20"
+										<BrandLogo
+											size="lg"
+											className="mx-auto mb-4 lg:mb-6 shadow-lg ring-4 ring-primary/20 hover:scale-105 transition-transform duration-500"
 										/>
-										<h1 id="mainTitle" className="mb-4 text-3xl font-bold tracking-tight bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent lg:text-4xl drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]">
+										<h1 id="mainTitle" className="mb-3 lg:mb-4 text-2xl lg:text-3xl xl:text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]">
 											{getPageTitle()}
 										</h1>
-										<p className="mx-auto max-w-2xl text-muted-foreground font-medium">
+										<p className="mx-auto max-w-2xl text-muted-foreground font-medium text-sm lg:text-base">
 											Extract Overview, Syllabus, FAQs, Glossary, Resources and Blog Content from your documents
 										</p>
 									</div>

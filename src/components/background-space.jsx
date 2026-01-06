@@ -41,8 +41,6 @@ export function BackgroundSpace() {
 			});
 		};
 
-
-
 		const handleMouseMove=(e) => {
 			const x=e.clientX;
 			const y=e.clientY;
@@ -58,22 +56,23 @@ export function BackgroundSpace() {
 			const x=e.clientX;
 			const y=e.clientY;
 
-			// Apply a sudden massive blast to all stars
+			// Blast radius: 50% of the screen dimension as requested
+			const blastRadius=Math.max(canvas.width,canvas.height)*0.5;
+
 			stars.forEach(star => {
 				const dx=star.x-x;
 				const dy=star.y-y;
 				const dist=Math.sqrt(dx*dx+dy*dy);
-				const blastRadius=Math.max(canvas.width,canvas.height)*0.5; // 50% from cursor/screen
 
 				if(dist<blastRadius) {
 					// Powerful exponential push
 					const force=(blastRadius-dist)/blastRadius;
-					const strength=25.0; // Intense blast strength
+					const strength=40.0; // Perfect blast strength
 
 					star.vx+=(dx/dist)*force*force*strength;
 					star.vy+=(dy/dist)*force*force*strength;
 
-					// Make them bright during blast
+					// Flash brightness
 					star.opacity=1;
 				}
 			});
@@ -107,26 +106,24 @@ export function BackgroundSpace() {
 				const waveOffset=Math.sin(time.current+star.angle)*0.2;
 				star.y+=waveOffset;
 
-				// 3. Cursor Proximity / Wind Effect
+				// 3. Perfect Proximity Repulsion
 				const dx=star.x-mouse.current.x;
 				const dy=star.y-mouse.current.y;
 				const dist=Math.sqrt(dx*dx+dy*dy);
-				const influenceRadius=40;
+				const influenceRadius=100; // Visible repulsion area
 
 				if(dist<influenceRadius) {
-					// Proximity force: Inverse square-ish repulsion
 					const force=(influenceRadius-dist)/influenceRadius;
-					const strength=4.0; // Stronger push
+					const strength=6.0; // Strong but smooth push
 
-					// Repel from cursor
+					// Repel away from cursor
 					star.vx+=(dx/dist)*force*strength;
 					star.vy+=(dy/dist)*force*strength;
 
-					// Wind Velocity Influence (Directional drag)
-					star.vx+=mouse.current.vx*force*0.2;
-					star.vy+=mouse.current.vy*force*0.2;
+					// Add some mouse momentum drag
+					star.vx+=mouse.current.vx*force*0.1;
+					star.vy+=mouse.current.vy*force*0.1;
 
-					// Subtle "Wave" ripple based on mouse movement
 					star.opacity=Math.min(1,star.opacity+0.1);
 				}
 
@@ -134,9 +131,9 @@ export function BackgroundSpace() {
 				star.x+=star.vx;
 				star.y+=star.vy;
 
-				// Friction / Damping (Increased friction during calm, but let them fly)
-				star.vx*=0.94;
-				star.vy*=0.94;
+				// Damping for smooth return to drift
+				star.vx*=0.92;
+				star.vy*=0.92;
 
 				// Boundary Handlers
 				if(star.x<-50) {
