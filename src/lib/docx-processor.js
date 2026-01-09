@@ -673,17 +673,17 @@ export function generateOverviewCode(data,mediaUrl="") {
 
 		if(isVideo) {
 			// Show iframe for video, comment out img
-			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="${mediaUrl}" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><!-- <img src="" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"> --></div></div>`;
+			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="${mediaUrl}" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><!-- <img src="" class="w-100" alt="${data.courseTitle||'Course Name'}"> --></div></div>`;
 		} else if(isImage) {
 			// Show img for image, comment out iframe
-			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><!-- <iframe title="${data.courseTitle||'Course Video'}" src="" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe> --><img src="${mediaUrl}" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"></div></div>`;
+			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><!-- <iframe title="${data.courseTitle||'Course Video'}" src="" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe> --><img src="${mediaUrl}" class="w-100" alt="${data.courseTitle||'Course Name'}"></div></div>`;
 		} else {
 			// If URL provided but type unclear, default to video (iframe)
-			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="${mediaUrl}" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><!-- <img src="" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"> --></div></div>`;
+			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="${mediaUrl}" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><!-- <img src="" class="w-100" alt="${data.courseTitle||'Course Name'}"> --></div></div>`;
 		}
 	} else {
 		// If no URL provided, comment out both
-		videoHtml=`<!-- <div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><img src="" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"></div></div> -->`;
+		videoHtml=`<!-- <div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><img src="" class="w-100" alt="${data.courseTitle||'Course Name'}"></div></div> -->`;
 	}
 
 	let contentHtml="";
