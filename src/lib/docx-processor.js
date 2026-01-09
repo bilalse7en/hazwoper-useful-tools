@@ -137,21 +137,24 @@ function extractOverview(elementsArray) {
 	});
 
 	if(overviewStart!==-1) {
-		const objectivesStart=elementsArray.findIndex((el,i) =>
+		const overviewEnd=elementsArray.findIndex((el,i) =>
 			i>overviewStart&&
 			(el.textContent.trim().toLowerCase().includes("course objectives")||
-				el.textContent.trim().toLowerCase().includes("1.2"))
+				el.textContent.trim().toLowerCase().includes("1.2")||
+				el.textContent.trim().toLowerCase().includes("course facts")||
+				el.textContent.trim().toLowerCase().includes("course facts heading 1")||
+				el.textContent.trim().toLowerCase()==="course facts")
 		);
 
-		const syllabusStart=objectivesStart===-1? elementsArray.findIndex((el,i) =>
+		const syllabusStart=overviewEnd===-1? elementsArray.findIndex((el,i) =>
 			i>overviewStart&&
 			(el.textContent.trim().toLowerCase().includes("syllabus")||
 				el.textContent.trim().toLowerCase().includes("course syllabus"))
 		):-1;
 
-		const overviewEnd=objectivesStart!==-1? objectivesStart:
+		const finalOverviewEnd=overviewEnd!==-1? overviewEnd:
 			(syllabusStart!==-1? syllabusStart:elementsArray.length);
-		const overviewElements=elementsArray.slice(overviewStart+1,overviewEnd);
+		const overviewElements=elementsArray.slice(overviewStart+1,finalOverviewEnd);
 		courseData.overview=overviewElements.map(el => el.outerHTML).join("");
 		courseData.overviewSections=[{heading: "Overview",content: courseData.overview}];
 	}

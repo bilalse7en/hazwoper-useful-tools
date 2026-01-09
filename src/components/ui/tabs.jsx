@@ -33,7 +33,7 @@ function TabsTrigger({className,active,onClick,...props}) {
 			data-slot="tabs-trigger"
 			onClick={onClick}
 			className={cn(
-				"inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+				"inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
 				active? "bg-background text-foreground shadow-sm":"hover:text-foreground",
 				className
 			)}

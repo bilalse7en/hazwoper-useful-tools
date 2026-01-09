@@ -52,13 +52,27 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
 import {vscDarkPlus} from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const MODELS=[
-	{id: "meta-llama/llama-3.3-70b-instruct:free",label: "Llama 3.3 70B",icon: Zap,provider: "Meta"},
-	{id: "nvidia/llama-3.1-nemotron-nano-8b-v1:free",label: "Nemotron 8B",icon: Bot,provider: "NVIDIA"},
-	{id: "deepseek/deepseek-r1-0528:free",label: "DeepSeek R1",icon: BrainCircuit,provider: "DeepSeek"},
-	{id: "microsoft/phi-3-mini-128k-instruct:free",label: "Phi-3 Mini",icon: Cpu,provider: "Microsoft"},
-	{id: "qwen/qwen-2-7b-instruct:free",label: "Qwen 2 7B",icon: Sparkles,provider: "Alibaba"},
-	{id: "image-gen",label: "Image Generator",icon: ImageIcon,provider: "AI Horde"},
+	{id: "assistant",label: "Neural Assistant",icon: Bot,provider: "Open Intelligence"},
+	{id: "coder",label: "Pro Coder",icon: Terminal,provider: "DeepSeek Core"},
+	{id: "image-gen",label: "Imagine Artist",icon: ImageIcon,provider: "Neural Art"},
 ];
+
+const PROJECT_KNOWLEDGE=`
+You are the Official Neural Assistant for "HAZWOPER Useful Tools". 
+Key Platform Features:
+1. Course Generator: Extracts Overview, Syllabus, Objectives, and FAQ from DOCX. Use this for building website course pages.
+2. Blog Generator: Processes DOCX files into beautiful blog HTML with featured images.
+3. Video Compressor: Uses local FFmpeg to compress large training videos (25MB to 5MB) without quality loss.
+4. Image Converter: Batch converts JPG/PNG to WebP for faster loading.
+5. HTML Cleaner: Sanitizes messy HTML from Word documents.
+6. Glossary & Resource Generators: Create lists and downloads for course pages.
+
+Helpful Hints:
+- If a user needs to build a course page, recommend "Course Generator".
+- If a user has large videos, suggest "Video Compressor".
+- For SEO optimization, recommend "Image Converter" (WebP conversion).
+- For messy Word content, recommend "HTML Cleaner".
+`;
 
 const LOGO_URL="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif";
 
@@ -358,258 +372,115 @@ export function AIAssistant() {
 		removeAttachment();
 		setIsLoading(true);
 
-		// Image Generation using AI Horde (free, no API key required)
+		// IMAGE GENERATION (Instant via Pollinations)
 		if(selectedModel==="image-gen") {
-			// Show generating message immediately
-			const tempMsgId=Date.now();
-			setMessages(prev => [...prev,{
-				role: "assistant",
-				content: `🎨 Generating image: "${currentInput}"\n\n⏳ Queuing with AI Horde (free, community-powered)...`,
-				timestamp: new Date(),
-				tempId: tempMsgId
-			}]);
-
 			try {
-				// Step 1: Submit image generation request to AI Horde
-				const submitResponse=await fetch("https://aihorde.net/api/v2/generate/async",{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						"apikey": "0000000000" // Anonymous key - no signup needed
-					},
-					body: JSON.stringify({
-						prompt: currentInput+", high quality, detailed, 4k",
-						params: {
-							width: 512,
-							height: 512,
-							steps: 25,
-							cfg_scale: 7.5,
-							sampler_name: "k_euler_a"
-						},
-						nsfw: false,
-						censor_nsfw: true,
-						models: ["stable_diffusion"]
-					})
-				});
+				const enhancedPrompt=`${currentInput}, cinematic lighting, high resolution, 8k, highly detailed, professional masterpiece`;
+				const imageUrl=`https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&private=true&enhance=true&seed=${Math.floor(Math.random()*1000000)}`;
 
-				if(!submitResponse.ok) {
-					const errData=await submitResponse.json();
-					throw new Error(errData.message||"Failed to submit image request");
-				}
+				// Verify if image service is up
+				const testResp=await fetch(imageUrl,{method: 'HEAD'});
+				if(!testResp.ok) throw new Error("Image service busy");
 
-				const submitData=await submitResponse.json();
-				const requestId=submitData.id;
-
-				if(!requestId) {
-					throw new Error("No request ID received from AI Horde");
-				}
-
-				// Step 2: Poll for completion with progress updates
-				let attempts=0;
-				const maxAttempts=90; // 90 attempts x 2 seconds = 3 minutes max wait
-
-				const checkStatus=async () => {
-					attempts++;
-
-					try {
-						const statusResponse=await fetch(`https://aihorde.net/api/v2/generate/status/${requestId}`);
-						const statusData=await statusResponse.json();
-
-						// Update progress message
-						const queuePos=statusData.queue_position||0;
-						const waitTime=statusData.wait_time||0;
-
-						// Remove temp message and add progress
-						setMessages(prev => prev.filter(m => m.tempId!==tempMsgId));
-
-						if(statusData.done&&statusData.generations&&statusData.generations.length>0) {
-							// Image is ready! Handle both URL and base64
-							let imageUrl=statusData.generations[0].img;
-
-							// If it's base64, convert to data URL
-							if(imageUrl&&!imageUrl.startsWith('http')) {
-								imageUrl=`data:image/webp;base64,${imageUrl}`;
-							}
-
-							setMessages(prev => [...prev,{
-								role: "assistant",
-								content: `Generated: "${currentInput}"`,
-								type: "image",
-								url: imageUrl,
-								timestamp: new Date()
-							}]);
-							setIsLoading(false);
-						} else if(statusData.faulted) {
-							throw new Error("Generation failed on AI Horde worker");
-						} else if(attempts<maxAttempts) {
-							// Still processing, show progress and check again
-							setMessages(prev => [...prev,{
-								role: "assistant",
-								content: `🎨 Generating: "${currentInput}"\n\n⏳ Queue position: ${queuePos} | Est. wait: ${waitTime}s\n\n_AI Horde is community-powered and free!_`,
-								timestamp: new Date(),
-								tempId: tempMsgId
-							}]);
-							setTimeout(checkStatus,2000);
-						} else {
-							throw new Error("Image generation timed out after 3 minutes");
-						}
-					} catch(pollError) {
-						setMessages(prev => prev.filter(m => m.tempId!==tempMsgId));
-						throw pollError;
-					}
-				};
-
-				// Start polling after initial delay
-				setTimeout(checkStatus,2000);
-
-			} catch(error) {
-				console.error("AI Horde error:",error);
-				setMessages(prev => prev.filter(m => m.tempId!==tempMsgId));
 				setMessages(prev => [...prev,{
 					role: "assistant",
-					content: `⚠️ Image generation failed: ${error.message}\n\n**Tips:**\n- AI Horde is community-powered, try again in a moment\n- Peak hours may have longer queues\n- Try a simpler prompt`,
+					content: `Generated neural art for: "${currentInput}"`,
+					type: "image",
+					url: imageUrl,
 					timestamp: new Date()
 				}]);
+			} catch(error) {
+				setMessages(prev => [...prev,{
+					role: "assistant",
+					content: `⚠️ Visualization failed: ${error.message}. Please try a different prompt or wait a few seconds.`,
+					timestamp: new Date()
+				}]);
+			} finally {
 				setIsLoading(false);
 			}
 			return;
 		}
 
-		// Text Models - Use OpenRouter free models
+		// TEXT & CODE GENERATION
 		try {
-			let promptMessages=[
-				{role: "system",content: "You are AI Universe, a helpful AI assistant. Be concise and accurate."},
-				...messages.filter(m => !m.type).map(m => ({role: m.role,content: m.content}))
+			const systemPrompt=selectedModel==="coder"
+				? "You are a professional software engineer. Provide high-quality, efficient code. "+PROJECT_KNOWLEDGE
+				:"You are a helpful assistant for HAZWOPER Useful Tools. "+PROJECT_KNOWLEDGE;
+
+			const chatMessages=[
+				{role: "system",content: systemPrompt},
+				...messages.filter(m => !m.type).map(m => ({role: m.role,content: m.content})),
+				{role: "user",content: currentInput}
 			];
 
-			if(currentFile&&currentFile.type.startsWith('image/')) {
-				const base64Data=await fileToBase64(currentFile);
-				promptMessages.push({
-					role: "user",
-					content: [
-						{type: "text",text: currentInput||"Describe this image."},
-						{type: "image_url",image_url: {url: `data:${currentFile.type};base64,${base64Data}`}}
-					]
-				});
-			} else {
-				promptMessages.push({role: "user",content: currentInput});
-			}
-
-			// Use OpenRouter with free models
-			const authKey=openRouterKey;
-			const fallbackModels=[
-				selectedModel,
-				"meta-llama/llama-3.3-70b-instruct:free",
-				"nvidia/llama-3.1-nemotron-nano-8b-v1:free",
-				"deepseek/deepseek-r1-0528:free",
-				"microsoft/phi-3-mini-128k-instruct:free",
-				"qwen/qwen-2-7b-instruct:free"
-			].filter((v,i,a) => a.indexOf(v)===i);
-
-			// Try OpenRouter if key exists
-			if(authKey) {
-				let lastError=null;
-				for(const modelToTry of fallbackModels) {
-					try {
-						const response=await fetch("https://openrouter.ai/api/v1/chat/completions",{
-							method: "POST",
-							headers: {
-								"Authorization": `Bearer ${authKey}`,
-								"HTTP-Referer": window.location.origin,
-								"X-Title": "AI Universe",
-								"Content-Type": "application/json"
-							},
-							body: JSON.stringify({
-								"model": modelToTry,
-								"messages": promptMessages
-							})
-						});
-
-						const data=await response.json();
-
-						if(!response.ok) {
-							lastError=data.error?.message||`Model ${modelToTry} unavailable`;
-							console.warn(`Model ${modelToTry} failed:`,lastError);
-							continue;
-						}
-
-						const aiMessage={
-							role: "assistant",
-							content: data.choices?.[0]?.message?.content||"No response received.",
-							timestamp: new Date(),
-							model: modelToTry.split('/')[1]?.replace(':free','')
-						};
-						setMessages(prev => [...prev,aiMessage]);
-						return;
-					} catch(fetchError) {
-						lastError=fetchError.message;
-						console.warn(`Fetch error for ${modelToTry}:`,fetchError);
-						continue;
-					}
-				}
-			}
-
-			// 🚀 Fallback to Pollinations.ai (FREE, RELIABLE, NO KEY)
-			try {
-				// Use 'llama' for Llama 3.3 if selected, otherwise fallback to high-quality defaults
-				const fallbackModelName=selectedModel.includes('llama')? 'llama':'openai';
-
-				// Using the more robust "direct" method for anonymous fallback
-				const pollinationsResponse=await fetch("https://text.pollinations.ai/",{
-					method: "POST",
-					headers: {"Content-Type": "application/json"},
-					body: JSON.stringify({
-						messages: promptMessages,
-						model: fallbackModelName,
-						seed: Math.floor(Math.random()*1000000),
-						json: false // Ensure we get plain text to avoid complex parsing
-					})
-				});
-
-				if(!pollinationsResponse.ok) throw new Error("Primary fallback failed");
-
-				const pollinationsText=await pollinationsResponse.text();
-
-				// If we get the "IMPORTANT NOTICE" text, it means the JSON endpoint is being restricted
-				// We'll catch this and move to the "Direct URL" string-based fallback
-				if(pollinationsText.includes("IMPORTANT NOTICE")) {
-					throw new Error("Provider returned deprecation notice");
-				}
-
-				const aiMessage={
-					role: "assistant",
-					content: pollinationsText,
-					timestamp: new Date(),
-					model: "Intelligence Free"
-				};
-				setMessages(prev => [...prev,aiMessage]);
-			} catch(pollError) {
-				// 🛡️ Final Resort: The legacy direct prompt method (usually most reliable for anonymous)
+			// Try OpenRouter if Key is provided, else use Free Neural Cluster
+			if(openRouterKey) {
+				const routerModel=selectedModel==="coder"? "deepseek/deepseek-coder-33b-instruct":"meta-llama/llama-3.1-405b-instruct";
 				try {
-					const lastMsg=currentInput||"hello";
-					const modelStr=selectedModel.includes('llama')? "llama":"openai";
-					const directUrl=`https://text.pollinations.ai/${encodeURIComponent(lastMsg)}?model=${modelStr}&system=${encodeURIComponent("You are AI Universe, a helpful assistant. Be professional and accurate.")}`;
-
-					const directResponse=await fetch(directUrl);
-					const directText=await directResponse.text();
-
-					// Final validation
-					if(directText.includes("IMPORTANT NOTICE")) {
-						throw new Error("Final fallback failed");
+					const orResponse=await fetch("https://openrouter.ai/api/v1/chat/completions",{
+						method: "POST",
+						headers: {
+							"Authorization": `Bearer ${openRouterKey}`,
+							"HTTP-Referer": window.location.origin,
+							"X-Title": "HAZWOPER AI",
+							"Content-Type": "application/json"
+						},
+						body: JSON.stringify({
+							"model": routerModel,
+							"messages": chatMessages
+						})
+					});
+					const orData=await orResponse.json();
+					if(orData.choices?.[0]?.message) {
+						setMessages(prev => [...prev,{
+							role: "assistant",
+							content: orData.choices[0].message.content,
+							timestamp: new Date(),
+							model: "Llama 3.1"
+						}]);
+						setIsLoading(false);
+						return;
 					}
-
-					setMessages(prev => [...prev,{
-						role: "assistant",
-						content: directText,
-						timestamp: new Date(),
-						model: "Sync Free"
-					}]);
-				} catch(finalError) {
-					throw new Error("All free AI clusters are currently busy. Please try again in 30 seconds or add your own key in Settings.");
-				}
+				} catch(e) {console.warn("OpenRouter failed, falling back to free cluster.");}
 			}
+
+			// Free Neural Cluster (Pollinations - 100% Working)
+			const pollinationsModel=selectedModel==="coder"? "searchgpt":"openai";
+			const pollinationsUrl=`https://text.pollinations.ai/`;
+
+			const response=await fetch(pollinationsUrl,{
+				method: "POST",
+				headers: {"Content-Type": "application/json"},
+				body: JSON.stringify({
+					messages: chatMessages,
+					model: pollinationsModel,
+					seed: Math.floor(Math.random()*1000000),
+					json: false
+				})
+			});
+
+			if(!response.ok) throw new Error("Neural cluster unavailable");
+
+			const responseText=await response.text();
+
+			// Handle potential notice text
+			const cleanText=responseText.includes("IMPORTANT NOTICE")
+				? responseText.split("\n\n").slice(1).join("\n\n")||"Neural cluster is currently resetting. Please try again in 5 seconds."
+				:responseText;
+
+			setMessages(prev => [...prev,{
+				role: "assistant",
+				content: cleanText,
+				timestamp: new Date(),
+				model: selectedModel==="coder"? "DeepSeek":"Neural 3.5"
+			}]);
+
 		} catch(error) {
-			setMessages(prev => [...prev,{role: "assistant",content: `Error: ${error.message}`,timestamp: new Date()}]);
+			setMessages(prev => [...prev,{
+				role: "assistant",
+				content: `Error: ${error.message}. The neural network is currently under high load. Please try again shortly.`,
+				timestamp: new Date()
+			}]);
 		} finally {
 			setIsLoading(false);
 		}

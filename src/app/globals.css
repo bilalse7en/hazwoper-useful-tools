@@ -207,6 +207,12 @@
 		min-height: 100vh;
 		overflow-x: hidden;
 	}
+
+	button,
+	select,
+	[role="button"] {
+		cursor: pointer !important;
+	}
 }
 
 @layer utilities {
@@ -494,4 +500,206 @@ header img,
 	white-space: pre !important;
 	word-break: normal !important;
 	word-wrap: normal !important;
+}
+
+/* ==========================================
+   BOOTSTRAP UTILITY CLASSES (PREVIEW ONLY)
+   Ensures generated code looks perfect without 
+   affecting the rest of the application or FAQs.
+   ========================================== */
+
+.preview-container .fs-1 {
+	font-size: calc(1.375rem + 1.5vw) !important;
+}
+
+.preview-container .fs-2 {
+	font-size: calc(1.325rem + 0.9vw) !important;
+}
+
+.preview-container .fs-3 {
+	font-size: calc(1.3rem + 0.6vw) !important;
+}
+
+.preview-container .fs-4 {
+	font-size: calc(1.275rem + 0.3vw) !important;
+}
+
+.preview-container .fs-5 {
+	font-size: 1.25rem !important;
+}
+
+.preview-container .fs-6 {
+	font-size: 1rem !important;
+}
+
+.preview-container .fw-light {
+	font-weight: 300 !important;
+}
+
+.preview-container .fw-normal {
+	font-weight: 400 !important;
+}
+
+.preview-container .fw-medium {
+	font-weight: 500 !important;
+}
+
+.preview-container .fw-semibold {
+	font-weight: 600 !important;
+}
+
+.preview-container .fw-bold {
+	font-weight: 700 !important;
+}
+
+.preview-container .text-warning {
+	color: #ffcd05 !important;
+}
+
+.preview-container .text-danger {
+	color: #dc3545 !important;
+}
+
+.preview-container .text-success {
+	color: #198754 !important;
+}
+
+.preview-container .text-info {
+	color: #0dcaf0 !important;
+}
+
+.preview-container .text-muted {
+	color: #6c757d !important;
+}
+
+.preview-container .text-white {
+	color: #fff !important;
+}
+
+.preview-container .text-uppercase {
+	text-transform: uppercase !important;
+}
+
+.preview-container .m-0 {
+	margin: 0 !important;
+}
+
+.preview-container .mt-0 {
+	margin-top: 0 !important;
+}
+
+.preview-container .mt-2 {
+	margin-top: 0.5rem !important;
+}
+
+.preview-container .mb-0 {
+	margin-bottom: 0 !important;
+}
+
+.preview-container .mb-2 {
+	margin-bottom: 0.5rem !important;
+}
+
+.preview-container .mb-3 {
+	margin-bottom: 1rem !important;
+}
+
+.preview-container .my-2 {
+	margin-top: 0.5rem !important;
+	margin-bottom: 0.5rem !important;
+}
+
+.preview-container .p-0 {
+	padding: 0 !important;
+}
+
+.preview-container .ps-0 {
+	padding-left: 0 !important;
+}
+
+.preview-container .pt-0 {
+	padding-top: 0 !important;
+}
+
+.preview-container .pb-0 {
+	padding-bottom: 0 !important;
+}
+
+.preview-container .ps-3,
+.preview-container .pl-3 {
+	padding-left: 1rem !important;
+}
+
+.preview-container .pe-3,
+.preview-container .pr-3 {
+	padding-right: 1rem !important;
+}
+
+.preview-container .lh-1 {
+	line-height: 1 !important;
+}
+
+.preview-container .lh-sm {
+	line-height: 1.25 !important;
+}
+
+.preview-container .lh-base {
+	line-height: 1.5 !important;
+}
+
+.preview-container .lh-lg {
+	line-height: 2 !important;
+}
+
+.preview-container .font-poppins {
+	font-family: 'Poppins', sans-serif !important;
+}
+
+.preview-container .border-0 {
+	border: 0 !important;
+}
+
+.preview-container .border-3 {
+	border-width: 3px !important;
+}
+
+.preview-container .bg-warning {
+	background-color: #ffcd05 !important;
+}
+
+/* Grid basics for preview */
+.preview-container .row {
+	display: flex;
+	flex-wrap: wrap;
+	margin-right: -15px;
+	margin-left: -15px;
+}
+
+.preview-container .col-md-5 {
+	position: relative;
+	width: 100%;
+	padding-right: 15px;
+	padding-left: 15px;
+	flex: 0 0 41.666667%;
+	max-width: 41.666667%;
+}
+
+.preview-container .col-sm-12 {
+	position: relative;
+	width: 100%;
+	padding-right: 15px;
+	padding-left: 15px;
+	flex: 0 0 100%;
+	max-width: 100%;
+}
+
+/* Custom sbox refinements inside preview */
+.preview-container .sbox {
+	margin-bottom: 1rem;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+ul,
+ol {
+	list-style: disc;
 }

@@ -33,13 +33,13 @@ export function PreviewDrawer({
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
-			<SheetContent side="right" className="w-full sm:w-[80vw] p-0" data-hide-default-close="true">
+			<SheetContent side="right" className="w-[80vw] sm:max-w-none p-0 border-l shadow-2xl" data-hide-default-close="true">
 				<SheetHeader className="flex flex-row items-center justify-between border-b border-border p-4">
 					<div className="flex items-center gap-2">
 						<Eye className="h-5 w-5 text-primary" />
 						<SheetTitle>{title} Preview</SheetTitle>
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-2 pr-6">
 						<Button
 							variant="outline"
 							size="sm"
