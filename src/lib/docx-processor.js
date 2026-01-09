@@ -75,6 +75,7 @@ function sortNumberedEntries(entries,numberExtractor) {
 const courseData={
 	overview: "",courseObjectives: "",syllabus: "",courseTitle: "",faqData: [],
 	overviewSections: [],courseObjectivesList: [],syllabusModules: [],courseObjectivesIntro: "",
+	mainPointsList: [],
 	fileProcessed: false
 };
 
@@ -89,6 +90,7 @@ export function resetCourseData() {
 	courseData.courseObjectivesList=[];
 	courseData.syllabusModules=[];
 	courseData.courseObjectivesIntro="";
+	courseData.mainPointsList=[];
 	courseData.fileProcessed=false;
 }
 
@@ -123,6 +125,7 @@ function extractCourseContent(html) {
 	extractCourseObjectives(elementsArray);
 	extractSyllabus(elementsArray);
 	extractFAQContent(elementsArray);
+	extractMainPoints(elementsArray);
 
 	courseData.fileProcessed=true;
 }
@@ -580,6 +583,62 @@ function extractFAQContent(elementsArray) {
 	}
 }
 
+function extractMainPoints(elementsArray) {
+	courseData.mainPointsList=[];
+	let mainPointsStart=-1;
+
+	// Look for "For Business (Tier Pricing):" or similar headings
+	elementsArray.forEach((element,i) => {
+		const text=element.textContent.trim().toLowerCase();
+		if((text.includes("for business")&&text.includes("tier pricing"))||
+			text.includes("for business (tier pricing)")||
+			text.includes("main points")||
+			text.includes("course main points")) {
+			mainPointsStart=i;
+		}
+	});
+
+	if(mainPointsStart===-1) return;
+
+	// Extract content after the heading
+	let mainPointsEnd=elementsArray.length;
+	for(let i=mainPointsStart+1;i<elementsArray.length;i++) {
+		const element=elementsArray[i];
+		const text=element.textContent.trim().toLowerCase();
+		// Stop if we hit another major section
+		if((element.tagName.match(/^H[1-3]$/i)&&
+			(text.includes("overview")||
+				text.includes("objectives")||
+				text.includes("syllabus")||
+				text.includes("faq")))||
+			i>mainPointsStart+50) { // Safety limit
+			mainPointsEnd=i;
+			break;
+		}
+	}
+
+	// Collect list items
+	for(let i=mainPointsStart+1;i<mainPointsEnd;i++) {
+		const element=elementsArray[i];
+		const tagName=element.tagName;
+
+		if(tagName==='UL'||tagName==='OL') {
+			const items=element.querySelectorAll('li');
+			items.forEach(item => {
+				const itemText=item.innerHTML.trim();
+				if(itemText) {
+					courseData.mainPointsList.push(itemText);
+				}
+			});
+		} else if(tagName==='LI') {
+			const itemText=element.innerHTML.trim();
+			if(itemText) {
+				courseData.mainPointsList.push(itemText);
+			}
+		}
+	}
+}
+
 export function generateOverviewCode(data,mediaUrl="") {
 	let videoHtml="";
 
@@ -797,6 +856,57 @@ export function generateFAQCode(data) {
 
 	faqHTML+=`</div>`;
 	return faqHTML;
+}
+
+export function generateMainPointsCode(data) {
+	if(!data.mainPointsList||data.mainPointsList.length===0) {
+		return "<!-- No main points found in the document. -->";
+	}
+
+	let mainPointsHTML=`<ul>\n`;
+
+	data.mainPointsList.forEach(item => {
+		let processedItem=item;
+		let hasFlags=false;
+
+		// Check if this is an "Available in:" item
+		const lowerItem=item.toLowerCase();
+		if(lowerItem.includes('available in')) {
+			hasFlags=true;
+			// Extract the languages mentioned
+			const hasEnglish=lowerItem.includes('english');
+			const hasSpanish=lowerItem.includes('spanish')||lowerItem.includes('español');
+
+			// Build the flag HTML
+			let flagHTML='Available in: ';
+
+			if(hasEnglish&&hasSpanish) {
+				// Both languages
+				flagHTML+=`<img src="https://flagcdn.com/24x18/us.png" srcset="https://flagcdn.com/48x36/us.png 2x" width="24" height="18" alt="United States"> English | <img src="https://flagcdn.com/24x18/es.png" srcset="https://flagcdn.com/48x36/es.png 2x" width="24" height="18" alt="España"> Español`;
+			} else if(hasEnglish) {
+				// English only
+				flagHTML+=`<img src="https://flagcdn.com/24x18/us.png" srcset="https://flagcdn.com/48x36/us.png 2x" width="24" height="18" alt="United States"> English`;
+			} else if(hasSpanish) {
+				// Spanish only
+				flagHTML+=`<img src="https://flagcdn.com/24x18/es.png" srcset="https://flagcdn.com/48x36/es.png 2x" width="24" height="18" alt="España"> Español`;
+			} else {
+				// No specific language detected, keep original
+				flagHTML='Available in: '+item.replace(/available\s*in\s*:?\s*/gi,'');
+			}
+
+			processedItem=flagHTML;
+		}
+
+		// Add li with span wrapping for flags
+		if(hasFlags) {
+			mainPointsHTML+=`  <li><span style="display: ruby;">${processedItem}</span></li>\n`;
+		} else {
+			mainPointsHTML+=`  <li>${processedItem}</li>\n`;
+		}
+	});
+
+	mainPointsHTML+=`</ul>`;
+	return mainPointsHTML;
 }
 
 // ==========================================

@@ -21,7 +21,8 @@ import {
 	generateOverviewCode,
 	generateCourseObjectivesCode,
 	generateSyllabusCode,
-	generateFAQCode
+	generateFAQCode,
+	generateMainPointsCode
 } from "@/lib/docx-processor";
 import {PreviewDrawer} from "@/components/preview-drawer";
 
@@ -39,12 +40,13 @@ export function CourseGenerator() {
 	const [objectivesCode,setObjectivesCode]=useState("");
 	const [syllabusCode,setSyllabusCode]=useState("");
 	const [faqCode,setFaqCode]=useState("");
+	const [mainPointsCode,setMainPointsCode]=useState("");
 
 	// Media URL for Overview (auto-detects if it's video or image)
 	const [mediaUrl,setMediaUrl]=useState("");
 
 	// View State
-	const [activeView,setActiveView]=useState("overview"); // overview, objectives, syllabus, faq
+	const [activeView,setActiveView]=useState("mainpoints"); // mainpoints, overview, objectives, syllabus, faq
 	const fileInputRef=useRef(null);
 
 	// Preview Drawer State
@@ -128,6 +130,14 @@ export function CourseGenerator() {
 		setFaqCode(code);
 		setActiveView("faq");
 		showNotification("FAQ code generated successfully!");
+	};
+
+	const handleGenerateMainPoints=() => {
+		if(!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.","warning");
+		const code=generateMainPointsCode(courseData);
+		setMainPointsCode(code);
+		setActiveView("mainpoints");
+		showNotification("Main Points code generated successfully!");
 	};
 
 	const downloadDemoFile=() => {
@@ -246,6 +256,9 @@ export function CourseGenerator() {
 								<Button onClick={handleUpload} className="btn bg-primary hover:bg-primary/90 text-primary-foreground">
 									<Upload className="mr-2 h-4 w-4" /> Upload File
 								</Button>
+								<Button onClick={handleGenerateMainPoints} className="btn bg-purple-600 hover:bg-purple-700 text-white">
+									<Code className="mr-2 h-4 w-4" /> Main Points
+								</Button>
 								<Button onClick={handleGenerateOverview} className="btn bg-green-600 hover:bg-green-700 text-white">
 									<Code className="mr-2 h-4 w-4" /> Generate Overview
 								</Button>
@@ -269,8 +282,17 @@ export function CourseGenerator() {
 					<div className="card bg-card border rounded-lg shadow-sm min-h-[600px] flex flex-col overflow-hidden">
 
 						{/* Selector Buttons */}
-						{(overviewCode||objectivesCode||syllabusCode||faqCode)? (
+						{(mainPointsCode||overviewCode||objectivesCode||syllabusCode||faqCode)? (
 							<div className="flex flex-wrap gap-1 p-2 border-b bg-muted/30">
+								<button
+									onClick={() => setActiveView("mainpoints")}
+									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView==='mainpoints'
+										? 'bg-primary text-primary-foreground shadow-sm'
+										:'hover:bg-accent text-muted-foreground'
+										}`}
+								>
+									Main Points
+								</button>
 								<button
 									onClick={() => setActiveView("overview")}
 									className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${activeView==='overview'
@@ -319,7 +341,7 @@ export function CourseGenerator() {
 						)}
 
 						{/* Textarea Content */}
-						{(overviewCode||objectivesCode||syllabusCode||faqCode)&&(
+						{(mainPointsCode||overviewCode||objectivesCode||syllabusCode||faqCode)&&(
 							<div className="flex-1 p-4 flex flex-col h-full overflow-hidden">
 
 								{/* FAQ Interactive List Removed to match Blog Generator UI */}
@@ -327,6 +349,7 @@ export function CourseGenerator() {
 								<div className="flex items-center justify-between mb-2 mt-2">
 									<h4 className="text-sm font-semibold flex items-center gap-2">
 										<Code className="h-4 w-4" />
+										{activeView==='mainpoints'&&"Main Points Code"}
 										{activeView==='overview'&&"Overview Code"}
 										{activeView==='objectives'&&"Course Objectives Code"}
 										{activeView==='syllabus'&&"Syllabus Code"}
@@ -339,12 +362,14 @@ export function CourseGenerator() {
 											className="preview-icon-btn"
 											onClick={() => {
 												const content={
+													'mainpoints': mainPointsCode,
 													'overview': overviewCode,
 													'objectives': objectivesCode,
 													'syllabus': syllabusCode,
 													'faq': faqCode
 												}[activeView];
 												const title={
+													'mainpoints': 'Main Points',
 													'overview': 'Overview',
 													'objectives': 'Course Objectives',
 													'syllabus': 'Syllabus',
@@ -360,6 +385,7 @@ export function CourseGenerator() {
 											className="copy-btn"
 											onClick={() => {
 												const content={
+													'mainpoints': mainPointsCode,
 													'overview': overviewCode,
 													'objectives': objectivesCode,
 													'syllabus': syllabusCode,
@@ -376,7 +402,8 @@ export function CourseGenerator() {
 								<textarea
 									className="flex-1 w-full bg-muted/50 border rounded-md p-4 font-mono text-xs resize-none focus:outline-ring code-editor"
 									value={
-										activeView==='overview'? overviewCode:
+										activeView==='mainpoints'? mainPointsCode:
+									activeView==='overview'? overviewCode:
 											activeView==='objectives'? objectivesCode:
 												activeView==='syllabus'? syllabusCode:
 													activeView==='faq'? faqCode:""
@@ -417,3 +444,4 @@ export function CourseGenerator() {
 		</div>
 	);
 }
+
