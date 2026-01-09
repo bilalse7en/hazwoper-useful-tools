@@ -580,8 +580,52 @@ function extractFAQContent(elementsArray) {
 	}
 }
 
-export function generateOverviewCode(data) {
-	const videoHtml=`<!-- <div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="https://player.vimeo.com/video/680313019?h=6c9335ab94" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><img src="" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"></div></div> -->`;
+export function generateOverviewCode(data,mediaUrl="") {
+	let videoHtml="";
+
+	// Auto-detect media type based on URL
+	if(mediaUrl&&mediaUrl.trim()) {
+		const url=mediaUrl.trim().toLowerCase();
+
+		// Check if it's a video URL (contains video player domains or video patterns)
+		const isVideo=
+			url.includes('player.vimeo.com')||
+			url.includes('youtube.com')||
+			url.includes('youtu.be')||
+			url.includes('player.')||
+			url.includes('/video/')||
+			url.includes('videopress')||
+			url.includes('wistia')||
+			url.includes('vimeo');
+
+		// Check if it's an image URL (ends with image extensions)
+		const isImage=
+			url.endsWith('.png')||
+			url.endsWith('.jpg')||
+			url.endsWith('.jpeg')||
+			url.endsWith('.webp')||
+			url.endsWith('.gif')||
+			url.endsWith('.svg')||
+			url.endsWith('.bmp')||
+			url.includes('.png?')||
+			url.includes('.jpg?')||
+			url.includes('.jpeg?')||
+			url.includes('.webp?');
+
+		if(isVideo) {
+			// Show iframe for video, comment out img
+			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="${mediaUrl}" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><!-- <img src="" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"> --></div></div>`;
+		} else if(isImage) {
+			// Show img for image, comment out iframe
+			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><!-- <iframe title="${data.courseTitle||'Course Video'}" src="" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe> --><img src="${mediaUrl}" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"></div></div>`;
+		} else {
+			// If URL provided but type unclear, default to video (iframe)
+			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="${mediaUrl}" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><!-- <img src="" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"> --></div></div>`;
+		}
+	} else {
+		// If no URL provided, comment out both
+		videoHtml=`<!-- <div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><img src="" class="w-100 ps-3" alt="${data.courseTitle||'Course Name'}"></div></div> -->`;
+	}
 
 	let contentHtml="";
 	if(data.overviewSections.length>0) {
@@ -730,13 +774,18 @@ export function generateFAQCode(data) {
 
 	data.faqData.forEach((faq,index) => {
 		const question=cleanFAQText(faq.question);
-		let answer=cleanFAQText(faq.answer);
-
+		// Remove all bold/strong tags from answer and clean it
+		let answer=faq.answer||"";
+		// Strip all bold/strong tags from the beginning and throughout
+		answer=answer.replace(/<\/?(?:strong|b)>/gi,'').trim();
+		answer=cleanFAQText(answer);
 		answer=answer.replace(/^A:\s*/i,'').trim();
 
 		if(question&&answer) {
 			faqHTML+=`  <div class="faq-item">\n`;
-			faqHTML+=`    <div class="faq-question">${index+1}. ${question}</div>\n`;
+			// Question should be bold
+			faqHTML+=`    <div class="faq-question"><strong>${index+1}. ${question}</strong></div>\n`;
+			// Answer should NOT be bold
 			faqHTML+=`    <div class="faq-answer">${answer}</div>\n`;
 			faqHTML+=`  </div>\n`;
 
@@ -1106,11 +1155,16 @@ export function generateBlogFAQCode(faqData) {
 	faqHtml+=`  <div class="col-md-6">\n`;
 	col1.forEach((faq,index) => {
 		const question=cleanFAQText(faq.question);
-		// More robust answer cleaning: Strip A:, Answer:, Ans:
-		let answer=faq.answer.replace(/^(A|Answer|Ans)[:\.]\s*/i,'').trim();
+		// More robust answer cleaning: Strip A:, Answer:, Ans: and remove bold/strong tags
+		let answer=faq.answer||"";
+		// Strip all bold/strong tags
+		answer=answer.replace(/<\/?(?:strong|b)>/gi,'').trim();
+		answer=answer.replace(/^(A|Answer|Ans)[:\.]\s*/i,'').trim();
 		if(question&&answer) {
 			faqHtml+=`    <div class="mb-3">\n`;
+			// Question is already bold via h6 fw-bold class
 			faqHtml+=`      <h5 class="h6 fw-bold">${escapeHtml(question)}</h5>\n`;
+			// Answer should NOT have bold tags
 			faqHtml+=`      <div class="faq-answer">${answer}</div>\n`;
 			faqHtml+=`    </div>\n`;
 		}
@@ -1121,11 +1175,16 @@ export function generateBlogFAQCode(faqData) {
 	faqHtml+=`  <div class="col-md-6">\n`;
 	col2.forEach((faq,index) => {
 		const question=cleanFAQText(faq.question);
-		// More robust answer cleaning: Strip A:, Answer:, Ans:
-		let answer=faq.answer.replace(/^(A|Answer|Ans)[:\.]\s*/i,'').trim();
+		// More robust answer cleaning: Strip A:, Answer:, Ans: and remove bold/strong tags
+		let answer=faq.answer||"";
+		// Strip all bold/strong tags
+		answer=answer.replace(/<\/?(?:strong|b)>/gi,'').trim();
+		answer=answer.replace(/^(A|Answer|Ans)[:\.]\s*/i,'').trim();
 		if(question&&answer) {
 			faqHtml+=`    <div class="mb-3">\n`;
+			// Question is already bold via h6 fw-bold class
 			faqHtml+=`      <h5 class="h6 fw-bold">${escapeHtml(question)}</h5>\n`;
+			// Answer should NOT have bold tags
 			faqHtml+=`      <div class="faq-answer">${answer}</div>\n`;
 			faqHtml+=`    </div>\n`;
 		}

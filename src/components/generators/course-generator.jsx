@@ -40,6 +40,9 @@ export function CourseGenerator() {
 	const [syllabusCode,setSyllabusCode]=useState("");
 	const [faqCode,setFaqCode]=useState("");
 
+	// Media URL for Overview (auto-detects if it's video or image)
+	const [mediaUrl,setMediaUrl]=useState("");
+
 	// View State
 	const [activeView,setActiveView]=useState("overview"); // overview, objectives, syllabus, faq
 	const fileInputRef=useRef(null);
@@ -97,7 +100,7 @@ export function CourseGenerator() {
 
 	const handleGenerateOverview=() => {
 		if(!courseData?.fileProcessed) return showNotification("Please upload and process a DOCX file first.","warning");
-		const code=generateOverviewCode(courseData);
+		const code=generateOverviewCode(courseData,mediaUrl);
 		setOverviewCode(code);
 		setActiveView("overview");
 		showNotification("Overview code generated successfully!");
@@ -223,6 +226,22 @@ export function CourseGenerator() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="card-body">
+							{/* Optional Media Section for Overview */}
+							<div className="space-y-3 mb-4 p-3 border rounded-lg bg-muted/30">
+								<Label className="text-sm font-semibold">Overview Media (Optional)</Label>
+								<div className="space-y-2">
+									<Input
+										placeholder="Enter media URL (e.g., video/image)"
+										value={mediaUrl}
+										onChange={(e) => setMediaUrl(e.target.value)}
+										className="form-control text-sm"
+									/>
+									<p className="text-xs text-muted-foreground">
+										Auto-detects video (Vimeo, YouTube) or image (.png, .jpg, .webp, etc.) based on URL. Leave empty to skip media.
+									</p>
+								</div>
+							</div>
+
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 								<Button onClick={handleUpload} className="btn bg-primary hover:bg-primary/90 text-primary-foreground">
 									<Upload className="mr-2 h-4 w-4" /> Upload File
