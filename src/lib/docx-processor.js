@@ -4,6 +4,19 @@ import mammoth from "mammoth";
 // SHARED UTILS
 // ==========================================
 
+function ensureProfessionalLinks(html) {
+	if(!html) return "";
+	// Add target="_blank" to all anchor tags and REMOVE rel attributes for perfect SEO/Referrer tracking
+	return html.replace(/<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1([^>]*)>/gi,(match,p1,p2,p3) => {
+		// Remove any existing target or rel attributes from p3 to avoid duplicates or unwanted SEO tags
+		let cleanP3=p3.replace(/\s+(target|rel)=["'][^"']*?["']/gi,'').trim();
+		let newTag='<a href="'+p2+'" target="_blank"';
+		if(cleanP3) newTag+=' '+cleanP3;
+		newTag+='>';
+		return newTag;
+	});
+}
+
 function stripBoldWrapper(html) {
 	if(!html) return "";
 	let cleaned=html.trim();
@@ -704,7 +717,7 @@ export function generateOverviewCode(data,mediaUrl="") {
 	} else {
 		contentHtml="<p>No overview content found.</p>";
 	}
-	return videoHtml+contentHtml;
+	return ensureProfessionalLinks(videoHtml+contentHtml);
 }
 
 export function generateCourseObjectivesCode(data) {
@@ -715,7 +728,7 @@ export function generateCourseObjectivesCode(data) {
 		listItemsHtml="<li>No course objectives found in the document.</li>";
 	}
 	const introText=data.courseObjectivesIntro||"After completing this course, the learner will be able to:";
-	return `<h2 class="h3">Course Objectives</h2><p class="m-0"><strong>${introText}</strong></p><ul>${listItemsHtml}</ul>`;
+	return ensureProfessionalLinks(`<h2 class="h3">Course Objectives</h2><p class="m-0"><strong>${introText}</strong></p><ul>${listItemsHtml}</ul>`);
 }
 
 export function generateSyllabusCode(data) {
@@ -807,10 +820,8 @@ export function generateSyllabusCode(data) {
 	} else {
 		modulesHTML='<div class="sbox"><p>No syllabus content could be extracted. Please check the document structure.</p></div>';
 	}
-
 	const courseTitle=data.courseTitle||'Course';
-
-	return `<h2 class="fs-2 mb-3">${courseTitle} Course Syllabus</h2>
+	return ensureProfessionalLinks(`<h2 class="fs-2 mb-3">${courseTitle} Course Syllabus</h2>
         <p>This ${courseTitle} consists of ${totalLessons} lessons ${!isLessonsOnly&&data.syllabusModules.length>1? `divided into ${data.syllabusModules.length} modules`:''}. Students are required to take each lesson in sequential order as listed below.</p>
         <div style="background: #f2f3f5;padding-bottom:1px;">
             <div class="border-0 pl-3 sbox" style="background-color: #ffcd05;">
@@ -821,7 +832,7 @@ export function generateSyllabusCode(data) {
             <div class="sbox">
                 <h4 class="font-poppins fs-5 m-0 fw-normal">Final Examination</h4>
             </div>
-        </div>`;
+        </div>`);
 }
 
 export function generateFAQCode(data) {
@@ -855,7 +866,7 @@ export function generateFAQCode(data) {
 	});
 
 	faqHTML+=`</div>`;
-	return faqHTML;
+	return ensureProfessionalLinks(faqHTML);
 }
 
 export function generateMainPointsCode(data) {
@@ -906,7 +917,7 @@ export function generateMainPointsCode(data) {
 	});
 
 	mainPointsHTML+=`</ul>`;
-	return mainPointsHTML;
+	return ensureProfessionalLinks(mainPointsHTML);
 }
 
 // ==========================================
@@ -1144,7 +1155,7 @@ export function generateBlogCode(blogData,featuredImage={},imageUrls=[]) {
 	}
 
 	blogHTML+=`<div class="fancy-line"></div><style>.fancy-line{width:60%;margin:20px auto;border-top:2px solid #116466;text-align:center;position:relative}.fancy-line::after{content:"✦ ✦ ✦";position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:white;padding:0 10px;color:red}</style>`;
-	return blogHTML;
+	return ensureProfessionalLinks(blogHTML);
 }
 
 function extractBlogFAQContent(html) {
@@ -1188,42 +1199,59 @@ function extractBlogFAQContent(html) {
 
 		if(!text) continue;
 
+		// Smart question detection - handles multiple patterns:
+		// 1) Question?
+		// 1. Question?
+		// Question with bold
+		// Question ending with ?
 		const isQuestion=(
-			/^\d+\.\s+/.test(text)||
-			(innerHTML.includes('<strong>')&&text.includes('?'))||
-			(innerHTML.includes('<b>')&&text.includes('?'))||
-			(text.endsWith('?')&&text.length<200)
+			/^\d+[\.\)]\s+/.test(text)||  // Starts with number. or number)
+			(innerHTML.includes('<strong>')&&text.includes('?'))||  // Bold with ?
+			(innerHTML.includes('<b>')&&text.includes('?'))||  // Bold with ?
+			(text.endsWith('?')&&text.length<300&&!collectingAnswer)  // Ends with ? and not too long
 		);
 
 		if(isQuestion) {
+			// Save previous Q&A pair
 			if(currentQuestion&&currentAnswer) {
 				faqData.push({
 					question: cleanFAQText(currentQuestion),
 					answer: stripBoldWrapper(currentAnswer)
 				});
 			}
+
 			currentQuestion=text;
-			const questionMatch=text.match(/^\d+\.\s+(.*?)(?:\?)(.*)$/);
+
+			// Check if answer is on the same line after the question
+			const questionMatch=text.match(/^(\d+[\.\)]\s+.*?\?)\s*(.+)$/);
 			if(questionMatch&&questionMatch[2]&&questionMatch[2].trim()) {
+				// Answer is on the same line
 				currentAnswer=questionMatch[2].trim();
 				collectingAnswer=true;
 			} else {
+				// Answer will be on next elements
 				currentAnswer="";
 				collectingAnswer=true;
 			}
 		} else if(collectingAnswer&&text) {
+			// Collecting answer content
 			if(currentAnswer) {
 				currentAnswer+=" "+element.outerHTML;
 			} else {
 				currentAnswer=element.outerHTML;
 			}
+
+			// Check if next element is a question
 			const nextIsQuestion=i+1<faqEnd&&(
-				/^\d+\.\s+/.test(elementsArray[i+1].textContent.trim())||
+				/^\d+[\.\)]\s+/.test(elementsArray[i+1].textContent.trim())||
 				(elementsArray[i+1].innerHTML.includes('<strong>')&&
+					elementsArray[i+1].textContent.trim().includes('?'))||
+				(elementsArray[i+1].innerHTML.includes('<b>')&&
 					elementsArray[i+1].textContent.trim().includes('?'))
 			);
 
 			if(nextIsQuestion) {
+				// Save this Q&A pair
 				if(currentQuestion&&currentAnswer) {
 					faqData.push({
 						question: cleanFAQText(currentQuestion),
@@ -1237,6 +1265,7 @@ function extractBlogFAQContent(html) {
 		}
 	}
 
+	// Save last Q&A pair
 	if(currentQuestion&&currentAnswer) {
 		faqData.push({
 			question: cleanFAQText(currentQuestion),
@@ -1302,7 +1331,7 @@ export function generateBlogFAQCode(faqData) {
 	faqHtml+=`  </div>\n`;
 
 	faqHtml+=`</div>\n</div>`;
-	return faqHtml;
+	return ensureProfessionalLinks(faqHtml);
 }
 
 // ==========================================
@@ -1378,7 +1407,7 @@ export function generateGlossaryCode(glossaryData) {
 		glossaryContent+="</div>\n";
 	}
 
-	const glossaryHtml=`
+	const glossaryHtml=ensureProfessionalLinks(`
             <style>
                 .active.glossaryBtn,
                 .glossaryBtn:hover {
@@ -1410,7 +1439,7 @@ export function generateGlossaryCode(glossaryData) {
                     </div>
                     ${glossaryContent}
                 </div>
-            </div>`;
+            </div>`);
 
 	return glossaryHtml;
 }

@@ -10,6 +10,8 @@ import {SimpleLoader} from "@/components/simple-loader";
 import {AntigravityExperience} from "@/components/antigravity-experience";
 import {ThemeDialog} from "@/components/theme-dialog";
 import {LoginScreen} from "@/components/login-screen";
+import {VictoryScroll} from "@/components/victory-scroll";
+import {SessionTimer} from "@/components/session-timer";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {hasAccess,ROLES} from "@/lib/auth";
 import {
@@ -20,7 +22,8 @@ import {
 	HTMLCleaner,
 	ImageConverter,
 	VideoCompressor,
-	AIAssistant
+	AIAssistant,
+	ImageToText
 } from "@/components/generators";
 
 export default function Home() {
@@ -31,6 +34,8 @@ export default function Home() {
 	const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
 	const [themeDialogOpen,setThemeDialogOpen]=useState(false);
 	const [user,setUser]=useState(null);
+	const [showWinCelebration,setShowWinCelebration]=useState(false);
+	const [winRole,setWinRole]=useState(null);
 
 	useEffect(() => {
 		// 1. Check Reward Status (Priority)
@@ -115,14 +120,20 @@ export default function Home() {
 			'blog_creator': 'Blog Reward (2H)'
 		};
 
+		// Show victory screen FIRST
+		setWinRole(role);
+		setShowWinCelebration(true);
+
+		// Prepare user data (will be set after victory screen completes)
 		const rewardUser={
 			username: 'reward_user',
 			role: role,
 			name: roleNames[role]||'Reward User (2H)',
 			loginTime: Date.now()
 		};
-		setUser(rewardUser);
-		sessionStorage.setItem('user',JSON.stringify(rewardUser));
+
+		// Store for later use
+		sessionStorage.setItem('pending_user',JSON.stringify(rewardUser));
 		localStorage.setItem('reward_claim_time',Date.now().toString());
 		sessionStorage.setItem('reward_attempted','success');
 	};
@@ -154,6 +165,8 @@ export default function Home() {
 	const handleLogout=() => {
 		setUser(null);
 		sessionStorage.removeItem('user');
+		localStorage.removeItem('reward_claim_time');
+		sessionStorage.removeItem('reward_attempted');
 		setIsLoading(false); // Ensure loader doesn't show again on logout
 	};
 
@@ -187,6 +200,8 @@ export default function Home() {
 			return <VideoCompressor />;
 		case "ai-assistant":
 			return <AIAssistant />;
+		case "image-to-text":
+			return <ImageToText />;
 		default:
 			return <CourseGenerator />;
 		}
@@ -208,6 +223,8 @@ export default function Home() {
 			return "Video Compressor";
 		case "ai-assistant":
 			return "AI UNIVERSE - Neural Hub";
+		case "image-to-text":
+			return "Image to Text - OCR Converter";
 		default:
 			return "Course Content Generator";
 		}
@@ -219,8 +236,32 @@ export default function Home() {
 
 	return (
 		<>
-			{/* Landing Loader or Simple Loader */}
-			{isLoading&&(
+			{/* PRIORITY 1: Victory Scroll (shown immediately after game win) */}
+			{showWinCelebration&&winRole&&(
+				<VictoryScroll
+					role={winRole}
+					onComplete={() => {
+						// Get pending user and set it as active
+						const pendingUser=sessionStorage.getItem('pending_user');
+						if(pendingUser) {
+							const userData=JSON.parse(pendingUser);
+							setUser(userData);
+							sessionStorage.setItem('user',JSON.stringify(userData));
+							sessionStorage.removeItem('pending_user');
+
+							// Set active tab based on preferredTab from victory scroll
+							if(userData.preferredTab) {
+								setActiveTab(userData.preferredTab);
+							}
+						}
+						setShowWinCelebration(false);
+						setIsLoading(false);
+					}}
+				/>
+			)}
+
+			{/* PRIORITY 2: Game Loader (only if not showing victory) */}
+			{isLoading&&!showWinCelebration&&(
 				loaderVariant==="game"? (
 					<LandingLoader onComplete={handleLoaderComplete} onUnlock={handleRewardUnlock} onFail={handleLoaderFail} />
 				):loaderVariant==="antigravity"? (
@@ -230,9 +271,13 @@ export default function Home() {
 				)
 			)}
 
-			{!user? (
+			{/* PRIORITY 3: Login Screen (only if no user and not in victory/loading) */}
+			{!user&&!isLoading&&!showWinCelebration&&(
 				<LoginScreen onLogin={handleLogin} />
-			):(
+			)}
+
+			{/* PRIORITY 4: Main App (only if user exists) */}
+			{user&&(
 				<>
 					{/* Main App Layout */}
 					<div className={cn(
@@ -278,9 +323,6 @@ export default function Home() {
 										<h1 id="mainTitle" className="mb-3 lg:mb-4 text-2xl lg:text-3xl xl:text-4xl font-bold tracking-tight bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]">
 											{getPageTitle()}
 										</h1>
-										<p className="mx-auto max-w-2xl text-muted-foreground font-medium text-sm lg:text-base">
-											Extract Overview, Syllabus, FAQs, Glossary, Resources and Blog Content from your documents
-										</p>
 									</div>
 								</div>
 
@@ -294,6 +336,11 @@ export default function Home() {
 
 					{/* Theme Dialog */}
 					<ThemeDialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen} />
+
+					{/* Session Timer (only for reward users) */}
+					{user&&localStorage.getItem('reward_claim_time')&&(
+						<SessionTimer onExpire={handleLogout} />
+					)}
 				</>
 			)}
 		</>

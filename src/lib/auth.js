@@ -21,8 +21,8 @@ export const USERS={
 
 export const ROLES={
 	admin: ['*'],
-	blog_creator: ['blog','html-cleaner','image-converter','video-compressor'],
-	content_creator: ['course','glossary','resources','html-cleaner','image-converter','video-compressor']
+	blog_creator: ['blog','html-cleaner','image-converter','video-compressor','image-to-text'],
+	content_creator: ['course','glossary','resources','html-cleaner','image-converter','video-compressor','image-to-text']
 };
 
 export const NAV_ITEMS=[
@@ -32,6 +32,7 @@ export const NAV_ITEMS=[
 	{id: "blog",label: "Blog Generator",icon: "PenTool"},
 	{id: "html-cleaner",label: "HTML Cleaner",icon: "Code"},
 	{id: "image-converter",label: "Image Converter",icon: "ImageIcon"},
+	{id: "image-to-text",label: "Image to Text",icon: "ScanText"},
 	{id: "video-compressor",label: "Video Compressor",icon: "Video"},
 ];
 

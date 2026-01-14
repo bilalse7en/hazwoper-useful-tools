@@ -11,6 +11,7 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 	const [popup,setPopup]=useState(null);
 	const [isPopupActive,setIsPopupActive]=useState(false);
 	const [exit,setExit]=useState(false);
+	const [showCooldownMessage,setShowCooldownMessage]=useState(false);
 
 	const [highScore,setHighScore]=useState(0);
 	const [bankedRole,setBankedRole]=useState(null);
@@ -47,6 +48,24 @@ export function LandingLoader({onComplete,onUnlock,onFail}) {
 	useEffect(() => {
 		const savedHS=localStorage.getItem('runner_high_score');
 		if(savedHS) setHighScore(parseInt(savedHS));
+
+		// Check 24-hour cooldown
+		const cooldownTime=localStorage.getItem('game_cooldown');
+		if(cooldownTime) {
+			const TWENTY_FOUR_HOURS=24*60*60*1000;
+			const elapsed=Date.now()-parseInt(cooldownTime);
+			if(elapsed<TWENTY_FOUR_HOURS) {
+				setShowCooldownMessage(true);
+				setGameState('paused');
+				const remainingHours=Math.ceil((TWENTY_FOUR_HOURS-elapsed)/(1000*60*60));
+				setPopup({
+					type: 'failure',
+					title: 'COOLDOWN ACTIVE',
+					content: `You can play again in ${remainingHours} hour${remainingHours!==1? 's':''}. Come back later!`,
+					accessRole: null
+				});
+			}
+		}
 	},[]);
 
 	useEffect(() => {

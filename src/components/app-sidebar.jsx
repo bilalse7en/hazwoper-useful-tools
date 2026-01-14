@@ -16,7 +16,8 @@ import {
 	Search,
 	Zap,
 	Wrench,
-	BrainCircuit
+	BrainCircuit,
+	ScanText
 } from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {Tooltip,TooltipContent,TooltipProvider,TooltipTrigger} from "@/components/ui/tooltip";
@@ -45,6 +46,7 @@ const navGroups=[
 		items: [
 			{id: "html-cleaner",label: "HTML Cleaner",icon: Code},
 			{id: "image-converter",label: "Image Converter",icon: ImageIcon},
+			{id: "image-to-text",label: "Image to Text",icon: ScanText},
 			{id: "video-compressor",label: "Video Compressor",icon: Video},
 			{id: "ai-assistant",label: "AI UNIVERSE",icon: BrainCircuit},
 		]
