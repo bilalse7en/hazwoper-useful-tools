@@ -25,8 +25,23 @@ export function PreviewDrawer({
 		}
 	};
 
+	// Process HTML to add SEO attributes
+	const processSEO = (html) => {
+		if (!html) return '';
+		let processed = html.replace(/\<a\s+(?:[^\>]*?\s+)?href=(["\'])(.*?)\1([^\>]*)\>/gi,(match,p1,p2,p3) => {
+			let cleanP3=p3.replace(/\s+(target|rel)=["\'][^"\']*?["\']/gi,'').trim();
+			const isInternalLink = p2.toLowerCase().includes('hazwoper-osha.com');
+			let newTag='\<a href="'+p2+'" target="_blank"';
+			if (!isInternalLink) newTag+=' rel="noopener noreferrer"';
+			if(cleanP3) newTag+=' '+cleanP3;
+			newTag+='\>';
+			return newTag;
+		});
+		return processed.replace(/&nbsp;/g, ' ');
+	};
+
 	const copyText=async (text) => {
-		await navigator.clipboard.writeText(text);
+		await navigator.clipboard.writeText(processSEO(text));
 	};
 
 	const isFaqView=title?.toLowerCase().includes('faq')&&Array.isArray(data)&&data.length>0;
@@ -93,7 +108,9 @@ export function PreviewDrawer({
 											<div className="flex justify-between items-start gap-4">
 												<div className="flex-1">
 													<span className="text-xs text-muted-foreground font-semibold uppercase mb-1 block">Answer {idx+1}</span>
-													<div className="text-sm text-muted-foreground line-clamp-3 bg-muted/30 p-2 rounded" dangerouslySetInnerHTML={{__html: faq.answer}} />
+													<pre className="text-sm bg-muted/30 p-2 rounded overflow-auto max-h-32 whitespace-pre-wrap break-words border border-border/50">
+														<code className="font-mono text-xs">{processSEO(faq.answer)}</code>
+													</pre>
 												</div>
 												<Button
 													size="sm"

@@ -120,6 +120,9 @@ export default function Home() {
 			'blog_creator': 'Blog Reward (2H)'
 		};
 
+		// Reset scroll for the upcoming cinematic reveal
+		window.scrollTo(0, 0);
+
 		// Show victory screen FIRST
 		setWinRole(role);
 		setShowWinCelebration(true);
@@ -234,32 +237,36 @@ export default function Home() {
 		return <div className="min-h-screen bg-background" />;
 	}
 
+	// EXCLUSIVE VIEW: Victory Celebration
+	if(showWinCelebration&&winRole) {
+		return (
+			<VictoryScroll
+				role={winRole}
+				onComplete={() => {
+					// Get pending user and set it as active
+					const pendingUser=sessionStorage.getItem('pending_user');
+					if(pendingUser) {
+						const userData=JSON.parse(pendingUser);
+						setUser(userData);
+						sessionStorage.setItem('user',JSON.stringify(userData));
+						sessionStorage.removeItem('pending_user');
+
+						// Set active tab based on preferredTab from victory scroll
+						if(userData.preferredTab) {
+							setActiveTab(userData.preferredTab);
+						}
+					}
+					setShowWinCelebration(false);
+					setIsLoading(false);
+					// Reset scroll for the main app entry
+					window.scrollTo(0, 0);
+				}}
+			/>
+		);
+	}
+
 	return (
 		<>
-			{/* PRIORITY 1: Victory Scroll (shown immediately after game win) */}
-			{showWinCelebration&&winRole&&(
-				<VictoryScroll
-					role={winRole}
-					onComplete={() => {
-						// Get pending user and set it as active
-						const pendingUser=sessionStorage.getItem('pending_user');
-						if(pendingUser) {
-							const userData=JSON.parse(pendingUser);
-							setUser(userData);
-							sessionStorage.setItem('user',JSON.stringify(userData));
-							sessionStorage.removeItem('pending_user');
-
-							// Set active tab based on preferredTab from victory scroll
-							if(userData.preferredTab) {
-								setActiveTab(userData.preferredTab);
-							}
-						}
-						setShowWinCelebration(false);
-						setIsLoading(false);
-					}}
-				/>
-			)}
-
 			{/* PRIORITY 2: Game Loader (only if not showing victory) */}
 			{isLoading&&!showWinCelebration&&(
 				loaderVariant==="game"? (

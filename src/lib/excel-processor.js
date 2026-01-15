@@ -204,7 +204,11 @@ function processSheet(worksheet, mergedCells = {}) {
 }
 
 function generateResourceHTML(glossaryLink, resources) {
-	let html = `<style>.bg-black.rounded-md.shadow-md:hover {border-left: 4px solid #000;transform: translate(2px);transition: .1s;}.bg-yellow-400.rounded-md.shadow-md:hover {border-left: 4px solid #ffc107;transform: translate(2px);transition: .1s;}</style><div class="bg-black rounded-md shadow-md"><div class="rounded-sm bg-yellow-400 my-4 p-3 w-full"><h2 class="text-2xl leading-none m-0 flex items-center space-x-2"><i class="fa fa-book"></i><a href="${glossaryLink}" target="_blank" class="text-blue-600 hover:underline">Glossary</a></h2></div></div>\n`;
+	// Determine if glossary link is internal
+	const isInternalGlossary = glossaryLink.toLowerCase().includes('hazwoper-osha.com');
+	const glossaryRel = isInternalGlossary ? '' : ' rel="noopener noreferrer"';
+	
+	let html = `<style>.bg-black.rounded-md.shadow-md:hover {border-left: 4px solid #000;transform: translate(2px);transition: .1s;}.bg-yellow-400.rounded-md.shadow-md:hover {border-left: 4px solid #ffc107;transform: translate(2px);transition: .1s;}</style><div class="bg-black rounded-md shadow-md"><div class="rounded-sm bg-yellow-400 my-4 p-3 w-full"><h2 class="text-2xl leading-none m-0 flex items-center space-x-2"><i class="fa fa-book"></i><a href="${glossaryLink}" target="_blank"${glossaryRel} class="text-blue-600 hover:underline">Glossary</a></h2></div></div>\n`;
 
 	const groupedResources = {};
 	const generateResourceList = resource => {
@@ -212,11 +216,17 @@ function generateResourceHTML(glossaryLink, resources) {
 		let list = '  <ul class="ml-8 list-none space-y-1">\n';
 		for (const link of resource.links) {
 			if (!link.text) continue;
-			list += `    <li><i class="fa fa-link text-blue-600 me-2"></i><a href="${link.url && link.url.trim() ? link.url : "#"}" target="_blank" class="text-blue-600 hover:underline">${linkDisplay(link)}</a></li>\n`;
+			const linkUrl = link.url && link.url.trim() ? link.url : "#";
+			const isInternalLink = linkUrl.toLowerCase().includes('hazwoper-osha.com');
+			const linkRel = isInternalLink ? '' : ' rel="noopener noreferrer"';
+			list += `    <li><i class="fa fa-link text-blue-600 me-2"></i><a href="${linkUrl}" target="_blank"${linkRel} class="text-blue-600 hover:underline">${linkDisplay(link)}</a></li>\n`;
 		}
 		for (const pdf of resource.pdfs) {
 			if (!pdf.text) continue;
-			list += `    <li><i class="fa fa-file-pdf text-red-600 me-2"></i><a href="${pdfHref(pdf)}" target="_blank" class="ml-1 text-red-600 hover:underline">${pdf.text}</a></li>\n`;
+			const pdfUrl = pdfHref(pdf);
+			const isInternalPdf = pdfUrl.toLowerCase().includes('hazwoper-osha.com');
+			const pdfRel = isInternalPdf ? '' : ' rel="noopener noreferrer"';
+			list += `    <li><i class="fa fa-file-pdf text-red-600 me-2"></i><a href="${pdfUrl}" target="_blank"${pdfRel} class="ml-1 text-red-600 hover:underline">${pdf.text}</a></li>\n`;
 		}
 		return list + '  </ul><hr class="bg-yellow-400 border-0 mx-3 my-2 opacity-75 pt-1 shadow">\n';
 	};
@@ -244,5 +254,5 @@ function generateResourceHTML(glossaryLink, resources) {
 		}
 	}
 
-	return html;
+	return html.replace(/&nbsp;/g, ' ');
 }
