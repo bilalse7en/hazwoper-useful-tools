@@ -28,13 +28,13 @@ export function PreviewDrawer({
 	// Process HTML to add SEO attributes
 	const processSEO = (html) => {
 		if (!html) return '';
-		let processed = html.replace(/\<a\s+(?:[^\>]*?\s+)?href=(["\'])(.*?)\1([^\>]*)\>/gi,(match,p1,p2,p3) => {
-			let cleanP3=p3.replace(/\s+(target|rel)=["\'][^"\']*?["\']/gi,'').trim();
+		let processed = html.replace(/\<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1([^>]*)\>/gi,(match,p1,p2,p3) => {
+			let cleanP3=p3.replace(/\s+(target|rel)=["'][^"']*?["']/gi,'').trim();
 			const isInternalLink = p2.toLowerCase().includes('hazwoper-osha.com');
-			let newTag='\<a href="'+p2+'" target="_blank"';
+			let newTag='<a href="'+p2+'" target="_blank"';
 			if (!isInternalLink) newTag+=' rel="noopener noreferrer"';
 			if(cleanP3) newTag+=' '+cleanP3;
-			newTag+='\>';
+			newTag+='>';
 			return newTag;
 		});
 		return processed.replace(/&nbsp;/g, ' ');
@@ -78,49 +78,47 @@ export function PreviewDrawer({
 				<ScrollArea className="h-[calc(100vh-80px)]">
 					<div className="p-6">
 						{isFaqView? (
-							<div className="space-y-4">
+							<div className="space-y-3">
 								<div className="alert alert-info bg-muted p-4 rounded-lg mb-4 text-sm text-muted-foreground border">
-									<p className="font-semibold mb-1">Interactive FAQ Mode</p>
-									<p>Use the buttons below to copy individual questions (text) or answers (HTML).</p>
+									<p className="font-semibold mb-1">FAQ Preview</p>
+									<p>Each question and answer shown in a card. Use copy buttons to copy individual Q&A.</p>
 								</div>
-								{data.map((faq,idx) => (
-									<div key={idx} className="bg-card border rounded-lg p-4 shadow-sm">
-										<div className="flex flex-col gap-4">
-											{/* Question Section */}
-											<div className="flex justify-between items-start gap-4">
-												<div className="flex-1">
-													<span className="text-xs text-muted-foreground font-semibold uppercase mb-1 block">Question {idx+1}</span>
-													<p className="font-medium text-foreground">{faq.question}</p>
-												</div>
-												<Button
-													size="sm"
-													variant="outline"
-													className="h-8 text-xs shrink-0"
-													onClick={() => copyText(faq.question)}
-												>
-													<Copy className="h-3 w-3 mr-1" /> Copy Text
-												</Button>
-											</div>
-
-											<div className="h-px bg-border/50" />
-
-											{/* Answer Section */}
-											<div className="flex justify-between items-start gap-4">
-												<div className="flex-1">
-													<span className="text-xs text-muted-foreground font-semibold uppercase mb-1 block">Answer {idx+1}</span>
-													<pre className="text-sm bg-muted/30 p-2 rounded overflow-auto max-h-32 whitespace-pre-wrap break-words border border-border/50">
-														<code className="font-mono text-xs">{processSEO(faq.answer)}</code>
-													</pre>
-												</div>
-												<Button
-													size="sm"
-													variant="outline"
-													className="h-8 text-xs shrink-0"
-													onClick={() => copyText(faq.answer)}
-												>
-													<Copy className="h-3 w-3 mr-1" /> Copy HTML
-												</Button>
-											</div>
+								
+								{/* Show each FAQ in its own card, one per row */}
+								{data.map((faq, idx) => (
+									<div key={idx} className="border rounded-lg p-4 bg-card shadow-sm hover:shadow-md transition-shadow">
+										{/* Question with numbering */}
+										<div className="flex justify-between items-start gap-2 mb-3">
+											<h5 className="font-bold text-base flex-1">
+												<span className="text-primary mr-2">{idx + 1}.</span>
+												{faq.question}
+											</h5>
+											<Button
+												size="sm"
+												variant="outline"
+												className="h-7 text-xs shrink-0"
+												onClick={() => copyText(faq.question)}
+												title="Copy question"
+											>
+												<Copy className="h-3 w-3" />
+											</Button>
+										</div>
+										
+										{/* Answer */}
+										<div className="flex justify-between items-start gap-2 pl-6">
+											<div 
+												className="faq-answer flex-1 text-sm text-muted-foreground" 
+												dangerouslySetInnerHTML={{__html: processSEO(faq.answer)}}
+											/>
+											<Button
+												size="sm"
+												variant="outline"
+												className="h-7 text-xs shrink-0"
+												onClick={() => copyText(faq.answer)}
+												title="Copy answer"
+											>
+												<Copy className="h-3 w-3" />
+											</Button>
 										</div>
 									</div>
 								))}

@@ -95,6 +95,47 @@ function sortNumberedEntries(entries,numberExtractor) {
 		.map(({_originalIndex,_number,...rest}) => rest);
 }
 
+export function consolidateLists(html) {
+	if (!html) return '';
+	
+	const tempDiv = document.createElement('div');
+	tempDiv.innerHTML = html;
+	
+	// Process UL lists
+	const uls = tempDiv.querySelectorAll('ul');
+	for (let i = 0; i < uls.length; i++) {
+		const currentUl = uls[i];
+		let nextSibling = currentUl.nextElementSibling;
+		
+		// Merge consecutive ULs
+		while (nextSibling && nextSibling.tagName === 'UL') {
+			const itemsToMove = Array.from(nextSibling.children);
+			itemsToMove.forEach(item => currentUl.appendChild(item));
+			const toRemove = nextSibling;
+			nextSibling = nextSibling.nextElementSibling;
+			toRemove.remove();
+		}
+	}
+	
+	// Process OL lists
+	const ols = tempDiv.querySelectorAll('ol');
+	for (let i = 0; i < ols.length; i++) {
+		const currentOl = ols[i];
+		let nextSibling = currentOl.nextElementSibling;
+		
+		// Merge consecutive OLs
+		while (nextSibling && nextSibling.tagName === 'OL') {
+			const itemsToMove = Array.from(nextSibling.children);
+			itemsToMove.forEach(item => currentOl.appendChild(item));
+			const toRemove = nextSibling;
+			nextSibling = nextSibling.nextElementSibling;
+			toRemove.remove();
+		}
+	}
+	
+	return tempDiv.innerHTML;
+}
+
 // ==========================================
 // COURSE GENERATOR LOGIC
 // ==========================================
@@ -1124,10 +1165,10 @@ export function generateBlogCode(blogData,featuredImage={},imageUrls=[]) {
 	}
 
 	if(featuredImage.url) {
-		let imgTag=`<img src="${escapeAttr(featuredImage.url)}"`;
+		let imgTag=`<p><img src="${escapeAttr(featuredImage.url)}"`;
 		if(featuredImage.alt) imgTag+=` alt="${escapeAttr(featuredImage.alt)}"`;
 		if(featuredImage.title) imgTag+=` title="${escapeAttr(featuredImage.title)}"`;
-		imgTag+=` class="w-100 mb-3">\n\n`;
+		imgTag+=` class="w-100"></p>\n\n`;
 		blogHTML+=imgTag;
 	}
 
@@ -1172,7 +1213,7 @@ export function generateBlogCode(blogData,featuredImage={},imageUrls=[]) {
 	return ensureProfessionalLinks(blogHTML);
 }
 
-function extractBlogFAQContent(html) {
+export function extractBlogFAQContent(html) {
 	const tempDiv=document.createElement("div");
 	tempDiv.innerHTML=html;
 	cleanHTML(tempDiv);
@@ -1183,7 +1224,8 @@ function extractBlogFAQContent(html) {
 	let faqStart=-1;
 	elementsArray.forEach((element,i) => {
 		const text=element.textContent.trim().toLowerCase();
-		if((text.includes("faq")||text.includes("frequently asked questions"))&&
+		// Detect FAQ heading: "FAQ", "FAQs", "FAQS:", "Frequently Asked Questions"
+		if((text.match(/^faqs?:?$/i)||text.includes("frequently asked questions"))&&
 			element.tagName.match(/^H[1-6]$/i)&&faqStart===-1) {
 			faqStart=i;
 		}
@@ -1195,96 +1237,114 @@ function extractBlogFAQContent(html) {
 	for(let i=faqStart+1;i<elementsArray.length;i++) {
 		const element=elementsArray[i];
 		const text=element.textContent.trim();
-		if(text.includes("For Online Course Page:")||
-			(element.tagName.match(/^H[1-6]$/i)&&!text.toLowerCase().includes("faq")&&i>faqStart+3)) {
+		const tag = element.tagName.toUpperCase();
+		const lowerText = text.toLowerCase();
+		
+		// Stop if we hit meta sections, glossary, or new H1 section
+		if(lowerText.includes("for online course page:") || 
+		   lowerText.includes("glossary") ||
+		   lowerText.startsWith("meta description") ||
+		   lowerText.startsWith("meta title") ||
+		   lowerText.startsWith("slug:") ||
+		   lowerText.startsWith("category:") ||
+		   (tag === 'H1' && i > faqStart + 1)) {
 			faqEnd=i;
 			break;
 		}
 	}
 
 	let currentQuestion="";
-	let currentAnswer="";
+	let currentAnswerHtml="";
 	let collectingAnswer=false;
+
+	// Enhanced question detection - prioritizes numbered patterns
+	const detectQuestion = (el) => {
+		if (!el) return false;
+		const txt = el.textContent.trim();
+		const innerHtml = el.innerHTML.trim();
+		const tag = el.tagName.toUpperCase();
+		
+		// Priority 1: Numbered questions (1., 2., 1), Q1., Q1:, Q1), Question 1)
+		if (/^\d+[\.\)\]]\s*.+/.test(txt)) return true;  // 1. Question, 1) Question
+		if (/^Q\d+[\.\:\)]\s*/i.test(txt)) return true;  // Q1. Q1: Q1)
+		if (/^Question\s*\d+[\.\:\)]?\s*/i.test(txt)) return true;  // Question 1, Question 1.
+		
+		// Priority 2: Headings within FAQ section (H3, H4, H5, H6) - likely questions
+		if (tag.match(/^H[3-6]$/) && txt.length < 500) return true;
+		
+		// Priority 3: Bold text that looks like a question
+		if ((innerHtml.includes('<strong>') || innerHtml.includes('<b>')) && 
+			(txt.includes('?') || txt.length < 150)) return true;
+		
+		// Priority 4: Text ending with question mark (short)
+		if (txt.endsWith('?') && txt.length < 400) return true;
+		
+		return false;
+	};
+
+	// Clean question text - remove numbering prefix
+	const cleanQuestionText = (text) => {
+		let cleaned = text.trim();
+		// Remove numbered prefixes: "1.", "1)", "Q1.", "Q1:", "Question 1."
+		cleaned = cleaned.replace(/^\d+[\.\)\]]\s*/, '');
+		cleaned = cleaned.replace(/^Q\d+[\.\:\)]\s*/i, '');
+		cleaned = cleaned.replace(/^Question\s*\d+[\.\:\)]?\s*/i, '');
+		return cleaned.trim();
+	};
 
 	for(let i=faqStart+1;i<faqEnd;i++) {
 		const element=elementsArray[i];
 		const text=element.textContent.trim();
-		const innerHTML=element.innerHTML.trim();
 
 		if(!text) continue;
 
-		// Smart question detection - handles multiple patterns:
-		// 1) Question?
-		// 1. Question?
-		// Question with bold
-		// Question ending with ?
-		const isQuestion=(
-			/^\d+[\.\)]\s+/.test(text)||  // Starts with number. or number)
-			(innerHTML.includes('<strong>')&&text.includes('?'))||  // Bold with ?
-			(innerHTML.includes('<b>')&&text.includes('?'))||  // Bold with ?
-			(text.endsWith('?')&&text.length<300&&!collectingAnswer)  // Ends with ? and not too long
-		);
-
-		if(isQuestion) {
+		if(detectQuestion(element)) {
 			// Save previous Q&A pair
-			if(currentQuestion&&currentAnswer) {
+			if(currentQuestion && currentAnswerHtml) {
 				faqData.push({
-					question: cleanFAQText(currentQuestion),
-					answer: stripBoldWrapper(currentAnswer)
+					question: cleanQuestionText(currentQuestion),
+					answer: currentAnswerHtml.trim()
 				});
 			}
 
-			currentQuestion=text;
-
-			// Check if answer is on the same line after the question
-			const questionMatch=text.match(/^(\d+[\.\)]\s+.*?\?)\s*(.+)$/);
-			if(questionMatch&&questionMatch[2]&&questionMatch[2].trim()) {
-				// Answer is on the same line
-				currentAnswer=questionMatch[2].trim();
-				collectingAnswer=true;
+			currentQuestion = text;
+			currentAnswerHtml = "";
+			collectingAnswer = true;
+		} else if(collectingAnswer && text) {
+			// Collecting answer content - preserve the original HTML!
+			if(currentAnswerHtml) {
+				currentAnswerHtml += " " + element.outerHTML;
 			} else {
-				// Answer will be on next elements
-				currentAnswer="";
-				collectingAnswer=true;
-			}
-		} else if(collectingAnswer&&text) {
-			// Collecting answer content
-			if(currentAnswer) {
-				currentAnswer+=" "+element.outerHTML;
-			} else {
-				currentAnswer=element.outerHTML;
+				currentAnswerHtml = element.outerHTML;
 			}
 
-			// Check if next element is a question
-			const nextIsQuestion=i+1<faqEnd&&(
-				/^\d+[\.\)]\s+/.test(elementsArray[i+1].textContent.trim())||
-				(elementsArray[i+1].innerHTML.includes('<strong>')&&
-					elementsArray[i+1].textContent.trim().includes('?'))||
-				(elementsArray[i+1].innerHTML.includes('<b>')&&
-					elementsArray[i+1].textContent.trim().includes('?'))
-			);
-
-			if(nextIsQuestion) {
-				// Save this Q&A pair
-				if(currentQuestion&&currentAnswer) {
+			// Check if next element is a question to prevent merging
+			if (i + 1 < faqEnd && detectQuestion(elementsArray[i+1])) {
+				if(currentQuestion && currentAnswerHtml) {
 					faqData.push({
-						question: cleanFAQText(currentQuestion),
-						answer: stripBoldWrapper(currentAnswer)
+						question: cleanQuestionText(currentQuestion),
+						answer: currentAnswerHtml.trim()
 					});
 				}
 				currentQuestion="";
-				currentAnswer="";
+				currentAnswerHtml="";
 				collectingAnswer=false;
 			}
 		}
+
+		// Cap at 20 FAQs to avoid memory issues with very long documents
+		if (faqData.length >= 20) break;
 	}
 
-	// Save last Q&A pair
-	if(currentQuestion&&currentAnswer) {
-		faqData.push({
-			question: cleanFAQText(currentQuestion),
-			answer: stripBoldWrapper(currentAnswer)
-		});
+	// Save last Q&A pair if not already saved
+	if(currentQuestion && currentAnswerHtml) {
+		const cleanedQuestion = cleanQuestionText(currentQuestion);
+		if (!faqData.some(f => f.question === cleanedQuestion)) {
+			faqData.push({
+				question: cleanedQuestion,
+				answer: currentAnswerHtml.trim()
+			});
+		}
 	}
 
 	return faqData;
@@ -1298,6 +1358,20 @@ export function generateBlogFAQCode(faqData) {
 		return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 	}
 
+	// Clean answer HTML - remove only the outer wrapping paragraph if present, keep inner formatting
+	function cleanAnswerHtml(html) {
+		if(!html) return '';
+		let answer = html.trim();
+		// Remove A:, Answer:, Ans: prefix from text content
+		answer = answer.replace(/^<p>\s*(A|Answer|Ans)[:\.]?\s*/i, '<p>');
+		answer = answer.replace(/^(A|Answer|Ans)[:\.]?\s*/i, '');
+		// Replace &nbsp; and &amp;nbsp; (double-encoded) with regular space
+		answer = answer.replace(/&amp;nbsp;/g, ' ');
+		answer = answer.replace(/&nbsp;/g, ' ');
+		answer = answer.replace(/&#160;/g, ' ');
+		return answer.trim();
+	}
+
 	const midPoint=Math.ceil(faqData.length/2);
 	const col1=faqData.slice(0,midPoint);
 	const col2=faqData.slice(midPoint);
@@ -1307,17 +1381,14 @@ export function generateBlogFAQCode(faqData) {
 	// Column 1
 	faqHtml+=`  <div class="col-md-6">\n`;
 	col1.forEach((faq,index) => {
-		const question=cleanFAQText(faq.question);
-		// More robust answer cleaning: Strip A:, Answer:, Ans: and remove bold/strong tags
-		let answer=faq.answer||"";
-		// Strip all bold/strong tags
-		answer=answer.replace(/<\/?(?:strong|b)>/gi,'').trim();
-		answer=answer.replace(/^(A|Answer|Ans)[:\.]\s*/i,'').trim();
-		if(question&&answer) {
+		const question = faq.question || "";
+		// Preserve HTML formatting in answers!
+		let answer = cleanAnswerHtml(faq.answer);
+		if(question && answer) {
 			faqHtml+=`    <div class="mb-3">\n`;
-			// Question is already bold via h6 fw-bold class
+			// Question is bold via h5 fw-bold class
 			faqHtml+=`      <h5 class="h6 fw-bold">${escapeHtml(question)}</h5>\n`;
-			// Answer should NOT have bold tags
+			// Answer keeps its original HTML formatting (bold, italic, links, etc.)
 			faqHtml+=`      <div class="faq-answer">${answer}</div>\n`;
 			faqHtml+=`    </div>\n`;
 		}
@@ -1327,17 +1398,14 @@ export function generateBlogFAQCode(faqData) {
 	// Column 2
 	faqHtml+=`  <div class="col-md-6">\n`;
 	col2.forEach((faq,index) => {
-		const question=cleanFAQText(faq.question);
-		// More robust answer cleaning: Strip A:, Answer:, Ans: and remove bold/strong tags
-		let answer=faq.answer||"";
-		// Strip all bold/strong tags
-		answer=answer.replace(/<\/?(?:strong|b)>/gi,'').trim();
-		answer=answer.replace(/^(A|Answer|Ans)[:\.]\s*/i,'').trim();
-		if(question&&answer) {
+		const question = faq.question || "";
+		// Preserve HTML formatting in answers!
+		let answer = cleanAnswerHtml(faq.answer);
+		if(question && answer) {
 			faqHtml+=`    <div class="mb-3">\n`;
-			// Question is already bold via h6 fw-bold class
+			// Question is bold via h5 fw-bold class
 			faqHtml+=`      <h5 class="h6 fw-bold">${escapeHtml(question)}</h5>\n`;
-			// Answer should NOT have bold tags
+			// Answer keeps its original HTML formatting (bold, italic, links, etc.)
 			faqHtml+=`      <div class="faq-answer">${answer}</div>\n`;
 			faqHtml+=`    </div>\n`;
 		}
@@ -1346,6 +1414,54 @@ export function generateBlogFAQCode(faqData) {
 
 	faqHtml+=`</div>\n</div>`;
 	return ensureProfessionalLinks(faqHtml);
+}
+
+export function splitBlogAndFAQ(html) {
+	if (!html) return { blogHtml: '', faqData: [] };
+	
+	const tempDiv = document.createElement("div");
+	tempDiv.innerHTML = html;
+	
+	// Remove the fancy line if it exists to avoid processing it as content
+	const fancyLineEl = tempDiv.querySelector('.fancy-line');
+	if (fancyLineEl) fancyLineEl.remove();
+	
+	// Remove style tag if it's the fancy line style
+	const styles = tempDiv.querySelectorAll('style');
+	styles.forEach(s => {
+		if (s.innerHTML.includes('.fancy-line')) s.remove();
+	});
+
+	const elementsArray = Array.from(tempDiv.children);
+	let faqStartIndex = -1;
+	
+	elementsArray.forEach((element, i) => {
+		const text = element.textContent.trim().toLowerCase();
+		if ((text.includes("faq") || text.includes("frequently asked questions")) &&
+			element.tagName.match(/^H[1-6]$/i) && faqStartIndex === -1) {
+			faqStartIndex = i;
+		}
+	});
+
+	if (faqStartIndex === -1) {
+		return {
+			blogHtml: tempDiv.innerHTML,
+			faqData: []
+		};
+	}
+
+	// Blog content is everything before the FAQ heading
+	const blogElements = elementsArray.slice(0, faqStartIndex);
+	const blogHtml = blogElements.map(el => el.outerHTML).join('\n');
+	
+	// Extract FAQ data from the rest
+	const faqHtml = elementsArray.slice(faqStartIndex).map(el => el.outerHTML).join('\n');
+	const faqData = extractBlogFAQContent(faqHtml);
+	
+	return {
+		blogHtml,
+		faqData
+	};
 }
 
 // ==========================================

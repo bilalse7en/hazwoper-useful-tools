@@ -208,6 +208,11 @@
 		overflow-x: hidden;
 	}
 
+	/* Hide hero section when editor is open */
+	body[data-editor-open="true"] .hero-section {
+		display: none !important;
+	}
+
 	button,
 	select,
 	[role="button"] {
