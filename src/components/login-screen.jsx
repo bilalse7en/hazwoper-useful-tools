@@ -72,13 +72,14 @@ export function LoginScreen({onLogin}) {
 							Sign In
 						</Button>
 						{/* Hardcoded hints for demo purposes */}
-						<div className="mt-4 text-xs text-center text-muted-foreground w-full hidden">
+						
+					</CardFooter>
+						<div className="mb-2 text-xs text-center text-muted-foreground w-full hidden ">
 							<p>Demo Credentials (User / Pass):</p>
 							<p>Admin: admin / Bilal@7</p>
 							<p>Blog: blog / Blog@123</p>
 							<p>Content: content / content@123</p>
 						</div>
-					</CardFooter>
 				</form>
 			</Card>
 		</div>
