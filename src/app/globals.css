@@ -206,6 +206,7 @@
 		transition: all 0.5s ease-in-out;
 		min-height: 100vh;
 		overflow-x: hidden;
+		overflow-y: auto;
 	}
 
 	/* Hide hero section when editor is open */

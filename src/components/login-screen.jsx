@@ -25,7 +25,7 @@ export function LoginScreen({onLogin}) {
 	};
 
 	return (
-		<div className="flex min-h-screen items-center justify-center p-4">
+		<div className="flex min-h-screen items-center justify-center p-4 overflow-y-auto py-12">
 			<Card className="w-full max-w-md animate-in-card">
 				<CardHeader className="space-y-1">
 					<div className="flex justify-center mb-4">

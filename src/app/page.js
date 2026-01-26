@@ -12,6 +12,7 @@ import {ThemeDialog} from "@/components/theme-dialog";
 import {LoginScreen} from "@/components/login-screen";
 import {VictoryScroll} from "@/components/victory-scroll";
 import {SessionTimer} from "@/components/session-timer";
+import {WelcomeLanding} from "@/components/welcome-landing";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {hasAccess,ROLES} from "@/lib/auth";
 import {
@@ -27,7 +28,8 @@ import {
 } from "@/components/generators";
 
 export default function Home() {
-	const [isLoading,setIsLoading]=useState(true);
+	const [showWelcome,setShowWelcome]=useState(true);
+	const [isLoading,setIsLoading]=useState(false);
 	const [loaderVariant,setLoaderVariant]=useState("game"); // "game" | "simple" | "antigravity"
 	const [isChecking,setIsChecking]=useState(true); // Prevent flash
 	const [activeTab,setActiveTab]=useState("course");
@@ -38,12 +40,18 @@ export default function Home() {
 	const [winRole,setWinRole]=useState(null);
 
 	useEffect(() => {
-		// 1. Check Reward Status (Priority)
+		// 1. Check if user has seen welcome page
+		const hasSeenWelcome=sessionStorage.getItem('hasSeenWelcome');
+		if(hasSeenWelcome) {
+			setShowWelcome(false);
+		}
+
+		// 2. Check Reward Status (Priority)
 		const rewardTime=localStorage.getItem('reward_claim_time');
 		const TWO_HOURS=2*60*60*1000;
 
 		let activeUser=null;
-		let shouldShowLoader=true;
+		let shouldShowLoader=false;
 		let isRewardActive=false;
 
 		if(rewardTime) {
@@ -60,7 +68,7 @@ export default function Home() {
 			}
 		}
 
-		// 2. Check session storage for user (if not already handled by reward)
+		// 3. Check session storage for user (if not already handled by reward)
 		if(!activeUser) {
 			const storedUser=sessionStorage.getItem('user');
 			if(storedUser) {
@@ -88,7 +96,7 @@ export default function Home() {
 			shouldShowLoader=false;
 		}
 
-		// 3. Check if user already attempted and failed this session
+		// 4. Check if user already attempted and failed this session
 		// Only relevant if we don't have an active user yet.
 		if(!activeUser) {
 			const attemptStatus=sessionStorage.getItem('reward_attempted');
@@ -163,6 +171,17 @@ export default function Home() {
 		} else {
 			setActiveTab('course');
 		}
+	};
+
+	const handlePlayGame=() => {
+		sessionStorage.setItem('hasSeenWelcome','true');
+		setShowWelcome(false);
+		setIsLoading(true);
+	};
+
+	const handleSkipToSignIn=() => {
+		sessionStorage.setItem('hasSeenWelcome','true');
+		setShowWelcome(false);
 	};
 
 	const handleLogout=() => {
@@ -267,8 +286,13 @@ export default function Home() {
 
 	return (
 		<>
-			{/* PRIORITY 2: Game Loader (only if not showing victory) */}
-			{isLoading&&!showWinCelebration&&(
+			{/* PRIORITY 1: Welcome Landing (Before Game/Login) */}
+			{showWelcome && !user && !showWinCelebration && (
+				<WelcomeLanding onPlayGame={handlePlayGame} onSignIn={handleSkipToSignIn} />
+			)}
+
+			{/* PRIORITY 2: Game Loader (only if not showing victory and welcome is done/hidden) */}
+			{isLoading&&!showWinCelebration&&!showWelcome&&(
 				loaderVariant==="game"? (
 					<LandingLoader onComplete={handleLoaderComplete} onUnlock={handleRewardUnlock} onFail={handleLoaderFail} />
 				):loaderVariant==="antigravity"? (
@@ -278,8 +302,8 @@ export default function Home() {
 				)
 			)}
 
-			{/* PRIORITY 3: Login Screen (only if no user and not in victory/loading) */}
-			{!user&&!isLoading&&!showWinCelebration&&(
+			{/* PRIORITY 3: Login Screen (only if no user and not in victory/loading/welcome) */}
+			{!user&&!isLoading&&!showWinCelebration&&!showWelcome&&(
 				<LoginScreen onLogin={handleLogin} />
 			)}
 
