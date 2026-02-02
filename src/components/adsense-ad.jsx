@@ -28,13 +28,6 @@ export function AdSenseAd({
   const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
 
   useEffect(() => {
-    // Log for debugging
-    console.log('[AdSense] Component mounted', {
-      isProduction,
-      slot,
-      hasAdsByGoogle: typeof window !== 'undefined' && !!window.adsbygoogle
-    });
-
     // Push ads in production
     if (isProduction && typeof window !== 'undefined') {
       try {
@@ -44,14 +37,13 @@ export function AdSenseAd({
             clearInterval(interval);
             window.adsbygoogle = window.adsbygoogle || [];
             window.adsbygoogle.push({});
-            console.log('[AdSense] Ad pushed successfully');
           }
         }, 100);
 
         // Timeout after 5 seconds
         setTimeout(() => clearInterval(interval), 5000);
       } catch (error) {
-        console.error('[AdSense] Error pushing ad:', error);
+        // Silent error handling in production
       }
     }
   }, [isProduction, slot]);
