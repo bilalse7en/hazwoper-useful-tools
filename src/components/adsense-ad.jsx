@@ -25,30 +25,49 @@ export function AdSenseAd({
   style = {}
 }) {
   const adRef = useRef(null);
+  const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
 
   useEffect(() => {
-    // Only push ads in production and if window.adsbygoogle exists
-    if (typeof window !== 'undefined' && window.adsbygoogle && process.env.NODE_ENV === 'production') {
+    // Log for debugging
+    console.log('[AdSense] Component mounted', {
+      isProduction,
+      slot,
+      hasAdsByGoogle: typeof window !== 'undefined' && !!window.adsbygoogle
+    });
+
+    // Push ads in production
+    if (isProduction && typeof window !== 'undefined') {
       try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        // Wait for script to load
+        const interval = setInterval(() => {
+          if (window.adsbygoogle) {
+            clearInterval(interval);
+            window.adsbygoogle = window.adsbygoogle || [];
+            window.adsbygoogle.push({});
+            console.log('[AdSense] Ad pushed successfully');
+          }
+        }, 100);
+
+        // Timeout after 5 seconds
+        setTimeout(() => clearInterval(interval), 5000);
       } catch (error) {
-        console.error('AdSense error:', error);
+        console.error('[AdSense] Error pushing ad:', error);
       }
     }
-  }, []);
+  }, [isProduction, slot]);
 
-  // Only show ads in production
-  if (process.env.NODE_ENV !== 'production') {
+  // Show placeholder in development
+  if (!isProduction) {
     return (
       <div 
         className="bg-muted/20 border border-dashed border-muted-foreground/20 rounded-lg p-4 text-center text-xs text-muted-foreground"
-        style={{ minHeight: '90px', ...style }}
-      >
+        style={{ minHeight: '90px', ...style }}>
         Ad Placeholder (Production Only)
       </div>
     );
   }
 
+  // Production: render actual ad
   return (
     <div ref={adRef} style={style}>
       <ins
