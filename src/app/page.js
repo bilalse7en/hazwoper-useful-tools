@@ -15,6 +15,7 @@ import {SessionTimer} from "@/components/session-timer";
 import {WelcomeLanding} from "@/components/welcome-landing";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {hasAccess,ROLES} from "@/lib/auth";
+import {AdSenseAd} from "@/components/adsense-ad";
 import {
 	CourseGenerator,
 	BlogGenerator,
@@ -368,6 +369,15 @@ export default function Home() {
 
 								{/* Content Area */}
 								<div className="container mx-auto px-4 py-8 animate-in-card [animation-delay:200ms]">
+									{/* AdSense Banner - Top of Content */}
+									<div className="mb-8 flex justify-center">
+										<AdSenseAd 
+											slot="1234567890" 
+											format="horizontal"
+											style={{ maxWidth: '970px', width: '100%' }}
+										/>
+									</div>
+									
 									{renderActiveGenerator()}
 								</div>
 							</ScrollArea>

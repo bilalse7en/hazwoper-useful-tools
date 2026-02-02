@@ -47,6 +47,16 @@ export const metadata={
 export default function RootLayout({children}) {
 	return (
 		<html lang="en" suppressHydrationWarning>
+			<head>
+				{/* Google AdSense - Replace ca-pub-XXXXXXXXXXXXXXXX with your Publisher ID */}
+				{process.env.NODE_ENV === 'production' && (
+					<script
+						async
+						src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+						crossOrigin="anonymous"
+					/>
+				)}
+			</head>
 			<body
 				className={`${inter.variable} ${jetbrainsMono.variable} ${orbitron.variable} ${spaceGrotesk.variable} ${exo2.variable} ${chakraPetch.variable} font-sans antialiased`}
 				suppressHydrationWarning
