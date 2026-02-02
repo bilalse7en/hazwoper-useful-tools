@@ -22,10 +22,14 @@ import {
 	Target,
 	Gauge,
 	Sparkles,
-	Flame
+	Flame,
+	Server,
+	Monitor as BrowserIcon
 } from "lucide-react";
 import {cn} from "@/lib/utils";
 import {formatFileSize} from "@/lib/image-converter";
+import {FFmpeg} from "@ffmpeg/ffmpeg";
+import {fetchFile,toBlobURL} from "@ffmpeg/util";
 
 // --- Constants ---
 const RESOLUTIONS=[
@@ -36,7 +40,7 @@ const RESOLUTIONS=[
 	{id: "640",label: "360p Mobile",icon: Minimize2,desc: "640x360"},
 ];
 
-// Compression presets with quality audio (min 256k, max 512k)
+// Compression presets
 const COMPRESSION_PRESETS=[
 	{
 		id: "fast",
@@ -99,24 +103,59 @@ export function VideoCompressor() {
 	// --- State ---
 	const [activeFile,setActiveFile]=useState(null);
 	const [targetResolution,setTargetResolution]=useState("original");
-	const [qualityPreset,setQualityPreset]=useState("fast"); // Default to Lightning Fast mode
-	const [targetSizeMB,setTargetSizeMB]=useState(""); // Target file size input
+	const [qualityPreset,setQualityPreset]=useState("fast");
+	const [targetSizeMB,setTargetSizeMB]=useState("");
 	const [useTargetSize,setUseTargetSize]=useState(false);
+	const [compressionMode,setCompressionMode]=useState("client"); // "client" or "server"
 
 	const [isProcessing,setIsProcessing]=useState(false);
 	const [progress,setProgress]=useState(0);
 	const [result,setResult]=useState(null);
 	const [error,setError]=useState(null);
 	const [dragActive,setDragActive]=useState(false);
+	const [progressMessage,setProgressMessage]=useState("");
+	const [ffmpegLoaded,setFfmpegLoaded]=useState(false);
 
 	const fileInputRef=useRef(null);
+	const ffmpegRef=useRef(new FFmpeg());
+
+	const isDevMode = process.env.NODE_ENV === 'development';
+
+	// Load FFmpeg on component mount
+	useEffect(() => {
+		const loadFFmpeg = async () => {
+			const ffmpeg = ffmpegRef.current;
+			
+			ffmpeg.on('log', ({ message }) => {
+				console.log(message);
+			});
+
+			ffmpeg.on('progress', ({ progress: prog, time }) => {
+				const percent = Math.round(prog * 100);
+				setProgress(percent);
+			});
+
+			try {
+				const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+				await ffmpeg.load({
+					coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+					wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+				});
+				setFfmpegLoaded(true);
+			} catch (err) {
+				console.error('Failed to load FFmpeg:', err);
+				setError('Failed to load video processor. Please refresh the page.');
+			}
+		};
+
+		loadFFmpeg();
+	}, []);
 
 	// --- Helpers ---
 	const handleFiles=(files) => {
 		const file=files[0];
 		if(!file||!file.type.startsWith('video/')) return;
 
-		// Create preview
 		const preview=URL.createObjectURL(file);
 		const video=document.createElement('video');
 		video.preload='metadata';
@@ -132,7 +171,6 @@ export function VideoCompressor() {
 				height: video.videoHeight
 			});
 
-			// Auto-suggest target size (about 15% of original for HandBrake mode)
 			const originalMB=file.size/(1024*1024);
 			const suggestedMB=Math.max(1,Math.round(originalMB*0.15*10)/10);
 			setTargetSizeMB(suggestedMB.toString());
@@ -152,16 +190,13 @@ export function VideoCompressor() {
 	const estimateFileSize=(resId) => {
 		if(!activeFile) return null;
 
-		// Get parameters from current preset
 		const preset=COMPRESSION_PRESETS.find(p => p.id===qualityPreset)||COMPRESSION_PRESETS[0];
 		const sourceMB=activeFile.file.size/(1024*1024);
 
-		// If using target size mode, return the target
 		if(useTargetSize&&targetSizeMB) {
 			return parseFloat(targetSizeMB).toFixed(1);
 		}
 
-		// Resolution scaling factor
 		let targetWidth=activeFile.width;
 		if(resId!=='original') targetWidth=parseInt(resId);
 		if(isNaN(targetWidth)) targetWidth=1920;
@@ -171,18 +206,12 @@ export function VideoCompressor() {
 			resolutionFactor=Math.pow(targetWidth/activeFile.width,1.5);
 		}
 
-		// Apply compression ratio from preset
 		const estimatedMB=sourceMB*preset.compressionRatio*resolutionFactor;
-
-		// Never estimate larger than source
 		return Math.min(estimatedMB,sourceMB*0.95).toFixed(1);
 	};
 
-	// Progress state message
-	const [progressMessage,setProgressMessage]=useState("");
-
-	// --- SERVER ACTION with SSE Progress ---
-	const processVideo=async () => {
+	// --- SERVER-SIDE COMPRESSION (Local Dev Only) ---
+	const processVideoServer = async () => {
 		if(!activeFile) return;
 
 		setIsProcessing(true);
@@ -231,7 +260,6 @@ export function VideoCompressor() {
 								setProgress(data.percent);
 								setProgressMessage(data.message||`${data.percent}%`);
 							} else if(data.type==='complete') {
-								// Convert base64 back to blob
 								const binaryStr=atob(data.data);
 								const bytes=new Uint8Array(binaryStr.length);
 								for(let i=0;i<binaryStr.length;i++) {
@@ -273,6 +301,112 @@ export function VideoCompressor() {
 		}
 	};
 
+	// --- CLIENT-SIDE COMPRESSION (FFmpeg.wasm) ---
+	const processVideoClient=async () => {
+		if(!activeFile || !ffmpegLoaded) {
+			setError('Video processor not ready. Please wait...');
+			return;
+		}
+
+		setIsProcessing(true);
+		setProgress(0);
+		setProgressMessage("Starting...");
+		setError(null);
+
+		try {
+			const ffmpeg = ffmpegRef.current;
+			const preset=COMPRESSION_PRESETS.find(p => p.id===qualityPreset)||COMPRESSION_PRESETS[0];
+
+			setProgressMessage("Loading video...");
+			await ffmpeg.writeFile('input.mp4', await fetchFile(activeFile.file));
+
+			setProgress(5);
+			setProgressMessage("Preparing encoder...");
+
+			const args = [
+				'-i', 'input.mp4',
+				'-c:v', 'libx264',
+				'-preset', preset.preset,
+				'-pix_fmt', 'yuv420p',
+				'-movflags', '+faststart',
+			];
+
+			if(preset.audioBitrate === 'Original') {
+				args.push('-c:a', 'copy');
+			} else {
+				args.push('-c:a', 'aac');
+				args.push('-b:a', preset.audioBitrate);
+				args.push('-ar', '48000');
+				args.push('-ac', '2');
+			}
+
+			if(useTargetSize && targetSizeMB && activeFile.durationSec > 0) {
+				const audioBitrateKbps = preset.audioBitrate === 'Original' ? 128 : parseInt(preset.audioBitrate);
+				const totalBitrateKbps = (parseFloat(targetSizeMB) * 8192) / activeFile.durationSec;
+				const videoBitrateKbps = Math.max(totalBitrateKbps - audioBitrateKbps, 100);
+				args.push('-b:v', `${Math.round(videoBitrateKbps)}k`);
+				args.push('-maxrate', `${Math.round(videoBitrateKbps * 1.5)}k`);
+				args.push('-bufsize', `${Math.round(videoBitrateKbps * 2)}k`);
+			} else {
+				args.push('-crf', String(preset.crf));
+			}
+
+			if(targetResolution !== 'original') {
+				const size = parseInt(targetResolution);
+				if(!isNaN(size)) {
+					args.push('-vf', `scale='min(${size},iw)':-2`);
+				}
+			}
+
+			args.push('output.mp4');
+
+			setProgress(10);
+			setProgressMessage(preset.twoPass ? "Pass 1: Analyzing..." : "Processing...");
+
+			await ffmpeg.exec(args);
+
+			setProgress(95);
+			setProgressMessage("Finalizing...");
+
+			const data = await ffmpeg.readFile('output.mp4');
+			const blob = new Blob([data.buffer], { type: 'video/mp4' });
+			const url = URL.createObjectURL(blob);
+
+			let reduction = 0;
+			if(activeFile.file.size > 0) {
+				reduction = Math.round(((activeFile.file.size - blob.size) / activeFile.file.size) * 100);
+			}
+
+			setProgress(100);
+			setProgressMessage("Complete!");
+			
+			setResult({
+				url,
+				filename: `compressed_${activeFile.file.name}`,
+				size: blob.size,
+				reduction: reduction > 0 ? reduction : 0
+			});
+
+			await ffmpeg.deleteFile('input.mp4');
+			await ffmpeg.deleteFile('output.mp4');
+
+		} catch(err) {
+			console.error('Compression error:', err);
+			setError(err.message || "Failed to compress video. Please try again.");
+		} finally {
+			setIsProcessing(false);
+			setProgressMessage("");
+		}
+	};
+
+	const processVideo = () => {
+		if(compressionMode === 'server') {
+			processVideoServer();
+		} else {
+			processVideoClient();
+		}
+	};
+
 	const downloadResult=() => {
 		if(!result) return;
 		const a=document.createElement('a');
@@ -296,7 +430,7 @@ export function VideoCompressor() {
 			<div className="flex flex-col items-center justify-center min-h-[60vh] p-4 animate-in fade-in zoom-in duration-700">
 				<div className="text-center space-y-4 mb-12">
 					<Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary py-1 px-4 text-[10px] font-black tracking-[0.4em] uppercase">
-						HandBrake Engine
+						{compressionMode === 'client' ? (ffmpegLoaded ? "HandBrake Engine (Browser)" : "Loading Engine...") : "HandBrake Engine (Server)"}
 					</Badge>
 					<h2 className="text-4xl font-black italic tracking-tighter bg-gradient-to-r from-primary via-primary/80 to-primary/50 bg-clip-text text-transparent font-orbitron">
 						ULTRA COMPRESSOR
@@ -304,6 +438,36 @@ export function VideoCompressor() {
 					<p className="text-muted-foreground max-w-2xl mx-auto text-[10px] font-black tracking-[0.3em] uppercase opacity-70">
 						Two-Pass Encoding • Target Size Mode • 25MB → 4MB
 					</p>
+					
+					{/* Mode Selector - Only in Dev */}
+					{isDevMode && (
+						<div className="flex items-center justify-center gap-2 mt-6">
+							<button
+								onClick={() => setCompressionMode('client')}
+								className={cn(
+									"px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all",
+									compressionMode === 'client'
+										? "bg-primary text-primary-foreground"
+										: "bg-muted text-muted-foreground hover:bg-muted/80"
+								)}
+							>
+								<BrowserIcon className="w-4 h-4 inline mr-2" />
+								Browser Mode
+							</button>
+							<button
+								onClick={() => setCompressionMode('server')}
+								className={cn(
+									"px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all",
+									compressionMode === 'server'
+										? "bg-primary text-primary-foreground"
+										: "bg-muted text-muted-foreground hover:bg-muted/80"
+								)}
+							>
+								<Server className="w-4 h-4 inline mr-2" />
+								Server Mode (Dev Only)
+							</button>
+						</div>
+					)}
 				</div>
 
 				<div
@@ -318,11 +482,15 @@ export function VideoCompressor() {
 				>
 					<div className={cn(
 						"relative w-full h-full bg-card/40 backdrop-blur-3xl rounded-[3rem] border border-border/50 overflow-hidden flex flex-col items-center justify-center gap-8 transition-all duration-500 group cursor-pointer shadow-[inset_0_4px_20px_rgba(var(--glass-shadow-color),0.15)]",
-						dragActive? "bg-primary/5 border-primary/50":"hover:bg-card/60 hover:border-primary/30"
+						dragActive? "bg-primary/5 border-primary/50":"hover:bg-card/60 hover:border-primary/30",
+						(!ffmpegLoaded && compressionMode === 'client') && "opacity-50 cursor-wait"
 					)}
-						onClick={() => fileInputRef.current?.click()}
+						onClick={() => {
+							if(compressionMode === 'server' || ffmpegLoaded) {
+								fileInputRef.current?.click();
+							}
+						}}
 					>
-						{/* Decorative Glows */}
 						<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-primary/5 blur-[100px] rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
 						<div className="relative z-10 p-8 rounded-[2rem] bg-gradient-to-br from-primary/10 to-transparent border border-primary/10 shadow-[inset_0_2px_10px_rgba(var(--glass-shadow-color),0.08)] group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
@@ -331,7 +499,7 @@ export function VideoCompressor() {
 
 						<div className="relative z-10 text-center space-y-3">
 							<h2 className="text-3xl md:text-5xl font-black italic text-foreground tracking-tighter font-orbitron drop-shadow-sm">
-								DROP VIDEO
+								{(compressionMode === 'client' && !ffmpegLoaded) ? "LOADING..." : "DROP VIDEO"}
 							</h2>
 							<div className="inline-flex gap-4 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/50">
 								<span>MP4</span>
@@ -341,7 +509,14 @@ export function VideoCompressor() {
 							</div>
 						</div>
 
-						<input ref={fileInputRef} type="file" accept="video/*" onChange={(e) => handleFiles(e.target.files)} className="hidden" />
+						<input 
+							ref={fileInputRef} 
+							type="file" 
+							accept="video/*" 
+							onChange={(e) => handleFiles(e.target.files)} 
+							className="hidden" 
+							disabled={compressionMode === 'client' && !ffmpegLoaded} 
+						/>
 					</div>
 				</div>
 			</div>
@@ -352,67 +527,38 @@ export function VideoCompressor() {
 	return (
 		<div className="w-full max-w-[1600px] mx-auto min-h-[85vh] flex flex-col items-center justify-center p-4 animate-in slide-in-from-bottom-8 duration-700">
 
-			{/* Main Glass Container with Theme-Aware Shadows */}
 			<div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 bg-card/60 backdrop-blur-3xl border border-border/50 rounded-[3rem] p-4 shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08),inset_0_50px_100px_rgba(var(--glass-shadow-color),0.12)] relative overflow-hidden">
 
-				{/* Background Ambient */}
 				<div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
 
-				{/* --- LEFT COLUMN: PREVIEW --- */}
+				{/* LEFT COLUMN: PREVIEW */}
 				<div className="lg:col-span-7 flex flex-col gap-6 relative z-10 h-full">
 
-					{/* Video Player Frame with Inset Shadow */}
 					<div className="relative w-full aspect-video rounded-[2.5rem] overflow-hidden bg-black border border-border/50 shadow-[inset_0_0_50px_rgba(var(--glass-shadow-color),0.5)] group ring-1 ring-border/20">
 
-						{/* Player Inset Gloom */}
 						<div className="absolute inset-0 pointer-events-none shadow-[inset_0_10px_40px_rgba(var(--glass-shadow-color),0.4)] z-20 rounded-[2.5rem]" />
 
 						<video src={activeFile.preview} className="w-full h-full object-contain relative z-10" controls />
 
-						{/* Progress Overlay - Unique Branded Design */}
+						{/* Progress Overlay */}
 						{isProcessing&&(
 							<div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-2xl flex flex-col items-center justify-center p-8 space-y-6">
-								{/* Animated Logo with Circular Progress */}
 								<div className="relative">
-									{/* Outer glow */}
 									<div className="absolute inset-0 w-32 h-32 bg-primary/20 rounded-full blur-2xl animate-pulse" />
 
-									{/* Circular Progress Ring */}
 									<svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
-										<circle
-											cx="50" cy="50" r="45"
-											fill="none"
-											stroke="currentColor"
-											strokeWidth="4"
-											className="text-primary/10"
-										/>
-										<circle
-											cx="50" cy="50" r="45"
-											fill="none"
-											stroke="currentColor"
-											strokeWidth="4"
-											strokeLinecap="round"
-											className="text-primary transition-all duration-500 ease-out"
-											strokeDasharray={`${progress*2.83} 283`}
-										/>
+										<circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="4" className="text-primary/10" />
+										<circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="text-primary transition-all duration-500 ease-out" strokeDasharray={`${progress*2.83} 283`} />
 									</svg>
 
-									{/* Logo in center */}
 									<div className="absolute inset-0 flex items-center justify-center">
-										<img
-											src="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif"
-											alt="Processing"
-											className="w-16 h-16 rounded-full object-cover animate-bounce shadow-xl ring-2 ring-primary/30"
-										/>
+										<img src="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif" alt="Processing" className="w-16 h-16 rounded-full object-cover animate-bounce shadow-xl ring-2 ring-primary/30" />
 									</div>
 								</div>
 
-								{/* Progress info */}
 								<div className="text-center space-y-3">
 									<div className="flex items-center justify-center gap-2">
-										<span className="text-4xl font-black text-primary font-orbitron tabular-nums">
-											{Math.round(progress)}
-										</span>
+										<span className="text-4xl font-black text-primary font-orbitron tabular-nums">{Math.round(progress)}</span>
 										<span className="text-xl font-black text-primary/60">%</span>
 									</div>
 
@@ -424,10 +570,7 @@ export function VideoCompressor() {
 									</p>
 
 									<div className="w-64 h-2 bg-primary/10 rounded-full overflow-hidden shadow-inner">
-										<div
-											className="h-full bg-gradient-to-r from-primary via-primary/80 to-primary/60 rounded-full transition-all duration-300 ease-out"
-											style={{width: `${progress}%`}}
-										/>
+										<div className="h-full bg-gradient-to-r from-primary via-primary/80 to-primary/60 rounded-full transition-all duration-300 ease-out" style={{width: `${progress}%`}} />
 									</div>
 								</div>
 							</div>
@@ -456,7 +599,7 @@ export function VideoCompressor() {
 						)}
 					</div>
 
-					{/* File Info Bar with Inset Shadow */}
+					{/* File Info Bar */}
 					<div className="flex flex-col md:flex-row items-center justify-between gap-1 p-2 rounded-[2rem] bg-card/30 border border-border/50 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08),inset_0_10px_30px_rgba(var(--glass-shadow-color),0.08)]">
 						<div className="flex items-center gap-5 w-full md:w-auto">
 							<div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/10 flex items-center justify-center shrink-0 shadow-[inset_0_1px_4px_rgba(var(--glass-shadow-color),0.08)]">
@@ -495,10 +638,9 @@ export function VideoCompressor() {
 					</div>
 				</div>
 
-				{/* --- RIGHT COLUMN: CONTROLS --- */}
+				{/* RIGHT COLUMN: CONTROLS */}
 				<div className="lg:col-span-5 flex flex-col h-full gap-5 relative z-10">
 
-					{/* Control Panel with Theme-Aware Shadow */}
 					<div className="flex-1 flex flex-col gap-5 p-6 md:p-8 rounded-[2.5rem] bg-card/40 border border-border/50 backdrop-blur-xl relative overflow-hidden shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08),inset_0_20px_50px_rgba(var(--glass-shadow-color),0.08)]">
 
 						<div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-50" />
@@ -511,6 +653,41 @@ export function VideoCompressor() {
 								Reset
 							</Button>
 						</div>
+
+						{/* Mode Selector - Dev Only */}
+						{isDevMode && (
+							<div className="space-y-2">
+								<label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground pl-1">Processing Mode (Dev Only)</label>
+								<div className="grid grid-cols-2 gap-2">
+									<button
+										onClick={() => setCompressionMode('client')}
+										disabled={isProcessing||!!result}
+										className={cn(
+											"px-3 py-2 rounded-xl border text-xs font-bold transition-all",
+											compressionMode === 'client'
+												? "bg-primary/10 border-primary/50 text-primary"
+												: "bg-background/20 border-border/50 text-muted-foreground hover:bg-background/40"
+										)}
+									>
+										<BrowserIcon className="w-3 h-3 inline mr-1" />
+										Browser
+									</button>
+									<button
+										onClick={() => setCompressionMode('server')}
+										disabled={isProcessing||!!result}
+										className={cn(
+											"px-3 py-2 rounded-xl border text-xs font-bold transition-all",
+											compressionMode === 'server'
+												? "bg-primary/10 border-primary/50 text-primary"
+												: "bg-background/20 border-border/50 text-muted-foreground hover:bg-background/40"
+										)}
+									>
+										<Server className="w-3 h-3 inline mr-1" />
+										Server
+									</button>
+								</div>
+							</div>
+						)}
 
 						{/* Compression Mode Selection */}
 						<div className="space-y-3">
@@ -657,16 +834,22 @@ export function VideoCompressor() {
 					):(
 						<Button
 							onClick={processVideo}
-							disabled={isProcessing}
+							disabled={isProcessing || (compressionMode === 'client' && !ffmpegLoaded)}
 							className={cn(
 								"h-20 w-full rounded-[2rem] shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.2),0_20px_60px_rgba(var(--primary-rgb),0.2)] border-t border-white/10 group overflow-hidden relative transition-all duration-300",
-								isProcessing? "bg-muted cursor-not-allowed border-none shadow-[inset_0_2px_10px_rgba(var(--glass-shadow-color),0.08)] text-muted-foreground":"bg-primary hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.98] text-primary-foreground"
+								isProcessing||(compressionMode === 'client' && !ffmpegLoaded)? "bg-muted cursor-not-allowed border-none shadow-[inset_0_2px_10px_rgba(var(--glass-shadow-color),0.08)] text-muted-foreground":"bg-primary hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.98] text-primary-foreground"
 							)}
 						>
 							{isProcessing? (
 								<div className="flex flex-col items-center gap-2">
 									<span className="text-muted-foreground/60 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
 										{COMPRESSION_PRESETS.find(p => p.id===qualityPreset)?.twoPass? "Two-Pass Processing...":"Processing..."}
+									</span>
+								</div>
+							):(compressionMode === 'client' && !ffmpegLoaded)? (
+								<div className="flex flex-col items-center gap-2">
+									<span className="text-muted-foreground/60 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
+										Loading Engine...
 									</span>
 								</div>
 							):(
