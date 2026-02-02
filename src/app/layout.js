@@ -48,7 +48,10 @@ export default function RootLayout({children}) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
-				{/* Google AdSense */}
+				{/* Google AdSense Meta Tag */}
+				<meta name="google-adsense-account" content="ca-pub-9874465109252768" />
+				
+				{/* Google AdSense Script */}
 				{process.env.NODE_ENV === 'production' && (
 					<script
 						async
