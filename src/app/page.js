@@ -1,13 +1,12 @@
 "use client";
 
 import {useState,useEffect} from "react";
+import {useRouter} from "next/navigation";
 import {cn} from "@/lib/utils";
 import {AppSidebar} from "@/components/app-sidebar";
 import {MobileHeader} from "@/components/mobile-header";
 import {BrandLogo} from "@/components/brand-logo";
 import {LandingLoader} from "@/components/landing-loader";
-import {SimpleLoader} from "@/components/simple-loader";
-import {AntigravityExperience} from "@/components/antigravity-experience";
 import {ThemeDialog} from "@/components/theme-dialog";
 import {LoginScreen} from "@/components/login-screen";
 import {VictoryScroll} from "@/components/victory-scroll";
@@ -16,6 +15,7 @@ import {WelcomeLanding} from "@/components/welcome-landing";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {hasAccess,ROLES} from "@/lib/auth";
 import {AdSenseAd} from "@/components/adsense-ad";
+import {toolIdToSlug} from "@/lib/seo";
 import {
 	CourseGenerator,
 	BlogGenerator,
@@ -30,9 +30,10 @@ import {
 } from "@/components/generators";
 
 export default function Home() {
+	const router = useRouter();
 	const [showWelcome,setShowWelcome]=useState(true);
 	const [isLoading,setIsLoading]=useState(false);
-	const [loaderVariant,setLoaderVariant]=useState("game"); // "game" | "simple" | "antigravity"
+	// Loader variant removed - only using rocket game (LandingLoader)
 	const [isChecking,setIsChecking]=useState(true); // Prevent flash
 	const [activeTab,setActiveTab]=useState("course");
 	const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
@@ -48,34 +49,35 @@ export default function Home() {
 			setShowWelcome(false);
 		}
 
-		// 2. Check Reward Status (Priority)
+		// 2. Check if user has already visited (skip loaders)
+		const hasVisited=sessionStorage.getItem('hasVisited');
+		const storedUser=sessionStorage.getItem('user');
+
+		// Determine if we should show the loader
+		let shouldShowLoader=!hasVisited&&!storedUser;
+
+		// 3. Check session reward
 		const rewardTime=localStorage.getItem('reward_claim_time');
-		const TWO_HOURS=2*60*60*1000;
-
+		
+	// 2 hours check for reward access
+		const isRewardActive=rewardTime&&(Date.now()-Number(rewardTime)<2*60*60*1000);
 		let activeUser=null;
-		let shouldShowLoader=false;
-		let isRewardActive=false;
-
-		if(rewardTime) {
-			const elapsed=Date.now()-parseInt(rewardTime);
-			if(elapsed<TWO_HOURS) {
-				// Valid Reward Session - Auto Login
-				activeUser={
-					username: 'admin',
-					role: 'admin',
-					name: 'Reward Admin (2H)',
-					loginTime: Date.now()
-				};
-				isRewardActive=true;
-			}
+		if(isRewardActive) {
+			// Derive role
+			const role=Number(rewardTime)%2===0 ? ROLES.CONTENT_CREATOR : ROLES.BLOG_CREATOR;
+			activeUser={
+				id: 'reward-user',
+				username: 'Reward Access',
+				email: 'reward@temporary.com',
+				role: role,
+			};
 		}
 
-		// 3. Check session storage for user (if not already handled by reward)
-		if(!activeUser) {
-			const storedUser=sessionStorage.getItem('user');
-			if(storedUser) {
+		// If stored user, parse
+		if(storedUser&&!activeUser) {
+			try {
 				activeUser=JSON.parse(storedUser);
-			}
+			} catch {}
 		}
 
 		// Apply User if found
@@ -119,9 +121,11 @@ export default function Home() {
 			}
 		}
 
+		// Only using rocket game loader (LandingLoader)
+
 		setIsLoading(shouldShowLoader);
 		setIsChecking(false);
-	},[]);
+	},[router]);
 
 	const handleRewardUnlock=(role='admin') => {
 		const roleNames={
@@ -301,15 +305,9 @@ export default function Home() {
 				<WelcomeLanding onPlayGame={handlePlayGame} onSignIn={handleSkipToSignIn} />
 			)}
 
-			{/* PRIORITY 2: Game Loader (only if not showing victory and welcome is done/hidden) */}
+			{/* PRIORITY 2: Rocket Game Loader (only if not showing victory and welcome is done/hidden) */}
 			{isLoading&&!showWinCelebration&&!showWelcome&&(
-				loaderVariant==="game"? (
-					<LandingLoader onComplete={handleLoaderComplete} onUnlock={handleRewardUnlock} onFail={handleLoaderFail} />
-				):loaderVariant==="antigravity"? (
-					<AntigravityExperience onComplete={handleLoaderComplete} />
-				):(
-					<SimpleLoader />
-				)
+				<LandingLoader onComplete={handleLoaderComplete} onUnlock={handleRewardUnlock} onFail={handleLoaderFail} />
 			)}
 
 			{/* PRIORITY 3: Login Screen (only if no user and not in victory/loading/welcome) */}
