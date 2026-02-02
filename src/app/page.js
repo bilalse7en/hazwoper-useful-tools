@@ -372,7 +372,7 @@ export default function Home() {
 									{/* AdSense Banner - Top of Content */}
 									<div className="mb-8 flex justify-center">
 										<AdSenseAd 
-											slot="1234567890" 
+											slot="9491607826" 
 											format="horizontal"
 											style={{ maxWidth: '970px', width: '100%' }}
 										/>
