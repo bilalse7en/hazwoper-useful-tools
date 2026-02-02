@@ -6,4 +6,5 @@ export {HTMLCleaner} from './html-cleaner';
 export {ImageConverter} from './image-converter';
 export {VideoCompressor} from './video-compressor';
 export {AIAssistant} from './ai-assistant';
+export {default as DocumentExtractor} from './document-extractor';
 export {default as ImageToText} from './image-to-text';

@@ -4,15 +4,41 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-// Get FFmpeg path - handle various edge cases
-let ffmpegPath=ffmpegStatic;
+// Get FFmpeg path - handle various edge cases with multiple fallback strategies
+let ffmpegPath = ffmpegStatic;
+
+// Function to check if a path exists and is executable
+function isValidFFmpegPath(testPath) {
+	try {
+		return fs.existsSync(testPath) && fs.statSync(testPath).isFile();
+	} catch {
+		return false;
+	}
+}
 
 // If ffmpegStatic is not absolute or seems incorrect, resolve manually
-if(!ffmpegPath||ffmpegPath.includes('ROOT')||!path.isAbsolute(ffmpegPath)) {
-	const isWin=os.platform()==='win32';
-	const binaryName=isWin? 'ffmpeg.exe':'ffmpeg';
-	ffmpegPath=path.join(process.cwd(),'node_modules','ffmpeg-static',binaryName);
+if (!ffmpegPath || ffmpegPath.includes('ROOT') || !path.isAbsolute(ffmpegPath) || !isValidFFmpegPath(ffmpegPath)) {
+	const isWin = os.platform() === 'win32';
+	const binaryName = isWin ? 'ffmpeg.exe' : 'ffmpeg';
+	
+	// Try multiple path resolution strategies
+	const possiblePaths = [
+		// Standard node_modules location (Windows format)
+		path.join(process.cwd(), 'node_modules', 'ffmpeg-static', binaryName),
+		// Alternative node_modules locations
+		path.join(process.cwd(), 'node_modules', '.bin', binaryName),
+		path.join(__dirname, '..', '..', '..', '..', 'node_modules', 'ffmpeg-static', binaryName),
+		// System path (if ffmpeg is installed globally)
+		isWin ? 'C:\\ffmpeg\\bin\\ffmpeg.exe' : '/usr/bin/ffmpeg',
+		isWin ? 'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe' : '/usr/local/bin/ffmpeg',
+	];
+	
+	// Find the first valid path
+	ffmpegPath = possiblePaths.find(p => isValidFFmpegPath(p)) || possiblePaths[0];
 }
+
+console.log('[FFmpeg] Using binary path:', ffmpegPath);
+console.log('[FFmpeg] Path exists:', isValidFFmpegPath(ffmpegPath));
 
 // HandBrake-style compression presets with quality audio (min 256k, max 512k)
 const PRESETS={
@@ -108,6 +134,12 @@ export async function POST(req) {
 					return;
 				}
 
+				// Validate FFmpeg binary exists before proceeding
+				if (!isValidFFmpegPath(ffmpegPath)) {
+					sendError(`FFmpeg binary not found at: ${ffmpegPath}. Please ensure ffmpeg-static is installed correctly by running: npm install ffmpeg-static`);
+					return;
+				}
+
 				sendProgress(2,'Initializing...');
 
 				// Get preset settings
@@ -174,57 +206,65 @@ export async function POST(req) {
 
 				args.push(outputPath);
 
-				// Run FFmpeg with real progress
-				await new Promise((resolve,reject) => {
-					console.log('FFmpeg command:',ffmpegPath,args.join(' '));
+				// Run FFmpeg with real progress and timeout
+			await new Promise((resolve,reject) => {
+				console.log('[FFmpeg] Command:',ffmpegPath,args.join(' '));
 
-					const ffProcess=spawn(ffmpegPath,args,{
-						windowsHide: true
-					});
-
-					let stderr='';
-					let videoDuration=0;
-
-					ffProcess.stderr.on('data',(data) => {
-						const output=data.toString();
-						stderr+=output;
-
-						// Parse duration from input file info
-						const durationMatch=output.match(/Duration: (\d{2}):(\d{2}):(\d{2})\.(\d+)/);
-						if(durationMatch) {
-							videoDuration=parseInt(durationMatch[1])*3600+
-								parseInt(durationMatch[2])*60+
-								parseInt(durationMatch[3])+
-								parseInt(durationMatch[4])/100;
-						}
-
-						// Parse current encoding time for progress
-						const timeMatch=output.match(/time=(\d{2}):(\d{2}):(\d{2})\.(\d+)/);
-						if(timeMatch&&videoDuration>0) {
-							const currentTime=parseInt(timeMatch[1])*3600+
-								parseInt(timeMatch[2])*60+
-								parseInt(timeMatch[3])+
-								parseInt(timeMatch[4])/100;
-							// Scale progress from 5% to 95% (leaving room for init and finalize)
-							const rawPercent=(currentTime/videoDuration)*100;
-							const scaledPercent=5+Math.round(rawPercent*0.9);
-							const percent=Math.min(scaledPercent,95);
-							sendProgress(percent,`Encoding: ${percent}%`);
-						}
-					});
-
-					ffProcess.on('close',(code) => {
-						if(code===0) {
-							resolve();
-						} else {
-							reject(new Error(`FFmpeg exited with code ${code}: ${stderr.slice(-300)}`));
-						}
-					});
-
-					ffProcess.on('error',(err) => {
-						reject(new Error(`Failed to start FFmpeg: ${err.message}`));
-					});
+				const ffProcess=spawn(ffmpegPath,args,{
+					windowsHide: true
 				});
+
+				let stderr='';
+				let videoDuration=0;
+
+				// Add a timeout to prevent hanging (10 minutes max)
+				const timeout = setTimeout(() => {
+					ffProcess.kill('SIGKILL');
+					reject(new Error('Video compression timed out after 10 minutes. Please try with a shorter video or different settings.'));
+				}, 600000); // 10 minutes
+
+				ffProcess.stderr.on('data',(data) => {
+					const output=data.toString();
+					stderr+=output;
+
+					// Parse duration from input file info
+					const durationMatch=output.match(/Duration: (\d{2}):(\d{2}):(\d{2})\.(\d+)/);
+					if(durationMatch) {
+						videoDuration=parseInt(durationMatch[1])*3600+
+							parseInt(durationMatch[2])*60+
+							parseInt(durationMatch[3])+
+							parseInt(durationMatch[4])/100;
+					}
+
+					// Parse current encoding time for progress
+					const timeMatch=output.match(/time=(\d{2}):(\d{2}):(\d{2})\.(\d+)/);
+					if(timeMatch&&videoDuration>0) {
+						const currentTime=parseInt(timeMatch[1])*3600+
+							parseInt(timeMatch[2])*60+
+							parseInt(timeMatch[3])+
+							parseInt(timeMatch[4])/100;
+						// Scale progress from 5% to 95% (leaving room for init and finalize)
+						const rawPercent=(currentTime/videoDuration)*100;
+						const scaledPercent=5+Math.round(rawPercent*0.9);
+						const percent=Math.min(scaledPercent,95);
+						sendProgress(percent,`Encoding: ${percent}%`);
+					}
+				});
+
+				ffProcess.on('close',(code) => {
+					clearTimeout(timeout);
+					if(code===0) {
+						resolve();
+					} else {
+						reject(new Error(`FFmpeg exited with code ${code}: ${stderr.slice(-300)}`));
+					}
+				});
+
+				ffProcess.on('error',(err) => {
+					clearTimeout(timeout);
+					reject(new Error(`Failed to start FFmpeg: ${err.message}`));
+				});
+			});
 
 				sendProgress(96,'Finalizing output...');
 

@@ -376,25 +376,60 @@ export function AIAssistant() {
 		if(selectedModel==="image-gen") {
 			try {
 				const enhancedPrompt=`${currentInput}, cinematic lighting, high resolution, 8k, highly detailed, professional masterpiece`;
-				const imageUrl=`https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&private=true&enhance=true&seed=${Math.floor(Math.random()*1000000)}`;
+				const seed = Math.floor(Math.random()*1000000);
+				const imageUrl=`https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&private=true&enhance=true&seed=${seed}`;
 
-				// Verify if image service is up
-				const testResp=await fetch(imageUrl,{method: 'HEAD'});
-				if(!testResp.ok) throw new Error("Image service busy");
-
+				// Create a temporary loading message
+				const loadingMsgIndex = messages.length;
 				setMessages(prev => [...prev,{
+					role: "assistant",
+					content: `🎨 Generating neural art for: "${currentInput}"...`,
+					timestamp: new Date(),
+					tempId: `loading-${Date.now()}`
+				}]);
+
+				// Preload the image to ensure it's ready before displaying
+				const img = new Image();
+				
+				await new Promise((resolve, reject) => {
+					const timeout = setTimeout(() => {
+						reject(new Error('Image generation timed out. The service might be busy.'));
+					}, 30000); // 30 seconds timeout
+
+					img.onload = () => {
+						clearTimeout(timeout);
+						resolve();
+					};
+					
+					img.onerror = () => {
+						clearTimeout(timeout);
+						reject(new Error('Failed to load generated image'));
+					};
+					
+					img.src = imageUrl;
+				});
+
+				// Remove loading message and add the actual image
+				setMessages(prev => prev.filter(m => !m.tempId).concat({
 					role: "assistant",
 					content: `Generated neural art for: "${currentInput}"`,
 					type: "image",
 					url: imageUrl,
 					timestamp: new Date()
-				}]);
+				}));
+
 			} catch(error) {
-				setMessages(prev => [...prev,{
+				console.error('[Image Gen Error]:', error);
+				setMessages(prev => prev.filter(m => !m.tempId).concat({
 					role: "assistant",
-					content: `⚠️ Visualization failed: ${error.message}. Please try a different prompt or wait a few seconds.`,
+					content: `⚠️ Image generation failed: ${error.message}. This can happen when:
+- The service is experiencing high load
+- Your prompt contains restricted content
+- Network connectivity issues
+
+**Tip:** Try simplifying your prompt or wait a moment before trying again.`,
 					timestamp: new Date()
-				}]);
+				}));
 			} finally {
 				setIsLoading(false);
 			}
@@ -445,34 +480,50 @@ export function AIAssistant() {
 			}
 
 			// Free Neural Cluster (Pollinations - 100% Working)
-			const pollinationsModel=selectedModel==="coder"? "searchgpt":"openai";
-			const pollinationsUrl=`https://text.pollinations.ai/`;
+			const pollinationsModel = selectedModel === "coder" ? "searchgpt" : "openai";
+			const pollinationsUrl = `https://text.pollinations.ai/`;
 
-			const response=await fetch(pollinationsUrl,{
+			const response = await fetch(pollinationsUrl, {
 				method: "POST",
-				headers: {"Content-Type": "application/json"},
+				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					messages: chatMessages,
 					model: pollinationsModel,
-					seed: Math.floor(Math.random()*1000000),
+					seed: Math.floor(Math.random() * 1000000),
 					json: false
 				})
 			});
 
-			if(!response.ok) throw new Error("Neural cluster unavailable");
+			if (!response.ok) {
+				// Fallback to GET request if POST fails
+				const lastMsg = currentInput;
+				const fallbackUrl = `https://text.pollinations.ai/${encodeURIComponent(lastMsg)}?model=${pollinationsModel}&system=${encodeURIComponent(systemPrompt)}`;
+				const fallbackResponse = await fetch(fallbackUrl);
+				if (!fallbackResponse.ok) throw new Error("Neural cluster unavailable");
+				const fallbackText = await fallbackResponse.text();
+				
+				setMessages(prev => [...prev, {
+					role: "assistant",
+					content: fallbackText.trim(),
+					timestamp: new Date(),
+					model: selectedModel === "coder" ? "DeepSeek" : "Neural 3.5"
+				}]);
+				return;
+			}
 
-			const responseText=await response.text();
+			const responseText = await response.text();
 
-			// Handle potential notice text
-			const cleanText=responseText.includes("IMPORTANT NOTICE")
-				? responseText.split("\n\n").slice(1).join("\n\n")||"Neural cluster is currently resetting. Please try again in 5 seconds."
-				:responseText;
+			// Clean up Pollinations specific branding or notices if they appear
+			const cleanText = responseText
+				.replace(/IMPORTANT NOTICE:[\s\S]*?\n\n/g, '')
+				.replace(/Pollinations\.ai/gi, 'Neural Intelligence')
+				.trim();
 
-			setMessages(prev => [...prev,{
+			setMessages(prev => [...prev, {
 				role: "assistant",
-				content: cleanText,
+				content: cleanText || "Neural cluster is processing. Please try again in a moment.",
 				timestamp: new Date(),
-				model: selectedModel==="coder"? "DeepSeek":"Neural 3.5"
+				model: selectedModel === "coder" ? "DeepSeek" : "Neural 3.5"
 			}]);
 
 		} catch(error) {

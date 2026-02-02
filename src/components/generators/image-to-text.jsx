@@ -44,7 +44,7 @@ export default function ImageToText() {
 	};
 
 	// Preprocess image for better OCR accuracy
-	const preprocessImage=(imageUrl) => {
+	const preprocessImage=(imageUrl, compress = false) => {
 		return new Promise((resolve) => {
 			const img=new Image();
 			img.crossOrigin="anonymous";
@@ -53,7 +53,17 @@ export default function ImageToText() {
 				const ctx=canvas.getContext('2d');
 				
 				// Scale up small images for better recognition
-				const scale=Math.max(1,2000/Math.max(img.width,img.height));
+				let scale=Math.max(1,2000/Math.max(img.width,img.height));
+				
+				// If compressing for cloud APIs, cap the dimensions to keep file size low
+				// Free OCR.space has a 1024KB limit. We stay well under.
+				if(compress) {
+					const maxDim = 1200; // Reduced from 1600 for safety
+					if(Math.max(img.width,img.height)*scale > maxDim) {
+						scale = maxDim / Math.max(img.width,img.height);
+					}
+				}
+
 				canvas.width=img.width*scale;
 				canvas.height=img.height*scale;
 				
@@ -80,85 +90,66 @@ export default function ImageToText() {
 				}
 				
 				ctx.putImageData(imageData,0,0);
-				resolve(canvas.toDataURL('image/png'));
+				
+				// Use JPEG for compression, PNG for standard (lossless)
+				const format = compress ? 'image/jpeg' : 'image/png';
+				const quality = compress ? 0.75 : 1.0;
+				resolve(canvas.toDataURL(format, quality));
 			};
 			img.src=imageUrl;
 		});
 	};
 
 	const extractWithAI=async (base64Image) => {
-		// Using Hugging Face's FREE Inference API - No API key needed, no quota limits!
-		// Try multiple free OCR models for best results
-		const models=[
-			'microsoft/trocr-base-printed',
-			'microsoft/trocr-large-printed',
-		];
-		
-		const imageBlob=await fetch(base64Image).then(r => r.blob());
-		
-		for(const model of models) {
-			try {
-				const response=await fetch(`https://api-inference.huggingface.co/models/${model}`,{
-					method: 'POST',
-					headers: {'Content-Type': 'application/octet-stream'},
-					body: imageBlob
+		try {
+			// Log size for debugging (AI Mode)
+			const sizeInMB = (base64Image.length * (3/4)) / (1024 * 1024);
+			console.log(`[OCR] Sending image to Neural Hub. Size: ${sizeInMB.toFixed(2)}MB`);
+
+			setProgress(20);
+			
+			// Start a smooth progress animation while waiting
+			const progressInterval = setInterval(() => {
+				setProgress(prev => {
+					if (prev < 85) return prev + 5;
+					return prev;
 				});
-				
-				if(!response.ok) {
-					const errorData=await response.json().catch(() => ({}));
-					// If model is loading, wait and retry
-					if(errorData.error?.includes('loading')) {
-						await new Promise(r => setTimeout(r,3000));
-						continue;
-					}
-					continue;
-				}
-				
+			}, 800);
+
+			try {
+				const response=await fetch('/api/ocr',{
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({image: base64Image})
+				});
+
+				clearInterval(progressInterval);
+				setProgress(90);
+
 				const data=await response.json();
 				
-				if(data && data[0] && data[0].generated_text) {
-					return data[0].generated_text.trim();
+				if(!response.ok) {
+					// If server provides a detailed reason, show it, otherwise fallback to generic
+					const errorMsg = data.error || "Neural cluster is busy.";
+					const detailMsg = data.details || "Please try Standard Mode for local processing.";
+					throw new Error(`${errorMsg} ${detailMsg}`);
 				}
-				if(typeof data === 'string') {
-					return data.trim();
+
+				setProgress(100);
+				
+				// Log success with provider info if available
+				if (data.provider) {
+					console.log(`[OCR] SUCCESS with ${data.provider} in ${data.processingTime}ms`);
 				}
-			} catch(e) {
-				console.log(`Model ${model} failed, trying next...`);
-				continue;
-			}
-		}
-		
-		// Fallback: Use free OCR.space API with public free key
-		const formData=new FormData();
-		formData.append('base64Image',base64Image);
-		formData.append('language','eng');
-		formData.append('isOverlayRequired','false');
-		formData.append('OCREngine','2'); // Engine 2 is more accurate
-		formData.append('apikey','K87161642888957'); // Public free testing key
-		
-		try {
-			const ocrResponse=await fetch('https://api.ocr.space/parse/image',{
-				method: 'POST',
-				body: formData
-			});
-			
-			const ocrData=await ocrResponse.json();
-			
-			if(ocrData.ParsedResults && ocrData.ParsedResults[0]) {
-				const text=ocrData.ParsedResults[0].ParsedText;
-				if(text && text.trim()) {
-					return text.trim();
-				}
-			}
-			
-			if(ocrData.ErrorMessage) {
-				throw new Error(ocrData.ErrorMessage.join(', '));
+
+				return data.text;
+			} finally {
+				clearInterval(progressInterval);
 			}
 		} catch(e) {
-			console.error('OCR.space error:',e);
+			console.error('[OCR] API Fault:',e);
+			throw e;
 		}
-		
-		throw new Error('AI extraction failed. Please try Standard Mode (Tesseract) instead.');
 	};
 
 	const extractWithTesseract=async () => {
@@ -197,9 +188,11 @@ export default function ImageToText() {
 			let text;
 
 			if(useAI) {
-				// AI Mode - Google Gemini Vision
+				// AI Mode - Preprocess and compress first for better recognition/efficiency
+				setProgress(10);
+				const processedImage=await preprocessImage(previewUrl, true);
 				setProgress(30);
-				text=await extractWithAI(previewUrl);
+				text=await extractWithAI(processedImage);
 				setProgress(100);
 			} else {
 				// Standard Mode - Tesseract

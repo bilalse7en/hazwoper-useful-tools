@@ -24,7 +24,8 @@ import {
 	ImageConverter,
 	VideoCompressor,
 	AIAssistant,
-	ImageToText
+	ImageToText,
+	DocumentExtractor
 } from "@/components/generators";
 
 export default function Home() {
@@ -224,6 +225,10 @@ export default function Home() {
 			return <AIAssistant />;
 		case "image-to-text":
 			return <ImageToText />;
+		case "document-extractor":
+			return <DocumentExtractor />;
+		case "pdf-suite":
+			return <PDFSuite />;
 		default:
 			return <CourseGenerator />;
 		}
@@ -247,6 +252,10 @@ export default function Home() {
 			return "AI UNIVERSE - Neural Hub";
 		case "image-to-text":
 			return "Image to Text - OCR Converter";
+		case "document-extractor":
+			return "Document Content Extractor";
+		case "pdf-suite":
+			return "PDF Suite - Secure & Extract";
 		default:
 			return "Course Content Generator";
 		}
