@@ -48,11 +48,11 @@ export default function RootLayout({children}) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
-				{/* Google AdSense - Replace ca-pub-XXXXXXXXXXXXXXXX with your Publisher ID */}
+				{/* Google AdSense */}
 				{process.env.NODE_ENV === 'production' && (
 					<script
 						async
-						src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+						src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
 						crossOrigin="anonymous"
 					/>
 				)}
