@@ -104,98 +104,46 @@
 }
 
 .nebula {
-	--background: rgba(2, 6, 23, 0.85);
-	--foreground: #e0e7ff;
-	--primary: #818cf8;
+	/* Cosmic Nebula - Navy Blue/Blue/Black Theme */
+	--background: rgba(2, 6, 23, 0.92);
+	--foreground: #e0f2fe;
+	--primary: #3b82f6;
+	/* Vibrant blue */
 	--primary-foreground: #020617;
-	--primary-rgb: 129, 140, 248;
-	--secondary: rgba(129, 140, 248, 0.2);
-	--secondary-foreground: #e0e7ff;
-	--card: rgba(49, 46, 129, 0.3);
-	--card-foreground: #e0e7ff;
-	--border: rgba(129, 140, 248, 0.3);
-	--glow-color: rgba(129, 140, 248, 0.5);
-	--glow-size: 15px;
-	--sidebar: rgba(30, 27, 75, 0.7);
+	--primary-rgb: 59, 130, 246;
+	--secondary: rgba(59, 130, 246, 0.15);
+	--secondary-foreground: #e0f2fe;
+	--card: rgba(15, 23, 42, 0.5);
+	/* Navy */
+	--card-foreground: #e0f2fe;
+	--popover: rgba(15, 23, 42, 0.95);
+	--popover-foreground: #e0f2fe;
+	--border: rgba(59, 130, 246, 0.2);
+	--muted: rgba(30, 41, 59, 0.8);
+	--muted-foreground: #cbd5e1;
+	--accent: rgba(30, 41, 59, 0.5);
+	--accent-foreground: #e0f2fe;
+	--input: rgba(255, 255, 255, 0.05);
+	--ring: #60a5fa;
+	--glow-color: rgba(59, 130, 246, 0.3);
+	--glow-size: 8px;
+	--sidebar: rgba(15, 23, 42, 0.8);
+	/* Navy sidebar */
 	--glass-shadow-color: 255, 255, 255;
 	--glass-shadow-highlight: 255, 255, 255;
+	/* Remove full font override - will apply to headings only below */
+}
+
+/* Special font for Cosmic Nebula headings only */
+.nebula h1,
+.nebula h2,
+.nebula h3,
+.nebula h4,
+.nebula h5,
+.nebula h6,
+.nebula .heading {
 	font-family: var(--font-exo), sans-serif;
-}
-
-.inferno {
-	--background: rgba(42, 4, 4, 0.85);
-	--foreground: #fef2f2;
-	--primary: #f87171;
-	--primary-foreground: #2a0404;
-	--primary-rgb: 248, 113, 113;
-	--secondary: rgba(248, 113, 113, 0.2);
-	--secondary-foreground: #fef2f2;
-	--card: rgba(127, 29, 29, 0.3);
-	--card-foreground: #fef2f2;
-	--border: rgba(248, 113, 113, 0.3);
-	--glow-color: rgba(248, 113, 113, 0.5);
-	--glow-size: 15px;
-	--sidebar: rgba(69, 10, 10, 0.7);
-	--glass-shadow-color: 255, 255, 255;
-	--glass-shadow-highlight: 255, 255, 255;
-	font-family: var(--font-chakra), sans-serif;
-}
-
-.toxic {
-	--background: rgba(2, 6, 23, 0.88);
-	--foreground: #4ade80;
-	--primary: #22c55e;
-	--primary-foreground: #020617;
-	--primary-rgb: 34, 197, 94;
-	--secondary: rgba(34, 197, 94, 0.2);
-	--secondary-foreground: #4ade80;
-	--card: rgba(5, 46, 22, 0.4);
-	--card-foreground: #4ade80;
-	--border: rgba(34, 197, 94, 0.3);
-	--glow-color: rgba(34, 197, 94, 0.6);
-	--glow-size: 12px;
-	--sidebar: rgba(2, 6, 23, 0.7);
-	--glass-shadow-color: 255, 255, 255;
-	--glass-shadow-highlight: 255, 255, 255;
-	font-family: var(--font-mono), monospace;
-}
-
-.synthwave {
-	--background: rgba(46, 2, 45, 0.85);
-	--foreground: #f0abfc;
-	--primary: #06b6d4;
-	--primary-foreground: #020617;
-	--primary-rgb: 6, 182, 212;
-	--secondary: rgba(6, 182, 212, 0.2);
-	--secondary-foreground: #f0abfc;
-	--card: rgba(80, 7, 36, 0.35);
-	--card-foreground: #f0abfc;
-	--border: rgba(217, 70, 239, 0.3);
-	--glow-color: rgba(217, 70, 239, 0.5);
-	--glow-size: 15px;
-	--sidebar: rgba(46, 2, 45, 0.7);
-	--glass-shadow-color: 255, 255, 255;
-	--glass-shadow-highlight: 255, 255, 255;
-	font-family: var(--font-orbitron), sans-serif;
-}
-
-.aurora {
-	--background: rgba(4, 47, 46, 0.85);
-	--foreground: #ccfbf1;
-	--primary: #2dd4bf;
-	--primary-foreground: #042f2e;
-	--primary-rgb: 45, 212, 191;
-	--secondary: rgba(45, 212, 191, 0.2);
-	--secondary-foreground: #ccfbf1;
-	--card: rgba(17, 94, 89, 0.35);
-	--card-foreground: #ccfbf1;
-	--border: rgba(45, 212, 191, 0.3);
-	--glow-color: rgba(45, 212, 191, 0.5);
-	--glow-size: 15px;
-	--sidebar: rgba(4, 47, 46, 0.7);
-	--glass-shadow-color: 255, 255, 255;
-	--glass-shadow-highlight: 255, 255, 255;
-	font-family: var(--font-space-grotesk), sans-serif;
+	letter-spacing: 0.5px;
 }
 
 @layer base {

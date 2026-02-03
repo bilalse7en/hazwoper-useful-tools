@@ -13,13 +13,9 @@ export function CustomCursor() {
 	const ballsRef=useRef([]);
 
 	const glowColors={
-		light: "#0062ff",
-		dark: "#a855f7",
-		nebula: "#38bdf8",
-		inferno: "#fbbf24",
-		toxic: "#4ade80",
-		synthwave: "#f472b6",
-		aurora: "#2dd4bf"
+		light: "#0062ff",     // Blue for light theme
+		dark: "#a855f7",      // Purple for dark theme
+		nebula: "#3b82f6"     // Blue for Cosmic Nebula
 	};
 
 	useEffect(() => {

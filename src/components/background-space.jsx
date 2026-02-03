@@ -83,13 +83,9 @@ export function BackgroundSpace() {
 			time.current+=0.01;
 
 			const colorMap={
-				toxic: "#4ade80",
-				synthwave: "#d946ef",
-				nebula: "#818cf8",
-				aurora: "#2dd4bf",
-				inferno: "#fbbf24",
-				dark: "#ffffff",
-				light: "#000000"
+				nebula: "#3b82f6",    // Blue for Cosmic Nebula
+				dark: "#ffffff",       // White for dark theme
+				light: "#000000"       // Black for light theme
 			};
 
 			const starColor=colorMap[theme]||"#ffffff";

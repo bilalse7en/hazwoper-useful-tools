@@ -43,12 +43,9 @@ export default function Home() {
 	const [winRole,setWinRole]=useState(null);
 
 	useEffect(() => {
-		// 1. Check if user has seen welcome page
-		const hasSeenWelcome=sessionStorage.getItem('hasSeenWelcome');
-		if(hasSeenWelcome) {
-			setShowWelcome(false);
-		}
-
+		// 1. Don't check hasSeenWelcome - always show welcome on fresh page load
+		// User can skip by clicking "Sign In" or "Play Game"
+		
 		// 2. Check if user has already visited (skip loaders)
 		const hasVisited=sessionStorage.getItem('hasVisited');
 		const storedUser=sessionStorage.getItem('user');
@@ -98,6 +95,8 @@ export default function Home() {
 
 			// If we have a user, we never show the game loader.
 			shouldShowLoader=false;
+			// Also hide welcome if user is already logged in
+			setShowWelcome(false);
 		}
 
 		// 4. Check if user already attempted and failed this session
@@ -188,6 +187,7 @@ export default function Home() {
 	const handleSkipToSignIn=() => {
 		sessionStorage.setItem('hasSeenWelcome','true');
 		setShowWelcome(false);
+		setIsLoading(false); // Skip the game loader
 	};
 
 	const handleLogout=() => {

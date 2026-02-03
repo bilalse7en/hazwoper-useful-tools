@@ -7,21 +7,13 @@ import {
 	Moon,
 	Sun,
 	Sparkles,
-	Flame,
-	Biohazard,
-	Gamepad2,
-	Snowflake,
 	Check
 } from "lucide-react";
 
 const themes = [
 	{ id: 'light', name: 'Professional Light', icon: Sun, description: 'Clean white workspace' },
 	{ id: 'dark', name: 'Professional Dark', icon: Moon, description: 'Deep slate focus' },
-	{ id: 'nebula', name: 'Cosmic Nebula', icon: Sparkles, description: 'Deep space gradients & glow' },
-	{ id: 'inferno', name: 'Magma Inferno', icon: Flame, description: 'Intense red/orange heat' },
-	{ id: 'toxic', name: 'Toxic Matrix', icon: Biohazard, description: 'Radioactive green data' },
-	{ id: 'synthwave', name: 'Neon Synthwave', icon: Gamepad2, description: 'Retro 80s pink/cyan' },
-	{ id: 'aurora', name: 'Arctic Aurora', icon: Snowflake, description: 'Ethereal teal & purple' }
+	{ id: 'nebula', name: 'Cosmic Nebula', icon: Sparkles, description: 'Navy blue gradients & glow' }
 ];
 
 export function ThemeDialog({ open, onOpenChange }) {
