@@ -29,7 +29,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">Introduction</h2>
             <p>
-              Welcome to Content Suite ("we," "our," or "us"). We are committed to protecting your privacy and ensuring transparency about how we collect, use, and share your information. This Privacy Policy explains our data practices for our website and web-based tools.
+              Welcome to Content Suite, operated by Bilal ("we," "our," or "us"). We are committed to protecting your privacy and ensuring transparency about how we collect, use, and share your information. This Privacy Policy explains our data practices for our website and web-based tools.
             </p>
           </section>
 
@@ -165,8 +165,10 @@ export default function PrivacyPolicy() {
               If you have questions about this Privacy Policy or wish to exercise your rights, please contact us:
             </p>
             <ul className="list-none pl-0 space-y-2 mt-3">
+              <li><strong>Name:</strong> Bilal</li>
+              <li><strong>Email:</strong> <a href="mailto:bilalghaffar46@gmail.com" className="text-primary hover:underline">bilalghaffar46@gmail.com</a></li>
               <li><strong>Website:</strong> <a href="https://hazwoper-useful-tools.vercel.app" className="text-primary hover:underline">hazwoper-useful-tools.vercel.app</a></li>
-              <li><strong>Privacy Requests:</strong> Please use the contact form on our website or update your consent preferences through our cookie banner.</li>
+              <li><strong>Privacy Requests:</strong> Email us directly at the address above or update your consent preferences through our cookie banner.</li>
             </ul>
           </section>
 

@@ -197,8 +197,13 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">15. Contact Information</h2>
             <p>
-              If you have any questions about these Terms, please contact us through our website at <a href="https://hazwoper-useful-tools.vercel.app" className="text-primary hover:underline">hazwoper-useful-tools.vercel.app</a>.
+              If you have any questions about these Terms, please contact us:
             </p>
+            <ul className="list-none pl-0 space-y-2 mt-3">
+              <li><strong>Name:</strong> Bilal</li>
+              <li><strong>Email:</strong> <a href="mailto:bilalghaffar46@gmail.com" className="text-primary hover:underline">bilalghaffar46@gmail.com</a></li>
+              <li><strong>Website:</strong> <a href="https://hazwoper-useful-tools.vercel.app" className="text-primary hover:underline">hazwoper-useful-tools.vercel.app</a></li>
+            </ul>
           </section>
 
           <section className="border-t border-border pt-6 mt-8">
