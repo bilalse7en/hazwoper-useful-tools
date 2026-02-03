@@ -74,6 +74,24 @@ export const toolMetadata = {
     canonical: '/tools/document-extractor',
     ogImage: '/og-document-extractor.png',
   },
+  'privacy': {
+    title: 'Privacy Policy | Content Suite',
+    description: 'Privacy Policy for Content Suite - Learn how we collect, use, and protect your data in compliance with GDPR and privacy regulations.',
+    keywords: 'privacy policy, GDPR, data protection, cookie policy, user privacy',
+    canonical: '/privacy',
+  },
+  'terms': {
+    title: 'Terms of Service | Content Suite',
+    description: 'Terms of Service for Content Suite - Read the terms and conditions for using our content generation and media processing tools.',
+    keywords: 'terms of service, terms and conditions, user agreement, legal terms',
+    canonical: '/terms',
+  },
+  'cookies': {
+    title: 'Cookie Policy | Content Suite',
+    description: 'Cookie Policy for Content Suite - Learn about the cookies we use and how to manage your cookie preferences.',
+    keywords: 'cookie policy, cookies, tracking, advertising cookies, GDPR cookies',
+    canonical: '/cookies',
+  },
 };
 
 // Map tool IDs used in the app to URL slugs

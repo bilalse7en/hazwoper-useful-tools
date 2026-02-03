@@ -1,6 +1,7 @@
 import {Inter,JetBrains_Mono,Orbitron,Space_Grotesk,Exo_2,Chakra_Petch} from "next/font/google";
 import {ThemeProvider} from "@/components/theme-provider";
 import {BackgroundSpace} from "@/components/background-space";
+import {GdprConsent} from "@/components/gdpr-consent";
 import "./globals.css";
 
 const inter=Inter({
@@ -48,6 +49,25 @@ export default function RootLayout({children}) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
+				{/* Google Consent Mode - Must load before AdSense */}
+				<script
+					dangerouslySetInnerHTML={{
+						__html: `
+							window.dataLayer = window.dataLayer || [];
+							function gtag(){dataLayer.push(arguments);}
+							
+							// Default consent mode - denies all until user makes a choice
+							gtag('consent', 'default', {
+								'ad_storage': 'denied',
+								'ad_user_data': 'denied',
+								'ad_personalization': 'denied',
+								'analytics_storage': 'denied',
+								'wait_for_update': 500
+							});
+						`,
+					}}
+				/>
+				
 				{/* Google AdSense Meta Tag */}
 				<meta name="google-adsense-account" content="ca-pub-9874465109252768" />
 				
@@ -57,6 +77,14 @@ export default function RootLayout({children}) {
 						async
 						src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
 						crossOrigin="anonymous"
+					/>
+				)}
+				
+				{/* Google Funding Choices - Consent Management Platform */}
+				{process.env.NODE_ENV === 'production' && (
+					<script
+						async
+						src="https://fundingchoicesmessages.google.com/i/pub-9874465109252768?ers=1"
 					/>
 				)}
 			</head>
@@ -73,6 +101,7 @@ export default function RootLayout({children}) {
 				>
 					<BackgroundSpace />
 					{children}
+					<GdprConsent />
 				</ThemeProvider>
 			</body>
 		</html>
