@@ -7,7 +7,8 @@ import {
 	Moon,
 	Sun,
 	Sparkles,
-	Check
+	Check,
+	Zap,
 } from "lucide-react";
 
 const themes = [

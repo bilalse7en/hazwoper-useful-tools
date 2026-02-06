@@ -89,44 +89,46 @@ export function AppSidebar({
 		<TooltipProvider delayDuration={0}>
 			<aside
 				className={cn(
-					"h-full border-r border-border backdrop-blur-xl transition-all duration-300 sidebar-wrapper flex flex-col select-none",
+					"overflow-auto h-screen border-r border-border transition-all duration-300 sidebar-wrapper flex flex-col select-none",
 					!className?.includes("w-")&&(collapsed? "w-16":"w-64"),
 					className
 				)}
-				style={{backgroundColor: 'var(--sidebar)'}}
+				style={{backgroundColor: 'var(--sidebar)', scrollbarWidth: 'none'}}
 			>
-				{/* Header */}
-				<div className={cn(
-					"flex h-14 items-center gap-3 border-b border-border p-4",
-					collapsed&&"justify-center flex-col"
-				)}>
-					<BrandLogo
-						size="md"
-						className="hover:scale-110 hover:rotate-6 transition-transform duration-300 cursor-pointer"
-					/>
+				{/* Header with Search */}
+				<div className="sticky top-0 z-20 flex-none bg-sidebar border-b border-border shadow-sm">
+					<div className={cn(
+						"flex h-14 items-center gap-3 p-4",
+						collapsed&&"justify-center flex-col"
+					)}>
+						<BrandLogo
+							size="md"
+							className="hover:scale-110 hover:rotate-6 transition-transform duration-300 cursor-pointer"
+						/>
+						{!collapsed&&(
+							<div className="flex flex-col overflow-hidden flex-1">
+								<span className="font-bold text-foreground whitespace-nowrap tracking-tight">Content Suite</span>
+								{user&&<span className="text-[10px] text-muted-foreground truncate uppercase tracking-wider">{user.name}</span>}
+							</div>
+						)}
+					</div>
+
+					{/* Search Bar */}
 					{!collapsed&&(
-						<div className="flex flex-col overflow-hidden flex-1">
-							<span className="font-bold text-foreground whitespace-nowrap tracking-tight">Content Suite</span>
-							{user&&<span className="text-[10px] text-muted-foreground truncate uppercase tracking-wider">{user.name}</span>}
+						<div className="px-3 pb-3">
+							<div className="relative">
+								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+								<Input
+									type="text"
+									placeholder="Search..."
+									value={searchQuery}
+									onChange={(e) => setSearchQuery(e.target.value)}
+									className="pl-9 h-9 bg-background border-border focus-visible:ring-1"
+								/>
+							</div>
 						</div>
 					)}
 				</div>
-
-				{/* Search Bar */}
-				{!collapsed&&(
-					<div className="p-3 border-b border-border">
-						<div className="relative">
-							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-							<Input
-								type="text"
-								placeholder="Search..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="pl-9 h-9 bg-background/50 border-border focus-visible:ring-1"
-							/>
-						</div>
-					</div>
-				)}
 
 				{/* Navigation Groups */}
 				<nav className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -201,7 +203,7 @@ export function AppSidebar({
 				</nav>
 
 				{/* Footer */}
-				<div className="border-t border-border p-2 space-y-1">
+				<div className="sticky bottom-0 z-20 flex-none border-t border-border bg-sidebar shadow-sm p-2 space-y-1">
 					{/* Theme Toggle */}
 					{collapsed? (
 						<Tooltip>

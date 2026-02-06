@@ -1,4 +1,5 @@
-import {Inter,JetBrains_Mono,Orbitron,Space_Grotesk,Exo_2,Chakra_Petch} from "next/font/google";
+import {Inter,JetBrains_Mono,Orbitron,Space_Grotesk,Exo_2,Chakra_Petch,Rajdhani} from "next/font/google";
+import Script from "next/script";
 import {ThemeProvider} from "@/components/theme-provider";
 import {BackgroundSpace} from "@/components/background-space";
 import {GdprConsent} from "@/components/gdpr-consent";
@@ -35,6 +36,12 @@ const chakraPetch=Chakra_Petch({
 	subsets: ["latin"],
 });
 
+const rajdhani=Rajdhani({
+	weight: ['300','400','500','600','700'],
+	variable: "--font-rajdhani",
+	subsets: ["latin"],
+});
+
 export const metadata={
 	title: "Course Content Generator | Content Suite",
 	description: "Extract Overview, Syllabus, FAQs, Glossary, Resources and Blog Content from your documents. Professional web content generation tool.",
@@ -43,14 +50,21 @@ export const metadata={
 	icons: {
 		icon: "https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif",
 	},
+	other: {
+		"google-adsense-account": "ca-pub-9874465109252768"
+	}
 };
 
 export default function RootLayout({children}) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<head>
-				{/* Google Consent Mode - Must load before AdSense */}
-				<script
+			<body
+				className={`${inter.variable} ${jetbrainsMono.variable} ${orbitron.variable} ${spaceGrotesk.variable} ${exo2.variable} ${chakraPetch.variable} ${rajdhani.variable} font-sans antialiased`}
+				suppressHydrationWarning
+			>
+				<Script
+					id="google-consent"
+					strategy="afterInteractive"
 					dangerouslySetInnerHTML={{
 						__html: `
 							window.dataLayer = window.dataLayer || [];
@@ -68,35 +82,24 @@ export default function RootLayout({children}) {
 					}}
 				/>
 				
-				{/* Google AdSense Meta Tag */}
-				<meta name="google-adsense-account" content="ca-pub-9874465109252768" />
-				
-				{/* Google AdSense Script */}
 				{process.env.NODE_ENV === 'production' && (
-					<script
-						async
-						src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
-						crossOrigin="anonymous"
-					/>
+					<>
+						<Script
+							src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
+							crossOrigin="anonymous"
+							strategy="lazyOnload"
+						/>
+						<Script
+							src="https://fundingchoicesmessages.google.com/i/pub-9874465109252768?ers=1"
+							strategy="lazyOnload"
+						/>
+					</>
 				)}
-				
-				{/* Google Funding Choices - Consent Management Platform */}
-				{process.env.NODE_ENV === 'production' && (
-					<script
-						async
-						src="https://fundingchoicesmessages.google.com/i/pub-9874465109252768?ers=1"
-					/>
-				)}
-			</head>
-			<body
-				className={`${inter.variable} ${jetbrainsMono.variable} ${orbitron.variable} ${spaceGrotesk.variable} ${exo2.variable} ${chakraPetch.variable} font-sans antialiased`}
-				suppressHydrationWarning
-			>
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"
 					enableSystem={true}
-					themes={['light','dark','nebula','inferno','toxic','synthwave','aurora']}
+					themes={['light','dark','nebula']}
 					storageKey="content-suite-theme"
 				>
 					<BackgroundSpace />

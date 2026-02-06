@@ -13,10 +13,10 @@ export function LoginScreen({onLogin}) {
 	const [password,setPassword]=useState("");
 	const [error,setError]=useState("");
 
-	const handleSubmit=(e) => {
+	const handleSubmit=async (e) => {
 		e.preventDefault();
 		setError("");
-		const user=authenticate(username,password);
+		const user=await authenticate(username,password);
 		if(user) {
 			onLogin(user);
 		} else {
@@ -74,12 +74,7 @@ export function LoginScreen({onLogin}) {
 						{/* Hardcoded hints for demo purposes */}
 						
 					</CardFooter>
-						<div className="mb-2 text-xs text-center text-muted-foreground w-full hidden ">
-							<p>Demo Credentials (User / Pass):</p>
-							<p>Admin: admin / Bilal@7</p>
-							<p>Blog: blog / Blog@123</p>
-							<p>Content: content / content@123</p>
-						</div>
+
 				</form>
 			</Card>
 		</div>

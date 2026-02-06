@@ -1,23 +1,4 @@
-export const USERS={
-	admin: {
-		username: 'admin',
-		password: 'Bilal@7',
-		role: 'admin',
-		name: 'Administrator'
-	},
-	blog: {
-		username: 'blog',
-		password: 'Blog@123',
-		role: 'blog_creator',
-		name: 'Blog Editor'
-	},
-	content: {
-		username: 'content',
-		password: 'content@123',
-		role: 'content_creator',
-		name: 'Content Creator'
-	}
-};
+// USERS moved to server-side API
 
 export const ROLES={
 	admin: ['*'],
@@ -36,11 +17,20 @@ export const NAV_ITEMS=[
 	{id: "video-compressor",label: "Video Compressor",icon: "Video"},
 ];
 
-export function authenticate(username,password) {
-	const user=USERS[username];
-	if(user&&user.password===password) {
-		const {password,...safeUser}=user;
-		return safeUser;
+export async function authenticate(username,password) {
+	try {
+		const res = await fetch('/api/auth/login', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username, password })
+		});
+		
+		if (res.ok) {
+			const data = await res.json();
+			return data.user;
+		}
+	} catch (error) {
+		console.error("Login failed", error);
 	}
 	return null;
 }

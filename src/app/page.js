@@ -378,6 +378,7 @@ export default function Home() {
 									
 									{renderActiveGenerator()}
 								</div>
+
 							</ScrollArea>
 						</main>
 					</div>

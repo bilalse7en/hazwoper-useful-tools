@@ -52,14 +52,15 @@
 
 :root {
 	--radius: 0.625rem;
-	--background: rgba(255, 255, 255, 0.98);
+	--background: #ffffff;
 	--foreground: #0f172a;
 	--primary: #0f172a;
 	--primary-foreground: #ffffff;
 	--primary-rgb: 15, 23, 42;
 	--secondary: rgba(15, 23, 42, 0.05);
 	--secondary-foreground: #0f172a;
-	--card: rgba(255, 255, 255, 0.6);
+	--card: #ffffff;
+	--card-glass-bg: rgba(255, 255, 255, 0.75);
 	--card-foreground: #0f172a;
 	--popover: rgba(255, 255, 255, 1);
 	--popover-foreground: #0f172a;
@@ -69,7 +70,7 @@
 	/* Darker for better contrast */
 	--accent: #f1f5f9;
 	--accent-foreground: #0f172a;
-	--sidebar: rgba(255, 255, 255, 0.85);
+	--sidebar: #ffffff;
 	--glow-color: rgba(15, 23, 42, 0.1);
 	--glow-size: 0px;
 	/* Glass shadow - subtle dark for light theme visibility */
@@ -78,14 +79,15 @@
 }
 
 .dark {
-	--background: rgba(2, 6, 23, 0.92);
+	--background: #020617;
 	--foreground: #f8fafc;
 	--primary: #f8fafc;
 	--primary-foreground: #020617;
 	--primary-rgb: 248, 250, 252;
 	--secondary: rgba(255, 255, 255, 0.1);
 	--secondary-foreground: #f8fafc;
-	--card: rgba(30, 41, 59, 0.4);
+	--card: #1e2b3b;
+	--card-glass-bg: rgba(30, 41, 59, 0.7);
 	--card-foreground: #f8fafc;
 	--popover: rgba(15, 23, 42, 0.95);
 	--popover-foreground: #f8fafc;
@@ -96,7 +98,7 @@
 	--accent-foreground: #f8fafc;
 	--input: rgba(255, 255, 255, 0.05);
 	--ring: #94a3b8;
-	--sidebar: rgba(15, 23, 42, 0.7);
+	--sidebar: #0f172a;
 	--glow-color: rgba(255, 255, 255, 0.1);
 	/* Glass shadow - white for dark theme */
 	--glass-shadow-color: 255, 255, 255;
@@ -105,7 +107,7 @@
 
 .nebula {
 	/* Cosmic Nebula - Navy Blue/Blue/Black Theme */
-	--background: rgba(2, 6, 23, 0.92);
+	--background: #020617;
 	--foreground: #e0f2fe;
 	--primary: #3b82f6;
 	/* Vibrant blue */
@@ -113,7 +115,8 @@
 	--primary-rgb: 59, 130, 246;
 	--secondary: rgba(59, 130, 246, 0.15);
 	--secondary-foreground: #e0f2fe;
-	--card: rgba(15, 23, 42, 0.5);
+	--card: #0f172a;
+	--card-glass-bg: rgba(15, 23, 42, 0.6);
 	/* Navy */
 	--card-foreground: #e0f2fe;
 	--popover: rgba(15, 23, 42, 0.95);
@@ -127,7 +130,7 @@
 	--ring: #60a5fa;
 	--glow-color: rgba(59, 130, 246, 0.3);
 	--glow-size: 8px;
-	--sidebar: rgba(15, 23, 42, 0.8);
+	--sidebar: #0f172a;
 	/* Navy sidebar */
 	--glass-shadow-color: 255, 255, 255;
 	--glass-shadow-highlight: 255, 255, 255;
@@ -146,9 +149,18 @@
 	letter-spacing: 0.5px;
 }
 
+
+
+
+
+/* Clean up removed themes */
+
+/* Main background gradient logic */
 @layer base {
 	body {
-		background-color: var(--background);
+        /* Default background */
+		background: var(--bg-gradient, var(--background));
+		background-attachment: fixed; 
 		color: var(--foreground);
 		font-family: var(--font-inter), system-ui, sans-serif;
 		transition: all 0.5s ease-in-out;
@@ -171,9 +183,9 @@
 
 @layer utilities {
 	.card {
-		background: var(--card) !important;
-		backdrop-filter: blur(0px) saturate(250%);
-		-webkit-backdrop-filter: blur(0px) saturate(250%);
+		background: var(--card-glass-bg) !important;
+		backdrop-filter: blur(16px) saturate(180%);
+		-webkit-backdrop-filter: blur(16px) saturate(180%);
 		box-shadow: 0 0 var(--glow-size) var(--glow-color);
 		border: 1px solid var(--border) !important;
 		border-radius: 1.5rem;
@@ -209,7 +221,7 @@
 
 	.sidebar-wrapper {
 		background: var(--sidebar) !important;
-		backdrop-filter: blur(0px) saturate(180%);
+		backdrop-filter: none;
 		border-right: 1px solid var(--border) !important;
 		box-shadow: 20px 0 50px rgba(0, 0, 0, 0.3);
 	}
