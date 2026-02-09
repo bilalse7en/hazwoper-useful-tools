@@ -1,6 +1,10 @@
 const nextConfig={
+	// Enable source maps in production for better debugging and PageSpeed Insights compliance
+	productionBrowserSourceMaps: true,
+	
 	// Empty turbopack config to silence webpack warning
 	turbopack: {},
+	
 	webpack: (config, { isServer }) => {
 		// Add support for FFmpeg.wasm
 		config.resolve.fallback = {
@@ -9,8 +13,14 @@ const nextConfig={
 			path: false,
 		};
 		
+		// Optimize source map generation
+		if (!isServer) {
+			config.devtool = 'source-map';
+		}
+		
 		return config;
 	},
+	
 	/* config options here */
 	async headers() {
 		return [
