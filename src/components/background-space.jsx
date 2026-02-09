@@ -16,7 +16,7 @@ export function BackgroundSpace() {
 		let animationFrameId;
 
 		let stars=[];
-		const count=200; // Increased density for better wave visibility
+		const count=window.innerWidth < 768 ? 80 : 150; // Dynamic count based on device
 
 		const initStars=() => {
 			canvas.width=window.innerWidth;
@@ -30,10 +30,10 @@ export function BackgroundSpace() {
 					baseX: x,
 					baseY: y,
 					size: Math.random()*2+0.5,
-					speed: Math.random()*0.5+0.1, // Drifting speed
+					speed: Math.random()*0.3+0.1, // Slower natural drift
 					opacity: Math.random()*0.5+0.5,
 					twinkleSpeed: Math.random()*0.02+0.005,
-					glow: Math.random()>0.8,
+					glow: Math.random()>0.9, // Reduced glow for performance
 					vx: 0,
 					vy: 0,
 					angle: Math.random()*Math.PI*2
@@ -55,9 +55,7 @@ export function BackgroundSpace() {
 		const handleMouseDown=(e) => {
 			const x=e.clientX;
 			const y=e.clientY;
-
-			// Blast radius: 50% of the screen dimension as requested
-			const blastRadius=Math.max(canvas.width,canvas.height)*0.5;
+			const blastRadius=Math.max(canvas.width,canvas.height)*0.4;
 
 			stars.forEach(star => {
 				const dx=star.x-x;
@@ -65,77 +63,59 @@ export function BackgroundSpace() {
 				const dist=Math.sqrt(dx*dx+dy*dy);
 
 				if(dist<blastRadius) {
-					// Powerful exponential push
 					const force=(blastRadius-dist)/blastRadius;
-					const strength=40.0; // Perfect blast strength
-
+					const strength=35.0;
 					star.vx+=(dx/dist)*force*force*strength;
 					star.vy+=(dy/dist)*force*force*strength;
-
-					// Flash brightness
 					star.opacity=1;
 				}
 			});
 		};
 
 		const draw=() => {
+			if (!canvas || !ctx) return;
 			ctx.clearRect(0,0,canvas.width,canvas.height);
 			time.current+=0.01;
 
 			const colorMap={
-				nebula: "#3b82f6",    // Blue for Cosmic Nebula
-				dark: "#ffffff",       // White for dark theme
-				light: "#000000"       // Black for light theme
+				nebula: "#3b82f6",
+				dark: "#ffffff",
+				light: "#000000"
 			};
 
 			const starColor=colorMap[theme]||"#ffffff";
 
-			// Decelerate mouse velocity
 			mouse.current.vx*=0.95;
 			mouse.current.vy*=0.95;
 
 			stars.forEach(star => {
-				// 1. Natural Drift
 				star.x-=star.speed;
 
-				// 2. Wave Motion (Ambient)
-				const waveOffset=Math.sin(time.current+star.angle)*0.2;
+				const waveOffset=Math.sin(time.current+star.angle)*0.15;
 				star.y+=waveOffset;
 
-				// 3. Perfect Proximity Repulsion
 				const dx=star.x-mouse.current.x;
 				const dy=star.y-mouse.current.y;
-				const dist=Math.sqrt(dx*dx+dy*dy);
-				const influenceRadius=100; // Visible repulsion area
+				const distSq=dx*dx+dy*dy; // Use squared distance for faster check
+				const influenceRadius=100;
 
-				if(dist<influenceRadius) {
+				if(distSq < influenceRadius * influenceRadius) {
+					const dist = Math.sqrt(distSq);
 					const force=(influenceRadius-dist)/influenceRadius;
-					const strength=6.0; // Strong but smooth push
-
-					// Repel away from cursor
+					const strength=5.0;
 					star.vx+=(dx/dist)*force*strength;
 					star.vy+=(dy/dist)*force*strength;
-
-					// Add some mouse momentum drag
-					star.vx+=mouse.current.vx*force*0.1;
-					star.vy+=mouse.current.vy*force*0.1;
-
-					star.opacity=Math.min(1,star.opacity+0.1);
+					star.vx+=mouse.current.vx*force*0.08;
+					star.vy+=mouse.current.vy*force*0.08;
+					star.opacity=Math.min(1,star.opacity+0.05);
 				}
 
-				// Apply physics
 				star.x+=star.vx;
 				star.y+=star.vy;
+				star.vx*=0.90; // Slightly stronger damping
+				star.vy*=0.90;
 
-				// Damping for smooth return to drift
-				star.vx*=0.92;
-				star.vy*=0.92;
-
-				// Boundary Handlers
-				if(star.x<-50) {
-					star.x=canvas.width+50;
-					star.y=Math.random()*canvas.height;
-				}
+				if(star.x<-50) star.x=canvas.width+50;
 				if(star.x>canvas.width+50) star.x=-50;
 				if(star.y<-50) star.y=canvas.height+50;
 				if(star.y>canvas.height+50) star.y=-50;

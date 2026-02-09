@@ -1,34 +1,50 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {useState,useEffect} from "react";
 import {useRouter} from "next/navigation";
 import {cn} from "@/lib/utils";
-import {AppSidebar} from "@/components/app-sidebar";
-import {MobileHeader} from "@/components/mobile-header";
 import {BrandLogo} from "@/components/brand-logo";
-import {LandingLoader} from "@/components/landing-loader";
-import {ThemeDialog} from "@/components/theme-dialog";
-import {LoginScreen} from "@/components/login-screen";
-import {VictoryScroll} from "@/components/victory-scroll";
-import {SessionTimer} from "@/components/session-timer";
-import {WelcomeLanding} from "@/components/welcome-landing";
-import {ScrollArea} from "@/components/ui/scroll-area";
-import {hasAccess,ROLES} from "@/lib/auth";
-import {AdSenseAd} from "@/components/adsense-ad";
 import {InitialLoadingShell} from "@/components/initial-loading-shell";
+import {hasAccess,ROLES} from "@/lib/auth";
 import {toolIdToSlug} from "@/lib/seo";
-import {
-	CourseGenerator,
-	BlogGenerator,
-	GlossaryGenerator,
-	ResourceGenerator,
-	HTMLCleaner,
-	ImageConverter,
-	VideoCompressor,
-	AIAssistant,
-	ImageToText,
-	DocumentExtractor
-} from "@/components/generators";
+
+// Dynamic imports for heavy UI screens
+const WelcomeLanding = dynamic(() => import("@/components/welcome-landing").then(mod => mod.WelcomeLanding), {
+	loading: () => <InitialLoadingShell isReady={false} />,
+	ssr: false
+});
+const LandingLoader = dynamic(() => import("@/components/landing-loader").then(mod => mod.LandingLoader), {
+	ssr: false
+});
+const LoginScreen = dynamic(() => import("@/components/login-screen").then(mod => mod.LoginScreen), {
+	ssr: false
+});
+const VictoryScroll = dynamic(() => import("@/components/victory-scroll").then(mod => mod.VictoryScroll), {
+	ssr: false
+});
+const ThemeDialog = dynamic(() => import("@/components/theme-dialog").then(mod => mod.ThemeDialog), {
+	ssr: false
+});
+
+// Dynamic imports for layout components
+const AppSidebar = dynamic(() => import("@/components/app-sidebar").then(mod => mod.AppSidebar), { ssr: false });
+const MobileHeader = dynamic(() => import("@/components/mobile-header").then(mod => mod.MobileHeader), { ssr: false });
+const SessionTimer = dynamic(() => import("@/components/session-timer").then(mod => mod.SessionTimer), { ssr: false });
+const AdSenseAd = dynamic(() => import("@/components/adsense-ad").then(mod => mod.AdSenseAd), { ssr: false });
+const ScrollArea = dynamic(() => import("@/components/ui/scroll-area").then(mod => mod.ScrollArea), { ssr: false });
+
+// Dynamic imports for generators - the heaviest part of the app
+const CourseGenerator = dynamic(() => import("@/components/generators/course-generator").then(mod => mod.CourseGenerator), { ssr: false });
+const BlogGenerator = dynamic(() => import("@/components/generators/blog-generator").then(mod => mod.BlogGenerator), { ssr: false });
+const GlossaryGenerator = dynamic(() => import("@/components/generators/glossary-generator").then(mod => mod.GlossaryGenerator), { ssr: false });
+const ResourceGenerator = dynamic(() => import("@/components/generators/resource-generator").then(mod => mod.ResourceGenerator), { ssr: false });
+const HTMLCleaner = dynamic(() => import("@/components/generators/html-cleaner").then(mod => mod.HTMLCleaner), { ssr: false });
+const ImageConverter = dynamic(() => import("@/components/generators/image-converter").then(mod => mod.ImageConverter), { ssr: false });
+const VideoCompressor = dynamic(() => import("@/components/generators/video-compressor").then(mod => mod.VideoCompressor), { ssr: false });
+const AIAssistant = dynamic(() => import("@/components/generators/ai-assistant").then(mod => mod.AIAssistant), { ssr: false });
+const ImageToText = dynamic(() => import("@/components/generators/image-to-text").then(mod => ({ default: mod.default })), { ssr: false });
+const DocumentExtractor = dynamic(() => import("@/components/generators/document-extractor").then(mod => ({ default: mod.default })), { ssr: false });
 
 export default function Home() {
 	const router = useRouter();
@@ -233,8 +249,6 @@ export default function Home() {
 			return <ImageToText />;
 		case "document-extractor":
 			return <DocumentExtractor />;
-		case "pdf-suite":
-			return <PDFSuite />;
 		default:
 			return <CourseGenerator />;
 		}
@@ -260,8 +274,6 @@ export default function Home() {
 			return "Image to Text - OCR Converter";
 		case "document-extractor":
 			return "Document Content Extractor";
-		case "pdf-suite":
-			return "PDF Suite - Secure & Extract";
 		default:
 			return "Course Content Generator";
 		}
