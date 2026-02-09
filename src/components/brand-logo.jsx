@@ -26,7 +26,9 @@ export function BrandLogo({className,size="md",animate=true}) {
 				alt="Content Suite Logo"
 				width={sizePixels[size]}
 				height={sizePixels[size]}
+				quality={75}
 				priority={true}
+				fetchPriority="high"
 				className={cn(
 					"h-full w-full object-cover",
 					animate&&"logo-animate"

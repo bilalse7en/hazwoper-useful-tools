@@ -12,7 +12,7 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 		setIsVisible(true);
 		
 		// Generate floating particles
-		const newParticles=Array.from({length: 30},(_,i) => ({
+		const newParticles=Array.from({length: 15},(_,i) => ({ // Reduced for performance
 			id: i,
 			x: Math.random()*100,
 			y: Math.random()*100,

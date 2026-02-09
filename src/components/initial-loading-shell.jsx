@@ -44,7 +44,9 @@ export function InitialLoadingShell({ isReady = false }) {
             alt="Content Suite Logo"
             width={80}
             height={80}
+            quality={75}
             priority={true}
+            fetchPriority="high"
             className="h-20 w-20 rounded-2xl shadow-2xl shadow-primary/50 object-cover"
           />
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary via-blue-500 to-cyan-500 blur-xl opacity-30 animate-pulse" />

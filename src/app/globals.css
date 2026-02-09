@@ -46,7 +46,6 @@
 	--radius-3xl: calc(var(--radius) + 12px);
 	--radius-4xl: calc(var(--radius) + 16px);
 
-	--font-exo: "Exo 2", sans-serif;
 	--font-orbitron: "Orbitron", sans-serif;
 }
 
@@ -134,7 +133,6 @@
 	/* Navy sidebar */
 	--glass-shadow-color: 255, 255, 255;
 	--glass-shadow-highlight: 255, 255, 255;
-	/* Remove full font override - will apply to headings only below */
 }
 
 /* Special font for Cosmic Nebula headings only */
@@ -145,7 +143,7 @@
 .nebula h5,
 .nebula h6,
 .nebula .heading {
-	font-family: var(--font-exo), sans-serif;
+	font-family: var(--font-orbitron), sans-serif;
 	letter-spacing: 0.5px;
 }
 

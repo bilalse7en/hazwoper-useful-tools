@@ -28,24 +28,32 @@ export function AdSenseAd({
   const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
 
   useEffect(() => {
-    // Push ads in production
-    if (isProduction && typeof window !== 'undefined') {
-      try {
-        // Wait for script to load
-        const interval = setInterval(() => {
-          if (window.adsbygoogle) {
-            clearInterval(interval);
-            window.adsbygoogle = window.adsbygoogle || [];
-            window.adsbygoogle.push({});
-          }
-        }, 100);
+    if (!isProduction || !adRef.current) return;
 
-        // Timeout after 5 seconds
-        setTimeout(() => clearInterval(interval), 5000);
-      } catch (error) {
-        // Silent error handling in production
-      }
-    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          try {
+            const interval = setInterval(() => {
+              if (window.adsbygoogle) {
+                clearInterval(interval);
+                window.adsbygoogle = window.adsbygoogle || [];
+                window.adsbygoogle.push({});
+              }
+            }, 100);
+            setTimeout(() => clearInterval(interval), 5000);
+          } catch (e) {}
+          observer.unobserve(adRef.current);
+        }
+      },
+      { rootMargin: '200px' } // Load when 200px from viewport
+    );
+
+    observer.observe(adRef.current);
+
+    return () => {
+      if (adRef.current) observer.unobserve(adRef.current);
+    };
   }, [isProduction, slot]);
 
   // Show placeholder in development

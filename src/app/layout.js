@@ -1,4 +1,4 @@
-import {Inter,JetBrains_Mono,Orbitron,Space_Grotesk,Exo_2,Chakra_Petch,Rajdhani} from "next/font/google";
+import {Inter,Orbitron} from "next/font/google";
 import Script from "next/script";
 import {ThemeProvider} from "@/components/theme-provider";
 import {BackgroundSpace} from "@/components/background-space";
@@ -9,45 +9,25 @@ const inter=Inter({
 	variable: "--font-inter",
 	subsets: ["latin"],
 	display: 'swap',
-});
-
-const jetbrainsMono=JetBrains_Mono({
-	variable: "--font-mono",
-	subsets: ["latin"],
-	display: 'swap',
+	preload: true,
 });
 
 const orbitron=Orbitron({
 	variable: "--font-orbitron",
 	subsets: ["latin"],
 	display: 'swap',
+	preload: true,
 });
 
-const spaceGrotesk=Space_Grotesk({
-	variable: "--font-space-grotesk",
-	subsets: ["latin"],
-	display: 'swap',
-});
-
-const exo2=Exo_2({
-	variable: "--font-exo",
-	subsets: ["latin"],
-	display: 'swap',
-});
-
-const chakraPetch=Chakra_Petch({
-	weight: ['300','400','500','600','700'],
-	variable: "--font-chakra",
-	subsets: ["latin"],
-	display: 'swap',
-});
-
-const rajdhani=Rajdhani({
-	weight: ['300','400','500','600','700'],
-	variable: "--font-rajdhani",
-	subsets: ["latin"],
-	display: 'swap',
-});
+export const viewport = {
+	width: 'device-width',
+	initialScale: 1,
+	maximumScale: 5,
+	themeColor: [
+		{ media: '(prefers-color-scheme: light)', color: '#ffffff' },
+		{ media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+	],
+};
 
 export const metadata={
 	title: "Course Content Generator | Content Suite",
@@ -57,15 +37,6 @@ export const metadata={
 	icons: {
 		icon: "https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif",
 	},
-	viewport: {
-		width: 'device-width',
-		initialScale: 1,
-		maximumScale: 5,
-	},
-	themeColor: [
-		{ media: '(prefers-color-scheme: light)', color: '#ffffff' },
-		{ media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
-	],
 	other: {
 		"google-adsense-account": "ca-pub-9874465109252768"
 	}
@@ -75,13 +46,15 @@ export default function RootLayout({children}) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
-				{/* Resource hints for better performance */}
-				<link rel="preconnect" href="https://media.hazwoper-osha.com" />
-				<link rel="preconnect" href="https://fonts.googleapis.com" />
-				<link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+				<link rel="preconnect" href="https://media.hazwoper-osha.com" crossOrigin="anonymous" />
+				<link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+				<link rel="preconnect" href="https://pagead2.googlesyndication.com" crossOrigin="anonymous" />
+				<link rel="dns-prefetch" href="https://media.hazwoper-osha.com" />
+				<link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+				<link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
 			</head>
 			<body
-				className={`${inter.variable} ${jetbrainsMono.variable} ${orbitron.variable} ${spaceGrotesk.variable} ${exo2.variable} ${chakraPetch.variable} ${rajdhani.variable} font-sans antialiased`}
+				className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}
 				suppressHydrationWarning
 			>
 				<Script
@@ -109,11 +82,11 @@ export default function RootLayout({children}) {
 						<Script
 							src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
 							crossOrigin="anonymous"
-							strategy="lazyOnload"
+							strategy="afterInteractive"
 						/>
 						<Script
 							src="https://fundingchoicesmessages.google.com/i/pub-9874465109252768?ers=1"
-							strategy="lazyOnload"
+							strategy="afterInteractive"
 						/>
 					</>
 				)}

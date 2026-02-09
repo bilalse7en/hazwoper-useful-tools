@@ -8,15 +8,25 @@ export function BackgroundSpace() {
 	const {theme}=useTheme();
 	const mouse=useRef({x: -1000,y: -1000,vx: 0,vy: 0,lastX: 0,lastY: 0});
 	const time=useRef(0);
+	const isVisible=useRef(true);
 
 	useEffect(() => {
 		const canvas=canvasRef.current;
 		if(!canvas) return;
-		const ctx=canvas.getContext("2d");
+		
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				isVisible.current = entry.isIntersecting;
+			},
+			{ threshold: 0.1 }
+		);
+		observer.observe(canvas);
+
+		const ctx=canvas.getContext("2d", { alpha: false }); // Optimization: no alpha channel if opaque
 		let animationFrameId;
 
 		let stars=[];
-		const count=window.innerWidth < 768 ? 80 : 150; // Dynamic count based on device
+		const count=window.innerWidth < 768 ? 50 : 120; // Further reduced for 100% performance
 
 		const initStars=() => {
 			canvas.width=window.innerWidth;
@@ -29,11 +39,11 @@ export function BackgroundSpace() {
 					y,
 					baseX: x,
 					baseY: y,
-					size: Math.random()*2+0.5,
-					speed: Math.random()*0.3+0.1, // Slower natural drift
+					size: Math.random()*1.5+0.5,
+					speed: Math.random()*0.2+0.05,
 					opacity: Math.random()*0.5+0.5,
-					twinkleSpeed: Math.random()*0.02+0.005,
-					glow: Math.random()>0.9, // Reduced glow for performance
+					twinkleSpeed: Math.random()*0.015+0.005,
+					glow: Math.random()>0.95,
 					vx: 0,
 					vy: 0,
 					angle: Math.random()*Math.PI*2
@@ -55,16 +65,17 @@ export function BackgroundSpace() {
 		const handleMouseDown=(e) => {
 			const x=e.clientX;
 			const y=e.clientY;
-			const blastRadius=Math.max(canvas.width,canvas.height)*0.4;
+			const blastRadius=Math.max(canvas.width,canvas.height)*0.35;
 
 			stars.forEach(star => {
 				const dx=star.x-x;
 				const dy=star.y-y;
-				const dist=Math.sqrt(dx*dx+dy*dy);
+				const distSq=dx*dx+dy*dy;
 
-				if(dist<blastRadius) {
+				if(distSq < blastRadius * blastRadius) {
+					const dist = Math.sqrt(distSq);
 					const force=(blastRadius-dist)/blastRadius;
-					const strength=35.0;
+					const strength=30.0;
 					star.vx+=(dx/dist)*force*force*strength;
 					star.vy+=(dy/dist)*force*force*strength;
 					star.opacity=1;
@@ -73,68 +84,67 @@ export function BackgroundSpace() {
 		};
 
 		const draw=() => {
-			if (!canvas || !ctx) return;
-			ctx.clearRect(0,0,canvas.width,canvas.height);
-			time.current+=0.01;
+			if (!isVisible.current || !canvas || !ctx) {
+				animationFrameId=requestAnimationFrame(draw);
+				return;
+			}
 
+			// Use background color based on theme for clearer clearing
 			const colorMap={
-				nebula: "#3b82f6",
-				dark: "#ffffff",
-				light: "#000000"
+				nebula: "#020617",
+				dark: "#020617",
+				light: "#ffffff"
 			};
+			const bgColor = colorMap[theme] || "#020617";
+			const starColor=theme === 'light' ? "#000000" : "#ffffff";
 
-			const starColor=colorMap[theme]||"#ffffff";
-
+			ctx.fillStyle = bgColor;
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			
+			time.current+=0.01;
 			mouse.current.vx*=0.95;
 			mouse.current.vy*=0.95;
 
 			stars.forEach(star => {
 				star.x-=star.speed;
-
-				const waveOffset=Math.sin(time.current+star.angle)*0.15;
+				const waveOffset=Math.sin(time.current+star.angle)*0.12;
 				star.y+=waveOffset;
 
 				const dx=star.x-mouse.current.x;
 				const dy=star.y-mouse.current.y;
-				const distSq=dx*dx+dy*dy; // Use squared distance for faster check
-				const influenceRadius=100;
+				const distSq=dx*dx+dy*dy;
+				const influenceRadius=80;
 
 				if(distSq < influenceRadius * influenceRadius) {
 					const dist = Math.sqrt(distSq);
 					const force=(influenceRadius-dist)/influenceRadius;
-					const strength=5.0;
+					const strength=4.0;
 					star.vx+=(dx/dist)*force*strength;
 					star.vy+=(dy/dist)*force*strength;
-					star.vx+=mouse.current.vx*force*0.08;
-					star.vy+=mouse.current.vy*force*0.08;
+					star.vx+=mouse.current.vx*force*0.06;
+					star.vy+=mouse.current.vy*force*0.06;
 					star.opacity=Math.min(1,star.opacity+0.05);
 				}
 
 				star.x+=star.vx;
 				star.y+=star.vy;
-				star.vx*=0.90; // Slightly stronger damping
-				star.vy*=0.90;
+				star.vx*=0.88;
+				star.vy*=0.88;
 
 				if(star.x<-50) star.x=canvas.width+50;
 				if(star.x>canvas.width+50) star.x=-50;
 				if(star.y<-50) star.y=canvas.height+50;
 				if(star.y>canvas.height+50) star.y=-50;
 
-				// Twinkle Logic
-				star.opacity+=star.twinkleSpeed;
-				if(star.opacity>1||star.opacity<0.2) star.twinkleSpeed*=-1;
-
-				// Render
 				ctx.beginPath();
 				ctx.arc(star.x,star.y,star.size,0,Math.PI*2);
-
 				ctx.save();
 				ctx.globalAlpha=Math.max(0.1,star.opacity);
-				ctx.fillStyle=starColor;
+				ctx.fillStyle=theme === 'nebula' ? "#3b82f6" : starColor;
 
-				if(star.glow) {
-					ctx.shadowBlur=12;
-					ctx.shadowColor=starColor;
+				if(star.glow && theme !== 'light') {
+					ctx.shadowBlur=8;
+					ctx.shadowColor=theme === 'nebula' ? "#3b82f6" : "#ffffff";
 				}
 
 				ctx.fill();
@@ -151,6 +161,7 @@ export function BackgroundSpace() {
 		draw();
 
 		return () => {
+			observer.disconnect();
 			window.removeEventListener("resize",initStars);
 			window.removeEventListener("mousemove",handleMouseMove);
 			window.removeEventListener("mousedown",handleMouseDown);
@@ -161,8 +172,8 @@ export function BackgroundSpace() {
 	return (
 		<canvas
 			ref={canvasRef}
-			className="fixed inset-0 z-[-1] pointer-events-none transition-opacity duration-1000"
-			style={{background: 'transparent'}}
+			className="fixed inset-0 z-[-1] pointer-events-none"
+			style={{ background: 'transparent' }}
 		/>
 	);
 }
