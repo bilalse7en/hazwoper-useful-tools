@@ -3,6 +3,7 @@ import Script from "next/script";
 import {ThemeProvider} from "@/components/theme-provider";
 import {BackgroundSpace} from "@/components/background-space";
 import {GdprConsent} from "@/components/gdpr-consent";
+import {DelayedScriptLoader} from "@/components/delayed-script-loader";
 import "./globals.css";
 
 const inter=Inter({
@@ -77,19 +78,8 @@ export default function RootLayout({children}) {
 					}}
 				/>
 				
-				{process.env.NODE_ENV === 'production' && (
-					<>
-						<Script
-							src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
-							crossOrigin="anonymous"
-							strategy="afterInteractive"
-						/>
-						<Script
-							src="https://fundingchoicesmessages.google.com/i/pub-9874465109252768?ers=1"
-							strategy="afterInteractive"
-						/>
-					</>
-				)}
+				{process.env.NODE_ENV === 'production' && <DelayedScriptLoader />}
+				
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"

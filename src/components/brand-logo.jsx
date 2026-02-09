@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import {cn} from "@/lib/utils";
 import {BRAND_CONFIG} from "@/lib/constants";
@@ -20,7 +18,7 @@ export function BrandLogo({className,size="md",animate=true}) {
 	};
 
 	return (
-		<div className={cn("relative shrink-0 overflow-hidden rounded-full",sizeClasses[size],className)}>
+		<div className={cn("relative shrink-0 overflow-hidden rounded-2xl",sizeClasses[size],className)}>
 			<Image
 				src={BRAND_CONFIG.logo}
 				alt="Content Suite Logo"

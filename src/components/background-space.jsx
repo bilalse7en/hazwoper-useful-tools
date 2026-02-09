@@ -158,9 +158,14 @@ export function BackgroundSpace() {
 		window.addEventListener("mousemove",handleMouseMove);
 		window.addEventListener("mousedown",handleMouseDown);
 		initStars();
-		draw();
+		
+		// Delay start to prioritize LCP/SI
+		const startTimer = setTimeout(() => {
+			draw();
+		}, 500);
 
 		return () => {
+			clearTimeout(startTimer);
 			observer.disconnect();
 			window.removeEventListener("resize",initStars);
 			window.removeEventListener("mousemove",handleMouseMove);
