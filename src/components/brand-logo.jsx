@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {cn} from "@/lib/utils";
 import {BRAND_CONFIG} from "@/lib/constants";
 
@@ -11,12 +12,21 @@ export function BrandLogo({className,size="md",animate=true}) {
 		lg: "h-16 w-16 lg:h-24 lg:w-24",
 	};
 
+	const sizePixels={
+		xs: 24,
+		sm: 32,
+		md: 36,
+		lg: 96,
+	};
+
 	return (
 		<div className={cn("relative shrink-0 overflow-hidden rounded-full",sizeClasses[size],className)}>
-			<img
+			<Image
 				src={BRAND_CONFIG.logo}
-				alt="" // Keeping alt empty here to prevent text overlays if loading is slow
-				loading="eager"
+				alt="Content Suite Logo"
+				width={sizePixels[size]}
+				height={sizePixels[size]}
+				priority={true}
 				className={cn(
 					"h-full w-full object-cover",
 					animate&&"logo-animate"
@@ -24,7 +34,7 @@ export function BrandLogo({className,size="md",animate=true}) {
 				style={{
 					imageRendering: 'auto',
 					WebkitBackfaceVisibility: 'hidden',
-					transform: 'translate3d(0, 0, 0)', // More stable GPU trigger
+					transform: 'translate3d(0, 0, 0)',
 					backfaceVisibility: 'hidden'
 				}}
 			/>

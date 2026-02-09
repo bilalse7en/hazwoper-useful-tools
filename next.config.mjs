@@ -2,6 +2,16 @@ const nextConfig={
 	// Enable source maps in production for better debugging and PageSpeed Insights compliance
 	productionBrowserSourceMaps: true,
 	
+	// Configure external image domains for optimization
+	images: {
+		remotePatterns: [
+			{
+				protocol: 'https',
+				hostname: 'media.hazwoper-osha.com',
+			},
+		],
+	},
+	
 	// Empty turbopack config to silence webpack warning
 	turbopack: {},
 	

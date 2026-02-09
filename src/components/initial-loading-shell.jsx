@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 /**
  * Initial Loading Shell - Instant Render Component
@@ -38,9 +39,12 @@ export function InitialLoadingShell({ isReady = false }) {
       <div className="flex flex-col items-center gap-6 px-4 animate-in fade-in duration-700">
         {/* Actual Brand Logo */}
         <div className="relative">
-          <img 
+          <Image 
             src="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif"
             alt="Content Suite Logo"
+            width={80}
+            height={80}
+            priority={true}
             className="h-20 w-20 rounded-2xl shadow-2xl shadow-primary/50 object-cover"
           />
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary via-blue-500 to-cyan-500 blur-xl opacity-30 animate-pulse" />
