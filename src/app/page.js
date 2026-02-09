@@ -15,6 +15,7 @@ import {WelcomeLanding} from "@/components/welcome-landing";
 import {ScrollArea} from "@/components/ui/scroll-area";
 import {hasAccess,ROLES} from "@/lib/auth";
 import {AdSenseAd} from "@/components/adsense-ad";
+import {InitialLoadingShell} from "@/components/initial-loading-shell";
 import {toolIdToSlug} from "@/lib/seo";
 import {
 	CourseGenerator,
@@ -267,7 +268,7 @@ export default function Home() {
 	};
 
 	if(isChecking) {
-		return <div className="min-h-screen bg-background" />;
+		return <InitialLoadingShell isReady={false} />;
 	}
 
 	// EXCLUSIVE VIEW: Victory Celebration
@@ -300,6 +301,9 @@ export default function Home() {
 
 	return (
 		<>
+			{/* Initial Loading Shell - Shows immediately for PageSpeed FCP */}
+			<InitialLoadingShell isReady={!isChecking && (!!user || !showWelcome)} />
+			
 			{/* PRIORITY 1: Welcome Landing (Before Game/Login) */}
 			{showWelcome && !user && !showWinCelebration && (
 				<WelcomeLanding onPlayGame={handlePlayGame} onSignIn={handleSkipToSignIn} />

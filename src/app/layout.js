@@ -50,6 +50,15 @@ export const metadata={
 	icons: {
 		icon: "https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif",
 	},
+	viewport: {
+		width: 'device-width',
+		initialScale: 1,
+		maximumScale: 5,
+	},
+	themeColor: [
+		{ media: '(prefers-color-scheme: light)', color: '#ffffff' },
+		{ media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+	],
 	other: {
 		"google-adsense-account": "ca-pub-9874465109252768"
 	}
