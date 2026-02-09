@@ -55,7 +55,7 @@ export function InitialLoadingShell({ isReady = false }) {
           <h2 className="text-2xl font-bold bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent">
             Content Suite
           </h2>
-          <p className="text-sm text-muted-foreground animate-pulse">
+          <p className="text-sm text-foreground/80 animate-pulse">
             Loading your workspace...
           </p>
         </div>

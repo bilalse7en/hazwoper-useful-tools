@@ -8,38 +8,45 @@ import "./globals.css";
 const inter=Inter({
 	variable: "--font-inter",
 	subsets: ["latin"],
+	display: 'swap',
 });
 
 const jetbrainsMono=JetBrains_Mono({
 	variable: "--font-mono",
 	subsets: ["latin"],
+	display: 'swap',
 });
 
 const orbitron=Orbitron({
 	variable: "--font-orbitron",
 	subsets: ["latin"],
+	display: 'swap',
 });
 
 const spaceGrotesk=Space_Grotesk({
 	variable: "--font-space-grotesk",
 	subsets: ["latin"],
+	display: 'swap',
 });
 
 const exo2=Exo_2({
 	variable: "--font-exo",
 	subsets: ["latin"],
+	display: 'swap',
 });
 
 const chakraPetch=Chakra_Petch({
 	weight: ['300','400','500','600','700'],
 	variable: "--font-chakra",
 	subsets: ["latin"],
+	display: 'swap',
 });
 
 const rajdhani=Rajdhani({
 	weight: ['300','400','500','600','700'],
 	variable: "--font-rajdhani",
 	subsets: ["latin"],
+	display: 'swap',
 });
 
 export const metadata={
@@ -67,6 +74,12 @@ export const metadata={
 export default function RootLayout({children}) {
 	return (
 		<html lang="en" suppressHydrationWarning>
+			<head>
+				{/* Resource hints for better performance */}
+				<link rel="preconnect" href="https://media.hazwoper-osha.com" />
+				<link rel="preconnect" href="https://fonts.googleapis.com" />
+				<link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+			</head>
 			<body
 				className={`${inter.variable} ${jetbrainsMono.variable} ${orbitron.variable} ${spaceGrotesk.variable} ${exo2.variable} ${chakraPetch.variable} ${rajdhani.variable} font-sans antialiased`}
 				suppressHydrationWarning
