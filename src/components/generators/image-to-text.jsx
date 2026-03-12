@@ -4,6 +4,8 @@ import {useState,useEffect} from "react";
 import {motion,AnimatePresence} from "framer-motion";
 import {Upload,FileImage,Copy,Download,Loader2,CheckCircle2,AlertCircle,Sparkles,Zap,Clipboard} from "lucide-react";
 import Tesseract from 'tesseract.js';
+import { ProgressButton } from "@/components/progress-button";
+import { cn } from "@/lib/utils";
 
 export default function ImageToText() {
 	const [selectedFile,setSelectedFile]=useState(null);
@@ -387,36 +389,31 @@ export default function ImageToText() {
 						</AnimatePresence>
 
 						{/* Extract Button */}
-						{selectedFile&&(
-							<motion.button
-								onClick={handleExtractText}
-								disabled={isProcessing}
-								className={`w-full mt-6 ${useAI? 'bg-gradient-to-r from-purple-500 to-pink-500':'bg-gradient-to-r from-primary via-blue-500 to-cyan-500'} text-white font-bold py-4 px-6 rounded-2xl hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
-								initial={{opacity: 0,y: 10}}
-								animate={{opacity: 1,y: 0}}
-								whileHover={{scale: 1.05}}
-								whileTap={{scale: 0.98}}
-							>
-								{isProcessing? (
-									<span className="flex flex-col items-center justify-center gap-2">
-										<div className="flex items-center gap-2">
-											<Loader2 className="w-5 h-5 animate-spin" />
-											{useAI? 'AI Extracting Text...':'Extracting Text...'} {progress}%
-										</div>
-										<div className="w-full bg-white/20 rounded-full h-2 mt-1">
-											<div
-												className="bg-white h-2 rounded-full transition-all duration-300"
-												style={{width: `${progress}%`}}
-											/>
-										</div>
-									</span>
-								):(
-									<span className="flex items-center justify-center gap-2">
-										{useAI? <Sparkles className="w-5 h-5" />:<FileImage className="w-5 h-5" />}
-										{useAI? 'Extract with AI':'Extract Text'}
-									</span>
-								)}
-							</motion.button>
+						{selectedFile && !extractedText && (
+							<div className="mt-6">
+								<ProgressButton
+									onClick={handleExtractText}
+									disabled={isProcessing}
+									isLoading={isProcessing}
+									progress={progress}
+									label={useAI ? "Extract Text with AI" : "Extract Text"}
+									loadingLabel={useAI ? "AI Processing..." : "OCR Parsing..."}
+									className={cn(
+										"w-full h-14 rounded-2xl text-white font-semibold transition-all active:scale-[0.98] shadow-md",
+										useAI 
+											? "bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-500/20" 
+											: "bg-gradient-to-r from-primary via-blue-600 to-cyan-600 shadow-blue-500/20"
+									)}
+									variant="default"
+								>
+									{!isProcessing && (
+										<span className="flex items-center justify-center gap-2 text-base">
+											{useAI ? <Sparkles className="w-4 h-4" /> : <FileImage className="w-4 h-4" />}
+											{useAI ? 'Extract Text with AI' : 'Extract Text'}
+										</span>
+									)}
+								</ProgressButton>
+							</div>
 						)}
 
 						{/* Error Message */}

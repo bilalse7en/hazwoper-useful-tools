@@ -11,12 +11,14 @@ import {
 	Download, 
 	Loader2, 
 	CheckCircle2, 
-	AlertCircle, 
 	Eye, 
 	EyeOff,
 	FileJson,
-	Clipboard
+	Clipboard,
+	Zap,
+	Send
 } from "lucide-react";
+import { ProgressButton } from "@/components/progress-button";
 import * as mammoth from "mammoth";
 import * as XLSX from "xlsx";
 
@@ -223,13 +225,15 @@ export default function DocumentExtractor() {
 										<p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
 									</div>
 								</div>
-								<button 
+								<ProgressButton 
 									onClick={handleExtract}
 									disabled={isProcessing}
-									className="bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-xl hover:scale-105 transition-transform disabled:opacity-50"
-								>
-									{isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : "EXTRACT"}
-								</button>
+									isLoading={isProcessing}
+									label="Extract Content"
+									loadingLabel="Extracting..."
+									className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold px-6 py-2.5 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+									variant="default"
+								/>
 							</motion.div>
 						)}
 

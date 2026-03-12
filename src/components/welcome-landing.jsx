@@ -1,6 +1,7 @@
 "use client";
 
 import {useState,useEffect} from "react";
+import Link from "next/link";
 import {Trophy,LogIn,Sparkles,Zap,Flame,Shield,Rocket,Star,ChevronRight,Gift} from "lucide-react";
 
 export function WelcomeLanding({onPlayGame,onSignIn}) {
@@ -282,11 +283,47 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 
 				</div>
 
+				{/* Features Brief for SEO */}
+				<div className="mt-24 w-full max-w-6xl grid md:grid-cols-3 gap-12 px-6 py-16 border-t border-white/5" style={{animation: 'fadeIn 1s ease-out 0.6s forwards', opacity: 0}}>
+					<div className="space-y-4">
+						<h3 className="text-xl font-bold text-white flex items-center gap-2">
+							<Shield className="w-5 h-5 text-green-400" />
+							Privacy First
+						</h3>
+						<p className="text-slate-400 leading-relaxed text-sm">
+							All document processing happens entirely in your local browser. Your sensitive files never touch our servers, ensuring absolute confidentiality and data security.
+						</p>
+					</div>
+					<div className="space-y-4">
+						<h3 className="text-xl font-bold text-white flex items-center gap-2">
+							<Zap className="w-5 h-5 text-cyan-400" />
+							Ultra Fast
+						</h3>
+						<p className="text-slate-400 leading-relaxed text-sm">
+							By processing files on your local device, we eliminate upload and download bottleneck times. Experience instant results with our optimized client-side neural engines.
+						</p>
+					</div>
+					<div className="space-y-4">
+						<h3 className="text-xl font-bold text-white flex items-center gap-2">
+							<Star className="w-5 h-5 text-yellow-400" />
+							Smart Extraction
+						</h3>
+						<p className="text-slate-400 leading-relaxed text-sm">
+							Extract Syllabus, FAQs, Glossaries, and more from your training documents with intelligent segmentation that understands structure and context.
+						</p>
+					</div>
+				</div>
+
 				{/* Footer Note */}
-				<div className="mt-16 text-center" style={{animation: 'fadeIn 1s ease-out 0.4s forwards', opacity: 0}}>
+				<div className="mt-16 text-center" style={{animation: 'fadeIn 1s ease-out 0.8s forwards', opacity: 0}}>
 					<p className="text-slate-500 text-sm font-medium">
 						🎁 New users? Play the game to try premium features for free!
 					</p>
+					<div className="mt-8 flex justify-center gap-6 opacity-40 hover:opacity-100 transition-opacity">
+						<Link href="/about" className="text-xs text-slate-400 hover:text-green-400 transition-colors uppercase tracking-widest font-bold">About Us</Link>
+						<Link href="/privacy" className="text-xs text-slate-400 hover:text-green-400 transition-colors uppercase tracking-widest font-bold">Privacy Policy</Link>
+						<Link href="/terms" className="text-xs text-slate-400 hover:text-green-400 transition-colors uppercase tracking-widest font-bold">Terms of Service</Link>
+					</div>
 				</div>
 
 			</div>

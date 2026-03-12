@@ -402,9 +402,118 @@ export function BlogGenerator() {
 				throw new Error(data.error || 'Analysis failed');
 			}
 
+			// Clean the structure: Remove useless metadata and redundant segments
+			const unwantedMetadata = [
+				"meta description:",
+				"meta-description:",
+				"meta description",
+				"meta title",
+				"meta title:",
+				"meta-title:",
+				// "Link:",
+				// "Link",
+				"slug:",
+				"slug",
+				"category:",
+				"category",
+				"relevant category:",
+				"relevant category",
+				"seo description:",
+				"seo description",
+				"seo title:",
+				"seo title",
+				"keyword:",
+				"keyword",
+				"keywords:"
+			];
+
+			let rawBlocks = (data.rawStructure || []);
+			let filteredBlocks = [];
+			let encounteredFAQ = false;
+			let isTruncating = false;
+
+			for (let i = 0; i < rawBlocks.length; i++) {
+				if (isTruncating) break;
+
+				const block = { ...rawBlocks[i] };
+				const originalContent = block.content || '';
+				const lowerContent = originalContent.toLowerCase().trim();
+				
+				// Identify metadata blocks
+				const isMetadata = unwantedMetadata.some(pattern => {
+					const p = pattern.toLowerCase();
+					return lowerContent.startsWith(p) || (lowerContent.includes(p) && lowerContent.length < p.length + 15);
+				});
+				
+				// Identify FAQ start
+				const isHeading = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(block.type);
+				const hasFAQWords = lowerContent === 'faq' || 
+								  lowerContent === 'faqs' || 
+								  lowerContent === 'faqs:' || 
+								  lowerContent === 'faq:' || 
+								  lowerContent.includes('frequently asked') || 
+								  lowerContent.includes('f.a.q');
+				
+				// TRUNCATION RULE: Stop if we hit metadata anywhere
+				if (isMetadata) {
+					isTruncating = true;
+					break;
+				}
+
+				// Case 1: Detect FAQ Header
+				if (!encounteredFAQ && ((isHeading && hasFAQWords) || (hasFAQWords && lowerContent.length < 50))) {
+					encounteredFAQ = true;
+					block.type = 'H1'; // Force FAQ header to H1
+					block.content = originalContent.toUpperCase(); // Professional look
+					filteredBlocks.push(block);
+					continue;
+				} 
+
+				// Case 2: Skip metadata labels at the top (before FAQ)
+				if (!encounteredFAQ && isMetadata) {
+					// Skip label and its value
+					if (i + 1 < rawBlocks.length) {
+						const nextBlock = rawBlocks[i+1];
+						const nextLower = (nextBlock.content || '').toLowerCase();
+						if (!['H1', 'H2', 'H3'].includes(nextBlock.type) && !unwantedMetadata.some(p => nextLower.includes(p))) {
+							i++; 
+						}
+					}
+					continue;
+				}
+
+				// Case 3: Process content (Normal content OR FAQ content)
+				if (encounteredFAQ) {
+					// Detect numbered questions (e.g., "1. What is...")
+					const questionMatch = originalContent.match(/^(\d+[\.\)]\s+)(.*)/);
+					
+					if (questionMatch) {
+						block.content = `<strong>${originalContent}</strong>`;
+						block._isQuestion = true;
+					} else {
+						// Format the Answer if it follows a question
+						const prevBlock = filteredBlocks[filteredBlocks.length - 1];
+						if (prevBlock && prevBlock._isQuestion && originalContent.trim().length > 0) {
+							let answerText = originalContent.trim();
+							// Normalize "Answer: " prefix
+							if (!answerText.toLowerCase().startsWith('answer:')) {
+								answerText = `Answer: ${answerText}`;
+							} else {
+								const valAfterColon = answerText.substring(answerText.indexOf(':') + 1).trim();
+								answerText = `Answer: ${valAfterColon}`;
+							}
+							block.content = answerText;
+						}
+					}
+				}
+
+				// Keep the block
+				filteredBlocks.push(block);
+			}
+
 			setAnalysisProgress(100);
 			setAnalysisResult(data);
-			setRawStructure(data.rawStructure || []);
+			setRawStructure(filteredBlocks);
 			setReviewIndex(0);
 			setShowReview(true);
 
@@ -577,6 +686,9 @@ export function BlogGenerator() {
 								src="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif" 
 								alt="HAZWOPER useful tools" 
 								className="h-16 w-auto"
+								loading="lazy"
+								width="64"
+								height="64"
 							/>
 						</div>
 						
@@ -620,13 +732,13 @@ export function BlogGenerator() {
 
 					{/* Word File Analyzer & Fixer Card */}
 					<Card className="card border-2 border-purple-500/30 bg-gradient-to-br from-purple-50/50 to-blue-50/50 dark:from-purple-950/20 dark:to-blue-950/20">
-						<CardHeader className="card-header">
-							<CardTitle className="flex items-center gap-2">
-								<Sparkles className="h-5 w-5 text-purple-500" />
+						<CardHeader className="p-4 pb-2">
+							<CardTitle className="flex items-center gap-2 text-lg font-bold">
+								<Sparkles className="h-4 w-4 text-purple-500" />
 								AI Word File Analyzer & Fixer
 							</CardTitle>
-							<p className="text-xs text-muted-foreground mt-2">
-								Fix poorly formatted Word files before processing. AI detects headings and fixes structure for SEO.
+							<p className="text-[10px] text-muted-foreground mt-1">
+								Fix structure & SEO for Word files before processing.
 							</p>
 						</CardHeader>
 						<CardContent className="card-body space-y-4">
@@ -634,10 +746,10 @@ export function BlogGenerator() {
 							{!showReview ? (
 								<>
 									<div className="space-y-2">
-										<div className="file-upload-area p-6 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg text-center cursor-pointer hover:bg-purple-100/50 dark:hover:bg-purple-900/20 transition-colors"
+										<div className="file-upload-area p-3 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg text-center cursor-pointer hover:bg-purple-100/50 dark:hover:bg-purple-900/20 transition-colors"
 											onClick={() => analyzerInputRef.current?.click()}>
-											<Sparkles className="mx-auto h-6 w-6 text-purple-500 mb-2" />
-											<p className="text-sm text-muted-foreground">Click to upload Word file for analysis</p>
+											<Sparkles className="mx-auto h-5 w-5 text-purple-500 mb-1" />
+											<p className="text-xs text-muted-foreground">Click to upload Word file for analysis</p>
 										</div>
 										<Input
 											ref={analyzerInputRef}
@@ -662,9 +774,10 @@ export function BlogGenerator() {
 									<Button 
 										onClick={handleAnalyzeFile} 
 										disabled={!analyzerFile || isAnalyzing}
-										className="w-full btn bg-purple-600 hover:bg-purple-700 text-white"
+										size="sm"
+										className="w-full btn bg-purple-600 hover:bg-purple-700 text-white h-9 text-xs"
 									>
-										<Sparkles className="mr-2 h-4 w-4" /> Analyze & Start "1-by-1" Review
+										<Sparkles className="mr-2 h-4 w-4" /> Analyze & Start &quot;1-by-1&quot; Review
 									</Button>
 								</>
 							) : (
@@ -696,9 +809,9 @@ export function BlogGenerator() {
 
 					{/* Settings Card */}
 					<Card className="card">
-						<CardHeader className="card-header">
-							<CardTitle className="flex items-center gap-2">
-								<ImageIcon className="h-5 w-5 text-info" />
+						<CardHeader className="p-4 pb-0">
+							<CardTitle className="flex items-center gap-2 text-lg font-bold">
+								<ImageIcon className="h-4 w-4 text-info" />
 								Blog Settings
 							</CardTitle>
 						</CardHeader>
@@ -858,37 +971,41 @@ export function BlogGenerator() {
 			{showReview && (
 				/* FULL SCREEN EDITOR FOR ALL 121 SECTIONS */
 				<div className="fixed inset-0 z-[100] bg-background flex flex-col animate-in fade-in duration-200">
-					{/* Header */}
-					<div className="p-4 border-b flex items-center justify-between bg-gradient-to-r from-purple-500/10 to-blue-500/10">
-						<div className="flex items-center gap-3">
-							<Sparkles className="h-6 w-6 text-purple-500" />
-							<div>
-								<h2 className="text-xl font-bold text-purple-600">Full Document Editor</h2>
-								<p className="text-xs text-muted-foreground">Editing all {rawStructure.length} sections • Format with bold, italic, headings, lists & more</p>
+					{/* Compact Header */}
+					<div className="p-2 px-4 border-b flex items-center justify-between bg-white dark:bg-slate-900 shadow-sm" style={{ background: 'var(--card)', opacity: 1 }}>
+						<div className="flex items-center gap-2">
+							<Sparkles className="h-5 w-5 text-purple-500" />
+							<div className="flex items-baseline gap-2">
+								<h2 className="text-lg font-bold text-purple-600">AI Analyzer</h2>
+								<p className="text-[10px] text-muted-foreground opacity-70 border-l pl-2 border-purple-200">
+									Editing {rawStructure.length} blocks • Format & Fix
+								</p>
 							</div>
 						</div>
 						<div className="flex gap-2">
 							<Button 
 								variant="outline" 
+								size="sm"
 								onClick={() => setShowReview(false)}
-								className="border-red-200 hover:bg-red-50 text-red-600"
+								className="h-8 border-red-200 hover:bg-red-50 text-red-600 text-xs"
 							>
-								Cancel & Close
+								Cancel
 							</Button>
 							<Button
 								onClick={handleFinishReview}
 								disabled={isGeneratingDoc}
-								className="bg-green-600 hover:bg-green-700 text-white font-bold px-6"
+								size="sm"
+								className="h-8 bg-green-600 hover:bg-green-700 text-white font-bold px-4 text-xs"
 							>
 								{isGeneratingDoc ? (
 									<>
-										<Sparkles className="animate-spin mr-2 h-4 w-4" />
-										Generating...
+										<Sparkles className="animate-spin mr-1 h-3 w-3" />
+										Saving...
 									</>
 								) : (
 									<>
-										<Check className="mr-2 h-4 w-4" />
-										Generate Perfect Word Document
+										<Check className="mr-1 h-3 w-3" />
+										Generate Word
 									</>
 								)}
 							</Button>

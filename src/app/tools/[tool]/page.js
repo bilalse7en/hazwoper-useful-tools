@@ -27,6 +27,9 @@ import {
   DocumentExtractor
 } from "@/components/generators";
 
+import { PublicToolLanding } from "@/components/public-tool-landing";
+import { ThemeDialog } from "@/components/theme-dialog";
+
 // Map slugs to components
 const toolComponents = {
   'web-content': CourseGenerator,
@@ -45,6 +48,7 @@ export default function ToolPage({ params }) {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const toolSlug = params.tool;
   const toolId = slugToToolId[toolSlug];
   const ToolComponent = toolComponents[toolSlug];
@@ -64,14 +68,10 @@ export default function ToolPage({ params }) {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
       } catch (e) {
-        // Redirect to homepage if no valid user
-        router.push('/');
+        setUser(null);
       }
-    } else {
-      // Redirect to homepage if not logged in
-      router.push('/');
     }
-  }, [router]);
+  }, []);
 
   // If invalid tool, redirect
   if (!ToolComponent) {
@@ -79,17 +79,17 @@ export default function ToolPage({ params }) {
     return null;
   }
 
-  // Loading state while checking auth
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleLogout = () => {
+    setUser(null);
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('reward_claim_time');
+    sessionStorage.removeItem('reward_attempted');
+    router.push('/');
+  };
+
+  const handleAction = () => {
+    router.push('/');
+  };
 
   return (
     <>
@@ -97,41 +97,45 @@ export default function ToolPage({ params }) {
       {toolSchema && <JsonLd data={toolSchema} />}
       {breadcrumbSchema && <JsonLd data={breadcrumbSchema} />}
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-transparent transition-opacity duration-500">
         {/* Mobile Header */}
         <MobileHeader
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          activeTab={toolId}
+          onTabChange={(tab) => {
+            const nextSlug = Object.entries(slugToToolId).find(([s, id]) => id === tab)?.[0];
+            if (nextSlug) router.push(`/tools/${nextSlug}`);
+          }}
+          onThemeToggle={() => setThemeDialogOpen(true)}
+          user={user}
+          onLogout={handleLogout}
         />
 
         <div className="flex h-screen overflow-hidden">
           {/* Sidebar */}
           <AppSidebar
             activeTab={toolId}
-            setActiveTab={(newToolId) => {
-              // Navigate to the new tool page
-              const newSlug = Object.entries(slugToToolId).find(
-                ([slug, id]) => id === newToolId
-              )?.[0];
-              if (newSlug) {
-                router.push(`/tools/${newSlug}`);
-              }
+            onTabChange={(tab) => {
+              const nextSlug = Object.entries(slugToToolId).find(([s, id]) => id === tab)?.[0];
+              if (nextSlug) router.push(`/tools/${nextSlug}`);
             }}
-            user={user}
             collapsed={sidebarCollapsed}
-            onCollapsedChange={setSidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onThemeToggle={() => setThemeDialogOpen(true)}
+            user={user}
+            onLogout={handleLogout}
+            className="hidden lg:block fixed left-0 top-0 z-40 h-screen"
           />
 
           {/* Main Content */}
           <main
             className={cn(
-              "flex-1 transition-all duration-300 ease-in-out",
-              sidebarCollapsed ? "md:ml-16" : "md:ml-64"
+              "flex-1 transition-all duration-300 ease-in-out lg:pt-0",
+              sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
             )}
           >
             <ScrollArea className="h-screen">
               {/* Content Area */}
-              <div className="container mx-auto px-4 py-8">
+              <div className="container mx-auto px-4 py-8 max-w-7xl">
                 {/* AdSense Banner - Top of Content */}
                 <div className="mb-8 flex justify-center">
                   <AdSenseAd 
@@ -141,15 +145,22 @@ export default function ToolPage({ params }) {
                   />
                 </div>
                 
-                {/* Tool Component */}
-                <ToolComponent />
+                {/* Condition: Show Actual Tool if User, else Show Public Landing */}
+                {user ? (
+                  <ToolComponent />
+                ) : (
+                  <PublicToolLanding toolSlug={toolSlug} onAction={handleAction} />
+                )}
               </div>
             </ScrollArea>
           </main>
-
-          {/* Session Timer */}
-          <SessionTimer user={user} />
         </div>
+
+        {/* Theme Dialog */}
+        <ThemeDialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen} />
+
+        {/* Session Timer (only for users) */}
+        {user && <SessionTimer onExpire={handleLogout} />}
       </div>
     </>
   );

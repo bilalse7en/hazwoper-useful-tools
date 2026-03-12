@@ -25,6 +25,7 @@ import {
 	generateMainPointsCode
 } from "@/lib/docx-processor";
 import {PreviewDrawer} from "@/components/preview-drawer";
+import {ProgressButton} from "@/components/progress-button";
 
 export function CourseGenerator() {
 	const [courseName,setCourseName]=useState("");
@@ -197,7 +198,7 @@ export function CourseGenerator() {
 								</Button>
 							</div>
 
-							<div className="space-y-2">
+							<div className="space-y-4">
 								<div className="file-upload-area p-8 border-2 border-dashed rounded-lg text-center cursor-pointer hover:bg-muted/50 transition-colors"
 									onClick={() => fileInputRef.current?.click()}>
 									<Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
@@ -211,69 +212,72 @@ export function CourseGenerator() {
 									className="hidden"
 								/>
 								<div className="text-xs text-muted-foreground mt-1 text-center">
-									{file? `Selected: ${file.name}`:"No file selected"}
+									{file ? `Selected: ${file.name}` : "No file selected"}
+								</div>
+								
+								{/* Media URL - Integration */}
+								<div className="space-y-3 pt-4 border-t">
+									<Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground pl-1">Overview Media (Optional)</Label>
+									<div className="space-y-2">
+										<Input
+											placeholder="Vimeo/YouTube URL or image path"
+											value={mediaUrl}
+											onChange={(e) => setMediaUrl(e.target.value)}
+											className="form-control text-xs"
+										/>
+										<p className="text-[9px] text-muted-foreground italic pl-1">
+											Auto-detects video or image based on URL. Leave empty to skip.
+										</p>
+									</div>
+								</div>
+
+								<div className="pt-2">
+									<ProgressButton 
+										onClick={handleUpload} 
+										isLoading={isProcessing}
+										progress={progress}
+										disabled={!file || !courseName}
+										label="Process and Prepare Course"
+										loadingLabel={progressText || "Processing"}
+										className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl text-sm font-semibold shadow-md transition-all active:scale-[0.98]"
+										variant="default"
+									/>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
 
-					{/* Progress Card */}
-					{isProcessing&&(
-						<Card className="card">
-							<CardContent className="card-body pt-6">
-								<Progress value={progress} className="progress-bar mb-2" />
-								<p className="text-center text-sm text-muted-foreground">{progressText}</p>
+
+					{/* Actions Card - Hidden until processed */}
+					{courseData && (
+						<Card className="card animate-in fade-in slide-in-from-top-4 duration-500">
+							<CardHeader className="card-header">
+								<CardTitle className="flex items-center gap-2">
+									<Code className="h-5 w-5 text-info" />
+									Generate HTML Content
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="card-body">
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<Button onClick={handleGenerateMainPoints} className="btn bg-purple-600 hover:bg-purple-700 text-white h-11 rounded-xl font-medium text-sm">
+										<Code className="mr-2 h-4 w-4" /> Main Points
+									</Button>
+									<Button onClick={handleGenerateOverview} className="btn bg-green-600 hover:bg-green-700 text-white h-11 rounded-xl font-medium text-sm">
+										<Code className="mr-2 h-4 w-4" /> Generate Overview
+									</Button>
+									<Button onClick={handleGenerateObjectives} className="btn bg-green-600 hover:bg-green-700 text-white h-11 rounded-xl font-medium text-sm">
+										<Code className="mr-2 h-4 w-4" /> Course Objectives
+									</Button>
+									<Button onClick={handleGenerateSyllabus} className="btn bg-green-600 hover:bg-green-700 text-white h-11 rounded-xl font-medium text-sm">
+										<Code className="mr-2 h-4 w-4" /> Generate Syllabus
+									</Button>
+									<Button onClick={handleGenerateFAQ} className="btn bg-green-600 hover:bg-green-700 text-white h-11 rounded-xl font-medium text-sm">
+										<Code className="mr-2 h-4 w-4" /> Generate FAQ
+									</Button>
+								</div>
 							</CardContent>
 						</Card>
 					)}
-
-					{/* Actions Card */}
-					<Card className="card">
-						<CardHeader className="card-header">
-							<CardTitle className="flex items-center gap-2">
-								<Code className="h-5 w-5 text-info" />
-								Generate Content
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="card-body">
-							{/* Optional Media Section for Overview */}
-							<div className="space-y-3 mb-4 p-3 border rounded-lg bg-muted/30">
-								<Label className="text-sm font-semibold">Overview Media (Optional)</Label>
-								<div className="space-y-2">
-									<Input
-										placeholder="Enter media URL (e.g., video/image)"
-										value={mediaUrl}
-										onChange={(e) => setMediaUrl(e.target.value)}
-										className="form-control text-sm"
-									/>
-									<p className="text-xs text-muted-foreground">
-										Auto-detects video (Vimeo, YouTube) or image (.png, .jpg, .webp, etc.) based on URL. Leave empty to skip media.
-									</p>
-								</div>
-							</div>
-
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-								<Button onClick={handleUpload} className="btn bg-primary hover:bg-primary/90 text-primary-foreground">
-									<Upload className="mr-2 h-4 w-4" /> Upload File
-								</Button>
-								<Button onClick={handleGenerateMainPoints} className="btn bg-purple-600 hover:bg-purple-700 text-white">
-									<Code className="mr-2 h-4 w-4" /> Main Points
-								</Button>
-								<Button onClick={handleGenerateOverview} className="btn bg-green-600 hover:bg-green-700 text-white">
-									<Code className="mr-2 h-4 w-4" /> Generate Overview
-								</Button>
-								<Button onClick={handleGenerateObjectives} className="btn bg-green-600 hover:bg-green-700 text-white">
-									<Code className="mr-2 h-4 w-4" /> Course Objectives
-								</Button>
-								<Button onClick={handleGenerateSyllabus} className="btn bg-green-600 hover:bg-green-700 text-white">
-									<Code className="mr-2 h-4 w-4" /> Generate Syllabus
-								</Button>
-								<Button onClick={handleGenerateFAQ} className="btn bg-green-600 hover:bg-green-700 text-white">
-									<Code className="mr-2 h-4 w-4" /> Generate FAQ
-								</Button>
-							</div>
-						</CardContent>
-					</Card>
 
 				</div>
 

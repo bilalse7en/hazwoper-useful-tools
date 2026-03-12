@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { processResourceFile } from "@/lib/excel-processor";
 import { PreviewDrawer } from "@/components/preview-drawer";
+import { ProgressButton } from "@/components/progress-button";
 
 export function ResourceGenerator() {
 	const [file, setFile] = useState(null);
@@ -137,32 +138,24 @@ export function ResourceGenerator() {
 								<div className="text-xs text-muted-foreground mt-1 text-center">
 									{file ? `Selected: ${file.name}` : "No file selected"}
 								</div>
+
+								<div className="pt-2">
+									<ProgressButton 
+										onClick={handleGenerate} 
+										disabled={!file || isProcessing}
+										isLoading={isProcessing}
+										progress={progress}
+										label="Process and Generate Resources"
+										loadingLabel={progressText || "Processing"}
+										className="btn w-full bg-green-600 hover:bg-green-700 text-white h-11 rounded-xl text-sm font-medium shadow-md"
+										variant="default"
+									/>
+								</div>
 							</div>
 						</CardContent>
 					</Card>
 
-					{isProcessing && (
-						<Card className="card">
-							<CardContent className="card-body pt-6">
-								<Progress value={progress} className="progress-bar mb-2" />
-								<p className="text-center text-sm text-muted-foreground">{progressText}</p>
-							</CardContent>
-						</Card>
-					)}
 
-					<Card className="card">
-						<CardHeader className="card-header">
-							<CardTitle className="flex items-center gap-2">
-								<Code className="h-5 w-5 text-info" />
-								Generate Content
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="card-body">
-							<Button onClick={handleGenerate} className="btn w-full bg-green-600 hover:bg-green-700 text-white">
-								<Code className="mr-2 h-4 w-4" /> Generate Resource HTML
-							</Button>
-						</CardContent>
-					</Card>
 
 				</div>
 

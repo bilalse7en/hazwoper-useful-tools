@@ -20,6 +20,7 @@ import {
 	generateGlossaryCode
 } from "@/lib/docx-processor";
 import { PreviewDrawer } from "@/components/preview-drawer";
+import { ProgressButton } from "@/components/progress-button";
 
 export function GlossaryGenerator() {
 	const [file, setFile] = useState(null);
@@ -132,7 +133,7 @@ export function GlossaryGenerator() {
 								</Button>
 							</div>
 
-							<div className="space-y-2">
+							<div className="space-y-2 text-center">
 								<div className="file-upload-area p-8 border-2 border-dashed rounded-lg text-center cursor-pointer hover:bg-muted/50 transition-colors"
 									onClick={() => fileInputRef.current?.click()}>
 									<Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
@@ -145,40 +146,43 @@ export function GlossaryGenerator() {
 									onChange={handleFileChange}
 									className="hidden"
 								/>
-								<div className="text-xs text-muted-foreground mt-1">
+								<div className="text-xs text-muted-foreground mt-1 text-center">
 									{file ? `Selected: ${file.name}` : "No file selected"}
+								</div>
+								
+								<div className="pt-2">
+									<ProgressButton 
+										onClick={handleUpload} 
+										disabled={!file || isProcessing}
+										isLoading={isProcessing}
+										progress={progress}
+										label="Process Glossary File"
+										loadingLabel={progressText || "Processing"}
+										className="w-full bg-primary hover:bg-primary/90 h-11 rounded-xl text-sm font-medium shadow-md"
+										variant="default"
+									/>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
 
-					{isProcessing && (
-						<Card className="card">
-							<CardContent className="card-body pt-6">
-								<Progress value={progress} className="progress-bar mb-2" />
-								<p className="text-center text-sm text-muted-foreground">{progressText}</p>
+
+					{/* Actions Card - Hidden until processed */}
+					{glossaryData && (
+						<Card className="card animate-in fade-in slide-in-from-top-4 duration-500">
+							<CardHeader className="card-header">
+								<CardTitle className="flex items-center gap-2">
+									<Code className="h-5 w-5 text-info" />
+									Generate Content
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="card-body">
+								<Button onClick={handleGenerate} className="btn w-full bg-green-600 hover:bg-green-700 text-white h-11 rounded-xl font-medium text-sm shadow-sm">
+									<Code className="mr-2 h-4 w-4" /> Generate Glossary Code
+								</Button>
 							</CardContent>
 						</Card>
 					)}
-
-					<Card className="card">
-						<CardHeader className="card-header">
-							<CardTitle className="flex items-center gap-2">
-								<Code className="h-5 w-5 text-info" />
-								Generate Content
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="card-body">
-							<div className="grid grid-cols-2 gap-2">
-								<Button onClick={handleUpload} className="btn bg-primary hover:bg-primary/90">
-									<Upload className="mr-2 h-4 w-4" /> 1. Process File
-								</Button>
-								<Button onClick={handleGenerate} className="btn bg-green-600 hover:bg-green-700 text-white">
-									<Code className="mr-2 h-4 w-4" /> 2. Generate Code
-								</Button>
-							</div>
-						</CardContent>
-					</Card>
 
 				</div>
 

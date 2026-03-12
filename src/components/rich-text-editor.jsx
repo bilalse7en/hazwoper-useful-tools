@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Save, Eye, Download, Undo, Redo, Bold, Italic, Underline, Link, List, ListOrdered, Image as ImageIcon, ChevronDown } from 'lucide-react';
+import { Save, Eye, Download, Undo, Redo, Bold, Italic, Underline, Link, List, ListOrdered, Image as ImageIcon, ChevronDown, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -18,7 +19,7 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 	const saveTimeoutRef = useRef(null);
 	
 	// Blog settings state
-	const [showBlogSettings, setShowBlogSettings] = useState(false);
+	const [showImageTools, setShowImageTools] = useState(false);
 	const [featuredImageUrl, setFeaturedImageUrl] = useState('');
 	const [featuredImageAlt, setFeaturedImageAlt] = useState('');
 	const [currentHeading, setCurrentHeading] = useState('p'); // Track current heading
@@ -29,11 +30,17 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 			// Only set content if it's different from current content
 			if (editorRef.current.innerHTML !== content) {
 				editorRef.current.innerHTML = content;
-				// Initialize history with first state
-				setHistory([content]);
-				setHistoryIndex(0);
+				// Initialize history with first state in next tick to avoid cascading renders
+				setTimeout(() => {
+					if (editorRef.current) {
+						setHistory([content]);
+						setHistoryIndex(0);
+						setIsReady(true);
+					}
+				}, 0);
+			} else {
+				setTimeout(() => setIsReady(true), 0);
 			}
-			setIsReady(true);
 		}
 	}, [content]);
 
@@ -389,31 +396,31 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 	};
 
 	return (
-		<div className="bg-background flex flex-col relative h-full" ref={toolbarRootRef}>
+		<div className="bg-white dark:bg-slate-950 flex flex-col relative h-full" ref={toolbarRootRef}>
 			{/* Fixed Toolbar at Top */}
 			<div 
-				className="fixed left-0 right-0 z-[200] flex items-center justify-between gap-2 p-3 border-b bg-background/95 shadow-lg backdrop-blur-md px-10 py-3"
+				className="fixed left-0 right-0 z-[200] flex items-center justify-between gap-1 p-2 border-b bg-white/95 dark:bg-slate-900/95 shadow-md backdrop-blur-md px-4 py-1.5"
 			>
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-1">
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handleUndo}
 						disabled={!isReady || historyIndex <= 0}
-						className="h-8"
+						className="h-7 w-7 p-0"
 						title="Undo"
 					>
-						<Undo className="h-3.5 w-3.5" />
+						<Undo className="h-3 w-3" />
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handleRedo}
 						disabled={!isReady || historyIndex >= history.length - 1}
-						className="h-8"
+						className="h-7 w-7 p-0"
 						title="Redo"
 					>
-						<Redo className="h-3.5 w-3.5" />
+						<Redo className="h-3 w-3" />
 					</Button>
 					<div className="w-px h-6 bg-border mx-1" />
 					<Button
@@ -421,40 +428,40 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 						size="sm"
 						onClick={handleBold}
 						disabled={!isReady}
-						className="h-8 font-bold"
+						className="h-7 w-7 p-0 font-bold"
 						title="Bold (Ctrl+B)"
 					>
-						<Bold className="h-3.5 w-3.5" />
+						<Bold className="h-3 w-3" />
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handleItalic}
 						disabled={!isReady}
-						className="h-8 italic"
+						className="h-7 w-7 p-0 italic"
 						title="Italic (Ctrl+I)"
 					>
-						<Italic className="h-3.5 w-3.5" />
+						<Italic className="h-3 w-3" />
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handleUnderline}
 						disabled={!isReady}
-						className="h-8 underline"
+						className="h-7 w-7 p-0 underline"
 						title="Underline (Ctrl+U)"
 					>
-						<Underline className="h-3.5 w-3.5" />
+						<Underline className="h-3 w-3" />
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handleLink}
 						disabled={!isReady}
-						className="h-8"
+						className="h-7 w-7 p-0"
 						title="Insert Link"
 					>
-						<Link className="h-3.5 w-3.5" />
+						<Link className="h-3 w-3" />
 					</Button>
 					<div className="w-px h-6 bg-border mx-1" />
 					<Button
@@ -462,20 +469,20 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 						size="sm"
 						onClick={handleInsertUnorderedList}
 						disabled={!isReady}
-						className="h-8"
+						className="h-7 w-7 p-0"
 						title="Bullet List"
 					>
-						<List className="h-3.5 w-3.5" />
+						<List className="h-3 w-3" />
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handleInsertOrderedList}
 						disabled={!isReady}
-						className="h-8"
+						className="h-7 w-7 p-0"
 						title="Numbered List"
 					>
-						<ListOrdered className="h-3.5 w-3.5" />
+						<ListOrdered className="h-3 w-3" />
 					</Button>
 					{/* Heading selector */}
 					<select
@@ -490,68 +497,93 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 							setCurrentHeading(tag);
 						}}
 						disabled={!isReady}
-						className="h-8 ml-2"
+						className="h-7 ml-1 text-[11px] px-1 border rounded bg-transparent"
 					>
-						<option value="p">Normal</option>
-						<option value="h1">Heading 1</option>
-						<option value="h2">Heading 2</option>
-						<option value="h3">Heading 3</option>
-						<option value="h4">Heading 4</option>
-						<option value="h5">Heading 5</option>
-						<option value="h6">Heading 6</option>
+						<option value="p">P</option>
+						<option value="h1">H1</option>
+						<option value="h2">H2</option>
+						<option value="h3">H3</option>
+						<option value="h4">H4</option>
+						<option value="h5">H5</option>
+						<option value="h6">H6</option>
 					</select>
+					<Button
+						variant={showImageTools ? "secondary" : "ghost"}
+						size="sm"
+						onClick={() => setShowImageTools(!showImageTools)}
+						className={`h-7 w-7 p-0 ml-1 ${showImageTools ? 'bg-purple-500/10 text-purple-600' : ''}`}
+						title="Image Settings"
+					>
+						<ImageIcon className="h-3.5 w-3.5" />
+					</Button>
 				</div>
 				
-				{/* Blog Settings - Featured Image */}
-				<div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-4 ml-2">
-					<div className="flex items-center gap-1">
-						<ImageIcon className="h-4 w-4 text-muted-foreground" />
-						<Input
-							type="text"
-							placeholder="Featured Image URL (optional)"
-							value={featuredImageUrl}
-							onChange={(e) => setFeaturedImageUrl(e.target.value)}
-							className="h-7 w-48 text-xs"
-						/>
-					</div>
-					<Input
-						type="text"
-						placeholder="Alt Text (optional)"
-						value={featuredImageAlt}
-						onChange={(e) => setFeaturedImageAlt(e.target.value)}
-						className="h-7 w-32 text-xs"
-					/>
-				</div>
+				<AnimatePresence>
+					{showImageTools && (
+						<motion.div 
+							initial={{ opacity: 0, x: 10 }}
+							animate={{ opacity: 1, x: 0 }}
+							exit={{ opacity: 0, x: 10 }}
+							className="flex items-center gap-1.5 bg-purple-500/5 dark:bg-purple-500/10 p-1 px-2 rounded-md border border-purple-100 dark:border-purple-900 ml-auto"
+						>
+							<div className="flex items-center gap-1">
+								<ImageIcon className="h-3 w-3 text-purple-500" />
+								<Input
+									type="text"
+									placeholder="Image URL"
+									value={featuredImageUrl}
+									onChange={(e) => setFeaturedImageUrl(e.target.value)}
+									className="h-6 w-36 text-[10px] px-2 bg-white dark:bg-slate-900 border-purple-200"
+								/>
+							</div>
+							<Input
+								type="text"
+								placeholder="Alt Text"
+								value={featuredImageAlt}
+								onChange={(e) => setFeaturedImageAlt(e.target.value)}
+								className="h-6 w-24 text-[10px] px-2 bg-white dark:bg-slate-900 border-purple-200"
+							/>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setShowImageTools(false)}
+								className="h-5 w-5 p-0 hover:bg-purple-100 text-purple-600 ml-1"
+							>
+								<X className="h-3 w-3" />
+							</Button>
+						</motion.div>
+					)}
+				</AnimatePresence>
 				
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-1.5">
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handlePreview}
 						disabled={!isReady}
-						className="h-8 w-8 p-0"
+						className="h-7 w-7 p-0"
 						title="Preview"
 					>
-						<Eye className="h-4 w-4" />
+						<Eye className="h-3.5 w-3.5" />
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handleDownload}
 						disabled={!isReady}
-						className="h-8 w-8 p-0"
+						className="h-7 w-7 p-0"
 						title="Download HTML"
 					>
-						<Download className="h-4 w-4" />
+						<Download className="h-3.5 w-3.5" />
 					</Button>
 					<Button
 						size="sm"
 						onClick={handleSave}
 						disabled={!isReady}
-						className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white"
+						className="h-7 w-7 p-0 bg-green-600 hover:bg-green-700 text-white"
 						title="Save Changes"
 					>
-						<Save className="h-4 w-4" />
+						<Save className="h-3.5 w-3.5" />
 					</Button>
 				</div>
 			</div>
@@ -576,7 +608,7 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 
 		{/* Editor Container - with top padding for fixed toolbar */}
 		<div 
-			className={`p-6 bg-background relative flex-1 ${featuredImageUrl ? 'mt-32' : 'mt-14'}`}
+			className={`p-6 bg-white dark:bg-slate-950 relative flex-1 ${featuredImageUrl ? 'mt-24' : 'mt-11'}`}
 			style={{ borderBottom: '1px solid #e5e7eb' }}
 		>
 

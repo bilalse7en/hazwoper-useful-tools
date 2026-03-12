@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import {cn} from "@/lib/utils";
 import {formatFileSize} from "@/lib/image-converter";
+import {ProgressButton} from "@/components/progress-button";
 import {FFmpeg} from "@ffmpeg/ffmpeg";
 import {fetchFile,toBlobURL} from "@ffmpeg/util";
 
@@ -832,38 +833,31 @@ export function VideoCompressor() {
 							</div>
 						</Button>
 					):(
-						<Button
+						<ProgressButton
 							onClick={processVideo}
 							disabled={isProcessing || (compressionMode === 'client' && !ffmpegLoaded)}
+							isLoading={isProcessing}
+							progress={progress}
+							label={compressionMode === 'client' && !ffmpegLoaded ? "Loading Engine..." : "Start Compression"}
+							loadingLabel={progressMessage || (COMPRESSION_PRESETS.find(p => p.id===qualityPreset)?.twoPass? "Two-Pass Encoding...":"Encoding...")}
 							className={cn(
-								"h-20 w-full rounded-[2rem] shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.2),0_20px_60px_rgba(var(--primary-rgb),0.2)] border-t border-white/10 group overflow-hidden relative transition-all duration-300",
-								isProcessing||(compressionMode === 'client' && !ffmpegLoaded)? "bg-muted cursor-not-allowed border-none shadow-[inset_0_2px_10px_rgba(var(--glass-shadow-color),0.08)] text-muted-foreground":"bg-primary hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.98] text-primary-foreground"
+								"h-14 w-full rounded-2xl shadow-md transition-all active:scale-[0.98]",
+								isProcessing ? "bg-muted shadow-none" : "bg-primary hover:bg-primary/90 text-primary-foreground"
 							)}
+							variant="default"
 						>
-							{isProcessing? (
-								<div className="flex flex-col items-center gap-2">
-									<span className="text-muted-foreground/60 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
-										{COMPRESSION_PRESETS.find(p => p.id===qualityPreset)?.twoPass? "Two-Pass Processing...":"Processing..."}
-									</span>
-								</div>
-							):(compressionMode === 'client' && !ffmpegLoaded)? (
-								<div className="flex flex-col items-center gap-2">
-									<span className="text-muted-foreground/60 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">
-										Loading Engine...
-									</span>
-								</div>
-							):(
-								<div className="flex flex-col items-center justify-center gap-1">
-									<div className="flex items-center gap-3">
-										<Flame className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
-										<span className="text-lg font-black uppercase tracking-[0.2em] font-orbitron">Compress</span>
+							{!isProcessing && (
+								<div className="flex flex-col items-center justify-center -space-y-0.5">
+									<div className="flex items-center gap-2">
+										<Flame className="w-4 h-4 fill-current" />
+										<span className="text-base font-semibold">Compress Video</span>
 									</div>
-									<span className="text-[8px] font-bold uppercase tracking-[0.3em] opacity-40 group-hover:opacity-80 transition-opacity">
+									<span className="text-[10px] font-medium opacity-70">
 										{useTargetSize? `Target: ${targetSizeMB} MB`:COMPRESSION_PRESETS.find(p => p.id===qualityPreset)?.desc}
 									</span>
 								</div>
 							)}
-						</Button>
+						</ProgressButton>
 					)}
 
 				</div>

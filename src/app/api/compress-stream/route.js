@@ -152,9 +152,29 @@ export async function POST(req) {
 				inputPath=path.join(tempDir,`input-${uniqueSuffix}.mp4`);
 				outputPath=path.join(tempDir,`output-${uniqueSuffix}.mp4`);
 
-				// Save uploaded file to disk
-				const buffer=Buffer.from(await file.arrayBuffer());
-				await fs.promises.writeFile(inputPath,buffer);
+				// Save uploaded file to disk using streaming to handle large files
+				sendProgress(3,'Uploading file to server...');
+				
+				// Using a promise-wrapped stream to write the file
+				await new Promise(async (resolve, reject) => {
+					try {
+						const writableStream = fs.createWriteStream(inputPath);
+						// In App Router, we can get the stream from the Blob/File
+						const reader = file.stream().getReader();
+						
+						while (true) {
+							const { done, value } = await reader.read();
+							if (done) break;
+							writableStream.write(value);
+						}
+						
+						writableStream.end();
+						writableStream.on('finish', resolve);
+						writableStream.on('error', reject);
+					} catch (err) {
+						reject(err);
+					}
+				});
 
 				sendProgress(5,'File uploaded, preparing encoder...');
 
@@ -217,11 +237,11 @@ export async function POST(req) {
 				let stderr='';
 				let videoDuration=0;
 
-				// Add a timeout to prevent hanging (10 minutes max)
+				// Add a timeout to prevent hanging (1 hour max for large files)
 				const timeout = setTimeout(() => {
 					ffProcess.kill('SIGKILL');
-					reject(new Error('Video compression timed out after 10 minutes. Please try with a shorter video or different settings.'));
-				}, 600000); // 10 minutes
+					reject(new Error('Video compression timed out after 1 hour. Please try with a shorter video or different settings.'));
+				}, 3600000); // 1 hour
 
 				ffProcess.stderr.on('data',(data) => {
 					const output=data.toString();

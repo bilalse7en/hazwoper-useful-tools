@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { PreviewDrawer } from "@/components/preview-drawer";
 import { cleanHTML, getHTMLStats, getReductionRate } from "@/lib/html-cleaner";
+import { ProgressButton } from "@/components/progress-button";
 
 const defaultOptions = {
 	removeNBSP: true,
@@ -180,10 +181,17 @@ export function HTMLCleaner() {
 				<CardContent className="space-y-4">
 					{/* Action Buttons */}
 					<div className="flex flex-wrap gap-2">
-						<Button onClick={handleClean} disabled={isProcessing}>
-							<Eraser className="mr-2 h-4 w-4" />
-							Clean HTML
-						</Button>
+						<ProgressButton 
+							onClick={handleClean} 
+							disabled={isProcessing || !html.trim()}
+							isLoading={isProcessing}
+							label="Clean HTML"
+							loadingLabel="Cleaning..."
+							className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold px-6 h-10 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+							variant="default"
+						>
+							{!isProcessing && <Eraser className="mr-2 h-4 w-4" />}
+						</ProgressButton>
 						<Button variant="outline" onClick={() => setPreviewOpen(true)}>
 							<Eye className="mr-2 h-4 w-4" />
 							Preview

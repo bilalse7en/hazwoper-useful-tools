@@ -28,6 +28,7 @@ import {
 	getSupportedFormats
 } from "@/lib/image-converter";
 import {cn} from "@/lib/utils";
+import {ProgressButton} from "@/components/progress-button";
 
 export function ImageConverter() {
 	const [files,setFiles]=useState([]);
@@ -437,37 +438,31 @@ export function ImageConverter() {
 					</div>
 
 					{/* Action Button */}
-					{isConverting? (
-						<div className="h-20 w-full rounded-[2rem] bg-muted border border-border/50 flex flex-col items-center justify-center gap-2 shadow-[inset_0_2px_10px_rgba(var(--glass-shadow-color),0.08)]">
-							<div className="flex items-center gap-3">
-								<RefreshCw className="w-5 h-5 text-primary animate-spin" />
-								<span className="text-muted-foreground font-black uppercase tracking-[0.2em] text-[10px]">Processing...</span>
-							</div>
-							<div className="w-3/4 h-1 bg-primary/10 rounded-full overflow-hidden">
-								<div className="h-full bg-gradient-to-r from-primary to-primary/50 transition-all duration-300" style={{width: `${progress}%`}} />
-							</div>
-							<span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-wider">{currentFile}</span>
-						</div>
-					):(
-						<Button
-							onClick={convertAll}
-							disabled={files.length===0||!toFormat}
-							className={cn(
-								"h-20 w-full rounded-[2rem] shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.2),0_20px_60px_rgba(var(--primary-rgb),0.2)] border-t border-white/10 group overflow-hidden relative transition-all duration-300",
-								(files.length===0||!toFormat)? "bg-muted cursor-not-allowed border-none shadow-[inset_0_2px_10px_rgba(var(--glass-shadow-color),0.08)] text-muted-foreground":"bg-primary hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.98] text-primary-foreground"
-							)}
-						>
-							<div className="flex flex-col items-center justify-center gap-1">
-								<div className="flex items-center gap-3">
-									<Flame className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
-									<span className="text-lg font-black uppercase tracking-[0.2em] font-orbitron">Convert</span>
+					<ProgressButton
+						onClick={convertAll}
+						disabled={files.length===0||!toFormat||isConverting}
+						isLoading={isConverting}
+						progress={progress}
+						label="Convert Images"
+						loadingLabel={currentFile || "Processing..."}
+						className={cn(
+							"h-14 w-full rounded-2xl shadow-md transition-all active:scale-[0.98]",
+							isConverting? "bg-muted shadow-none" : "bg-primary hover:bg-primary/90 text-primary-foreground"
+						)}
+						variant="default"
+					>
+						{!isConverting && (
+							<div className="flex flex-col items-center justify-center -space-y-0.5">
+								<div className="flex items-center gap-2">
+									<Flame className="w-4 h-4 fill-current" />
+									<span className="text-base font-semibold">Convert Images</span>
 								</div>
-								<span className="text-[8px] font-bold uppercase tracking-[0.3em] opacity-40 group-hover:opacity-80 transition-opacity">
-									{files.length} files → {toFormat.toUpperCase()||"Select format"}
+								<span className="text-[10px] font-medium opacity-70">
+									{files.length} {files.length === 1 ? 'file' : 'files'} → {toFormat.toUpperCase()||"Select format"}
 								</span>
 							</div>
-						</Button>
-					)}
+						)}
+					</ProgressButton>
 
 				</div>
 
