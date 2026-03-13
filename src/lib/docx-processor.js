@@ -1018,9 +1018,62 @@ function cleanHTML(element) {
 	element.innerHTML=element.innerHTML.replace(/(<br\s*\/?>\s*){2,}/gi,'<br/>');
 
 	Array.from(element.querySelectorAll('*')).forEach(el => {
-		if(el.tagName==='IMG') return;
+		if(el.tagName==='IMG' || el.tagName==='TABLE') return;
 		if(!el.textContent.trim()&&el.children.length===0) el.remove();
 	});
+}
+
+/**
+ * Formats table HTML with professional styles and conditional headers
+ * as requested by the user (top header vs left header).
+ */
+export function formatBlogTable(tableHtml) {
+	if (!tableHtml) return "";
+	
+	const tempDiv = document.createElement('div');
+	tempDiv.innerHTML = tableHtml;
+	const table = tempDiv.querySelector('table');
+	if (!table) return tableHtml;
+	
+	// Apply standard premium styles and Bootstrap 'table' class
+	// Move 'table-container' logic to the table itself as requested
+	table.className = "table table-container";
+	table.setAttribute('style', 'display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap;');
+	
+	const rows = Array.from(table.querySelectorAll('tr'));
+	if (rows.length === 0) return tableHtml;
+
+	// 1. Handle Heading on Top (thead or first tr with th/bold)
+	const thead = table.querySelector('thead');
+	if (thead) {
+		thead.querySelectorAll('tr').forEach(tr => {
+			tr.classList.add('bg-warning');
+		});
+	} else {
+		const firstRow = rows[0];
+		const firstRowCells = Array.from(firstRow.querySelectorAll('td, th'));
+		const hasTh = firstRow.querySelector('th');
+		const allBold = firstRowCells.length > 0 && firstRowCells.every(cell => cell.querySelector('b, strong') || cell.tagName === 'TH');
+		if (hasTh || allBold) {
+			firstRow.classList.add('bg-warning');
+		}
+	}
+	
+	// 2. Handle Heading on Left (first cell in tr)
+	rows.forEach(tr => {
+		if (tr.classList.contains('bg-warning')) return;
+		const cells = Array.from(tr.querySelectorAll('td, th'));
+		if (cells.length > 0) {
+			const firstCell = cells[0];
+			const isLeftHeading = firstCell.tagName === 'TH' || firstCell.querySelector('b, strong');
+			if (isLeftHeading) {
+				firstCell.classList.add('bg-warning');
+				firstCell.style.textAlign = 'left';
+			}
+		}
+	});
+	
+	return table.outerHTML;
 }
 
 function improveListStructure(element) {
@@ -1134,6 +1187,19 @@ function extractBlogContent(html) {
 					items: items
 				});
 			}
+			// Skip children of the list
+			let lastChild = node;
+			while(lastChild.lastElementChild) lastChild = lastChild.lastElementChild;
+			walker.currentNode = lastChild;
+		} else if(tag==='table') {
+			blogData.content.push({
+				type: 'table',
+				content: node.outerHTML
+			});
+			// Skip children of the table
+			let lastChild = node;
+			while(lastChild.lastElementChild) lastChild = lastChild.lastElementChild;
+			walker.currentNode = lastChild;
 		} else if(tag==='img') {
 			blogData.imageCount++;
 			blogData.content.push({
@@ -1206,10 +1272,26 @@ export function generateBlogCode(blogData,featuredImage={},imageUrls=[]) {
 			imageIndex++;
 			break;
 		}
+		case 'table': {
+			blogHTML+=formatBlogTable(item.content)+"\n\n";
+			break;
+		}
 		}
 	}
 
-	blogHTML+=`<div class="fancy-line"></div><style>.fancy-line{width:60%;margin:20px auto;border-top:2px solid #116466;text-align:center;position:relative}.fancy-line::after{content:"✦ ✦ ✦";position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:white;padding:0 10px;color:red}</style>`;
+	blogHTML+=`
+<div class="fancy-line"></div>
+<style>
+	.fancy-line { width: 60%; margin: 20px auto; border-top: 2px solid #116466; text-align: center; position: relative; }
+	.fancy-line::after { content: "✦ ✦ ✦"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: red; }
+	.table-container { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap; margin: 2rem 0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+	table { width: 100%; border-collapse: collapse; background: white; margin-bottom: 1rem; }
+	table tr p { margin-bottom: 0px !important; }
+	th, td { padding: 12px 15px; border: 1px solid #e5e7eb; text-align: left; }
+	.bg-warning { background-color: #ffcd05 !important; color: #1a1a1a !important; }
+	.table-stripe tr:nth-child(even), .table-warning tr:nth-child(even) { background-color: #fffde6 !important; }
+	thead th { background-color: #f3f4f6; font-weight: 700; }
+</style>`;
 	return ensureProfessionalLinks(blogHTML);
 }
 

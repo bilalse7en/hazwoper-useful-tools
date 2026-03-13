@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
-import { Document, Packer, Paragraph, HeadingLevel, TextRun } from "docx";
+import { Document, Packer, Paragraph, HeadingLevel, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ShadingType } from "docx";
 
 export async function POST(request) {
 	try {
@@ -88,19 +88,22 @@ function htmlToTextRuns(html, defaultBold = false) {
 		
 		const strongMatch = part.match(/<(?:strong|b)>(.*?)<\/(?:strong|b)>/i);
 		if (strongMatch) {
-			// This part is bold
-			runs.push(new TextRun({
-				text: strongMatch[1].replace(/<[^>]+>/g, '').trim() + " ", // Strip any remaining tags inside
-				bold: true,
-				font: "Arial",
-				size: 24
-			}));
-		} else {
-			// This part is normal
-			const text = part.replace(/<[^>]+>/g, '').trim();
+			// This part is bold - we can trim it since it's a discrete unit
+			const text = strongMatch[1].replace(/<[^>]+>/g, '').trim();
 			if (text) {
 				runs.push(new TextRun({
 					text: text + " ",
+					bold: true,
+					font: "Arial",
+					size: 24
+				}));
+			}
+		} else {
+			// This part is normal - IMPORTANT: preserve internal whitespace
+			const text = part.replace(/<p[^>]*>/gi, '').replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
+			if (text && text.trim()) {
+				runs.push(new TextRun({
+					text: text,
 					bold: defaultBold,
 					font: "Arial",
 					size: 24
@@ -120,6 +123,61 @@ function htmlToTextRuns(html, defaultBold = false) {
 	}
 	
 	return runs;
+}
+
+// HELPER: Convert HTML table string to docx Table
+function htmlTableToDocxTable(html) {
+	const rows = [];
+	const trRegex = /<tr[^>]*>(.*?)<\/tr>/gis;
+	const tdRegex = /<(td|th)[^>]*>(.*?)<\/\1>/gis;
+	
+	let trMatch;
+	while ((trMatch = trRegex.exec(html)) !== null) {
+		const rowTag = trMatch[0];
+		const rowContent = trMatch[1];
+		const cells = [];
+		let tdMatch;
+		while ((tdMatch = tdRegex.exec(rowContent)) !== null) {
+			const cellTag = tdMatch[0];
+			const cellContent = tdMatch[2].trim();
+			
+			// Detect shading (bg-warning)
+			let shading = undefined;
+			if (cellTag.includes('bg-warning') || rowTag.includes('bg-warning')) {
+				shading = {
+					fill: "FFCD05", // Bootstrap Warning Yellow
+					type: ShadingType.CLEAR,
+					color: "auto"
+				};
+			}
+			
+			// Detect alignment
+			let alignment = AlignmentType.LEFT;
+			if (cellTag.includes('text-center') || cellTag.includes('text-align: center')) {
+				alignment = AlignmentType.CENTER;
+			} else if (cellTag.includes('text-end') || cellTag.includes('text-align: right')) {
+				alignment = AlignmentType.RIGHT;
+			}
+			
+			// Use htmlToTextRuns to preserve bold formatting within cells
+			const textRuns = htmlToTextRuns(cellContent);
+			
+			cells.push(new TableCell({
+				children: [new Paragraph({
+					children: textRuns.length > 0 ? textRuns : [new TextRun({ text: "", size: 24, font: "Arial" })],
+					alignment: alignment
+				})],
+				shading: shading,
+				width: { size: 33, type: WidthType.PERCENTAGE }
+			}));
+		}
+		if (cells.length > 0) {
+			rows.push(new TableRow({ children: cells }));
+		}
+	}
+	
+	if (rows.length === 0) return null;
+	return new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } });
 }
 
 // HELPER: Generate docx Paragraphs from structure
@@ -160,36 +218,22 @@ function generateDocxChildren(structure) {
 		switch (item.type) {
 			case 'H1':
 				paragraph = new Paragraph({
-					children: [new TextRun({
-						text: item.content,
-						bold: true,
-						size: 32,
-						font: "Arial"
-					})],
+					children: htmlToTextRuns(item.innerHtml || item.content, true),
 					heading: HeadingLevel.HEADING_1,
+					alignment: AlignmentType.CENTER,
 					style: "Heading1"
 				});
 				break;
 			case 'H2':
 				paragraph = new Paragraph({
-					children: [new TextRun({
-						text: item.content,
-						bold: true,
-						size: 28,
-						font: "Arial"
-					})],
+					children: htmlToTextRuns(item.innerHtml || item.content, true),
 					heading: HeadingLevel.HEADING_2,
 					style: "Heading2"
 				});
 				break;
 			case 'H3':
 				paragraph = new Paragraph({
-					children: [new TextRun({
-						text: item.content,
-						bold: true,
-						size: 26,
-						font: "Arial"
-					})],
+					children: htmlToTextRuns(item.innerHtml || item.content, true),
 					heading: HeadingLevel.HEADING_3,
 					style: "Heading3"
 				});
@@ -209,6 +253,17 @@ function generateDocxChildren(structure) {
 						reference: "main-numbering",
 						level: 0,
 					}
+				});
+				break;
+			case 'TABLE':
+				const docxTable = htmlTableToDocxTable(item.content);
+				if (docxTable) {
+					docChildren.push(docxTable);
+					return; // Skip the paragraph push
+				}
+				// Fallback to paragraph if table conversion fails
+				paragraph = new Paragraph({
+					children: [new TextRun({ text: "[Table contents converted to text]", italic: true })]
 				});
 				break;
 			default:
@@ -314,8 +369,9 @@ function smartSplitQA(text) {
 function analyzeDocumentStructure(html) {
 	const structure = [];
 	
-	// Extract text from HTML paragraphs and list items using regex
-	const paragraphRegex = /<(p|h[1-6]|li)(?:\s[^>]*)?>(.+?)<\/\1>/gi;
+	// Extract text from HTML paragraphs, headings, list items, and TABLES using regex
+	// Use 's' flag to allow table to match across multiple lines
+	const paragraphRegex = /(<(p|h[1-6]|li|table)(?:\s[^>]*)?>(.*?)<\/\2>)/gis;
 	
 	let match;
 	let h1Found = false;
@@ -325,9 +381,22 @@ function analyzeDocumentStructure(html) {
 
 	// Extract all blocks
 	while ((match = paragraphRegex.exec(html)) !== null) {
-		const tagName = match[1].toUpperCase();
-		const innerHtml = match[2];
+		const fullTag = match[1];
+		const tagName = match[2].toUpperCase();
+		const innerHtml = match[3];
 		
+		// If it's a table, treat it as one piece and don't split by sub-lines
+		if (tagName === 'TABLE') {
+			matches.push({ 
+				tagName, 
+				text: innerHtml.replace(/<[^>]+>/g, ' ').trim(), 
+				innerHtml: fullTag, 
+				isBold: false, 
+				listType: null 
+			});
+			continue;
+		}
+
 		// Check for parent list type if it's an LI
 		let listType = null;
 		if (tagName === 'LI') {
@@ -416,6 +485,10 @@ function analyzeDocumentStructure(html) {
 			else if (text.match(/^\d+\./)) {
 				type = 'H3';
 			}
+		}
+
+		if (tagName === 'TABLE') {
+			type = 'TABLE';
 		}
 
 		structure.push({ type, content: innerHtml, plainText: text, isBold });

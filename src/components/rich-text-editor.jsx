@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Save, Eye, Download, Undo, Redo, Bold, Italic, Underline, Link, List, ListOrdered, Image as ImageIcon, ChevronDown, X } from 'lucide-react';
+import { 
+	Save, Eye, Download, Undo, Redo, Bold, Italic, Underline, Link, 
+	List, ListOrdered, Image as ImageIcon, ChevronDown, X, Table, 
+	LayoutGrid, Columns, Palette, AlignLeft, AlignCenter, AlignRight, 
+	AlignJustify, ArrowUp, ArrowDown, MoveVertical, Check
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +27,17 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 	const [showImageTools, setShowImageTools] = useState(false);
 	const [featuredImageUrl, setFeaturedImageUrl] = useState('');
 	const [featuredImageAlt, setFeaturedImageAlt] = useState('');
-	const [currentHeading, setCurrentHeading] = useState('p'); // Track current heading
+	const [currentHeading, setCurrentHeading] = useState('p'); 
+	const [activeTable, setActiveTable] = useState(null);
+	const [showTableOptions, setShowTableOptions] = useState(false);
+	const [showColorPalette, setShowColorPalette] = useState(false);
+
+	const colors = [
+		'#000000', '#ffffff', '#212529', '#f8f9fa', 
+		'#0d6efd', '#6610f2', '#6f42c1', '#d63384', 
+		'#dc3545', '#fd7e14', '#ffc107', '#198754', 
+		'#20c997', '#0dcaf0', '#adb5bd', '#dee2e6'
+	];
 
 	// Initialize editor with content
 	useEffect(() => {
@@ -98,6 +113,7 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 	const handleBold = () => execCommand('bold');
 	const handleItalic = () => execCommand('italic');
 	const handleUnderline = () => execCommand('underline');
+	const handleTextColor = (color) => execCommand('foreColor', color);
 	
 	// Handle text selection to show floating toolbar
 	const handleTextSelection = useCallback(() => {
@@ -149,6 +165,13 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 		} else {
 			setShowFloatingToolbar(false);
 		}
+
+		// Check for active table
+		let node = selection.anchorNode;
+		if (node && node.nodeType === 3) node = node.parentElement;
+		const table = node ? node.closest('table') : null;
+		setActiveTable(table);
+		if (!table) setShowTableOptions(false);
 	}, [setFloatingToolbarPosition, setShowFloatingToolbar]);
 
 	// Hide floating toolbar when clicking elsewhere
@@ -178,6 +201,108 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 
 	const handleInsertUnorderedList = () => execCommand('insertUnorderedList');
 	const handleInsertOrderedList = () => execCommand('insertOrderedList');
+
+	const handleInsertTable = () => {
+		const rows = prompt('Number of rows:', '3') || 3;
+		const cols = prompt('Number of columns:', '3') || 3;
+		
+		let tableHtml = '<table class="table table-bordered table-container" style="display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap;">';
+		
+		// Header row
+		tableHtml += '<thead><tr class="bg-warning text-white">';
+		for (let j = 0; j < cols; j++) {
+			tableHtml += `<th>Header ${j + 1}</th>`;
+		}
+		tableHtml += '</tr></thead><tbody>';
+		
+		// Data rows
+		for (let i = 0; i < rows; i++) {
+			tableHtml += '<tr>';
+			for (let j = 0; j < cols; j++) {
+				tableHtml += `<td>Data ${i + 1}-${j + 1}</td>`;
+			}
+			tableHtml += '</tr>';
+		}
+		
+		tableHtml += '</tbody></table><p><br></p>';
+		
+		// Insert at cursor
+		execCommand('insertHTML', tableHtml);
+	};
+
+	const applyTableClass = (className) => {
+		const selection = window.getSelection();
+		if (!selection.rangeCount) return;
+		
+		let element = selection.anchorNode;
+		if (element.nodeType === 3) element = element.parentElement;
+		
+		const table = element.closest('table');
+		if (table) {
+			if (className === 'table-stripe') {
+				table.classList.toggle('table-stripe');
+			} else if (className === 'table-warning') {
+				table.classList.toggle('table-warning');
+			}
+			saveToHistory();
+		} else {
+			alert('Please click inside a table to apply this style.');
+		}
+	};
+
+	const toggleTopHeader = () => {
+		const selection = window.getSelection();
+		if (!selection.rangeCount) return;
+		let element = selection.anchorNode;
+		if (element.nodeType === 3) element = element.parentElement;
+		const table = element.closest('table');
+		if (table) {
+			const firstRow = table.querySelector('tr');
+			if (firstRow) {
+				firstRow.classList.toggle('bg-warning');
+				firstRow.classList.toggle('text-white');
+			}
+			saveToHistory();
+		}
+	};
+
+	const toggleLeftHeader = () => {
+		const selection = window.getSelection();
+		if (!selection.rangeCount) return;
+		let element = selection.anchorNode;
+		if (element.nodeType === 3) element = element.parentElement;
+		const table = element.closest('table');
+		if (table) {
+			const rows = table.querySelectorAll('tr');
+			rows.forEach(row => {
+				const firstCell = row.querySelector('td, th');
+				if (firstCell) {
+					firstCell.classList.toggle('bg-warning');
+				}
+			});
+			saveToHistory();
+		}
+	};
+
+	const handleAlignment = (alignment) => {
+		execCommand(`justify${alignment.charAt(0).toUpperCase() + alignment.slice(1)}`);
+	};
+
+	const setTableCellAlignment = (axis, value) => {
+		const selection = window.getSelection();
+		if (!selection.rangeCount) return;
+		let node = selection.anchorNode;
+		if (node.nodeType === 3) node = node.parentElement;
+		const cell = node.closest('td, th');
+		if (cell) {
+			if (axis === 'x') {
+				cell.style.textAlign = value;
+			} else {
+				cell.style.verticalAlign = value;
+			}
+			saveToHistory();
+		}
+	};
 
 	// Convert HTML to have proper Bootstrap classes when saving
 	const processHTMLForSave = (html) => {
@@ -215,6 +340,22 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 		tempDiv.querySelectorAll('h6').forEach(h6 => {
 			h6.className = 'fs-6';
 		});
+
+		// Process Tables - add Bootstrap 'table' class and ensure container
+		tempDiv.querySelectorAll('table').forEach(table => {
+			table.classList.add('table');
+			table.classList.add('table-container');
+			if (!table.classList.contains('table-bordered')) {
+				table.classList.add('table-bordered');
+			}
+			table.setAttribute('style', 'display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap;');
+			
+			// Unwrap if inside a div.table-container
+			const parent = table.parentElement;
+			if (parent && parent.className === 'table-container') {
+				parent.replaceWith(table);
+			}
+		});
 		
 		// Remove <strong> and <b> tags from inside ALL headings (h1-h6)
 		// Headings don't need bold tags - they are already bold by default
@@ -247,6 +388,17 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 			const hr = document.createElement('hr');
 			firstH1.after(hr);
 		}
+
+		// Ensure tables have responsive wrapper if missing
+		tempDiv.querySelectorAll('table').forEach(table => {
+			if (!table.parentElement.classList.contains('table-container')) {
+				const wrapper = document.createElement('div');
+				wrapper.className = 'table-container';
+				wrapper.setAttribute('style', 'display: block;width: 100%;overflow-x: auto;-webkit-overflow-scrolling: touch;-ms-overflow-style: -ms-autohiding-scrollbar;max-width: 850px;white-space: nowrap;');
+				table.parentNode.insertBefore(wrapper, table);
+				wrapper.appendChild(table);
+			}
+		});
 		
 		let finalHTML = tempDiv.innerHTML;
 		
@@ -359,13 +511,46 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 						font-weight: 600;
 						padding: 0 2px;
 					}
-					
+						
 					a:hover { 
 						color: #7c3aed;
 						border-bottom-color: #7c3aed;
 						background: rgba(139, 92, 246, 0.08);
 						border-radius: 4px;
 						padding: 2px 6px;
+					}
+
+					/* Table Styles */
+					.table-container {
+						margin: 2rem 0;
+						border-radius: 8px;
+						overflow: hidden;
+						box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+					}
+					table {
+					  width: 100%;
+					  border-collapse: collapse;
+					  background: white;
+					}
+					table tr p { margin-bottom: 0px; }
+					th, td {
+					  padding: 12px 15px;
+					  border: 1px solid #e5e7eb;
+					  text-align: left;
+					}
+					.bg-warning {
+					  background-color: #ffcd05 !important;
+					  color: #1a1a1a !important;
+					}
+					.table-stripe tr:nth-child(even) {
+					  background-color: #fff9e6; /* Light Yellow Stripe */
+					}
+					.table-warning tr:nth-child(even) {
+					  background-color: #fffde6; /* Very light yellow stripe */
+					}
+					thead th {
+					  background-color: #f3f4f6;
+					  font-weight: 700;
 					}
 					</style>
 				</head>
@@ -484,6 +669,91 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 					>
 						<ListOrdered className="h-3 w-3" />
 					</Button>
+					<div className="w-px h-6 bg-border mx-1" />
+					
+					{/* Professional Color Palette */}
+					<div className="relative">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setShowColorPalette(!showColorPalette)}
+							disabled={!isReady}
+							className="h-7 w-7 p-0 flex flex-col items-center justify-center"
+							title="Text Color"
+						>
+							<Palette className="h-3.5 w-3.5" />
+							<div className="w-full h-1 mt-0.5 bg-black rounded-full" />
+						</Button>
+						
+						<AnimatePresence>
+							{showColorPalette && (
+								<motion.div 
+									initial={{ opacity: 0, y: 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: 10 }}
+									className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-900 border rounded-lg shadow-xl p-3 z-[300] w-48"
+								>
+									<div className="grid grid-cols-6 gap-2">
+										{colors.map((color) => (
+											<button
+												key={color}
+												onClick={() => {
+													handleTextColor(color);
+													setShowColorPalette(false);
+												}}
+												className="w-5 h-5 rounded-sm border border-black/10 transition-transform hover:scale-110 shadow-sm"
+												style={{ backgroundColor: color }}
+												title={color}
+											/>
+										))}
+									</div>
+								</motion.div>
+							)}
+						</AnimatePresence>
+					</div>
+
+					<div className="w-px h-6 bg-border mx-1" />
+
+					{/* Alignment Tools */}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => handleAlignment('left')}
+						className="h-7 w-7 p-0"
+						title="Align Left"
+					>
+						<AlignLeft className="h-3 w-3" />
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => handleAlignment('center')}
+						className="h-7 w-7 p-0"
+						title="Align Center"
+					>
+						<AlignCenter className="h-3 w-3" />
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => handleAlignment('right')}
+						className="h-7 w-7 p-0"
+						title="Align Right"
+					>
+						<AlignRight className="h-3 w-3" />
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => handleAlignment('full')}
+						className="h-7 w-7 p-0"
+						title="Justify"
+					>
+						<AlignJustify className="h-3 w-3" />
+					</Button>
+
+					<div className="w-px h-6 bg-border mx-1" />
+
 					{/* Heading selector */}
 					<select
 						value={currentHeading}
@@ -516,6 +786,82 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 					>
 						<ImageIcon className="h-3.5 w-3.5" />
 					</Button>
+					
+					{/* Refined Table Logic */}
+					<div className="relative flex items-center gap-1 ml-1 pl-1 border-l">
+						<Button
+							variant={activeTable ? "default" : "outline"}
+							size="sm"
+							onClick={() => activeTable ? setShowTableOptions(!showTableOptions) : handleInsertTable()}
+							disabled={!isReady}
+							className={`h-7 w-7 p-0 ${activeTable ? 'bg-indigo-600 text-white' : ''}`}
+							title={activeTable ? "Table Management" : "Insert Table"}
+						>
+							<Table className="h-3.5 w-3.5" />
+						</Button>
+
+						<AnimatePresence>
+							{(showTableOptions || activeTable) && (
+								<motion.div 
+									initial={{ opacity: 0, x: -10 }}
+									animate={{ opacity: 1, x: 0 }}
+									exit={{ opacity: 0, x: -10 }}
+									className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-md ml-1"
+								>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => applyTableClass('table-stripe')}
+										className="h-6 px-2 text-[9px] font-bold hover:bg-yellow-100"
+										title="Stripe"
+									>
+										STRIPE
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => applyTableClass('table-warning')}
+										className="h-6 px-2 text-[9px] font-bold hover:bg-orange-100"
+										title="Warning"
+									>
+										WARN
+									</Button>
+									<div className="w-px h-4 bg-slate-300 mx-0.5" />
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={toggleTopHeader}
+										className="h-6 w-6 p-0 hover:bg-blue-100"
+										title="Top Heading Warning"
+									>
+										<LayoutGrid className="h-3 w-3" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={toggleLeftHeader}
+										className="h-6 w-6 p-0 hover:bg-green-100"
+										title="Left Column Warning"
+									>
+										<Columns className="h-3 w-3" />
+									</Button>
+									<div className="w-px h-4 bg-slate-300 mx-0.5" />
+									{/* Table Cell Alignment X */}
+									<div className="flex bg-white/50 rounded p-0.5">
+										<button onClick={() => setTableCellAlignment('x', 'left')} className="p-0.5 hover:bg-white"><AlignLeft className="h-3 w-3"/></button>
+										<button onClick={() => setTableCellAlignment('x', 'center')} className="p-0.5 hover:bg-white"><AlignCenter className="h-3 w-3"/></button>
+										<button onClick={() => setTableCellAlignment('x', 'right')} className="p-0.5 hover:bg-white"><AlignRight className="h-3 w-3"/></button>
+									</div>
+									{/* Table Cell Alignment Y */}
+									<div className="flex bg-white/50 rounded p-0.5 ml-0.5">
+										<button onClick={() => setTableCellAlignment('y', 'top')} className="p-0.5 hover:bg-white"><ArrowUp className="h-3 w-3"/></button>
+										<button onClick={() => setTableCellAlignment('y', 'middle')} className="p-0.5 hover:bg-white"><MoveVertical className="h-3 w-3"/></button>
+										<button onClick={() => setTableCellAlignment('y', 'bottom')} className="p-0.5 hover:bg-white"><ArrowDown className="h-3 w-3"/></button>
+									</div>
+								</motion.div>
+							)}
+						</AnimatePresence>
+					</div>
 				</div>
 				
 				<AnimatePresence>
@@ -817,6 +1163,49 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 				
 				[contenteditable] li {
 					margin-bottom: 0.5rem;
+				}
+				
+				/* Text Color Specifics */
+				[contenteditable] [style*="color: rgb(255, 255, 255)"],
+				[contenteditable] [style*="color: #ffffff"],
+				[contenteditable] [style*="color: white"] {
+					text-shadow: 0 0 1px rgba(0,0,0,0.5); /* Make white text visible in editor */
+				}
+
+				/* Table editor styles */
+				[contenteditable] .table-container {
+					margin: 20px 0;
+					max-width: 100%;
+					overflow-x: auto;
+				}
+				[contenteditable] table {
+					width: 100%;
+					border-collapse: collapse;
+					margin-bottom: 1rem;
+				}
+				[contenteditable] th, [contenteditable] td {
+					border: 1px solid #ddd;
+					padding: 8px;
+					min-width: 50px;
+				}
+				[contenteditable] .bg-warning {
+					background-color: #ffcd05 !important;
+					color: black !important;
+				}
+				[contenteditable] .bg-warning.text-white {
+					color: white !important;
+				}
+				[contenteditable] .table-stripe tr:nth-child(even) {
+					background-color: #fff9e6 !important;
+				}
+				[contenteditable] .table-warning tr:nth-child(even) {
+					background-color: #fffde6 !important;
+				}
+				[contenteditable] table tr p {
+					margin-bottom: 0px !important;
+				}
+				[contenteditable] table th {
+					font-weight: bold;
 				}
 				`}</style>
 			</div>

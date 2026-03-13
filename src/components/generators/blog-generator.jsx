@@ -130,6 +130,9 @@ export function BlogGenerator() {
 			} else if (block.type === 'OL') {
 				const items = cleanContent.split('\n').filter(i => i.trim()).map(item => `<li>${item}</li>`).join('');
 				return `<ol>${items}</ol>`;
+			} else if (block.type === 'table' || block.type === 'TABLE') {
+				// Tables are already stored as HTML content
+				return cleanContent;
 			}
 			return `<p>${cleanContent}</p>`;
 		}).join('');
@@ -264,10 +267,66 @@ export function BlogGenerator() {
 			}
 		}
 		
+		// Format tables based on headings (Top vs Left)
+		tempDiv.querySelectorAll('table').forEach(table => {
+			const rows = Array.from(table.querySelectorAll('tr'));
+			if (rows.length === 0) return;
+
+			// Apply requested base styles directly to table as requested
+			table.className = "table table-container";
+			table.setAttribute('style', 'display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap;');
+			
+			// 1. Top Heading Detection
+			const thead = table.querySelector('thead');
+			if (thead) {
+				thead.querySelectorAll('tr').forEach(tr => tr.classList.add('bg-warning'));
+			} else {
+				const firstRow = rows[0];
+				const firstRowCells = Array.from(firstRow.querySelectorAll('td, th'));
+				const hasTh = firstRow.querySelector('th');
+				const allBold = firstRowCells.length > 0 && firstRowCells.every(cell => cell.querySelector('b, strong') || cell.tagName === 'TH');
+				if (hasTh || allBold) {
+					firstRow.classList.add('bg-warning');
+				}
+			}
+
+			// 2. Left Heading Detection
+			rows.forEach(tr => {
+				if (tr.classList.contains('bg-warning')) return;
+				const cells = Array.from(tr.querySelectorAll('td, th'));
+				if (cells.length > 0) {
+					const firstCell = cells[0];
+					const isLeftHeading = firstCell.tagName === 'TH' || firstCell.querySelector('b, strong');
+					if (isLeftHeading) {
+						firstCell.classList.add('bg-warning');
+						firstCell.style.textAlign = 'left';
+					}
+				}
+			});
+
+			/* If table was inside a div.table-container, unwrap it to avoid double nesting */
+			const parent = table.parentElement;
+			if (parent && parent.tagName === 'DIV' && parent.classList.contains('table-container')) {
+				parent.replaceWith(table);
+			}
+		});
+
 		finalHTML = tempDiv.innerHTML;
 		
-		// Add fancy line at the end
-		const fancyLine = `\n\n<div class="fancy-line"></div><style>.fancy-line{width:60%;margin:20px auto;border-top:2px solid #116466;text-align:center;position:relative}.fancy-line::after{content:"✦ ✦ ✦";position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:white;padding:0 10px;color:red}</style>`;
+		// Add full premium styling at the end
+		const fancyLine = `
+<div class="fancy-line"></div>
+<style>
+	.fancy-line { width: 60%; margin: 20px auto; border-top: 2px solid #116466; text-align: center; position: relative; }
+	.fancy-line::after { content: "✦ ✦ ✦"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: red; }
+	.table-container { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap; margin: 2rem 0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+	table { width: 100%; border-collapse: collapse; background: white; margin-bottom: 1rem; }
+	table tr p { margin-bottom: 0px !important; }
+	th, td { padding: 12px 15px; border: 1px solid #e5e7eb; text-align: left; }
+	.bg-warning { background-color: #ffcd05 !important; color: #1a1a1a !important; }
+	.table-stripe tr:nth-child(even), .table-warning tr:nth-child(even) { background-color: #fffde6 !important; }
+	thead th { background-color: #f3f4f6; font-weight: 700; }
+</style>`;
 		
 		const code = finalHTML + fancyLine;
 		setBlogCode(code);
@@ -582,7 +641,7 @@ export function BlogGenerator() {
 			tempDiv.innerHTML = editorContent;
 			
 			// Parse HTML into structure for Word generation
-			const elements = tempDiv.querySelectorAll('h1, h2, h3, p, ul, ol');
+			const elements = tempDiv.querySelectorAll('h1, h2, h3, p, ul, ol, table, .table-container');
 			const updatedStructure = [];
 			
 			elements.forEach((el) => {
@@ -599,6 +658,13 @@ export function BlogGenerator() {
 					updatedStructure.push({
 						type: tagName,
 						content: items.join('\n')
+					});
+				} else if (tagName === 'TABLE' || el.classList.contains('table-container')) {
+					// Handle table elements
+					const tableHtml = tagName === 'TABLE' ? el.outerHTML : (el.querySelector('table')?.outerHTML || el.innerHTML);
+					updatedStructure.push({
+						type: 'TABLE',
+						content: tableHtml
 					});
 				}
 			});
