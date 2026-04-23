@@ -6,8 +6,8 @@
 export const toolMetadata = {
   'web-content': {
     title: 'Web Content Generator - Extract Course Content from Documents | Content Suite',
-    description: 'Professional web content generator tool. Extract Overview, Syllabus, FAQs, Glossary, and Resources from DOCX documents. Convert course materials to clean, SEO-optimized HTML.',
-    keywords: 'course generator, web content generator, DOCX to HTML, course content extraction, syllabus generator, FAQ generator, HAZWOPER training',
+    description: 'Professional web content generator tool. Extract Overview, Syllabus, FAQs, Glossary, and Resources from DOCX documents. Convert material to clean, SEO-optimized HTML.',
+    keywords: 'course generator, web content generator, DOCX to HTML, content extraction, syllabus generator, FAQ generator, professional content',
     canonical: '/tools/web-content',
     ogImage: '/og-web-content.png',
   },
@@ -120,60 +120,140 @@ export const toolInfo = {
     icon: '📝',
     description: 'Extract course content from DOCX documents',
     category: 'Content Creation',
+    detailedDescription: 'Transform your boring DOCX course materials into engaging, structured web content. Our generator intelligently identifies module titles, learning objectives, and content blocks to create a professional online learning experience.',
+    benefits: [
+      'Automatic syllabus generation from document headings',
+      'Extraction of learning objectives and module summaries',
+      'Clean HTML output ready for any LMS or CMS',
+      'Preservation of document structure and hierarchy'
+    ],
+    howToUse: 'Upload your training DOCX file, select the modules you want to extract, and click generate. You can then copy the clean HTML or export it directly.'
   },
   'blog-generator': {
     name: 'Blog Generator',
     icon: '✍️',
     description: 'Create professional blog posts',
     category: 'Content Creation',
+    detailedDescription: 'Turn your technical documents or reports into localized, SEO-ready blog posts. This tool helps you maintain a consistent brand voice while repurposing existing content for your audience.',
+    benefits: [
+      'AI-enhanced readability and flow',
+      'Automatic meta description generation',
+      'Structured heading hierarchy (H1-H4)',
+      'Direct copy-to-clipboard functionality'
+    ],
+    howToUse: 'Paste your source text or upload a document, choose your target audience tone, and let the AI structure your blog post for maximum engagement.'
   },
   'glossary-generator': {
     name: 'Glossary Generator',
     icon: '📚',
     description: 'Generate glossaries from documents',
     category: 'Content Creation',
+    detailedDescription: 'Consistency is key in technical training. Our glossary generator scans your documents for key terms and definitions, organizing them alphabetically and formatting them for easy reference.',
+    benefits: [
+      'Automated term extraction using NLP',
+      'Alphabetical sorting and categorization',
+      'Consistent formatting across all definitions',
+      'Easy integration into course resources'
+    ],
+    howToUse: 'Provide your training manual or technical document. The tool will identify key terms. Review the results and export as a clean, styled glossary.'
   },
   'resource-generator': {
     name: 'Resource Generator',
     icon: '🔗',
     description: 'Extract resources and references',
     category: 'Content Creation',
+    detailedDescription: 'Stop hunting for links and references in your PDFs and Word files. Our resource generator gathers every citation, external link, and reference into a structured list.',
+    benefits: [
+      'One-click extraction of all hyperlink data',
+      'Categorization of reference types',
+      'Clean link formatting for web menus',
+      'Validation of extracted URLs'
+    ],
+    howToUse: 'Input your source document. The tool will scan for references and external resources, providing a categorized list ready for your resource page.'
   },
   'html-cleaner': {
     name: 'HTML Cleaner',
     icon: '🧹',
     description: 'Clean and format HTML code',
     category: 'Development Tools',
+    detailedDescription: 'Get rid of messy inline styles, empty tags, and bloated code from Microsoft Word exports. Our HTML cleaner provides lean, semantic code that loads faster and ranks better.',
+    benefits: [
+      'Removal of Microsoft Word specific junk tags',
+      'Minification or beautification of code',
+      'Conversion of complex styling to clean classes',
+      'Validation of unclosed tags'
+    ],
+    howToUse: 'Paste your messy HTML into the editor. Choose your cleaning preferences (remove styles, remove comments, etc.) and get instant clean code.'
   },
   'image-converter': {
     name: 'Image Converter',
     icon: '🖼️',
     description: 'Convert images between formats',
     category: 'Media Tools',
+    detailedDescription: 'Optimize your website performance by converting images to modern formats like WebP. Our batch converter handles multiple files at once, all within your browser for total privacy.',
+    benefits: [
+      'Blazing fast browser-side conversion',
+      'Support for WebP, PNG, JPG, and AVIF',
+      'Bulk processing for entire image sets',
+      'Zero server uploads - 100% private'
+    ],
+    howToUse: 'Drag and drop your images into the zone. Select your desired output format and quality. Download your optimized images individually or as a ZIP.'
   },
   'video-compressor': {
     name: 'Video Compressor',
     icon: '🎬',
     description: 'Compress videos without quality loss',
     category: 'Media Tools',
+    detailedDescription: 'Large video files can slow down your LMS and eat up bandwidth. Our compressor reduces file size while maintaining visual clarity, ensuring smooth playback for all users.',
+    benefits: [
+      'Client-side FFmpeg processing',
+      'Selectable target size or quality level',
+      'Preview before and after file sizes',
+      'Privacy guaranteed - video never leaves your PC'
+    ],
+    howToUse: 'Upload your video file. Choose your compression settings based on your needs. Click compress and wait for the browser to process your file.'
   },
   'ai-assistant': {
     name: 'AI Assistant',
     icon: '🤖',
     description: 'Smart content helper',
     category: 'AI Tools',
+    detailedDescription: 'The AI Assistant is your dedicated partner for content refinement. Whether you need to simplify complex technical text or brainstorm content questions, the assistant is here to help.',
+    benefits: [
+      'Context-aware content suggestions',
+      'Grammar and style optimization',
+      'Interactive Q&A for content development',
+      'Connected to latest language standards'
+    ],
+    howToUse: 'Type your query or paste the content you need help with. The AI will provide tailored suggestions and improvements instantly.'
   },
   'image-to-text': {
     name: 'Image to Text OCR',
     icon: '📷',
     description: 'Extract text from images',
     category: 'AI Tools',
+    detailedDescription: 'Convert scanned diagrams, whiteboard notes, or document photos into editable text. Our OCR engine supports multiple languages and maintains relative text positioning.',
+    benefits: [
+      'High accuracy Tesseract OCR engine',
+      'Handwriting recognition capabilities',
+      'Multi-language support',
+      'Export results as TXT or DOCX'
+    ],
+    howToUse: 'Upload or paste an image containing text. The OCR engine will process it and display the extracted text for you to edit and copy.'
   },
   'document-extractor': {
     name: 'Document Extractor',
     icon: '📄',
     description: 'Extract content from documents',
     category: 'Content Creation',
+    detailedDescription: 'The ultimate tool for bulk content extraction. Analyze complex DOCX structures and pull out tables, lists, and images with precision.',
+    benefits: [
+      'Precise table and list extraction',
+      'Image and media asset gathering',
+      'Metadata extraction from document properties',
+      'Support for legacy DOCX formatting'
+    ],
+    howToUse: 'Submit your DOCX document. Use the extraction dashboard to filter for specific elements like tables or images, and export them as needed.'
   },
 };
 

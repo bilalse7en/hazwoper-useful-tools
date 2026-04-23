@@ -314,6 +314,53 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 					</div>
 				</div>
 
+				{/* High Value Publisher Content - Addressing AdSense Policy */}
+				<div className="mt-12 w-full max-w-6xl px-6 py-16 bg-white/5 rounded-[40px] border border-white/10" style={{animation: 'fadeIn 1s ease-out 0.7s forwards', opacity: 0}}>
+					<h2 className="text-3xl font-bold text-white mb-8 text-center bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
+						Next-Generation Content Automation & Digital Workflows
+					</h2>
+					<div className="grid md:grid-cols-2 gap-12 text-slate-300">
+						<div className="space-y-6">
+							<p className="leading-relaxed">
+								Professional content creation requires a robust set of tools to handle the complexities of modern digital media. 
+								Our suite of applications is designed to bridge the gap between raw document data and production-ready web content.
+							</p>
+							<p className="leading-relaxed">
+								By leveraging advanced client-side processing, we enable teams to transform documentation into structured web assets 
+								instantly. This includes automated extraction of glossaries, syllabi, and structured references.
+							</p>
+						</div>
+						<div className="space-y-6">
+							<p className="leading-relaxed">
+								Digital workflow optimization is no longer a luxury—it's a necessity for teams handling high volumes of training and technical material. 
+								Our neural engines provide the speed and accuracy needed to maintain content consistency across all platforms.
+							</p>
+							<p className="leading-relaxed">
+								From media compression that preserves visual integrity to AI-assisted content refinement, 
+								Content Suite provides the technical infrastructure to ensure your digital output is optimized, accessible, and professional.
+							</p>
+						</div>
+					</div>
+					<div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+						<div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+							<div className="text-2xl font-bold text-green-400 mb-1">OCR</div>
+							<div className="text-xs uppercase tracking-widest text-slate-500">Processing</div>
+						</div>
+						<div className="p-4 rounded-2xl bg-white/5 border border-border/10">
+							<div className="text-2xl font-bold text-cyan-400 mb-1">HTML5</div>
+							<div className="text-xs uppercase tracking-widest text-slate-500">Standards</div>
+						</div>
+						<div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+							<div className="text-2xl font-bold text-blue-400 mb-1">WebP</div>
+							<div className="text-xs uppercase tracking-widest text-slate-500">Optimization</div>
+						</div>
+						<div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+							<div className="text-2xl font-bold text-emerald-400 mb-1">Private</div>
+							<div className="text-xs uppercase tracking-widest text-slate-500">Processing</div>
+						</div>
+					</div>
+				</div>
+
 				{/* Footer Note */}
 				<div className="mt-16 text-center" style={{animation: 'fadeIn 1s ease-out 0.8s forwards', opacity: 0}}>
 					<p className="text-slate-500 text-sm font-medium">

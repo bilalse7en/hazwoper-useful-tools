@@ -25,7 +25,7 @@ export function LoginScreen({onLogin}) {
 	};
 
 	return (
-		<div className="flex min-h-screen items-center justify-center p-4 overflow-y-auto py-12">
+		<div className="flex min-h-screen flex-col items-center justify-center p-4 overflow-y-auto py-12 gap-8">
 			<Card className="w-full max-w-md animate-in-card">
 				<CardHeader className="space-y-1">
 					<div className="flex justify-center mb-4">
@@ -71,12 +71,37 @@ export function LoginScreen({onLogin}) {
 						<Button className="w-full mt-4" type="submit">
 							Sign In
 						</Button>
-						{/* Hardcoded hints for demo purposes */}
-						
 					</CardFooter>
-
 				</form>
 			</Card>
+
+			{/* High Value Content for AdSense Compliance */}
+			<div className="w-full max-w-4xl grid md:grid-cols-2 gap-8 mt-12 animate-in-card [animation-delay:200ms]">
+				<div className="bg-card p-6 rounded-2xl border border-border">
+					<h3 className="font-bold text-lg mb-3">Enterprise Security</h3>
+					<p className="text-sm text-muted-foreground leading-relaxed">
+						Content Suite is built with a browser-first architecture. This means your sensitive documents and course materials never leave your device. All processing, extraction, and generation happen locally in your browser, providing unparalleled data privacy for your organization.
+					</p>
+				</div>
+				<div className="bg-card p-6 rounded-2xl border border-border">
+					<h3 className="font-bold text-lg mb-3">Professional Output</h3>
+					<p className="text-sm text-muted-foreground leading-relaxed">
+						Generate clean, semantic HTML that is ready for integration with any major Learning Management System (LMS). Our tools eliminate the messy formatting typically associated with document exports, ensuring your content looks professional on every device.
+					</p>
+				</div>
+				<div className="bg-card p-6 rounded-2xl border border-border">
+					<h3 className="font-bold text-lg mb-3">Intelligent Extraction</h3>
+					<p className="text-sm text-muted-foreground leading-relaxed">
+						Save hours of manual labor with our automated extraction engines. Whether you need a glossary from a 100-page manual or a syllabus from a complex document structure, our tools handle the heavy lifting with high precision and speed.
+					</p>
+				</div>
+				<div className="bg-card p-6 rounded-2xl border border-border">
+					<h3 className="font-bold text-lg mb-3">Modern Optimization</h3>
+					<p className="text-sm text-muted-foreground leading-relaxed">
+						Optimize your media assets for the web instantly. Convert images to modern formats like WebP or compress videos with high-quality retention. Everything is done client-side, eliminating the wait times of server-side uploads.
+					</p>
+				</div>
+			</div>
 		</div>
 	);
 }

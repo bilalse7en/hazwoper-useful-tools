@@ -3,7 +3,7 @@
 import {Button} from "@/components/ui/button";
 import {Sheet,SheetContent,SheetHeader,SheetTitle} from "@/components/ui/sheet";
 import {ScrollArea} from "@/components/ui/scroll-area";
-import {Eye,Copy,X} from "lucide-react";
+import {Eye,Copy,X,Check} from "lucide-react";
 import {useState} from "react";
 
 export function PreviewDrawer({
@@ -15,12 +15,12 @@ export function PreviewDrawer({
 	data
 }) {
 	const [copied,setCopied]=useState(false);
+	const [copiedMap,setCopiedMap]=useState({});
 
 	const handleCopy=async () => {
 		if(content) {
 			await navigator.clipboard.writeText(content);
 			setCopied(true);
-			setTimeout(() => setCopied(false),2000);
 			onCopy?.();
 		}
 	};
@@ -40,8 +40,11 @@ export function PreviewDrawer({
 		return processed.replace(/&nbsp;/g, ' ');
 	};
 
-	const copyText=async (text) => {
+	const copyText=async (text, key) => {
 		await navigator.clipboard.writeText(processSEO(text));
+		if (key) {
+			setCopiedMap(prev => ({ ...prev, [key]: true }));
+		}
 	};
 
 	const isFaqView=title?.toLowerCase().includes('faq')&&Array.isArray(data)&&data.length>0;
@@ -68,9 +71,9 @@ export function PreviewDrawer({
 							variant="outline"
 							size="sm"
 							onClick={handleCopy}
-							className="gap-2"
+							className={`gap-2 transition-all duration-300 ${copied ? 'border-green-500 text-green-500' : ''}`}
 						>
-							<Copy className="h-4 w-4" />
+							{copied? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
 							{copied? 'Copied!':'Copy Code'}
 						</Button>
 					</div>
@@ -85,43 +88,52 @@ export function PreviewDrawer({
 								</div>
 								
 								{/* Show each FAQ in its own card, one per row */}
-								{data.map((faq, idx) => (
-									<div key={idx} className="border rounded-lg p-4 bg-card shadow-sm hover:shadow-md transition-shadow">
-										{/* Question with numbering */}
-										<div className="flex justify-between items-start gap-2 mb-3">
-											<h5 className="font-bold text-base flex-1">
-												<span className="text-primary mr-2">{idx + 1}.</span>
-												{faq.question}
-											</h5>
-											<Button
-												size="sm"
-												variant="outline"
-												className="h-7 text-xs shrink-0"
-												onClick={() => copyText(faq.question)}
-												title="Copy question"
-											>
-												<Copy className="h-3 w-3" />
-											</Button>
+								{data.map((faq, idx) => {
+									const qKey = `q-${idx}`;
+									const aKey = `a-${idx}`;
+									const isQCopied = copiedMap[qKey];
+									const isACopied = copiedMap[aKey];
+
+									return (
+										<div key={idx} className="border rounded-lg p-4 bg-card shadow-sm hover:shadow-md transition-shadow">
+											{/* Question with numbering */}
+											<div className="flex justify-between items-start gap-2 mb-3">
+												<h5 className="font-bold text-base flex-1">
+													<span className="text-primary mr-2">{idx + 1}.</span>
+													{faq.question}
+												</h5>
+												<Button
+													size="sm"
+													variant="outline"
+													className={`h-7 text-[10px] shrink-0 transition-all duration-300 gap-1.5 px-2 ${isQCopied ? 'border-green-500 text-green-500' : ''}`}
+													onClick={() => copyText(faq.question, qKey)}
+													title="Copy question"
+												>
+													{isQCopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+													{isQCopied && "Copied"}
+												</Button>
+											</div>
+											
+											{/* Answer */}
+											<div className="flex justify-between items-start gap-2 pl-6">
+												<div 
+													className="faq-answer flex-1 text-sm text-muted-foreground" 
+													dangerouslySetInnerHTML={{__html: processSEO(faq.answer)}}
+												/>
+												<Button
+													size="sm"
+													variant="outline"
+													className={`h-7 text-[10px] shrink-0 transition-all duration-300 gap-1.5 px-2 ${isACopied ? 'border-green-500 text-green-500' : ''}`}
+													onClick={() => copyText(faq.answer, aKey)}
+													title="Copy answer"
+												>
+													{isACopied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+													{isACopied && "Copied"}
+												</Button>
+											</div>
 										</div>
-										
-										{/* Answer */}
-										<div className="flex justify-between items-start gap-2 pl-6">
-											<div 
-												className="faq-answer flex-1 text-sm text-muted-foreground" 
-												dangerouslySetInnerHTML={{__html: processSEO(faq.answer)}}
-											/>
-											<Button
-												size="sm"
-												variant="outline"
-												className="h-7 text-xs shrink-0"
-												onClick={() => copyText(faq.answer)}
-												title="Copy answer"
-											>
-												<Copy className="h-3 w-3" />
-											</Button>
-										</div>
-									</div>
-								))}
+									);
+								})}
 							</div>
 						):(
 							<div

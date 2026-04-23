@@ -136,20 +136,33 @@ export default function ToolPage({ params }) {
             <ScrollArea className="h-screen">
               {/* Content Area */}
               <div className="container mx-auto px-4 py-8 max-w-7xl">
-                {/* AdSense Banner - Top of Content */}
-                <div className="mb-8 flex justify-center">
-                  <AdSenseAd 
-                    slot="9491607826" 
-                    format="horizontal"
-                    style={{ maxWidth: '970px', width: '100%' }}
-                  />
-                </div>
-                
                 {/* Condition: Show Actual Tool if User, else Show Public Landing */}
                 {user ? (
-                  <ToolComponent />
+                  <div className="space-y-8">
+                    {/* Logged in: Show ad at top of actual tool */}
+                    <div className="flex justify-center">
+                      <AdSenseAd 
+                        slot="9491607826" 
+                        format="horizontal"
+                        style={{ maxWidth: '970px', width: '100%' }}
+                      />
+                    </div>
+                    <ToolComponent />
+                  </div>
                 ) : (
-                  <PublicToolLanding toolSlug={toolSlug} onAction={handleAction} />
+                  <div className="space-y-12">
+                    {/* Public Landing - we'll place ads after some high-value content */}
+                    <PublicToolLanding toolSlug={toolSlug} onAction={handleAction} />
+                    
+                    {/* Ad placed at bottom of landing page content (high-value position) */}
+                    <div className="flex justify-center py-8">
+                      <AdSenseAd 
+                        slot="9491607826" 
+                        format="horizontal"
+                        style={{ maxWidth: '970px', width: '100%' }}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </ScrollArea>
