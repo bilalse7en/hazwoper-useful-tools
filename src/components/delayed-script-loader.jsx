@@ -49,15 +49,7 @@ export function DelayedScriptLoader() {
 
   return (
     <>
-      <Script
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
-        crossOrigin="anonymous"
-        strategy="lazyOnload"
-      />
-      <Script
-        src="https://fundingchoicesmessages.google.com/i/pub-9874465109252768?ers=1"
-        strategy="lazyOnload"
-      />
+      {/* AdSense removed here - now in Root Layout head for better verification */}
     </>
   );
 }

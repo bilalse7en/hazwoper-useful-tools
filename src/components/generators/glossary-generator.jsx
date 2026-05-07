@@ -217,7 +217,7 @@ export function GlossaryGenerator() {
 								<textarea
 									className="flex-1 w-full bg-muted/50 border rounded-md p-4 font-mono text-xs resize-none focus:outline-ring code-editor"
 									value={glossaryCode}
-									readOnly
+									onChange={(e) => setGlossaryCode(e.target.value)}
 									placeholder="Code will appear here..."
 								/>
 							</div>

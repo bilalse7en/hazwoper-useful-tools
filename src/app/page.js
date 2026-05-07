@@ -8,6 +8,7 @@ import {BrandLogo} from "@/components/brand-logo";
 import {InitialLoadingShell} from "@/components/initial-loading-shell";
 import {hasAccess,ROLES} from "@/lib/auth";
 import {toolIdToSlug} from "@/lib/seo";
+import {Footer} from "@/components/footer";
 
 // Dynamic imports for heavy UI screens
 const WelcomeLanding = dynamic(() => import("@/components/welcome-landing").then(mod => mod.WelcomeLanding), {
@@ -393,6 +394,9 @@ export default function Home() {
 									</div>
 									
 									{renderActiveGenerator()}
+									<div className="mt-20 border-t border-border/50 pt-12">
+										<Footer />
+									</div>
 								</div>
 
 							</ScrollArea>

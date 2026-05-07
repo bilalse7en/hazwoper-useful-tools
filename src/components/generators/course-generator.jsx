@@ -407,12 +407,19 @@ export function CourseGenerator() {
 									className="flex-1 w-full bg-muted/50 border rounded-md p-4 font-mono text-xs resize-none focus:outline-ring code-editor"
 									value={
 										activeView==='mainpoints'? mainPointsCode:
-									activeView==='overview'? overviewCode:
-											activeView==='objectives'? objectivesCode:
-												activeView==='syllabus'? syllabusCode:
-													activeView==='faq'? faqCode:""
+										activeView==='overview'? overviewCode:
+										activeView==='objectives'? objectivesCode:
+										activeView==='syllabus'? syllabusCode:
+										activeView==='faq'? faqCode:""
 									}
-									readOnly
+									onChange={(e) => {
+										const val = e.target.value;
+										if (activeView === 'mainpoints') setMainPointsCode(val);
+										else if (activeView === 'overview') setOverviewCode(val);
+										else if (activeView === 'objectives') setObjectivesCode(val);
+										else if (activeView === 'syllabus') setSyllabusCode(val);
+										else if (activeView === 'faq') setFaqCode(val);
+									}}
 									placeholder="Code will appear here..."
 								/>
 							</div>

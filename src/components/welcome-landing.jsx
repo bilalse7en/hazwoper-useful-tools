@@ -2,7 +2,9 @@
 
 import {useState,useEffect} from "react";
 import Link from "next/link";
-import {Trophy,LogIn,Sparkles,Zap,Flame,Shield,Rocket,Star,ChevronRight,Gift} from "lucide-react";
+import {Trophy,LogIn,Sparkles,Zap,Flame,Shield,Rocket,Star,ChevronRight,Gift,BookOpen} from "lucide-react";
+import { AdSenseAd } from "@/components/adsense-ad";
+import { Footer } from "@/components/footer";
 
 export function WelcomeLanding({onPlayGame,onSignIn}) {
 	const [isVisible,setIsVisible]=useState(false);
@@ -283,6 +285,36 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 
 				</div>
 
+				{/* Professional Tools Section - Addressing AdSense Content Requirements */}
+				<div className="mt-32 w-full max-w-6xl px-6 py-16" style={{animation: 'fadeIn 1s ease-out 0.4s forwards', opacity: 0}}>
+					<h2 className="text-3xl md:text-5xl font-black text-white text-center mb-16">
+						Our <span className="text-green-400">Professional</span> Suite
+					</h2>
+					<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+						{[
+							{ id: 'web-content', name: 'Content Gen', icon: '📝' },
+							{ id: 'blog-generator', name: 'Blog Gen', icon: '✍️' },
+							{ id: 'glossary-generator', name: 'Glossary', icon: '📚' },
+							{ id: 'media-tools', name: 'Media Opt', icon: '🎬', link: '/tools/video-compressor' },
+							{ id: 'ocr-tools', name: 'Smart OCR', icon: '📷', link: '/tools/image-to-text' },
+						].map((item) => (
+							<Link 
+								key={item.id} 
+								href={item.link || `/tools/${item.id}`}
+								className="p-6 rounded-[32px] bg-white/5 border border-white/10 hover:border-green-500/30 hover:bg-white/10 transition-all text-center group"
+							>
+								<div className="text-3xl mb-3 group-hover:scale-110 transition-transform">{item.icon}</div>
+								<div className="text-xs font-bold text-slate-300 uppercase tracking-widest">{item.name}</div>
+							</Link>
+						))}
+					</div>
+					<div className="mt-8 text-center">
+						<Link href="/blog" className="inline-flex items-center gap-2 text-green-400 font-bold hover:underline">
+							View all tools & guides <ChevronRight className="w-4 h-4" />
+						</Link>
+					</div>
+				</div>
+
 				{/* Features Brief for SEO */}
 				<div className="mt-24 w-full max-w-6xl grid md:grid-cols-3 gap-12 px-6 py-16 border-t border-white/5" style={{animation: 'fadeIn 1s ease-out 0.6s forwards', opacity: 0}}>
 					<div className="space-y-4">
@@ -316,6 +348,16 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 
 				{/* High Value Publisher Content - Addressing AdSense Policy */}
 				<div className="mt-12 w-full max-w-6xl px-6 py-16 bg-white/5 rounded-[40px] border border-white/10" style={{animation: 'fadeIn 1s ease-out 0.7s forwards', opacity: 0}}>
+					
+					{/* AdSense Banner - Top of Landing Content */}
+					<div className="mb-12 flex justify-center">
+						<AdSenseAd 
+							slot="9491607826" 
+							format="horizontal"
+							style={{ width: '100%', maxWidth: '970px' }}
+						/>
+					</div>
+
 					<h2 className="text-3xl font-bold text-white mb-8 text-center bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
 						Next-Generation Content Automation & Digital Workflows
 					</h2>
@@ -324,20 +366,25 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 							<p className="leading-relaxed">
 								Professional content creation requires a robust set of tools to handle the complexities of modern digital media. 
 								Our suite of applications is designed to bridge the gap between raw document data and production-ready web content.
-							</p>
-							<p className="leading-relaxed">
 								By leveraging advanced client-side processing, we enable teams to transform documentation into structured web assets 
 								instantly. This includes automated extraction of glossaries, syllabi, and structured references.
+							</p>
+							<p className="leading-relaxed">
+								Digital workflow optimization is no longer a luxury—it's a necessity for teams handling high volumes of training and technical material. 
+								Our neural engines provide the speed and accuracy needed to maintain content consistency across all platforms.
+								This technological shift allows developers to focus on the quality of education rather than the mechanics of formatting.
 							</p>
 						</div>
 						<div className="space-y-6">
 							<p className="leading-relaxed">
-								Digital workflow optimization is no longer a luxury—it's a necessity for teams handling high volumes of training and technical material. 
-								Our neural engines provide the speed and accuracy needed to maintain content consistency across all platforms.
-							</p>
-							<p className="leading-relaxed">
 								From media compression that preserves visual integrity to AI-assisted content refinement, 
 								Content Suite provides the technical infrastructure to ensure your digital output is optimized, accessible, and professional.
+								We prioritize a local-first approach, meaning your data privacy is built into the architecture of our tools.
+							</p>
+							<p className="leading-relaxed">
+								Our commitment to excellence extends into our research and development of automated safety compliance mappings. 
+								As regulations evolve, our tools adapt to ensure your training materials remain at the forefront of industry standards, 
+								protecting both your workers and your organizational compliance profile.
 							</p>
 						</div>
 					</div>
@@ -361,16 +408,9 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 					</div>
 				</div>
 
-				{/* Footer Note */}
-				<div className="mt-16 text-center" style={{animation: 'fadeIn 1s ease-out 0.8s forwards', opacity: 0}}>
-					<p className="text-slate-500 text-sm font-medium">
-						🎁 New users? Play the game to try premium features for free!
-					</p>
-					<div className="mt-8 flex justify-center gap-6 opacity-40 hover:opacity-100 transition-opacity">
-						<Link href="/about" className="text-xs text-slate-400 hover:text-green-400 transition-colors uppercase tracking-widest font-bold">About Us</Link>
-						<Link href="/privacy" className="text-xs text-slate-400 hover:text-green-400 transition-colors uppercase tracking-widest font-bold">Privacy Policy</Link>
-						<Link href="/terms" className="text-xs text-slate-400 hover:text-green-400 transition-colors uppercase tracking-widest font-bold">Terms of Service</Link>
-					</div>
+				{/* Footer Section */}
+				<div className="mt-20 w-full" style={{animation: 'fadeIn 1s ease-out 0.9s forwards', opacity: 0}}>
+					<Footer />
 				</div>
 
 			</div>

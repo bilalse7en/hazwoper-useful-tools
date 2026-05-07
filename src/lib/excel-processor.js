@@ -57,7 +57,7 @@ function linkDisplay(link) {
 // ==========================================
 
 // Returns { html: string, count: number }
-export async function processResourceFile(file) {
+export async function processResourceFile(file, manualGlossaryLink = "") {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
 		reader.onload = e => {
@@ -82,7 +82,7 @@ export async function processResourceFile(file) {
 					});
 				}
 
-				const result = processSheet(worksheet, mergedCells);
+				const result = processSheet(worksheet, mergedCells, manualGlossaryLink);
 				resolve(result);
 			} catch (e) {
 				console.error("Error processing resource file:", e);
@@ -94,7 +94,7 @@ export async function processResourceFile(file) {
 	});
 }
 
-function processSheet(worksheet, mergedCells = {}) {
+function processSheet(worksheet, mergedCells = {}, manualGlossaryLink = "") {
 	const cells = {};
 	for (const cell in worksheet) {
 		if (!cell.startsWith("!")) cells[cell] = worksheet[cell];
@@ -198,7 +198,10 @@ function processSheet(worksheet, mergedCells = {}) {
 	}
 
 	const filteredResources = resources.filter(resource => (resource.pdfs && resource.pdfs.length) || (resource.links && resource.links.length));
-	const html = generateResourceHTML(glossaryLink || "#", filteredResources);
+	
+	// Determine final glossary link: Manual > Extracted > Default
+	const finalGlossaryLink = manualGlossaryLink || glossaryLink || "#";
+	const html = generateResourceHTML(finalGlossaryLink, filteredResources);
 
 	return { html, count: filteredResources.length };
 }

@@ -1005,7 +1005,11 @@ export function BlogGenerator() {
 								<textarea
 									className="flex-1 w-full bg-muted/50 border rounded-md p-4 font-mono text-xs resize-none focus:outline-ring code-editor"
 									value={activeView === 'content' ? blogCode : faqCode}
-									readOnly
+									onChange={(e) => {
+										const val = e.target.value;
+										if (activeView === 'content') setBlogCode(val);
+										else setFaqCode(val);
+									}}
 									placeholder="Code will appear here..."
 								/>
 							</div>

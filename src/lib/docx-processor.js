@@ -783,7 +783,7 @@ export function generateCourseObjectivesCode(data) {
 		listItemsHtml="<li>No course objectives found in the document.</li>";
 	}
 	const introText=data.courseObjectivesIntro||"After completing this course, the learner will be able to:";
-	return ensureProfessionalLinks(`<h2 class="h3">Course Objectives</h2><p class="m-0"><strong>${introText}</strong></p><ul>${listItemsHtml}</ul>`);
+	return ensureProfessionalLinks(`<ul>${listItemsHtml}</ul>`);
 }
 
 export function generateSyllabusCode(data) {
@@ -849,7 +849,7 @@ export function generateSyllabusCode(data) {
 					} else {
 						lessonsHTML+=`
                             <li>
-                                <strong>${lesson.title}</strong>
+                                ${lesson.title}
                             </li>`;
 					}
 				});
@@ -944,7 +944,7 @@ export function generateMainPointsCode(data) {
 			const hasSpanish=lowerItem.includes('spanish')||lowerItem.includes('español');
 
 			// Build the flag HTML
-			let flagHTML='Available in: ';
+			let flagHTML='<strong>Available in: </strong>';
 
 			if(hasEnglish&&hasSpanish) {
 				// Both languages

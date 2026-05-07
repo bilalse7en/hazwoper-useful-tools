@@ -24,6 +24,7 @@ export function ResourceGenerator() {
 	const [progress, setProgress] = useState(0);
 	const [progressText, setProgressText] = useState("");
 	const [resourceCode, setResourceCode] = useState("");
+	const [glossaryLink, setGlossaryLink] = useState("");
 	const [notification, setNotification] = useState(null);
 
 	const fileInputRef = useRef(null);
@@ -56,7 +57,7 @@ export function ResourceGenerator() {
 				setProgress(p => Math.min(p + 10, 90));
 			}, 200);
 
-			const { html, count } = await processResourceFile(file);
+			const { html, count } = await processResourceFile(file, glossaryLink);
 
 			clearInterval(interval);
 			setProgress(100);
@@ -112,17 +113,17 @@ export function ResourceGenerator() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="card-body space-y-4">
-							<div className="space-y-2">
+							<div className="space-y-1">
 								<p className="text-sm text-muted-foreground">
 									Upload an Excel file (.xlsx) with columns for Module, Title, PDFs, and Links.
 								</p>
-								<Button variant="outline" size="sm" onClick={downloadDemoFile} className="btn">
-									<Upload className="mr-2 h-4 w-4" />
+								<Button variant="link" size="sm" onClick={downloadDemoFile} className="h-auto p-0 text-primary hover:text-primary/80 font-bold mb-2">
+									<Upload className="mr-1 h-3 w-3" />
 									Download Demo File
 								</Button>
 							</div>
 
-							<div className="space-y-2">
+							<div className="space-y-4">
 								<div className="file-upload-area p-8 border-2 border-dashed rounded-lg text-center cursor-pointer hover:bg-muted/50 transition-colors"
 									onClick={() => fileInputRef.current?.click()}>
 									<Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
@@ -137,6 +138,24 @@ export function ResourceGenerator() {
 								/>
 								<div className="text-xs text-muted-foreground mt-1 text-center">
 									{file ? `Selected: ${file.name}` : "No file selected"}
+								</div>
+
+								{/* Glossary Link Input */}
+								<div className="space-y-2 pt-4 border-t">
+									<div className="flex items-center justify-between">
+										<label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground pl-1">
+											Glossary Anchor Link (Optional)
+										</label>
+									</div>
+									<Input
+										placeholder="Paste glossary page URL or anchor here..."
+										value={glossaryLink}
+										onChange={(e) => setGlossaryLink(e.target.value)}
+										className="form-control text-xs"
+									/>
+									<p className="text-[9px] text-muted-foreground italic pl-1">
+										If provided, this will be used for the "Glossary" button link. Defaults to #.
+									</p>
 								</div>
 
 								<div className="pt-2">
@@ -190,7 +209,7 @@ export function ResourceGenerator() {
 								<textarea
 									className="flex-1 w-full bg-muted/50 border rounded-md p-4 font-mono text-xs resize-none focus:outline-ring code-editor"
 									value={resourceCode}
-									readOnly
+									onChange={(e) => setResourceCode(e.target.value)}
 									placeholder="Code will appear here..."
 								/>
 							</div>

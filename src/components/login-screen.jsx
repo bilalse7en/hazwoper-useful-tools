@@ -7,6 +7,7 @@ import {Label} from "@/components/ui/label";
 import {Card,CardContent,CardDescription,CardFooter,CardHeader,CardTitle} from "@/components/ui/card";
 import {authenticate} from "@/lib/auth";
 import {Lock} from "lucide-react";
+import { Footer } from "@/components/footer";
 
 export function LoginScreen({onLogin}) {
 	const [username,setUsername]=useState("");
@@ -101,6 +102,10 @@ export function LoginScreen({onLogin}) {
 						Optimize your media assets for the web instantly. Convert images to modern formats like WebP or compress videos with high-quality retention. Everything is done client-side, eliminating the wait times of server-side uploads.
 					</p>
 				</div>
+			</div>
+
+			<div className="w-full max-w-4xl mt-12 bg-card rounded-3xl border border-border overflow-hidden">
+				<Footer />
 			</div>
 		</div>
 	);

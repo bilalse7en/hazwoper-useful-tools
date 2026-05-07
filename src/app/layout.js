@@ -48,6 +48,12 @@ export default function RootLayout({children}) {
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				<meta name="google-adsense-account" content="ca-pub-9874465109252768"/>
+				<Script
+					async
+					src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
+					crossOrigin="anonymous"
+					strategy="afterInteractive"
+				/>
 				<link rel="preconnect" href="https://media.hazwoper-osha.com" crossOrigin="anonymous" />
 				<link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
 				<link rel="preconnect" href="https://pagead2.googlesyndication.com" crossOrigin="anonymous" />
@@ -89,7 +95,12 @@ export default function RootLayout({children}) {
 					storageKey="content-suite-theme"
 				>
 					<BackgroundSpace />
-					{children}
+					<div className="flex flex-col min-h-screen">
+						<div className="flex-1">
+							{children}
+						</div>
+						{/* Footer only shows on public routes generally, or at bottom of scrollers */}
+					</div>
 					<GdprConsent />
 				</ThemeProvider>
 			</body>

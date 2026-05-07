@@ -667,3 +667,8 @@ ul,
 ol {
 	list-style: disc;
 }
+
+ul,
+ol {
+	padding-left: 1rem !important;
+}
