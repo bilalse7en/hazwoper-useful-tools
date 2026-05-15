@@ -2,7 +2,7 @@
 
 import {useState,useEffect} from "react";
 import Link from "next/link";
-import {Trophy,LogIn,Sparkles,Zap,Flame,Shield,Rocket,Star,ChevronRight,Gift,BookOpen} from "lucide-react";
+import {Trophy,LogIn,Sparkles,Zap,Flame,Shield,Rocket,Star,ChevronRight,Gift,BookOpen,FileText} from "lucide-react";
 import { AdSenseAd } from "@/components/adsense-ad";
 import { Footer } from "@/components/footer";
 
@@ -129,17 +129,17 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 					</div>
 
 					{/* Main Title */}
-					<h1 className="text-5xl md:text-7xl lg:text-8xl font-black mb-6 leading-[1.1]">
-						<span className="block text-transparent bg-clip-text bg-gradient-to-r from-white via-green-200 to-cyan-300 drop-shadow-[0_0_30px_rgba(34,197,94,0.3)]">
+					<h1 className="text-5xl md:text-7xl lg:text-9xl font-black mb-8 leading-[0.9] tracking-tighter">
+						<span className="block text-white filter drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">
 							Choose Your
 						</span>
-						<span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 drop-shadow-[0_0_40px_rgba(34,197,94,0.5)] mt-2">
+						<span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 filter drop-shadow-[0_0_50px_rgba(34,197,94,0.6)] mt-2">
 							Adventure
 						</span>
 					</h1>
 
 					{/* Subtitle */}
-					<p className="text-xl md:text-2xl text-slate-300 font-medium max-w-2xl mx-auto leading-relaxed">
+					<p className="text-xl md:text-2xl text-slate-400 font-bold max-w-2xl mx-auto leading-relaxed tracking-wide">
 						Unlock premium tools and accelerate your productivity
 					</p>
 				</div>
@@ -155,63 +155,63 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 						className="group relative cursor-pointer"
 					>
 						{/* Glow Effect */}
-						<div className={`absolute -inset-1 bg-gradient-to-r from-green-500 via-emerald-500 to-cyan-500 rounded-3xl blur-xl opacity-30 group-hover:opacity-60 transition-all duration-500 ${hoveredCard==='game'? 'animate-pulse-glow':''}`} />
+						<div className={`absolute -inset-2 bg-gradient-to-r from-green-500 via-emerald-400 to-cyan-500 rounded-3xl blur-[60px] opacity-40 group-hover:opacity-70 transition-all duration-500 ${hoveredCard==='game'? 'animate-pulse-glow':''}`} />
 						
 						{/* Card */}
-						<div className="relative bg-gradient-to-br from-slate-900/90 to-slate-800/90 backdrop-blur-xl border border-green-500/20 rounded-3xl p-8 md:p-10 transform transition-all duration-500 hover:scale-[1.02] hover:border-green-500/40 overflow-hidden">
+						<div className="relative bg-slate-950/90 backdrop-blur-3xl border border-green-400/30 rounded-[40px] p-8 md:p-12 transform transition-all duration-500 hover:scale-[1.02] hover:border-green-400/50 overflow-hidden shadow-2xl shadow-green-500/10">
 							
 							{/* Shimmer Effect */}
 							<div className="absolute inset-0 shimmer-effect opacity-0 group-hover:opacity-100" />
 							
 							{/* Icon Badge */}
-							<div className="relative mb-6 inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-[0_10px_40px_rgba(34,197,94,0.3)] transform transition-transform group-hover:scale-110 group-hover:rotate-6">
-								<Trophy className="w-10 h-10 text-white drop-shadow-lg" />
-								<div className="absolute -top-2 -right-2 bg-yellow-400 rounded-full p-1.5 shadow-lg animate-pulse">
-									<Gift className="w-4 h-4 text-slate-900" />
+							<div className="relative mb-10 inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-green-400 to-emerald-600 shadow-[0_15px_60px_rgba(34,197,94,0.4)] transform transition-transform group-hover:scale-110 group-hover:rotate-6">
+								<Trophy className="w-12 h-12 text-white drop-shadow-lg" />
+								<div className="absolute -top-3 -right-3 bg-yellow-400 rounded-full p-2.5 shadow-lg animate-pulse border-2 border-slate-950">
+									<Gift className="w-5 h-5 text-slate-900" />
 								</div>
 							</div>
 
 							{/* Title */}
-							<h2 className="relative text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-400 mb-4">
+							<h2 className="relative text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-cyan-300 mb-6 tracking-tighter">
 								Play & Win
 							</h2>
 
 							{/* Description */}
-							<p className="relative text-slate-300 text-lg mb-6 leading-relaxed">
-								Test your skills in our exciting space runner game and unlock <span className="text-green-400 font-bold">2 hours of FREE premium access</span> as a reward!
+							<p className="relative text-slate-400 text-xl mb-8 leading-relaxed font-medium">
+								Test your skills in our exciting space runner game and unlock <span className="text-green-400 font-black">2 hours of FREE premium access</span> as a reward!
 							</p>
 
 							{/* Features List */}
-							<ul className="relative space-y-3 mb-8">
+							<ul className="relative space-y-4 mb-10">
 								{[
 									{icon: Rocket,text: "Fast-paced gameplay"},
 									{icon: Zap,text: "Multiple difficulty levels"},
 									{icon: Shield,text: "Unlock premium features"}
 								].map((item,index) => (
-									<li key={index} className="flex items-center gap-3 text-slate-400">
-										<div className="bg-green-500/20 rounded-lg p-1.5">
-											<item.icon className="w-4 h-4 text-green-400" />
+									<li key={index} className="flex items-center gap-4 text-slate-300">
+										<div className="bg-green-500/20 rounded-xl p-2 border border-green-500/20">
+											<item.icon className="w-5 h-5 text-green-400" />
 										</div>
-										<span className="font-medium">{item.text}</span>
+										<span className="font-bold tracking-tight">{item.text}</span>
 									</li>
 								))}
 							</ul>
 
 							{/* CTA Button */}
-							<button className="relative w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black text-lg py-4 px-8 rounded-xl shadow-[0_10px_30px_rgba(34,197,94,0.3)] transform transition-all hover:shadow-[0_15px_40px_rgba(34,197,94,0.4)] hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-3 overflow-hidden group/btn">
+							<button className="relative w-full bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 text-white font-black text-xl py-5 px-8 rounded-2xl shadow-[0_15px_40px_rgba(34,197,94,0.4)] transform transition-all hover:shadow-[0_20px_50px_rgba(34,197,94,0.5)] hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-3 overflow-hidden group/btn border border-white/20">
 								<span className="relative z-10 flex items-center gap-3">
 									<Flame className="w-6 h-6" />
 									START GAME
 									<ChevronRight className="w-5 h-5 transition-transform group-hover/btn:translate-x-1" />
 								</span>
-								<div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+								<div className="absolute inset-0 bg-gradient-to-r from-green-400 via-emerald-400 to-green-500 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
 							</button>
 
 							{/* Badge */}
-							<div className="relative mt-4 text-center">
-								<span className="inline-flex items-center gap-2 text-xs text-green-400 font-bold uppercase tracking-wider">
+							<div className="relative mt-6 text-center">
+								<span className="inline-flex items-center gap-2 text-[10px] text-green-400 font-black uppercase tracking-[0.3em] bg-green-500/10 px-4 py-1.5 rounded-full border border-green-500/20">
 									<Star className="w-3 h-3 fill-green-400" />
-									Most Popular
+									MOST POPULAR
 									<Star className="w-3 h-3 fill-green-400" />
 								</span>
 							</div>
@@ -226,57 +226,57 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 						className="group relative cursor-pointer"
 					>
 						{/* Glow Effect */}
-						<div className={`absolute -inset-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-indigo-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-50 transition-all duration-500`} />
+						<div className={`absolute -inset-2 bg-gradient-to-r from-blue-600 via-cyan-500 to-indigo-600 rounded-3xl blur-[60px] opacity-30 group-hover:opacity-60 transition-all duration-500`} />
 						
 						{/* Card */}
-						<div className="relative bg-gradient-to-br from-slate-900/70 to-slate-800/70 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 md:p-10 transform transition-all duration-500 hover:scale-[1.02] hover:border-cyan-500/30 overflow-hidden">
+						<div className="relative bg-slate-950/90 backdrop-blur-3xl border border-blue-500/20 rounded-[40px] p-8 md:p-12 transform transition-all duration-500 hover:scale-[1.02] hover:border-cyan-500/40 overflow-hidden shadow-2xl shadow-blue-500/10">
 							
 							{/* Shimmer Effect */}
 							<div className="absolute inset-0 shimmer-effect opacity-0 group-hover:opacity-100" />
 							
 							{/* Icon Badge */}
-							<div className="relative mb-6 inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-600 shadow-[0_10px_40px_rgba(0,0,0,0.3)] transform transition-transform group-hover:scale-110 group-hover:rotate-6">
-								<LogIn className="w-10 h-10 text-cyan-400 drop-shadow-lg" />
+							<div className="relative mb-10 inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 shadow-[0_15px_60px_rgba(0,0,0,0.5)] transform transition-transform group-hover:scale-110 group-hover:rotate-6">
+								<LogIn className="w-12 h-12 text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.4)]" />
 							</div>
 
 							{/* Title */}
-							<h2 className="relative text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-200 to-cyan-300 mb-4">
+							<h2 className="relative text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-200 to-cyan-300 mb-6 tracking-tighter">
 								Sign In
 							</h2>
 
 							{/* Description */}
-							<p className="relative text-slate-400 text-lg mb-6 leading-relaxed">
+							<p className="relative text-slate-400 text-xl mb-8 leading-relaxed font-medium">
 								Already have credentials? Skip the game and access your account directly with your existing login.
 							</p>
 
 							{/* Features List */}
-							<ul className="relative space-y-3 mb-8">
+							<ul className="relative space-y-4 mb-10 text-left">
 								{[
 									{icon: Zap,text: "Instant access"},
 									{icon: Shield,text: "Secure authentication"},
 									{icon: Star,text: "All your saved data"}
 								].map((item,index) => (
-									<li key={index} className="flex items-center gap-3 text-slate-500">
-										<div className="bg-slate-700/50 rounded-lg p-1.5">
-											<item.icon className="w-4 h-4 text-slate-400" />
+									<li key={index} className="flex items-center gap-4 text-slate-400">
+										<div className="bg-blue-500/10 rounded-xl p-2 border border-blue-500/10">
+											<item.icon className="w-5 h-5 text-blue-400/60" />
 										</div>
-										<span className="font-medium">{item.text}</span>
+										<span className="font-bold tracking-tight">{item.text}</span>
 									</li>
 								))}
 							</ul>
 
 							{/* CTA Button */}
-							<button className="relative w-full bg-gradient-to-r from-slate-700 to-slate-600 text-white font-black text-lg py-4 px-8 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.3)] transform transition-all hover:shadow-[0_15px_40px_rgba(100,116,139,0.4)] hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-3 overflow-hidden group/btn hover:from-cyan-600 hover:to-blue-600">
+							<button className="relative w-full bg-slate-900/50 backdrop-blur-md border border-white/10 text-white font-black text-xl py-5 px-8 rounded-2xl shadow-2xl transform transition-all hover:bg-slate-800/80 hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-3 group/btn">
 								<span className="relative z-10 flex items-center gap-3">
-									<LogIn className="w-6 h-6" />
+									<LogIn className="w-6 h-6 text-cyan-400" />
 									SIGN IN NOW
 									<ChevronRight className="w-5 h-5 transition-transform group-hover/btn:translate-x-1" />
 								</span>
 							</button>
 
 							{/* Badge */}
-							<div className="relative mt-4 text-center">
-								<span className="inline-flex items-center gap-2 text-xs text-slate-500 font-bold uppercase tracking-wider">
+							<div className="relative mt-6 text-center">
+								<span className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">
 									Quick & Direct
 								</span>
 							</div>
@@ -292,19 +292,23 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 					</h2>
 					<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 						{[
-							{ id: 'web-content', name: 'Content Gen', icon: '📝' },
-							{ id: 'blog-generator', name: 'Blog Gen', icon: '✍️' },
-							{ id: 'glossary-generator', name: 'Glossary', icon: '📚' },
-							{ id: 'media-tools', name: 'Media Opt', icon: '🎬', link: '/tools/video-compressor' },
-							{ id: 'ocr-tools', name: 'Smart OCR', icon: '📷', link: '/tools/image-to-text' },
+							{ id: 'web-content', name: 'Web Content', icon: <FileText className="w-8 h-8 text-cyan-400" />, color: 'group-hover:shadow-[0_0_40px_rgba(34,211,238,0.2)]' },
+							{ id: 'blog-generator', name: 'Blog Engine', icon: <Sparkles className="w-8 h-8 text-purple-400" />, color: 'group-hover:shadow-[0_0_40px_rgba(168,85,247,0.2)]' },
+							{ id: 'glossary-generator', name: 'Word Bank', icon: <Star className="w-8 h-8 text-yellow-400" />, color: 'group-hover:shadow-[0_0_40px_rgba(234,179,8,0.2)]' },
+							{ id: 'media-tools', name: 'Media Lab', icon: <Zap className="w-8 h-8 text-rose-400" />, color: 'group-hover:shadow-[0_0_40px_rgba(244,63,94,0.2)]', link: '/tools/video-compressor' },
+							{ id: 'ocr-tools', name: 'Neural OCR', icon: <Shield className="w-8 h-8 text-indigo-400" />, color: 'group-hover:shadow-[0_0_40px_rgba(99,102,241,0.2)]', link: '/tools/image-to-text' },
 						].map((item) => (
 							<Link 
 								key={item.id} 
 								href={item.link || `/tools/${item.id}`}
-								className="p-6 rounded-[32px] bg-white/5 border border-white/10 hover:border-green-500/30 hover:bg-white/10 transition-all text-center group"
+								className={`p-8 rounded-[40px] bg-slate-950/40 border border-white/5 hover:border-white/20 hover:bg-slate-900/60 transition-all text-center group ${item.color}`}
 							>
-								<div className="text-3xl mb-3 group-hover:scale-110 transition-transform">{item.icon}</div>
-								<div className="text-xs font-bold text-slate-300 uppercase tracking-widest">{item.name}</div>
+								<div className="flex justify-center mb-5 transform group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500">
+									<div className="p-4 rounded-2xl bg-slate-900/50 border border-white/5 shadow-2xl">
+										{item.icon}
+									</div>
+								</div>
+								<div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] group-hover:text-white transition-colors">{item.name}</div>
 							</Link>
 						))}
 					</div>
@@ -347,7 +351,8 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 				</div>
 
 				{/* High Value Publisher Content - Addressing AdSense Policy */}
-				<div className="mt-12 w-full max-w-6xl px-6 py-16 bg-white/5 rounded-[40px] border border-white/10" style={{animation: 'fadeIn 1s ease-out 0.7s forwards', opacity: 0}}>
+				<div className="mt-12 w-full max-w-6xl px-10 py-20 bg-slate-950/60 backdrop-blur-3xl rounded-[60px] border border-blue-500/20 shadow-2xl overflow-hidden relative" style={{animation: 'fadeIn 1s ease-out 0.7s forwards', opacity: 0}}>
+					<div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
 					
 					{/* AdSense Banner - Top of Landing Content */}
 					<div className="mb-12 flex justify-center">
@@ -358,8 +363,9 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 						/>
 					</div>
 
-					<h2 className="text-3xl font-bold text-white mb-8 text-center bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-						Next-Generation Content Automation & Digital Workflows
+					<h2 className="text-4xl md:text-6xl font-black text-white mb-12 text-center tracking-tighter leading-tight">
+						<span className="block text-transparent bg-clip-text bg-gradient-to-r from-green-300 via-cyan-400 to-blue-500">Next-Generation</span>
+						<span className="block">Content Automation</span>
 					</h2>
 					<div className="grid md:grid-cols-2 gap-12 text-slate-300">
 						<div className="space-y-6">
@@ -388,22 +394,22 @@ export function WelcomeLanding({onPlayGame,onSignIn}) {
 							</p>
 						</div>
 					</div>
-					<div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-						<div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-							<div className="text-2xl font-bold text-green-400 mb-1">OCR</div>
-							<div className="text-xs uppercase tracking-widest text-slate-500">Processing</div>
+					<div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+						<div className="p-6 rounded-[32px] bg-slate-900/50 border border-white/5 shadow-xl">
+							<div className="text-3xl font-black text-green-400 mb-2 tracking-tighter">OCR</div>
+							<div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Neural Core</div>
 						</div>
-						<div className="p-4 rounded-2xl bg-white/5 border border-border/10">
-							<div className="text-2xl font-bold text-cyan-400 mb-1">HTML5</div>
-							<div className="text-xs uppercase tracking-widest text-slate-500">Standards</div>
+						<div className="p-6 rounded-[32px] bg-slate-900/50 border border-white/5 shadow-xl">
+							<div className="text-3xl font-black text-cyan-400 mb-2 tracking-tighter">WCAG</div>
+							<div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Compliance</div>
 						</div>
-						<div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-							<div className="text-2xl font-bold text-blue-400 mb-1">WebP</div>
-							<div className="text-xs uppercase tracking-widest text-slate-500">Optimization</div>
+						<div className="p-6 rounded-[32px] bg-slate-900/50 border border-white/5 shadow-xl">
+							<div className="text-3xl font-black text-purple-400 mb-2 tracking-tighter">WEBP</div>
+							<div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Optimized</div>
 						</div>
-						<div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-							<div className="text-2xl font-bold text-emerald-400 mb-1">Private</div>
-							<div className="text-xs uppercase tracking-widest text-slate-500">Processing</div>
+						<div className="p-6 rounded-[32px] bg-slate-900/50 border border-white/5 shadow-xl">
+							<div className="text-3xl font-black text-blue-400 mb-2 tracking-tighter">SECURE</div>
+							<div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold">Local Flow</div>
 						</div>
 					</div>
 				</div>

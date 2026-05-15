@@ -4,6 +4,7 @@ import {ThemeProvider} from "@/components/theme-provider";
 import {BackgroundSpace} from "@/components/background-space";
 import {GdprConsent} from "@/components/gdpr-consent";
 import {DelayedScriptLoader} from "@/components/delayed-script-loader";
+import {Toaster} from "sonner";
 import "./globals.css";
 
 const inter=Inter({
@@ -42,6 +43,10 @@ export const metadata={
 		"google-adsense-account": "ca-pub-9874465109252768"
 	}
 };
+
+import { GlobalHeader } from "@/components/global-header";
+import { Footer } from "@/components/footer";
+import { LoginModal } from "@/components/login-modal";
 
 export default function RootLayout({children}) {
 	return (
@@ -95,13 +100,18 @@ export default function RootLayout({children}) {
 					storageKey="content-suite-theme"
 				>
 					<BackgroundSpace />
-					<div className="flex flex-col min-h-screen">
-						<div className="flex-1">
+					<div className="flex flex-col min-h-screen relative">
+						<GlobalHeader />
+						<main className="flex-1">
 							{children}
-						</div>
-						{/* Footer only shows on public routes generally, or at bottom of scrollers */}
+						</main>
+						<Footer />
 					</div>
 					<GdprConsent />
+					<Toaster position="top-right" toastOptions={{
+						className: 'glass-toast !rounded-2xl !border-border !bg-card/90 !backdrop-blur-2xl !text-foreground !shadow-[0_20px_50px_rgba(0,0,0,0.3)] !p-4 !font-orbitron font-bold',
+					}} />
+					<LoginModal />
 				</ThemeProvider>
 			</body>
 		</html>

@@ -11,6 +11,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 export function RichTextEditor({ content, onSave, title = "Editor" }) {
 	const editorRef = useRef(null);
@@ -246,7 +247,7 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 			}
 			saveToHistory();
 		} else {
-			alert('Please click inside a table to apply this style.');
+			toast.error('Please click inside a table to apply this style.');
 		}
 	};
 
@@ -422,12 +423,7 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 				});
 			}
 			
-			// Show confirmation
-			const notification = document.createElement('div');
-			notification.textContent = '✓ Saved';
-			notification.style.cssText = 'position:fixed;top:80px;right:20px;background:#10b981;color:white;padding:8px 16px;border-radius:6px;z-index:9999;font-size:14px;';
-			document.body.appendChild(notification);
-			setTimeout(() => notification.remove(), 2000);
+			toast.success('Professional Assets Saved');
 		}
 	};
 
@@ -581,10 +577,10 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 	};
 
 	return (
-		<div className="bg-white dark:bg-slate-950 flex flex-col relative h-full" ref={toolbarRootRef}>
+		<div className="bg-background dark:bg-slate-950 flex flex-col relative h-full" ref={toolbarRootRef}>
 			{/* Fixed Toolbar at Top */}
 			<div 
-				className="fixed left-0 right-0 z-[200] flex items-center justify-between gap-1 p-2 border-b bg-white/95 dark:bg-slate-900/95 shadow-md backdrop-blur-md px-4 py-1.5"
+				className="fixed left-0 right-0 z-[200] flex items-center justify-between gap-1 p-2 border-b bg-background/95 dark:bg-slate-900/95 shadow-md backdrop-blur-md px-4 py-1.5"
 			>
 					<div className="flex items-center gap-1">
 					<Button
@@ -954,7 +950,7 @@ export function RichTextEditor({ content, onSave, title = "Editor" }) {
 
 		{/* Editor Container - with top padding for fixed toolbar */}
 		<div 
-			className={`p-6 bg-white dark:bg-slate-950 relative flex-1 ${featuredImageUrl ? 'mt-24' : 'mt-11'}`}
+			className={`p-6 bg-background dark:bg-slate-950 relative flex-1 ${featuredImageUrl ? 'mt-24' : 'mt-11'}`}
 			style={{ borderBottom: '1px solid #e5e7eb' }}
 		>
 

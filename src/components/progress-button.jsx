@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 
 export function ProgressButton({
   isLoading,
-  progress,
+  progress = 0,
   label,
   loadingLabel = "Processing",
   className,

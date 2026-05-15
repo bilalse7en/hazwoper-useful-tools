@@ -6,16 +6,43 @@ import {Upload,FileImage,Copy,Download,Loader2,CheckCircle2,AlertCircle,Sparkles
 import Tesseract from 'tesseract.js';
 import { ProgressButton } from "@/components/progress-button";
 import { cn } from "@/lib/utils";
+import {useAuthAction} from "@/lib/use-auth-action";
+import {toast} from "sonner";
+import {saveGeneratorState, getLatestGeneratorState} from "@/lib/tool-history";
 
 export default function ImageToText() {
+	const { performAction } = useAuthAction();
 	const [selectedFile,setSelectedFile]=useState(null);
 	const [previewUrl,setPreviewUrl]=useState(null);
 	const [extractedText,setExtractedText]=useState("");
 	const [isProcessing,setIsProcessing]=useState(false);
 	const [progress,setProgress]=useState(0);
 	const [error,setError]=useState("");
-	const [copied,setCopied]=useState(false);
 	const [useAI,setUseAI]=useState(true); // Default to AI mode - using 100% FREE APIs (no quota limits!)
+
+	// Load latest state on mount
+	useEffect(() => {
+		const loadState = async () => {
+			const state = await getLatestGeneratorState('image_to_text');
+			if (state) {
+				setExtractedText(state.extractedText || "");
+				if (state.extractedText) {
+					toast.info("Restored last OCR session");
+				}
+			}
+		};
+		loadState();
+	}, []);
+
+	// Auto-save helper
+	const persistState = async (updates = {}) => {
+		const currentState = {
+			extractedText,
+			fileName: selectedFile?.name || 'OCR Session',
+			...updates
+		};
+		await saveGeneratorState('image_to_text', currentState);
+	};
 
 	const handleFileSelect=(e) => {
 		const file=e.target.files?.[0];
@@ -205,7 +232,10 @@ export default function ImageToText() {
 				setError("No text found in the image. Please try another image with clearer text.");
 			} else {
 				setExtractedText(text);
+				setError("");
 				setProgress(100);
+				toast.success("Intelligence Extracted Successfully");
+				persistState({ extractedText: text });
 			}
 		} catch(err) {
 			console.error('OCR Error:',err);
@@ -216,21 +246,25 @@ export default function ImageToText() {
 	};
 
 	const handleCopy=() => {
-		navigator.clipboard.writeText(extractedText);
-		setCopied(true);
-		setTimeout(() => setCopied(false),2000);
+		performAction(() => {
+			navigator.clipboard.writeText(extractedText);
+			setCopied(true);
+			setTimeout(() => setCopied(false),2000);
+		}, { type: 'copy', name: 'Image to Text' });
 	};
 
 	const handleDownload=() => {
-		const blob=new Blob([extractedText],{type: 'text/plain'});
-		const url=URL.createObjectURL(blob);
-		const a=document.createElement('a');
-		a.href=url;
-		a.download='extracted-text.txt';
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		URL.revokeObjectURL(url);
+		performAction(() => {
+			const blob=new Blob([extractedText],{type: 'text/plain'});
+			const url=URL.createObjectURL(blob);
+			const a=document.createElement('a');
+			a.href=url;
+			a.download='extracted-text.txt';
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+		}, { type: 'download', name: 'Image to Text' });
 	};
 
 	const handleDragOver=(e) => {

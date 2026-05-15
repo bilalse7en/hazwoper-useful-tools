@@ -12,11 +12,24 @@ import {
 	Copy,
 	Eye,
 	CheckCircle2,
-	AlertCircle
+	AlertCircle,
+	History
 } from "lucide-react";
+import {
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from "@/components/ui/sheet";
 import { processResourceFile } from "@/lib/excel-processor";
 import { PreviewDrawer } from "@/components/preview-drawer";
 import { ProgressButton } from "@/components/progress-button";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { saveGeneratorState, getLatestGeneratorState } from "@/lib/tool-history";
+import { HistoryList } from "@/components/history-list";
+import { useAuthAction } from "@/lib/use-auth-action";
 
 export function ResourceGenerator() {
 	const [file, setFile] = useState(null);
@@ -25,7 +38,8 @@ export function ResourceGenerator() {
 	const [progressText, setProgressText] = useState("");
 	const [resourceCode, setResourceCode] = useState("");
 	const [glossaryLink, setGlossaryLink] = useState("");
-	const [notification, setNotification] = useState(null);
+	const [restoredFileName, setRestoredFileName] = useState("");
+	const { performAction } = useAuthAction();
 
 	const fileInputRef = useRef(null);
 
@@ -33,9 +47,36 @@ export function ResourceGenerator() {
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const [previewContent, setPreviewContent] = useState("");
 
+	// Load latest state on mount
+	useEffect(() => {
+		const loadState = async () => {
+			const state = await getLatestGeneratorState('resource_generator');
+			if (state) {
+				setResourceCode(state.resourceCode || "");
+				setGlossaryLink(state.glossaryLink || "");
+				if (state.resourceCode) {
+					toast.info("Restored last resource session");
+				}
+			}
+		};
+		loadState();
+	}, []);
+
+	// Auto-save helper
+	const persistState = async (updates = {}) => {
+		const currentState = {
+			resourceCode,
+			glossaryLink,
+			fileName: updates.fileName || file?.name || restoredFileName || 'Resource Content',
+			...updates
+		};
+		await saveGeneratorState('resource_generator', currentState, currentState.fileName);
+	};
+
 	const showNotification = (message, type = "success") => {
-		setNotification({ message, type });
-		setTimeout(() => setNotification(null), 3000);
+		if (type === 'error') toast.error(message);
+		else if (type === 'warning' || type === 'info') toast.info(message);
+		else toast.success(message);
 	};
 
 	const handleFileChange = (e) => {
@@ -65,6 +106,16 @@ export function ResourceGenerator() {
 			setResourceCode(html);
 
 			showNotification(`Generated HTML for ${count} resources!`, "success");
+			persistState({ resourceCode: html, glossaryLink });
+
+			try {
+				const { recordMediaUpload } = await import("@/lib/media-hub");
+				await recordMediaUpload({
+					fileName: file.name,
+					fileType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+					fileSize: file.size
+				});
+			} catch (e) {}
 
 			setTimeout(() => {
 				setIsProcessing(false);
@@ -93,12 +144,42 @@ export function ResourceGenerator() {
 	};
 
 	const copyToClipboard = () => {
-		navigator.clipboard.writeText(resourceCode);
-		showNotification("Copied to clipboard!");
+		performAction(() => {
+			navigator.clipboard.writeText(resourceCode);
+		}, { type: 'copy', name: 'Resource Code' });
+	};
+
+	const handleRestore = (state) => {
+		if (!state) return;
+		setResourceCode(state.resourceCode || "");
+		setGlossaryLink(state.glossaryLink || "");
+		setRestoredFileName(state.fileName || "");
+		toast.success("Resource session synchronized");
 	};
 
 	return (
 		<div className="space-y-6">
+			<div className="flex justify-end">
+				<Sheet>
+					<SheetTrigger asChild>
+						<Button variant="outline" className="h-11 rounded-xl font-black uppercase tracking-widest text-[10px] gap-2 border-primary/20 hover:bg-primary/5 transition-all shadow-sm">
+							<History className="h-4 w-4 text-primary" /> Neural Sync History
+						</Button>
+					</SheetTrigger>
+					<SheetContent side="right" className="w-full sm:max-w-[50%] p-0 glass-panel-deep border-l border-border animate-in slide-in-from-right duration-500 z-[200]">
+						<SheetHeader className="p-8 border-b border-border/50 bg-muted/20">
+							<SheetTitle className="flex items-center gap-3 text-xl font-black">
+								<div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+									<History className="h-5 w-5 text-primary" />
+								</div>
+								Neural Sync Hub
+							</SheetTitle>
+						</SheetHeader>
+						<HistoryList toolType="resource_generator" onRestore={handleRestore} />
+					</SheetContent>
+				</Sheet>
+			</div>
+
 			<div className="grid lg:grid-cols-2 gap-6">
 
 				{/* LEFT COLUMN: Controls */}
@@ -136,8 +217,9 @@ export function ResourceGenerator() {
 									onChange={handleFileChange}
 									className="hidden"
 								/>
-								<div className="text-xs text-muted-foreground mt-1 text-center">
-									{file ? `Selected: ${file.name}` : "No file selected"}
+								<div className="text-xs text-muted-foreground mt-1 text-center font-medium italic">
+									{file ? `Selected: ${file.name}` : 
+									 restoredFileName ? `Identity Restored: ${restoredFileName}` : "No file selected"}
 								</div>
 
 								{/* Glossary Link Input */}
@@ -166,7 +248,7 @@ export function ResourceGenerator() {
 										progress={progress}
 										label="Process and Generate Resources"
 										loadingLabel={progressText || "Processing"}
-										className="btn w-full bg-green-600 hover:bg-green-700 text-white h-11 rounded-xl text-sm font-medium shadow-md"
+										className="btn w-full h-11 rounded-xl text-sm font-medium shadow-md"
 										variant="default"
 									/>
 								</div>
@@ -177,6 +259,7 @@ export function ResourceGenerator() {
 
 
 				</div>
+
 
 				{/* RIGHT COLUMN: Output */}
 				<div className="space-y-6">
@@ -225,17 +308,6 @@ export function ResourceGenerator() {
 				content={previewContent}
 			/>
 
-			{notification && (
-				<div className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${notification.type === 'error'
-					? 'bg-destructive text-destructive-foreground'
-					: notification.type === 'warning'
-						? 'bg-warning text-warning-foreground'
-						: 'bg-green-600 text-white'
-					}`}>
-					{notification.type === 'error' ? <AlertCircle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
-					{notification.message}
-				</div>
-			)}
 		</div>
 	);
 }

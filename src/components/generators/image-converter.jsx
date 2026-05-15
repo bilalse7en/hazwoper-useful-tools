@@ -29,6 +29,10 @@ import {
 } from "@/lib/image-converter";
 import {cn} from "@/lib/utils";
 import {ProgressButton} from "@/components/progress-button";
+import {useAuthAction} from "@/lib/use-auth-action";
+import {toast} from "sonner";
+import {saveToolHistory} from "@/lib/tool-history";
+import {ToolHistoryPanel} from "@/components/tool-history-panel";
 
 export function ImageConverter() {
 	const [files,setFiles]=useState([]);
@@ -42,16 +46,17 @@ export function ImageConverter() {
 	const [progress,setProgress]=useState(0);
 	const [currentFile,setCurrentFile]=useState("");
 	const [convertedFiles,setConvertedFiles]=useState([]);
-	const [notification,setNotification]=useState(null);
+	const { performAction } = useAuthAction();
 	const [dragActive,setDragActive]=useState(false);
 	const [showAdvanced,setShowAdvanced]=useState(false);
+	const [historyRefresh,setHistoryRefresh]=useState(0);
 	const fileInputRef=useRef(null);
 
 	const formats=getSupportedFormats();
 
 	const showNotification=(message,type="success") => {
-		setNotification({message,type});
-		setTimeout(() => setNotification(null),3000);
+		if (type === 'error') toast.error(message);
+		else toast.success(message);
 	};
 
 	const handleDrag=useCallback((e) => {
@@ -121,6 +126,14 @@ export function ImageConverter() {
 			setProgress(Math.round(((i+0.1)/files.length)*100));
 
 			try {
+				// Record to media hub
+				const { recordMediaUpload } = await import("@/lib/media-hub");
+				await recordMediaUpload({
+					fileName: file.name,
+					fileType: file.type || 'image',
+					fileSize: file.size
+				});
+
 				const result=await convertImage(file,toFormat,{
 					quality,
 					width: width? parseInt(width):null,
@@ -139,14 +152,42 @@ export function ImageConverter() {
 		setCurrentFile("");
 		const successCount=results.filter(r => r.success).length;
 		showNotification(`Processed ${successCount}/${files.length} images`);
+
+		// Save to history (for logged-in users)
+		for (const result of results.filter(r => r.success)) {
+			try {
+				const { recordMediaUpload } = await import("@/lib/media-hub");
+				await recordMediaUpload({
+					fileName: result.originalName || result.fileName,
+					fileType: `image/${toFormat}`,
+					fileSize: result.convertedSize || 0,
+					preview_url: result.previewUrl || null, // Assuming you have a way to generate thumbnails
+					download_url: null // Local blob URL is not suitable for DB storage unless uploaded
+				});
+
+				await saveToolHistory({
+					toolType: 'image_converter',
+					fileName: result.originalName || result.fileName,
+					fileSize: result.originalSize || 0,
+					outputFormat: toFormat,
+					outputSize: result.convertedSize || 0,
+					reductionPercent: calculateReduction(result.originalSize, result.convertedSize),
+				});
+			} catch (e) { /* silently fail for non-logged users */ }
+		}
+		setHistoryRefresh(prev => prev + 1);
 	};
 
 	const downloadAll=() => {
-		const successFiles=convertedFiles.filter(f => f.success);
-		successFiles.forEach(file => downloadImage(file.blob,file.fileName));
+		performAction(() => {
+			const successFiles=convertedFiles.filter(f => f.success);
+			successFiles.forEach(file => downloadImage(file.blob,file.fileName));
+		}, { type: 'download', name: 'Batch Images' });
 	};
 
-	const downloadSingle=(file) => downloadImage(file.blob,file.fileName);
+	const downloadSingle=(file) => {
+		performAction(() => downloadImage(file.blob,file.fileName), { type: 'download', name: file.fileName });
+	};
 
 	const reset=() => {
 		setFiles([]);
@@ -468,16 +509,12 @@ export function ImageConverter() {
 
 			</div>
 
-			{/* Notification */}
-			{notification&&(
-				<div className={cn(
-					"fixed bottom-8 right-8 z-[100] flex items-center gap-4 rounded-2xl px-6 py-4 shadow-2xl animate-in slide-in-from-right-8 duration-500 border",
-					notification.type==='error'? "bg-red-500 border-red-600 text-white":"bg-primary border-primary/20 text-primary-foreground"
-				)}>
-					{notification.type==='error'? <AlertCircle className="h-5 w-5" />:<CheckCircle2 className="h-5 w-5" />}
-					<span className="text-xs font-black uppercase tracking-widest">{notification.message}</span>
-				</div>
-			)}
+			{/* Notification system replaced by Sonner */}
+
+			{/* History Panel */}
+			<div className="w-full max-w-[1600px] mx-auto mt-8 px-4">
+				<ToolHistoryPanel toolType="image_converter" refreshTrigger={historyRefresh} />
+			</div>
 		</div>
 	);
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import { useAuthAction } from "@/lib/use-auth-action";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
 	Eraser,
@@ -16,14 +17,21 @@ import {
 	Copy,
 	Trash2,
 	FileText,
-	CheckCircle2,
-	AlertCircle,
 	Code,
 	Settings
 } from "lucide-react";
+import {
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from "@/components/ui/sheet";
 import { PreviewDrawer } from "@/components/preview-drawer";
 import { cleanHTML, getHTMLStats, getReductionRate } from "@/lib/html-cleaner";
 import { ProgressButton } from "@/components/progress-button";
+import { saveGeneratorState } from "@/lib/tool-history";
+import { HistoryList } from "@/components/history-list";
 
 const defaultOptions = {
 	removeNBSP: true,
@@ -45,25 +53,26 @@ const defaultOptions = {
 };
 
 const optionLabels = {
-	removeNBSP: { label: "Remove &nbsp;", icon: "space-shuttle" },
-	removeClasses: { label: "Remove classes", icon: "tags" },
-	removeIds: { label: "Remove IDs", icon: "id-card" },
-	removeStyleAttrs: { label: "Remove style attrs", icon: "paint-brush" },
-	removeDataAttrs: { label: "Remove data attrs", icon: "database" },
-	removeEmptyTags: { label: "Remove empty tags", icon: "trash-alt" },
-	removeInlineStyles: { label: "Remove inline styles", icon: "code" },
-	removeFontTags: { label: "Remove font/span", icon: "font" },
-	minifyHTML: { label: "Minify HTML", icon: "compress" },
-	beautifyHTML: { label: "Beautify HTML", icon: "code" },
-	preserveEssentialAttrs: { label: "Preserve essential", icon: "shield-alt" },
-	removeComments: { label: "Remove comments", icon: "comment-slash" },
-	normalizeWhitespace: { label: "Normalize whitespace", icon: "text-height" },
-	removeScriptStyleTags: { label: "Remove script/style", icon: "ban" },
-	removeBrTags: { label: "Remove <br> tags", icon: "level-up-alt" },
-	convertLineBreaks: { label: "Convert line breaks", icon: "paragraph" }
+	removeNBSP: { label: "Remove &nbsp;" },
+	removeClasses: { label: "Remove classes" },
+	removeIds: { label: "Remove IDs" },
+	removeStyleAttrs: { label: "Remove style attrs" },
+	removeDataAttrs: { label: "Remove data attrs" },
+	removeEmptyTags: { label: "Remove empty tags" },
+	removeInlineStyles: { label: "Remove inline styles" },
+	removeFontTags: { label: "Remove font/span" },
+	minifyHTML: { label: "Minify HTML" },
+	beautifyHTML: { label: "Beautify HTML" },
+	preserveEssentialAttrs: { label: "Preserve essential" },
+	removeComments: { label: "Remove comments" },
+	normalizeWhitespace: { label: "Normalize whitespace" },
+	removeScriptStyleTags: { label: "Remove script/style" },
+	removeBrTags: { label: "Remove <br> tags" },
+	convertLineBreaks: { label: "Convert line breaks" }
 };
 
 export function HTMLCleaner() {
+	const { performAction } = useAuthAction();
 	const [html, setHtml] = useState("");
 	const [options, setOptions] = useState(defaultOptions);
 	const [stats, setStats] = useState({ charCount: 0, wordCount: 0, nbspCount: 0, tagCount: 0, cleanScore: 0 });
@@ -71,13 +80,7 @@ export function HTMLCleaner() {
 	const [history, setHistory] = useState([]);
 	const [historyIndex, setHistoryIndex] = useState(-1);
 	const [previewOpen, setPreviewOpen] = useState(false);
-	const [notification, setNotification] = useState(null);
 	const [isProcessing, setIsProcessing] = useState(false);
-
-	const showNotification = (message, type = "success") => {
-		setNotification({ message, type });
-		setTimeout(() => setNotification(null), 3000);
-	};
 
 	// Update stats when HTML changes
 	useEffect(() => {
@@ -87,15 +90,23 @@ export function HTMLCleaner() {
 		}
 	}, [html]);
 
+	const saveState = async (currentHtml) => {
+		if (!currentHtml) return;
+		await saveGeneratorState('html_cleaner', {
+			html: currentHtml,
+			options
+		}, `Cleaned HTML - ${new Date().toLocaleTimeString()}`);
+	};
+
 	const handleClean = useCallback(() => {
 		if (!html.trim()) {
-			showNotification("Please enter some HTML first", "error");
+			toast.error("Please enter some HTML first");
 			return;
 		}
 
 		setIsProcessing(true);
 
-		// Save current state to history
+		// Save current state to local undo history
 		setHistory(prev => [...prev.slice(0, historyIndex + 1), html]);
 		setHistoryIndex(prev => prev + 1);
 
@@ -105,9 +116,10 @@ export function HTMLCleaner() {
 
 			setHtml(cleaned);
 			setReductionRate(reduction);
-			showNotification(`HTML cleaned! Reduced by ${reduction}%`);
+			toast.success(`HTML cleaned! Reduced by ${reduction}%`);
+			saveState(cleaned);
 		} catch (error) {
-			showNotification("Error cleaning HTML: " + error.message, "error");
+			toast.error("Error cleaning HTML: " + error.message);
 		} finally {
 			setIsProcessing(false);
 		}
@@ -117,17 +129,18 @@ export function HTMLCleaner() {
 		if (historyIndex >= 0) {
 			setHtml(history[historyIndex]);
 			setHistoryIndex(prev => prev - 1);
-			showNotification("Undo successful");
+			toast.info("Undo successful");
 		}
 	};
 
 	const handleCopy = async () => {
 		if (!html.trim()) {
-			showNotification("Nothing to copy", "error");
+			toast.error("Nothing to copy");
 			return;
 		}
-		await navigator.clipboard.writeText(html);
-		showNotification("HTML copied to clipboard!");
+		performAction(async () => {
+			await navigator.clipboard.writeText(html);
+		}, { type: 'copy', name: 'HTML Cleaner' });
 	};
 
 	const handleClear = () => {
@@ -137,23 +150,14 @@ export function HTMLCleaner() {
 		}
 		setHtml("");
 		setReductionRate(0);
-		showNotification("Editor cleared");
+		toast.info("Editor cleared");
 	};
 
-	const handlePasteExample = () => {
-		const exampleHTML = `<div class="container" style="margin: 0 auto;" id="main-content">
-  <p style="color: red;">&nbsp;This is a&nbsp;paragraph with&nbsp;
-  non-breaking spaces&nbsp;and inline styles.&nbsp;</p>
-  <span class="highlight" data-info="test">Some text</span>
-  <!-- This is a comment -->
-  <p></p>
-  <div class="empty"></div>
-  <script>alert('test');</script>
-  <style>.test { color: blue; }</style>
-  <br><br>
-</div>`;
-		setHtml(exampleHTML);
-		showNotification("Example HTML pasted");
+	const handleRestore = (state) => {
+		if (!state) return;
+		setHtml(state.html || "");
+		if (state.options) setOptions(state.options);
+		toast.success("HTML session synchronized");
 	};
 
 	const toggleOption = (key) => {
@@ -170,8 +174,28 @@ export function HTMLCleaner() {
 
 	return (
 		<div className="space-y-6">
-			{/* Main Card */}
-			<Card>
+			<div className="flex justify-end">
+				<Sheet>
+					<SheetTrigger asChild>
+						<Button variant="outline" className="h-11 rounded-xl font-black uppercase tracking-widest text-[10px] gap-2 border-primary/20 hover:bg-primary/5 transition-all shadow-sm">
+							<History className="h-4 w-4 text-primary" /> Neural Sync History
+						</Button>
+					</SheetTrigger>
+					<SheetContent side="right" className="w-full sm:max-w-[50%] p-0 glass-panel-deep border-l border-border animate-in slide-in-from-right duration-500 z-[200]">
+						<SheetHeader className="p-8 border-b border-border/50 bg-muted/20">
+							<SheetTitle className="flex items-center gap-3 text-xl font-black">
+								<div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+									<History className="h-5 w-5 text-primary" />
+								</div>
+								Neural Sync Hub
+							</SheetTitle>
+						</SheetHeader>
+						<HistoryList toolType="html_cleaner" onRestore={handleRestore} />
+					</SheetContent>
+				</Sheet>
+			</div>
+
+			<Card className="card">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<Eraser className="h-5 w-5 text-blue-500" />
@@ -179,7 +203,6 @@ export function HTMLCleaner() {
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					{/* Action Buttons */}
 					<div className="flex flex-wrap gap-2">
 						<ProgressButton 
 							onClick={handleClean} 
@@ -187,82 +210,56 @@ export function HTMLCleaner() {
 							isLoading={isProcessing}
 							label="Clean HTML"
 							loadingLabel="Cleaning..."
-							className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold px-6 h-10 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+							className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold px-6 h-10 rounded-xl shadow-sm transition-all"
 							variant="default"
-						>
-							{!isProcessing && <Eraser className="mr-2 h-4 w-4" />}
-						</ProgressButton>
-						<Button variant="outline" onClick={() => setPreviewOpen(true)}>
-							<Eye className="mr-2 h-4 w-4" />
-							Preview
+						/>
+						<Button variant="outline" onClick={() => setPreviewOpen(true)} className="h-10 rounded-xl">
+							<Eye className="mr-2 h-4 w-4" /> Preview
 						</Button>
-						<Button variant="outline" onClick={handleUndo} disabled={historyIndex < 0}>
-							<Undo2 className="mr-2 h-4 w-4" />
-							Undo
+						<Button variant="outline" onClick={handleUndo} disabled={historyIndex < 0} className="h-10 rounded-xl">
+							<Undo2 className="mr-2 h-4 w-4" /> Undo
 						</Button>
-						<Button variant="outline" onClick={handleCopy}>
-							<Copy className="mr-2 h-4 w-4" />
-							Copy
+						<Button variant="outline" onClick={handleCopy} className="h-10 rounded-xl">
+							<Copy className="mr-2 h-4 w-4" /> Copy
 						</Button>
-						<Button variant="outline" onClick={handleClear}>
-							<Trash2 className="mr-2 h-4 w-4" />
-							Clear
-						</Button>
-						<Button variant="outline" onClick={handlePasteExample}>
-							<FileText className="mr-2 h-4 w-4" />
-							Example
+						<Button variant="outline" onClick={handleClear} className="h-10 rounded-xl">
+							<Trash2 className="mr-2 h-4 w-4" /> Clear
 						</Button>
 					</div>
 
-					{/* Editor */}
 					<div className="space-y-2">
 						<Label className="flex items-center gap-2">
-							<Code className="h-4 w-4" />
-							Paste your HTML here:
+							<Code className="h-4 w-4" /> Paste your HTML here:
 						</Label>
 						<Textarea
 							value={html}
 							onChange={(e) => setHtml(e.target.value)}
 							placeholder="Paste your HTML content here..."
-							className="min-h-[250px] font-mono text-sm"
+							className="min-h-[300px] font-mono text-sm rounded-xl bg-muted/30"
 						/>
 					</div>
 
-					{/* Statistics */}
 					<div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-						<div className="rounded-lg border p-3 text-center">
-							<div className="text-xs text-muted-foreground">Chars</div>
-							<div className="text-lg font-semibold">{stats.charCount.toLocaleString()}</div>
-						</div>
-						<div className="rounded-lg border p-3 text-center">
-							<div className="text-xs text-muted-foreground">Words</div>
-							<div className="text-lg font-semibold">{stats.wordCount.toLocaleString()}</div>
-						</div>
-						<div className="rounded-lg border p-3 text-center">
-							<div className="text-xs text-muted-foreground">&amp;nbsp;</div>
-							<div className="text-lg font-semibold">{stats.nbspCount}</div>
-						</div>
-						<div className="rounded-lg border p-3 text-center">
-							<div className="text-xs text-muted-foreground">Tags</div>
-							<div className="text-lg font-semibold">{stats.tagCount}</div>
-						</div>
-						<div className="rounded-lg border p-3 text-center">
-							<div className="text-xs text-muted-foreground">Score</div>
-							<div className="text-lg font-semibold">{stats.cleanScore}%</div>
-						</div>
-						<div className="rounded-lg border p-3 text-center">
-							<div className="text-xs text-muted-foreground">Reduction</div>
-							<div className="text-lg font-semibold text-green-500">{reductionRate}%</div>
-						</div>
+						{[
+							{ label: "Chars", value: stats.charCount.toLocaleString() },
+							{ label: "Words", value: stats.wordCount.toLocaleString() },
+							{ label: "nbsp", value: stats.nbspCount },
+							{ label: "Tags", value: stats.tagCount },
+							{ label: "Score", value: `${stats.cleanScore}%` },
+							{ label: "Reduction", value: `${reductionRate}%`, color: "text-green-500" }
+						].map((stat, i) => (
+							<div key={i} className="rounded-xl border p-3 text-center bg-muted/20">
+								<div className="text-[10px] uppercase font-bold text-muted-foreground">{stat.label}</div>
+								<div className={`text-lg font-black ${stat.color || ""}`}>{stat.value}</div>
+							</div>
+						))}
 					</div>
 
-					{/* Cleaning Options Accordion */}
-					<Accordion type="single" collapsible>
-						<AccordionItem value="options">
-							<AccordionTrigger>
-								<div className="flex items-center gap-2">
-									<Settings className="h-4 w-4" />
-									Cleaning Options
+					<Accordion type="single" collapsible className="w-full">
+						<AccordionItem value="options" className="border-none">
+							<AccordionTrigger className="hover:no-underline py-2">
+								<div className="flex items-center gap-2 text-sm font-bold">
+									<Settings className="h-4 w-4" /> Cleaning Options
 								</div>
 							</AccordionTrigger>
 							<AccordionContent>
@@ -274,17 +271,17 @@ export function HTMLCleaner() {
 												checked={options[key]}
 												onCheckedChange={() => toggleOption(key)}
 											/>
-											<Label htmlFor={key} className="text-sm cursor-pointer">
+											<Label htmlFor={key} className="text-xs cursor-pointer">
 												{label}
 											</Label>
 										</div>
 									))}
 								</div>
-								<div className="flex gap-2 mt-4 pt-4 border-t">
-									<Button variant="outline" size="sm" onClick={selectAll}>
+								<div className="flex gap-2 mt-6 pt-4 border-t border-border/50">
+									<Button variant="outline" size="sm" onClick={selectAll} className="rounded-lg text-[10px] h-8 px-4 font-black uppercase">
 										Select All
 									</Button>
-									<Button variant="outline" size="sm" onClick={deselectAll}>
+									<Button variant="outline" size="sm" onClick={deselectAll} className="rounded-lg text-[10px] h-8 px-4 font-black uppercase">
 										Deselect All
 									</Button>
 								</div>
@@ -294,29 +291,12 @@ export function HTMLCleaner() {
 				</CardContent>
 			</Card>
 
-			{/* Preview Drawer */}
 			<PreviewDrawer
 				open={previewOpen}
 				onOpenChange={setPreviewOpen}
-				title="HTML"
-				code={html}
-				onCopy={() => showNotification("Code copied!")}
+				title="HTML Preview"
+				content={html}
 			/>
-
-			{/* Notification Toast */}
-			{notification && (
-				<div className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${notification.type === 'error'
-						? 'bg-destructive text-destructive-foreground'
-						: 'bg-primary text-primary-foreground'
-					}`}>
-					{notification.type === 'error' ? (
-						<AlertCircle className="h-5 w-5" />
-					) : (
-						<CheckCircle2 className="h-5 w-5" />
-					)}
-					{notification.message}
-				</div>
-			)}
 		</div>
 	);
 }

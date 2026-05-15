@@ -1,1657 +1,192 @@
 import mammoth from "mammoth";
 
-// ==========================================
-// SHARED UTILS
-// ==========================================
-
-function ensureProfessionalLinks(html) {
-	if(!html) return "";
-	// Add target="_blank" and proper rel attributes for SEO
-	let processedHtml = html.replace(/\<a\s+(?:[^\>]*?\s+)?href=(["'])(.*?)\1([^\>]*)\>/gi,(match,p1,p2,p3) => {
-		// Remove any existing target or rel attributes from p3 to avoid duplicates
-		let cleanP3=p3.replace(/\s+(target|rel)=["'][^"']*?["']/gi,'').trim();
-		
-		// Check if this is an internal link (hazwoper-osha.com)
-		const isInternalLink = p2.toLowerCase().includes('hazwoper-osha.com');
-		
-		// Build the new anchor tag
-		let newTag='\<a href="'+p2+'" target="_blank"';
-		
-		// Add rel="noopener noreferrer" only for external links (SEO best practice)
-		if (!isInternalLink) {
-			newTag+=' rel="noopener noreferrer"';
-		}
-		
-		if(cleanP3) newTag+=' '+cleanP3;
-		newTag+='\>';
-		return newTag;
-	});
-	
-	// Replace all &nbsp; with regular space for cleaner code
-	return processedHtml.replace(/&nbsp;/g, ' ');
-}
-
-function stripBoldWrapper(html) {
-	if(!html) return "";
-	let cleaned=html.trim();
-	// Regex matches <strong>...</strong> or <b>...</b> that wraps the entire string
-	const boldMatch=cleaned.match(/^<(strong|b)>(.*)<\/\1>$/i);
-	if(boldMatch) {
-		return boldMatch[2].trim();
-	}
-	return cleaned;
-}
-
-function cleanFAQText(text) {
-	if(!text) return "";
-	let cleaned=text;
-	// Skip numbers like "1. ", "1) ", "1.  "
-	cleaned=cleaned.replace(/^\d+[\.\)]\s*/,'');
-	// Skip prefixes like "Q: ", "Question: ", "Q. "
-	cleaned=cleaned.replace(/^(Q|Question)[:\.]\s*/i,'');
-	cleaned=cleaned.replace(/\s+/g,' ').trim();
-	return cleaned;
-}
-
-function splitLessonSegments(text) {
-	if(!text) return [];
-	const lessonRegex=/(lesson\s*\d+:[\s\S]*?)(?=(lesson\s*\d+:)|$)/gi;
-	const segments=[];
-	let match;
-	while((match=lessonRegex.exec(text))!==null) {
-		segments.push(match[1].trim());
-	}
-	return segments.length>0? segments:[];
-}
-
-function getLessonNumber(title) {
-	if(!title) return null;
-	const match=title.match(/lesson\s*(\d+)/i);
-	return match? parseInt(match[1],10):null;
-}
-
-function getModuleNumber(title) {
-	if(!title) return null;
-	const match=title.match(/module\s*(\d+)/i);
-	return match? parseInt(match[1],10):null;
-}
-
-function sortNumberedEntries(entries,numberExtractor) {
-	if(!Array.isArray(entries)||entries.length===0) return entries||[];
-	return entries
-		.map((entry,index) => ({
-			...entry,
-			_originalIndex: index,
-			_number: numberExtractor(entry)
-		}))
-		.sort((a,b) => {
-			const hasNumA=typeof a._number==='number';
-			const hasNumB=typeof b._number==='number';
-			if(hasNumA&&hasNumB) return a._number-b._number;
-			if(hasNumA) return -1;
-			if(hasNumB) return 1;
-			return a._originalIndex-b._originalIndex;
-		})
-		.map(({_originalIndex,_number,...rest}) => rest);
-}
-
+/**
+ * Common utilities for cleaning HTML from mammoth
+ */
 export function consolidateLists(html) {
-	if (!html) return '';
-	
-	const tempDiv = document.createElement('div');
-	tempDiv.innerHTML = html;
-	
-	// Process UL lists
-	const uls = tempDiv.querySelectorAll('ul');
-	for (let i = 0; i < uls.length; i++) {
-		const currentUl = uls[i];
-		let nextSibling = currentUl.nextElementSibling;
-		
-		// Merge consecutive ULs
-		while (nextSibling && nextSibling.tagName === 'UL') {
-			const itemsToMove = Array.from(nextSibling.children);
-			itemsToMove.forEach(item => currentUl.appendChild(item));
-			const toRemove = nextSibling;
-			nextSibling = nextSibling.nextElementSibling;
-			toRemove.remove();
-		}
-	}
-	
-	// Process OL lists
-	const ols = tempDiv.querySelectorAll('ol');
-	for (let i = 0; i < ols.length; i++) {
-		const currentOl = ols[i];
-		let nextSibling = currentOl.nextElementSibling;
-		
-		// Merge consecutive OLs
-		while (nextSibling && nextSibling.tagName === 'OL') {
-			const itemsToMove = Array.from(nextSibling.children);
-			itemsToMove.forEach(item => currentOl.appendChild(item));
-			const toRemove = nextSibling;
-			nextSibling = nextSibling.nextElementSibling;
-			toRemove.remove();
-		}
-	}
-	
-	return tempDiv.innerHTML;
-}
-
-// ==========================================
-// COURSE GENERATOR LOGIC
-// ==========================================
-
-const courseData={
-	overview: "",courseObjectives: "",syllabus: "",courseTitle: "",faqData: [],
-	overviewSections: [],courseObjectivesList: [],syllabusModules: [],courseObjectivesIntro: "",
-	mainPointsList: [],
-	fileProcessed: false
-};
-
-// Reset function to clear state between runs
-export function resetCourseData() {
-	courseData.overview="";
-	courseData.courseObjectives="";
-	courseData.syllabus="";
-	courseData.courseTitle="";
-	courseData.faqData=[];
-	courseData.overviewSections=[];
-	courseData.courseObjectivesList=[];
-	courseData.syllabusModules=[];
-	courseData.courseObjectivesIntro="";
-	courseData.mainPointsList=[];
-	courseData.fileProcessed=false;
-}
-
-export async function processCourseFile(file,courseName) {
-	return new Promise((resolve,reject) => {
-		resetCourseData();
-		courseData.courseTitle=courseName||"Course Name";
-
-		const reader=new FileReader();
-		reader.onload=async (event) => {
-			try {
-				const result=await mammoth.convertToHtml({arrayBuffer: event.target.result});
-				extractCourseContent(result.value);
-				resolve({...courseData});
-			} catch(error) {
-				console.error("Conversion error:",error);
-				reject(error);
-			}
-		};
-		reader.onerror=() => reject(new Error("Error reading file"));
-		reader.readAsArrayBuffer(file);
-	});
-}
-
-function extractCourseContent(html) {
-	const tempDiv=document.createElement("div");
-	tempDiv.innerHTML=html;
-
-	const elementsArray=Array.from(tempDiv.children);
-
-	extractOverview(elementsArray);
-	extractCourseObjectives(elementsArray);
-	extractSyllabus(elementsArray);
-	extractFAQContent(elementsArray);
-	extractMainPoints(elementsArray);
-
-	courseData.fileProcessed=true;
-}
-
-// ... (Functions extractOverview, extractCourseObjectives, extractSyllabus, extractAllSyllabusContent, extractLessonsDirectly, extractFAQContent are identical to previous version but omitted here for brevity if allowed, but I must provide full file. I will re-paste them to be safe.)
-
-function extractOverview(elementsArray) {
-	let overviewStart=-1;
-	elementsArray.forEach((element,i) => {
-		const text=element.textContent.trim().toLowerCase();
-		if(text.includes("overview")&&overviewStart===-1) overviewStart=i;
-	});
-
-	if(overviewStart!==-1) {
-		const overviewEnd=elementsArray.findIndex((el,i) =>
-			i>overviewStart&&
-			(el.textContent.trim().toLowerCase().includes("course objectives")||
-				el.textContent.trim().toLowerCase().includes("1.2")||
-				el.textContent.trim().toLowerCase().includes("course facts")||
-				el.textContent.trim().toLowerCase().includes("course facts heading 1")||
-				el.textContent.trim().toLowerCase()==="course facts")
-		);
-
-		const syllabusStart=overviewEnd===-1? elementsArray.findIndex((el,i) =>
-			i>overviewStart&&
-			(el.textContent.trim().toLowerCase().includes("syllabus")||
-				el.textContent.trim().toLowerCase().includes("course syllabus"))
-		):-1;
-
-		const finalOverviewEnd=overviewEnd!==-1? overviewEnd:
-			(syllabusStart!==-1? syllabusStart:elementsArray.length);
-		const overviewElements=elementsArray.slice(overviewStart+1,finalOverviewEnd);
-		courseData.overview=overviewElements.map(el => el.outerHTML).join("");
-		courseData.overviewSections=[{heading: "Overview",content: courseData.overview}];
-	}
-}
-
-function extractCourseObjectives(elementsArray) {
-	let objectivesStart=-1;
-	let objectivesEnd=-1;
-
-	for(let i=0;i<elementsArray.length;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim().toLowerCase();
-
-		if(text.includes("course objectives")||
-			text.includes("learning objectives")||
-			(text.includes("objectives")&&element.tagName.match(/^H[1-6]$/i))||
-			text.match(/^\d+\.\d*\s*.*objectives/i)) {
-			objectivesStart=i;
-			break;
-		}
-	}
-
-	if(objectivesStart===-1) return;
-
-	for(let i=objectivesStart+1;i<elementsArray.length;i++) {
-		const el=elementsArray[i];
-		const text=el.textContent.trim().toLowerCase();
-		const tagName=el.tagName;
-
-		if(text.includes("syllabus")||
-			text.includes("course content")||
-			text.includes("faq")||
-			text.includes("frequently asked")||
-			text.match(/^1\.3/)||
-			(tagName.match(/^H[1-3]$/i)&&!text.includes("objectives"))) {
-			objectivesEnd=i;
-			break;
-		}
-	}
-
-	objectivesEnd=objectivesEnd!==-1? objectivesEnd:elementsArray.length;
-	const objectivesElements=elementsArray.slice(objectivesStart,objectivesEnd);
-
-	for(const element of objectivesElements) {
-		const text=element.textContent.trim();
-		const lowerText=text.toLowerCase();
-		const tagName=element.tagName;
-
-		if(!text) continue;
-		if(lowerText.includes("objectives")&&element.tagName.match(/^H[1-6]$/i)) continue;
-
-		if(tagName==='P'&&!courseData.courseObjectivesIntro&&text.length>20) {
-			courseData.courseObjectivesIntro=element.innerHTML.trim();
-			continue;
-		}
-
-		if(tagName==='UL'||tagName==='OL') {
-			const items=element.querySelectorAll('li');
-			items.forEach(item => {
-				const itemText=item.innerHTML.trim();
-				if(itemText) courseData.courseObjectivesList.push(itemText);
-			});
-		}
-
-		if(tagName==='LI') {
-			const itemText=element.innerHTML.trim();
-			if(itemText) courseData.courseObjectivesList.push(itemText);
-		}
-	}
-}
-
-function extractSyllabus(elementsArray) {
-	courseData.syllabusModules=extractAllSyllabusContent(elementsArray);
-}
-
-function extractAllSyllabusContent(elementsArray) {
-	const modules=[];
-	let currentModule=null;
-	let currentLesson=null;
-	let foundSyllabusContent=false;
-
-	let objectivesEndIndex=-1;
-	for(let i=0;i<elementsArray.length;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim().toLowerCase();
-		if((text.includes("course objectives")||text.includes("1.2"))&&
-			(element.tagName.match(/^H[1-6]$/i)||text.match(/^\d+\.\d*\s*.*course\s*objectives/i))) {
-			for(let j=i+1;j<elementsArray.length;j++) {
-				const nextText=elementsArray[j].textContent.trim().toLowerCase();
-				if(nextText.includes("syllabus")||nextText.includes("1.3")||
-					nextText.includes("course content")) {
-					objectivesEndIndex=j;
-					break;
-				}
-			}
-			break;
-		}
-	}
-
-	let syllabusStartIndex=-1;
-	for(let i=(objectivesEndIndex!==-1? objectivesEndIndex:0);i<elementsArray.length;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim().toLowerCase();
-
-		if((text.includes("course content")||
-			text.includes("syllabus")||
-			text.includes("lessons")||
-			text.includes("modules"))&&
-			!text.includes("course objectives")) {
-			syllabusStartIndex=i;
-			foundSyllabusContent=true;
-			break;
-		}
-	}
-
-	if(syllabusStartIndex===-1) {
-		syllabusStartIndex=objectivesEndIndex!==-1? objectivesEndIndex:0;
-	}
-
-	for(let i=syllabusStartIndex;i<elementsArray.length;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim();
-		const tagName=element.tagName;
-
-		if(!text) continue;
-		const lowerText=text.toLowerCase();
-
-		if(lowerText.includes("course objectives")||lowerText.match(/^\d+\.\d*\s*.*course\s*objectives/i)) continue;
-		if(lowerText.includes("course content")||lowerText.includes("syllabus")||
-			lowerText.includes("lessons")||lowerText.includes("modules")) continue;
-
-		if(lowerText.includes("final examination")||
-			lowerText.includes("faq")||
-			lowerText.includes("frequently asked questions")||
-			(tagName.match(/^H[1-3]$/i)&&i>syllabusStartIndex+2)) {
-			break;
-		}
-
-		if(text.match(/^Module\s*\d+:/i)||text.match(/^MODULE\s*\d+/i)) {
-			if(currentModule) {
-				if(currentLesson) {
-					currentModule.lessons.push(currentLesson);
-					currentLesson=null;
-				}
-				modules.push(currentModule);
-			}
-
-			currentModule={
-				title: text,
-				description: "",
-				lessons: []
-			};
-
-			for(let j=i+1;j<Math.min(i+3,elementsArray.length);j++) {
-				const nextElement=elementsArray[j];
-				const nextText=nextElement.textContent.trim();
-				const nextTag=nextElement.tagName;
-
-				if(nextTag==='P'&&nextText&&
-					!nextText.match(/^Module\s*\d+:/i)&&
-					!nextText.match(/^Lesson\s*\d+:/i)&&
-					!nextText.match(/^MODULE\s*\d+/i)&&
-					!nextText.match(/^LESSON\s*\d+/i)&&
-					!nextText.toLowerCase().includes("final examination")) {
-					currentModule.description=nextText;
-					break;
-				}
-				if(nextText.toLowerCase().includes("final examination")) break;
-			}
-		}
-		else if(text.match(/lesson\s*\d+:/i)) {
-			if(!currentModule) {
-				currentModule={
-					title: `${courseData.courseTitle||'Course'} Content`,
-					description: "",
-					lessons: []
-				};
-			}
-			if(currentLesson) currentModule.lessons.push(currentLesson);
-
-			const lessonSegments=splitLessonSegments(text);
-			currentLesson={
-				title: lessonSegments[0]||text,
-				items: []
-			};
-
-			const nestedList=element.querySelector('ul');
-			if(nestedList) {
-				const listItems=nestedList.querySelectorAll('li');
-				listItems.forEach(item => {
-					const itemText=item.innerHTML.trim();
-					if(itemText&&!itemText.match(/^Lesson\s*\d+:/i)) {
-						currentLesson.items.push(itemText);
-					}
-				});
-			}
-
-			if(lessonSegments.length>1&&currentModule) {
-				lessonSegments.slice(1).forEach(segment => {
-					if(segment.trim()) {
-						currentModule.lessons.push({
-							title: segment.trim(),
-							items: []
-						});
-					}
-				});
-			}
-		}
-		else if(tagName==='UL'&&currentLesson) {
-			const listItems=element.querySelectorAll('li');
-			listItems.forEach(item => {
-				const itemText=item.innerHTML.trim();
-				if(itemText&&!itemText.match(/^Lesson\s*\d+:/i)) {
-					currentLesson.items.push(itemText);
-				}
-			});
-		}
-		else if(tagName==='LI'&&!text.match(/^Lesson\s*\d+:/i)) {
-			if(currentLesson) {
-				currentLesson.items.push(element.innerHTML.trim());
-			} else if(currentModule&&text.length>10) {
-				currentLesson={
-					title: `Lesson ${currentModule.lessons.length+1}: ${text.substring(0,50)}...`,
-					items: [element.innerHTML.trim()]
-				};
-			}
-		}
-		else if(tagName==='P'&&text&&currentModule&&!currentModule.description) {
-			if(text.length>20&&!text.match(/^Module\s*\d+:/i)&&!text.match(/^Lesson\s*\d+:/i)) {
-				currentModule.description=text;
-			}
-		}
-	}
-
-	if(currentLesson) {
-		if(currentModule) {
-			currentModule.lessons.push(currentLesson);
-		} else {
-			currentModule={
-				title: `${courseData.courseTitle||'Course'} Content`,
-				description: "",
-				lessons: [currentLesson]
-			};
-		}
-	}
-
-	if(currentModule) modules.push(currentModule);
-
-	if(modules.length===0&&foundSyllabusContent) {
-		modules.push(...extractLessonsDirectly(elementsArray,syllabusStartIndex));
-	}
-
-	modules.forEach(module => {
-		if(module.lessons&&module.lessons.length>0) {
-			module.lessons=sortNumberedEntries(module.lessons,lesson => getLessonNumber(lesson.title));
-		}
-	});
-
-	return sortNumberedEntries(modules,module => getModuleNumber(module.title));
-}
-
-function extractLessonsDirectly(elementsArray,startIndex) {
-	const modules=[];
-	const defaultModule={
-		title: `${courseData.courseTitle||'Course'} Content`,
-		description: "",
-		lessons: []
-	};
-
-	let currentLesson=null;
-	let inSyllabusSection=false;
-
-	for(let i=startIndex;i<elementsArray.length;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim();
-		const tagName=element.tagName;
-		const lowerText=text.toLowerCase();
-
-		if(!text) continue;
-
-		if(lowerText.includes("course objectives")||lowerText.match(/^\d+\.\d*\s*.*course\s*objectives/i)) continue;
-
-		if(!inSyllabusSection&&(lowerText.includes("course content")||lowerText.includes("syllabus")||lowerText.includes("lessons"))) {
-			inSyllabusSection=true;
-			continue;
-		}
-
-		if(inSyllabusSection&&
-			(lowerText.includes("final examination")||
-				lowerText.includes("faq")||
-				(tagName.match(/^H[1-3]$/i)&&i>startIndex+3&&!lowerText.includes("lesson")))) {
-			break;
-		}
-
-		if(!inSyllabusSection) continue;
-
-		if(text.match(/^Lesson\s*\d+:/i)||text.match(/^LESSON\s*\d+/i)||
-			(tagName==='P'&&text.match(/\d+\./))||
-			(tagName.match(/^H[3-4]$/i)&&text.length<100)) {
-
-			if(currentLesson) defaultModule.lessons.push(currentLesson);
-
-			currentLesson={title: text,items: []};
-
-			const nestedList=element.querySelector('ul');
-			if(nestedList) {
-				const listItems=nestedList.querySelectorAll('li');
-				listItems.forEach(item => currentLesson.items.push(item.innerHTML.trim()));
-			}
-		}
-		else if(tagName==='UL'&&currentLesson) {
-			const listItems=element.querySelectorAll('li');
-			listItems.forEach(item => {
-				const itemText=item.innerHTML.trim();
-				if(itemText&&!itemText.match(/^Lesson\s*\d+:/i)) currentLesson.items.push(itemText);
-			});
-		}
-		else if(tagName==='LI'&&currentLesson&&!text.match(/^Lesson\s*\d+:/i)) {
-			currentLesson.items.push(element.innerHTML.trim());
-		}
-	}
-
-	if(currentLesson) defaultModule.lessons.push(currentLesson);
-
-	if(defaultModule.lessons.length>0) {
-		defaultModule.lessons=sortNumberedEntries(defaultModule.lessons,lesson => getLessonNumber(lesson.title));
-		modules.push(defaultModule);
-	}
-
-	return modules;
-}
-
-function extractFAQContent(elementsArray) {
-	courseData.faqData=[];
-	let faqStart=-1;
-	elementsArray.forEach((element,i) => {
-		const text=element.textContent.trim().toLowerCase();
-		if((text.includes("faq")||text.includes("frequently asked questions"))&&
-			element.tagName.match(/^H[1-6]$/i)&&faqStart===-1) {
-			faqStart=i;
-		}
-	});
-
-	if(faqStart===-1) return;
-
-	let faqEnd=elementsArray.length;
-	for(let i=faqStart+1;i<elementsArray.length;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim();
-		if(text.includes("For Online Course Page:")||
-			(element.tagName.match(/^H[1-6]$/i)&&!text.toLowerCase().includes("faq")&&i>faqStart+3)) {
-			faqEnd=i;
-			break;
-		}
-	}
-
-	let currentQuestion="";
-	let currentAnswer="";
-	let collectingAnswer=false;
-
-	for(let i=faqStart+1;i<faqEnd;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim();
-		const innerHTML=element.innerHTML.trim();
-
-		if(!text) continue;
-
-		const isQuestion=(
-			/^\d+\.\s+/.test(text)||
-			(innerHTML.includes('<strong>')&&text.includes('?'))||
-			(innerHTML.includes('<b>')&&text.includes('?'))||
-			(text.endsWith('?')&&text.length<200)
-		);
-
-		if(isQuestion) {
-			if(currentQuestion&&currentAnswer) {
-				courseData.faqData.push({
-					question: cleanFAQText(currentQuestion),
-					answer: stripBoldWrapper(currentAnswer)
-				});
-			}
-			currentQuestion=text;
-			const questionMatch=text.match(/^\d+\.\s+(.*?)(?:\?)(.*)$/);
-			if(questionMatch&&questionMatch[2]&&questionMatch[2].trim()) {
-				currentAnswer=questionMatch[2].trim();
-				collectingAnswer=true;
-			} else {
-				currentAnswer="";
-				collectingAnswer=true;
-			}
-		} else if(collectingAnswer&&text) {
-			if(currentAnswer) {
-				currentAnswer+=" "+element.outerHTML;
-			} else {
-				currentAnswer=element.outerHTML;
-			}
-
-			const nextIsQuestion=i+1<faqEnd&&(
-				/^\d+\.\s+/.test(elementsArray[i+1].textContent.trim())||
-				(elementsArray[i+1].innerHTML.includes('<strong>')&&
-					elementsArray[i+1].textContent.trim().includes('?'))
-			);
-
-			if(nextIsQuestion) {
-				if(currentQuestion&&currentAnswer) {
-					courseData.faqData.push({
-						question: cleanFAQText(currentQuestion),
-						answer: stripBoldWrapper(currentAnswer)
-					});
-				}
-				currentQuestion="";
-				currentAnswer="";
-				collectingAnswer=false;
-			}
-		}
-	}
-
-	if(currentQuestion&&currentAnswer) {
-		courseData.faqData.push({
-			question: cleanFAQText(currentQuestion),
-			answer: stripBoldWrapper(currentAnswer)
-		});
-	}
-}
-
-function extractMainPoints(elementsArray) {
-	courseData.mainPointsList=[];
-	let mainPointsStart=-1;
-
-	// Look for "For Business (Tier Pricing):" or similar headings
-	elementsArray.forEach((element,i) => {
-		const text=element.textContent.trim().toLowerCase();
-		if((text.includes("for business")&&text.includes("tier pricing"))||
-			text.includes("for business (tier pricing)")||
-			text.includes("main points")||
-			text.includes("course main points")) {
-			mainPointsStart=i;
-		}
-	});
-
-	if(mainPointsStart===-1) return;
-
-	// Extract content after the heading
-	let mainPointsEnd=elementsArray.length;
-	for(let i=mainPointsStart+1;i<elementsArray.length;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim().toLowerCase();
-		// Stop if we hit another major section
-		if((element.tagName.match(/^H[1-3]$/i)&&
-			(text.includes("overview")||
-				text.includes("objectives")||
-				text.includes("syllabus")||
-				text.includes("faq")))||
-			i>mainPointsStart+50) { // Safety limit
-			mainPointsEnd=i;
-			break;
-		}
-	}
-
-	// Collect list items
-	for(let i=mainPointsStart+1;i<mainPointsEnd;i++) {
-		const element=elementsArray[i];
-		const tagName=element.tagName;
-
-		if(tagName==='UL'||tagName==='OL') {
-			const items=element.querySelectorAll('li');
-			items.forEach(item => {
-				const itemText=item.innerHTML.trim();
-				if(itemText) {
-					courseData.mainPointsList.push(itemText);
-				}
-			});
-		} else if(tagName==='LI') {
-			const itemText=element.innerHTML.trim();
-			if(itemText) {
-				courseData.mainPointsList.push(itemText);
-			}
-		}
-	}
-}
-
-export function generateOverviewCode(data,mediaUrl="") {
-	let videoHtml="";
-
-	// Auto-detect media type based on URL
-	if(mediaUrl&&mediaUrl.trim()) {
-		const url=mediaUrl.trim().toLowerCase();
-
-		// Check if it's a video URL (contains video player domains or video patterns)
-		const isVideo=
-			url.includes('player.vimeo.com')||
-			url.includes('youtube.com')||
-			url.includes('youtu.be')||
-			url.includes('player.')||
-			url.includes('/video/')||
-			url.includes('videopress')||
-			url.includes('wistia')||
-			url.includes('vimeo');
-
-		// Check if it's an image URL (ends with image extensions)
-		const isImage=
-			url.endsWith('.png')||
-			url.endsWith('.jpg')||
-			url.endsWith('.jpeg')||
-			url.endsWith('.webp')||
-			url.endsWith('.gif')||
-			url.endsWith('.svg')||
-			url.endsWith('.bmp')||
-			url.includes('.png?')||
-			url.includes('.jpg?')||
-			url.includes('.jpeg?')||
-			url.includes('.webp?');
-
-		if(isVideo) {
-			// Show iframe for video, comment out img
-			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="${mediaUrl}" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><!-- <img src="" class="w-100" alt="${data.courseTitle||'Course Name'}"> --></div></div>`;
-		} else if(isImage) {
-			// Show img for image, comment out iframe
-			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><!-- <iframe title="${data.courseTitle||'Course Video'}" src="" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe> --><img src="${mediaUrl}" class="w-100" alt="${data.courseTitle||'Course Name'}"></div></div>`;
-		} else {
-			// If URL provided but type unclear, default to video (iframe)
-			videoHtml=`<div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="${mediaUrl}" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><!-- <img src="" class="w-100" alt="${data.courseTitle||'Course Name'}"> --></div></div>`;
-		}
-	} else {
-		// If no URL provided, comment out both
-		videoHtml=`<!-- <div class="col-md-5 col-sm-12 elementor-col-40 elementor-column ml-md-3 p-0 pb-0 pt-0 verified-field-container" style="float:right"><div class="demo-video"><iframe title="${data.courseTitle||'Course Video'}" src="" width="560" height="200" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen data-ready="true"></iframe><img src="" class="w-100" alt="${data.courseTitle||'Course Name'}"></div></div> -->`;
-	}
-
-	let contentHtml="";
-	if(data.overviewSections.length>0) {
-		data.overviewSections.forEach(section => {
-			const tempDiv=document.createElement("div");
-			tempDiv.innerHTML=section.content;
-			tempDiv.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach(heading => {
-				const newHeading=document.createElement("h2");
-				newHeading.className="fs-4 text-warning";
-				newHeading.innerHTML=heading.innerHTML;
-				heading.parentNode.replaceChild(newHeading,heading);
-			});
-			tempDiv.querySelectorAll("ul, ol").forEach(list => {list.className="";});
-			tempDiv.querySelectorAll("a").forEach(link => {link.setAttribute("target","_blank");});
-			contentHtml+=tempDiv.innerHTML;
-		});
-	} else {
-		contentHtml="<p>No overview content found.</p>";
-	}
-	return ensureProfessionalLinks(videoHtml+contentHtml);
-}
-
-export function generateCourseObjectivesCode(data) {
-	let listItemsHtml="";
-	if(data.courseObjectivesList.length>0) {
-		listItemsHtml=data.courseObjectivesList.map(item => `<li>${item}</li>`).join('\n');
-	} else {
-		listItemsHtml="<li>No course objectives found in the document.</li>";
-	}
-	const introText=data.courseObjectivesIntro||"After completing this course, the learner will be able to:";
-	return ensureProfessionalLinks(`<ul>${listItemsHtml}</ul>`);
-}
-
-export function generateSyllabusCode(data) {
-	let totalLessons=0;
-	let modulesHTML='';
-
-	// Check if this is a lessons-only structure
-	const isLessonsOnly=data.syllabusModules.length===1&&
-		data.syllabusModules[0]&&
-		(data.syllabusModules[0].title.includes('Content')||
-			data.syllabusModules[0].title.includes('Lessons'));
-
-	if(data.syllabusModules.length>0) {
-		data.syllabusModules.forEach((module) => {
-			totalLessons+=module.lessons.length;
-
-			if(isLessonsOnly) {
-				// LESSONS-ONLY STRUCTURE: Each lesson in separate sbox
-				module.lessons.forEach((lesson) => {
-					let lessonItemsHTML='';
-
-					if(lesson.items&&lesson.items.length>0) {
-						lessonItemsHTML=lesson.items.map(item => {
-							const cleanItem=item.replace(/\s+/g,' ').trim();
-							return `<li>${cleanItem}</li>`;
-						}).join('');
-
-						modulesHTML+=`
-                            <div class="sbox">
-                                <h4 class="fs-5 fw-normal font-poppins">${lesson.title}</h4>
-                                <hr class="border-3 my-2" style="background: #ffcd05;opacity: 1;padding: 2px;">
-                                <ul>
-                                    ${lessonItemsHTML}
-                                </ul>
-                            </div>`;
-					} else {
-						modulesHTML+=`
-                            <div class="sbox">
-                                <h4 class="fs-5 fw-normal font-poppins">${lesson.title}</h4>
-                            </div>`;
-					}
-				});
-			} else {
-				// MODULE-BASED STRUCTURE: Module with lessons inside
-				let lessonsHTML='';
-
-				module.lessons.forEach((lesson) => {
-					let lessonItemsHTML='';
-
-					if(lesson.items&&lesson.items.length>0) {
-						lessonItemsHTML=lesson.items.map(item => {
-							const cleanItem=item.replace(/\s+/g,' ').trim();
-							return `<li>${cleanItem}</li>`;
-						}).join('');
-
-						lessonsHTML+=`
-                            <li>
-                                ${lesson.title}
-                                <ul>
-                                    ${lessonItemsHTML}
-                                </ul>
-                            </li>`;
-					} else {
-						lessonsHTML+=`
-                            <li>
-                                ${lesson.title}
-                            </li>`;
-					}
-				});
-
-				// MODULE STRUCTURE
-				modulesHTML+=`
-                    <div class="sbox">
-                        <h4 class="fs-5 fw-normal font-poppins">${module.title}</h4>
-                        <hr class="border-3 my-2" style="background: #ffcd05;opacity: 1;padding: 2px;">`;
-
-				if(module.description) {
-					modulesHTML+=`
-                        <p class="pl-3 mb-2">${module.description}</p>`;
-				}
-
-				modulesHTML+=`
-                        <ul>
-                            ${lessonsHTML}
-                        </ul>
-                    </div>`;
-			}
-		});
-	} else {
-		modulesHTML='<div class="sbox"><p>No syllabus content could be extracted. Please check the document structure.</p></div>';
-	}
-	const courseTitle=data.courseTitle||'Course';
-	return ensureProfessionalLinks(`<h2 class="fs-2 mb-3">${courseTitle} Course Syllabus</h2>
-        <p>This ${courseTitle} consists of ${totalLessons} lessons ${!isLessonsOnly&&data.syllabusModules.length>1? `divided into ${data.syllabusModules.length} modules`:''}. Students are required to take each lesson in sequential order as listed below.</p>
-        <div style="background: #f2f3f5;padding-bottom:1px;">
-            <div class="border-0 pl-3 sbox" style="background-color: #ffcd05;">
-                <div class="fs-5 fw-normal lh-sm m-0 text-uppercase">${isLessonsOnly? 'Lessons':'Lessons'}</div>
-            </div>
-            <h3 class="font-poppins fs-5 fw-normal pl-3 sbox">Introduction</h3>
-            ${modulesHTML}
-            <div class="sbox">
-                <h4 class="font-poppins fs-5 m-0 fw-normal">Final Examination</h4>
-            </div>
-        </div>`);
-}
-
-export function generateFAQCode(data) {
-	if(data.faqData.length===0) {
-		return "<!-- No FAQ content found in the document. -->";
-	}
-
-	let faqHTML=`<div class="faq-section">\n`;
-
-	data.faqData.forEach((faq,index) => {
-		const question=cleanFAQText(faq.question);
-		// Remove all bold/strong tags from answer and clean it
-		let answer=faq.answer||"";
-		// Strip all bold/strong tags from the beginning and throughout
-		answer=answer.replace(/<\/?(?:strong|b)>/gi,'').trim();
-		answer=cleanFAQText(answer);
-		answer=answer.replace(/^A:\s*/i,'').trim();
-
-		if(question&&answer) {
-			faqHTML+=`  <div class="faq-item">\n`;
-			// Question should be bold
-			faqHTML+=`    <div class="faq-question"><strong>${index+1}. ${question}</strong></div>\n`;
-			// Answer should NOT be bold
-			faqHTML+=`    <div class="faq-answer">${answer}</div>\n`;
-			faqHTML+=`  </div>\n`;
-
-			if(index<data.faqData.length-1) {
-				faqHTML+=`  <hr>\n`;
-			}
-		}
-	});
-
-	faqHTML+=`</div>`;
-	return ensureProfessionalLinks(faqHTML);
-}
-
-export function generateMainPointsCode(data) {
-	if(!data.mainPointsList||data.mainPointsList.length===0) {
-		return "<!-- No main points found in the document. -->";
-	}
-
-	let mainPointsHTML=`<ul>\n`;
-
-	data.mainPointsList.forEach(item => {
-		let processedItem=item;
-		let hasFlags=false;
-
-		// Check if this is an "Available in:" item
-		const lowerItem=item.toLowerCase();
-		if(lowerItem.includes('available in')) {
-			hasFlags=true;
-			// Extract the languages mentioned
-			const hasEnglish=lowerItem.includes('english');
-			const hasSpanish=lowerItem.includes('spanish')||lowerItem.includes('español');
-
-			// Build the flag HTML
-			let flagHTML='<strong>Available in: </strong>';
-
-			if(hasEnglish&&hasSpanish) {
-				// Both languages
-				flagHTML+=`<img src="https://flagcdn.com/24x18/us.png" srcset="https://flagcdn.com/48x36/us.png 2x" width="24" height="18" alt="United States"> English | <img src="https://flagcdn.com/24x18/es.png" srcset="https://flagcdn.com/48x36/es.png 2x" width="24" height="18" alt="España"> Español`;
-			} else if(hasEnglish) {
-				// English only
-				flagHTML+=`<img src="https://flagcdn.com/24x18/us.png" srcset="https://flagcdn.com/48x36/us.png 2x" width="24" height="18" alt="United States"> English`;
-			} else if(hasSpanish) {
-				// Spanish only
-				flagHTML+=`<img src="https://flagcdn.com/24x18/es.png" srcset="https://flagcdn.com/48x36/es.png 2x" width="24" height="18" alt="España"> Español`;
-			} else {
-				// No specific language detected, keep original
-				flagHTML='Available in: '+item.replace(/available\s*in\s*:?\s*/gi,'');
-			}
-
-			processedItem=flagHTML;
-		}
-
-		// Add li with span wrapping for flags
-		if(hasFlags) {
-			mainPointsHTML+=`  <li><span style="display: ruby;">${processedItem}</span></li>\n`;
-		} else {
-			mainPointsHTML+=`  <li>${processedItem}</li>\n`;
-		}
-	});
-
-	mainPointsHTML+=`</ul>`;
-	return ensureProfessionalLinks(mainPointsHTML);
-}
-
-// ==========================================
-// BLOG GENERATOR LOGIC
-// ==========================================
-
-export async function processBlogFile(file) {
-	return new Promise((resolve,reject) => {
-		const reader=new FileReader();
-		reader.onload=async (event) => {
-			try {
-				const result=await mammoth.convertToHtml({arrayBuffer: event.target.result});
-				const processed=extractBlogContent(result.value);
-				const faqData=extractBlogFAQContent(result.value);
-				resolve({blogData: processed,faqData: faqData});
-			} catch(error) {
-				console.error("Conversion error:",error);
-				reject(error);
-			}
-		};
-		reader.onerror=() => reject(new Error("Error reading file"));
-		reader.readAsArrayBuffer(file);
-	});
-}
-
-function cleanHTML(element) {
-	element.querySelectorAll('*[style]').forEach(el => el.removeAttribute('style'));
-	element.querySelectorAll('*[class]').forEach(el => el.removeAttribute('class'));
-
-	Array.from(element.querySelectorAll('span')).forEach(span => {
-		const parent=span.parentNode;
-		while(span.firstChild) parent.insertBefore(span.firstChild,span);
-		parent.removeChild(span);
-	});
-
-	Array.from(element.querySelectorAll('div')).forEach(div => {
-		const parent=div.parentNode;
-		if(!parent) return;
-		while(div.firstChild) parent.insertBefore(div.firstChild,div);
-		if(div.parentNode) parent.removeChild(div);
-	});
-
-	element.innerHTML=element.innerHTML.replace(/(<br\s*\/?>\s*){2,}/gi,'<br/>');
-
-	Array.from(element.querySelectorAll('*')).forEach(el => {
-		if(el.tagName==='IMG' || el.tagName==='TABLE') return;
-		if(!el.textContent.trim()&&el.children.length===0) el.remove();
-	});
+	if (!html) return "";
+	// Merge adjacent </ul><ul> or </ol><ol>
+	return html
+		.replace(/<\/ul>\s*<ul>/g, "")
+		.replace(/<\/ol>\s*<ol>/g, "")
+		.replace(/<p>&nbsp;<\/p>/g, "")
+		.trim();
 }
 
 /**
- * Formats table HTML with professional styles and conditional headers
- * as requested by the user (top header vs left header).
+ * ==========================================
+ * BLOG & FAQ PROCESSOR
+ * ==========================================
  */
-export function formatBlogTable(tableHtml) {
-	if (!tableHtml) return "";
+
+export async function processBlogFile(file) {
+	const arrayBuffer = await file.arrayBuffer();
+	const result = await mammoth.convertToHtml({ arrayBuffer });
+	let html = result.value;
 	
-	const tempDiv = document.createElement('div');
-	tempDiv.innerHTML = tableHtml;
-	const table = tempDiv.querySelector('table');
-	if (!table) return tableHtml;
+	// Basic cleaning
+	html = consolidateLists(html);
 	
-	// Apply standard premium styles and Bootstrap 'table' class
-	// Move 'table-container' logic to the table itself as requested
-	table.className = "table table-container";
-	table.setAttribute('style', 'display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap;');
-	
-	const rows = Array.from(table.querySelectorAll('tr'));
-	if (rows.length === 0) return tableHtml;
-
-	// 1. Handle Heading on Top (thead or first tr with th/bold)
-	const thead = table.querySelector('thead');
-	if (thead) {
-		thead.querySelectorAll('tr').forEach(tr => {
-			tr.classList.add('bg-warning');
-		});
-	} else {
-		const firstRow = rows[0];
-		const firstRowCells = Array.from(firstRow.querySelectorAll('td, th'));
-		const hasTh = firstRow.querySelector('th');
-		const allBold = firstRowCells.length > 0 && firstRowCells.every(cell => cell.querySelector('b, strong') || cell.tagName === 'TH');
-		if (hasTh || allBold) {
-			firstRow.classList.add('bg-warning');
-		}
-	}
-	
-	// 2. Handle Heading on Left (first cell in tr)
-	rows.forEach(tr => {
-		if (tr.classList.contains('bg-warning')) return;
-		const cells = Array.from(tr.querySelectorAll('td, th'));
-		if (cells.length > 0) {
-			const firstCell = cells[0];
-			const isLeftHeading = firstCell.tagName === 'TH' || firstCell.querySelector('b, strong');
-			if (isLeftHeading) {
-				firstCell.classList.add('bg-warning');
-				firstCell.style.textAlign = 'left';
-			}
-		}
-	});
-	
-	return table.outerHTML;
-}
-
-function improveListStructure(element) {
-	Array.from(element.querySelectorAll('ul,ol')).forEach(list => {
-		Array.from(list.querySelectorAll('li')).forEach(li => {
-			li.innerHTML=li.innerHTML.replace(/&gt;/g,'');
-			if(!li.textContent.trim()&&li.children.length===0) li.remove();
-		});
-		if(!list.children.length) list.remove();
-	});
-}
-
-function extractBlogContent(html) {
-	// Logic aligned with js/blog-generator.js
-	const tempDiv=document.createElement("div");
-	tempDiv.innerHTML=html;
-
-	// Enhanced Clean HTML steps
-	const metaMarkers=['Meta Description','Meta Title','meta description','meta title','Slug','Category','category','slug','relevant courses'];
-	const lineRemoveMarkers=['link:','alt-text','alt text:','title text:'];
-
-	const allElements=Array.from(tempDiv.querySelectorAll('*'));
-	let removeFromIndex=-1;
-
-	for(let i=0;i<allElements.length;i++) {
-		const el=allElements[i];
-		const text=(el.textContent||"").trim();
-		if(!text) continue;
-		const lowerText=text.toLowerCase();
-
-		if(metaMarkers.some(m => lowerText.startsWith(m))) {
-			removeFromIndex=i;
-			break;
-		}
-
-		if(lineRemoveMarkers.some(m => lowerText.startsWith(m))) {
-			el.remove();
-		}
-	}
-
-	if(removeFromIndex!==-1) {
-		for(let j=removeFromIndex;j<allElements.length;j++) {
-			const nodeToRemove=allElements[j];
-			if(nodeToRemove&&nodeToRemove.parentNode) {
-				try {
-					nodeToRemove.parentNode.removeChild(nodeToRemove);
-				} catch(e) {}
-			}
-		}
-	}
-
-	cleanHTML(tempDiv);
-	improveListStructure(tempDiv);
-
-	// Now Extract Content
-	const blogData={title: "",content: [],imageCount: 0};
-
-	// Extract Title - The first meaningful thing is ALWAYS the title
-	const isFaq=(text) => text.toLowerCase().includes('faq')||text.toLowerCase().includes('frequently asked questions');
-
-	const firstElement=tempDiv.firstElementChild;
-	if(firstElement) {
-		const text=firstElement.textContent.trim();
-		if(text&&!isFaq(text)) {
-			blogData.title=text;
-			firstElement.remove();
-		}
-	}
-
-	const walker=document.createTreeWalker(tempDiv,NodeFilter.SHOW_ELEMENT,null,false);
-	let node;
-	while(node=walker.nextNode()) {
-		if(!node||!node.textContent) continue;
-		const text=(node.textContent||"").trim();
-		if(!text) continue;
-		const lowerText=text.toLowerCase();
-
-		if(metaMarkers.some(m => lowerText.startsWith(m))) break;
-
-		const tag=node.tagName.toLowerCase();
-
-		// Stop extraction if we hit the FAQ section (to be handled separately)
-		if(tag.match(/^h[1-6]$/)&&(lowerText.includes('faq')||lowerText.includes('frequently asked questions'))) {
-			break;
-		}
-
-		if(tag.match(/^h[1-6]$/)) {
-			const level=parseInt(tag.charAt(1));
-			blogData.content.push({
-				type: 'heading',
-				level: level,
-				className: `fs-${level}`,
-				content: node.innerHTML.trim()
-			});
-		} else if(tag==='p') {
-			const html=node.innerHTML.trim();
-			if(html&&html.replace(/<[^>]*>/g,'').trim().length>0) {
-				blogData.content.push({
-					type: 'paragraph',
-					content: html
-				});
-			}
-		} else if(tag==='ul'||tag==='ol') {
-			const items=Array.from(node.querySelectorAll('li'))
-				.map(li => li.innerHTML.trim())
-				.filter(i => i.length>0);
-			if(items.length) {
-				blogData.content.push({
-					type: 'list',
-					ordered: tag==='ol',
-					items: items
-				});
-			}
-			// Skip children of the list
-			let lastChild = node;
-			while(lastChild.lastElementChild) lastChild = lastChild.lastElementChild;
-			walker.currentNode = lastChild;
-		} else if(tag==='table') {
-			blogData.content.push({
-				type: 'table',
-				content: node.outerHTML
-			});
-			// Skip children of the table
-			let lastChild = node;
-			while(lastChild.lastElementChild) lastChild = lastChild.lastElementChild;
-			walker.currentNode = lastChild;
-		} else if(tag==='img') {
-			blogData.imageCount++;
-			blogData.content.push({
-				type: 'image',
-				alt: node.getAttribute('alt')||`Blog image ${blogData.imageCount}`,
-				placeholder: `[Image ${blogData.imageCount}]`
-			});
-		}
-	}
-
-	return blogData;
-}
-
-export function generateBlogCode(blogData,featuredImage={},imageUrls=[]) {
-	let imageIndex=0,blogHTML="";
-
-	function escapeAttr(str) {
-		if(str===null||str===undefined) return '';
-		return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-	}
-
-	function escapeHtml(str) {
-		if(str===null||str===undefined) return '';
-		return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-	}
-
-	if(blogData.title) {
-		blogHTML+=`<h1 class="text-center fs-1">${escapeHtml(blogData.title)}</h1><hr>\n\n`;
-	}
-
-	if(featuredImage.url) {
-		let imgTag=`<p><img src="${escapeAttr(featuredImage.url)}"`;
-		if(featuredImage.alt) imgTag+=` alt="${escapeAttr(featuredImage.alt)}"`;
-		if(featuredImage.title) imgTag+=` title="${escapeAttr(featuredImage.title)}"`;
-		imgTag+=` class="w-100"></p>\n\n`;
-		blogHTML+=imgTag;
-	}
-
-	for(const item of blogData.content) {
-		switch(item.type) {
-		case 'heading': {
-			const level=item.level||2;
-			const className=item.className? ` ${item.className}`:'';
-			blogHTML+=level===1
-				? `<h1 class="text-center${className}">${item.content}</h1>\n\n`
-				:`<h${level} class="${item.className}">${item.content}</h${level}>\n\n`;
-			break;
-		}
-		case 'paragraph': {
-			const content=(item.content||"").trim();
-			if(content&&content.replace(/<[^>]*>/g,'').trim().length>0) {
-				blogHTML+=`<p>${content}</p>\n\n`;
-			}
-			break;
-		}
-		case 'list': {
-			const tag=item.ordered? 'ol':'ul';
-			blogHTML+=`<${tag}>\n`;
-			item.items.forEach(li => {
-				if(li&&li.trim().length>0) {
-					blogHTML+=`  <li>${li}</li>\n`;
-				}
-			});
-			blogHTML+=`</${tag}>\n\n`;
-			break;
-		}
-		case 'image': {
-			const imageUrl=imageUrls[imageIndex]||"#";
-			blogHTML+=`<img src="${escapeAttr(imageUrl)}" alt="${escapeAttr(item.alt)}" class="w-100 mb-3">\n\n`;
-			imageIndex++;
-			break;
-		}
-		case 'table': {
-			blogHTML+=formatBlogTable(item.content)+"\n\n";
-			break;
-		}
-		}
-	}
-
-	blogHTML+=`
-<div class="fancy-line"></div>
-<style>
-	.fancy-line { width: 60%; margin: 20px auto; border-top: 2px solid #116466; text-align: center; position: relative; }
-	.fancy-line::after { content: "✦ ✦ ✦"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: red; }
-	.table-container { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap; margin: 2rem 0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-	table { width: 100%; border-collapse: collapse; background: white; margin-bottom: 1rem; }
-	table tr p { margin-bottom: 0px !important; }
-	th, td { padding: 12px 15px; border: 1px solid #e5e7eb; text-align: left; }
-	.bg-warning { background-color: #ffcd05 !important; color: #1a1a1a !important; }
-	.table-stripe tr:nth-child(even), .table-warning tr:nth-child(even) { background-color: #fffde6 !important; }
-	thead th { background-color: #f3f4f6; font-weight: 700; }
-</style>`;
-	return ensureProfessionalLinks(blogHTML);
-}
-
-export function extractBlogFAQContent(html) {
-	const tempDiv=document.createElement("div");
-	tempDiv.innerHTML=html;
-	cleanHTML(tempDiv);
-
-	const elementsArray=Array.from(tempDiv.children);
-	const faqData=[];
-
-	let faqStart=-1;
-	elementsArray.forEach((element,i) => {
-		const text=element.textContent.trim().toLowerCase();
-		// Detect FAQ heading: "FAQ", "FAQs", "FAQS:", "Frequently Asked Questions"
-		if((text.match(/^faqs?:?$/i)||text.includes("frequently asked questions"))&&
-			element.tagName.match(/^H[1-6]$/i)&&faqStart===-1) {
-			faqStart=i;
-		}
-	});
-
-	if(faqStart===-1) return [];
-
-	let faqEnd=elementsArray.length;
-	for(let i=faqStart+1;i<elementsArray.length;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim();
-		const tag = element.tagName.toUpperCase();
-		const lowerText = text.toLowerCase();
-		
-		// Stop if we hit meta sections, glossary, or new H1 section
-		if(lowerText.includes("for online course page:") || 
-		   lowerText.includes("glossary") ||
-		   lowerText.startsWith("meta description") ||
-		   lowerText.startsWith("meta title") ||
-		   lowerText.startsWith("slug:") ||
-		   lowerText.startsWith("category:") ||
-		   (tag === 'H1' && i > faqStart + 1)) {
-			faqEnd=i;
-			break;
-		}
-	}
-
-	let currentQuestion="";
-	let currentAnswerHtml="";
-	let collectingAnswer=false;
-
-	// Enhanced question detection - prioritizes numbered patterns
-	const detectQuestion = (el) => {
-		if (!el) return false;
-		const txt = el.textContent.trim();
-		const innerHtml = el.innerHTML.trim();
-		const tag = el.tagName.toUpperCase();
-		
-		// Priority 1: Numbered questions (1., 2., 1), Q1., Q1:, Q1), Question 1)
-		if (/^\d+[\.\)\]]\s*.+/.test(txt)) return true;  // 1. Question, 1) Question
-		if (/^Q\d+[\.\:\)]\s*/i.test(txt)) return true;  // Q1. Q1: Q1)
-		if (/^Question\s*\d+[\.\:\)]?\s*/i.test(txt)) return true;  // Question 1, Question 1.
-		
-		// Priority 2: Headings within FAQ section (H3, H4, H5, H6) - likely questions
-		if (tag.match(/^H[3-6]$/) && txt.length < 500) return true;
-		
-		// Priority 3: Bold text that looks like a question
-		if ((innerHtml.includes('<strong>') || innerHtml.includes('<b>')) && 
-			(txt.includes('?') || txt.length < 150)) return true;
-		
-		// Priority 4: Text ending with question mark (short)
-		if (txt.endsWith('?') && txt.length < 400) return true;
-		
-		return false;
-	};
-
-	// Clean question text - remove numbering prefix
-	const cleanQuestionText = (text) => {
-		let cleaned = text.trim();
-		// Remove numbered prefixes: "1.", "1)", "Q1.", "Q1:", "Question 1."
-		cleaned = cleaned.replace(/^\d+[\.\)\]]\s*/, '');
-		cleaned = cleaned.replace(/^Q\d+[\.\:\)]\s*/i, '');
-		cleaned = cleaned.replace(/^Question\s*\d+[\.\:\)]?\s*/i, '');
-		return cleaned.trim();
-	};
-
-	for(let i=faqStart+1;i<faqEnd;i++) {
-		const element=elementsArray[i];
-		const text=element.textContent.trim();
-
-		if(!text) continue;
-
-		if(detectQuestion(element)) {
-			// Save previous Q&A pair
-			if(currentQuestion && currentAnswerHtml) {
-				faqData.push({
-					question: cleanQuestionText(currentQuestion),
-					answer: currentAnswerHtml.trim()
-				});
-			}
-
-			currentQuestion = text;
-			currentAnswerHtml = "";
-			collectingAnswer = true;
-		} else if(collectingAnswer && text) {
-			// Collecting answer content - preserve the original HTML!
-			if(currentAnswerHtml) {
-				currentAnswerHtml += " " + element.outerHTML;
-			} else {
-				currentAnswerHtml = element.outerHTML;
-			}
-
-			// Check if next element is a question to prevent merging
-			if (i + 1 < faqEnd && detectQuestion(elementsArray[i+1])) {
-				if(currentQuestion && currentAnswerHtml) {
-					faqData.push({
-						question: cleanQuestionText(currentQuestion),
-						answer: currentAnswerHtml.trim()
-					});
-				}
-				currentQuestion="";
-				currentAnswerHtml="";
-				collectingAnswer=false;
-			}
-		}
-
-		// Cap at 20 FAQs to avoid memory issues with very long documents
-		if (faqData.length >= 20) break;
-	}
-
-	// Save last Q&A pair if not already saved
-	if(currentQuestion && currentAnswerHtml) {
-		const cleanedQuestion = cleanQuestionText(currentQuestion);
-		if (!faqData.some(f => f.question === cleanedQuestion)) {
-			faqData.push({
-				question: cleanedQuestion,
-				answer: currentAnswerHtml.trim()
-			});
-		}
-	}
-
-	return faqData;
-}
-
-export function generateBlogFAQCode(faqData) {
-	if(!faqData||faqData.length===0) return "<!-- No FAQs found in the FAQ section -->";
-
-	function escapeHtml(str) {
-		if(str===null||str===undefined) return '';
-		return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-	}
-
-	// Clean answer HTML - remove only the outer wrapping paragraph if present, keep inner formatting
-	function cleanAnswerHtml(html) {
-		if(!html) return '';
-		let answer = html.trim();
-		// Remove A:, Answer:, Ans: prefix from text content
-		answer = answer.replace(/^<p>\s*(A|Answer|Ans)[:\.]?\s*/i, '<p>');
-		answer = answer.replace(/^(A|Answer|Ans)[:\.]?\s*/i, '');
-		// Replace &nbsp; and &amp;nbsp; (double-encoded) with regular space
-		answer = answer.replace(/&amp;nbsp;/g, ' ');
-		answer = answer.replace(/&nbsp;/g, ' ');
-		answer = answer.replace(/&#160;/g, ' ');
-		return answer.trim();
-	}
-
-	const midPoint=Math.ceil(faqData.length/2);
-	const col1=faqData.slice(0,midPoint);
-	const col2=faqData.slice(midPoint);
-
-	let faqHtml=`<div class="faq-section">\n<h2 class="h3 mb-4">Frequently Asked Questions</h2>\n<div class="row">\n`;
-
-	// Column 1
-	faqHtml+=`  <div class="col-md-6">\n`;
-	col1.forEach((faq,index) => {
-		const question = faq.question || "";
-		// Preserve HTML formatting in answers!
-		let answer = cleanAnswerHtml(faq.answer);
-		if(question && answer) {
-			faqHtml+=`    <div class="mb-3">\n`;
-			// Question is bold via h5 fw-bold class
-			faqHtml+=`      <h5 class="h6 fw-bold">${escapeHtml(question)}</h5>\n`;
-			// Answer keeps its original HTML formatting (bold, italic, links, etc.)
-			faqHtml+=`      <div class="faq-answer">${answer}</div>\n`;
-			faqHtml+=`    </div>\n`;
-		}
-	});
-	faqHtml+=`  </div>\n`;
-
-	// Column 2
-	faqHtml+=`  <div class="col-md-6">\n`;
-	col2.forEach((faq,index) => {
-		const question = faq.question || "";
-		// Preserve HTML formatting in answers!
-		let answer = cleanAnswerHtml(faq.answer);
-		if(question && answer) {
-			faqHtml+=`    <div class="mb-3">\n`;
-			// Question is bold via h5 fw-bold class
-			faqHtml+=`      <h5 class="h6 fw-bold">${escapeHtml(question)}</h5>\n`;
-			// Answer keeps its original HTML formatting (bold, italic, links, etc.)
-			faqHtml+=`      <div class="faq-answer">${answer}</div>\n`;
-			faqHtml+=`    </div>\n`;
-		}
-	});
-	faqHtml+=`  </div>\n`;
-
-	faqHtml+=`</div>\n</div>`;
-	return ensureProfessionalLinks(faqHtml);
-}
-
-export function splitBlogAndFAQ(html) {
-	if (!html) return { blogHtml: '', faqData: [] };
-	
-	const tempDiv = document.createElement("div");
-	tempDiv.innerHTML = html;
-	
-	// Remove the fancy line if it exists to avoid processing it as content
-	const fancyLineEl = tempDiv.querySelector('.fancy-line');
-	if (fancyLineEl) fancyLineEl.remove();
-	
-	// Remove style tag if it's the fancy line style
-	const styles = tempDiv.querySelectorAll('style');
-	styles.forEach(s => {
-		if (s.innerHTML.includes('.fancy-line')) s.remove();
-	});
-
-	const elementsArray = Array.from(tempDiv.children);
-	let faqStartIndex = -1;
-	
-	elementsArray.forEach((element, i) => {
-		const text = element.textContent.trim().toLowerCase();
-		if ((text.includes("faq") || text.includes("frequently asked questions")) &&
-			element.tagName.match(/^H[1-6]$/i) && faqStartIndex === -1) {
-			faqStartIndex = i;
-		}
-	});
-
-	if (faqStartIndex === -1) {
-		return {
-			blogHtml: tempDiv.innerHTML,
-			faqData: []
-		};
-	}
-
-	// Blog content is everything before the FAQ heading
-	const blogElements = elementsArray.slice(0, faqStartIndex);
-	const blogHtml = blogElements.map(el => el.outerHTML).join('\n');
-	
-	// Extract FAQ data from the rest
-	const faqHtml = elementsArray.slice(faqStartIndex).map(el => el.outerHTML).join('\n');
-	const faqData = extractBlogFAQContent(faqHtml);
+	const rawStructure = extractBlogFAQContent(html);
+	const { blogHtml, faqHtml } = splitBlogAndFAQ(html);
 	
 	return {
 		blogHtml,
-		faqData
+		faqHtml,
+		fullHtml: html,
+		rawStructure,
+		messages: result.messages
 	};
 }
 
-// ==========================================
-// GLOSSARY GENERATOR LOGIC
-// ==========================================
+export function splitBlogAndFAQ(html) {
+	const faqMarkers = [
+		/<h2>\s*FAQ\s*<\/h2>/i,
+		/<h1>\s*FAQ\s*<\/h1>/i,
+		/<h2>\s*Frequently\s+Asked\s+Questions\s*<\/h2>/i,
+		/<h3>\s*FAQ\s*<\/h3>/i
+	];
 
-export async function processGlossaryFile(file) {
-	return new Promise((resolve,reject) => {
-		const reader=new FileReader();
-		reader.onload=async (event) => {
-			try {
-				const result=await mammoth.convertToHtml({arrayBuffer: event.target.result});
-				const processed=extractGlossaryData(result.value);
-				resolve(processed);
-			} catch(error) {
-				console.error("Conversion error:",error);
-				reject(error);
-			}
-		};
-		reader.onerror=() => reject(new Error("Error reading file"));
-		reader.readAsArrayBuffer(file);
-	});
-}
-
-function extractGlossaryData(html) {
-	const tempDiv=document.createElement("div");
-	tempDiv.innerHTML=html;
-	const glossaryData=[];
-	const tables=tempDiv.getElementsByTagName("table");
-
-	if(tables.length>0) {
-		const rows=tables[0].getElementsByTagName("tr");
-		for(let i=1;i<rows.length;i++) {
-			const cells=rows[i].getElementsByTagName("td");
-			if(cells.length===2) {
-				const term=cells[0].innerText.trim();
-				const definition=cells[1].innerHTML.trim();
-				if(term&&definition) {
-					glossaryData.push({term: term,definition: definition});
-				}
-			}
+	let splitIndex = -1;
+	for (const marker of faqMarkers) {
+		const match = html.match(marker);
+		if (match) {
+			splitIndex = match.index;
+			break;
 		}
 	}
-	return glossaryData;
+
+	if (splitIndex === -1) {
+		return { blogHtml: html, faqHtml: "" };
+	}
+
+	return {
+		blogHtml: html.substring(0, splitIndex).trim(),
+		faqHtml: html.substring(splitIndex).trim()
+	};
 }
 
-export function generateGlossaryCode(glossaryData) {
-	const groupedData={};
-	glossaryData.forEach(item => {
-		const term=item.term.trim();
-		const definition=item.definition.trim();
-		const firstLetter=term.charAt(0).toUpperCase();
-		if(!groupedData[firstLetter]) groupedData[firstLetter]=[];
-		groupedData[firstLetter].push({term: term,definition: definition});
-	});
+export function generateBlogCode(html) {
+	if (!html) return "";
+	return html;
+}
 
-	let alphabetButtons="";
-	let glossaryContent="";
+export function generateBlogFAQCode(html) {
+	if (!html) return "";
+	return html;
+}
 
-	for(let i=65;i<=90;i++) {
-		const letter=String.fromCharCode(i);
-		alphabetButtons+=`<button class="glossaryBtn btn btn-outline-primary m-1 ${letter==='A'? 'active':''}" onclick="openItem('${letter}', event)">${letter}</button>\n`;
-
-		glossaryContent+=`<div id="${letter}" class="result-container glosary-item" style="display:${letter==='A'? 'block':'none'};">\n`;
-
-		if(groupedData[letter]&&groupedData[letter].length>0) {
-			groupedData[letter].forEach(item => {
-				glossaryContent+=`<h2>${item.term}</h2>\n<div>${item.definition}</div>\n`;
+export function extractBlogFAQContent(html) {
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(html, 'text/html');
+	const blocks = [];
+	
+	doc.body.childNodes.forEach(node => {
+		if (node.nodeType === 1) { // ELEMENT_NODE
+			blocks.push({
+				type: node.tagName.toUpperCase(),
+				content: node.innerHTML,
+				text: node.textContent.trim()
 			});
-		} else {
-			glossaryContent+=`<h2>${letter}</h2><p>No terms found</p>\n`;
+		} else if (node.nodeType === 3 && node.textContent.trim()) { // TEXT_NODE
+			blocks.push({
+				type: 'P',
+				content: node.textContent.trim(),
+				text: node.textContent.trim()
+			});
 		}
-		glossaryContent+="</div>\n";
-	}
-
-	const glossaryHtml=ensureProfessionalLinks(`
-            <style>
-                .active.glossaryBtn,
-                .glossaryBtn:hover {
-                    background: black !important;
-                    transform: translateY(-4px) scale(1);
-                    transition: 0.2s;
-                    color: #ffbf00!important
-                }
-            </style>
-            <div class="custom-glossary">
-                <script>
-                    function openItem(glossaryItem, evt) {
-                        var items = document.getElementsByClassName("result-container");
-                        for (var i = 0; i < items.length; i++) {
-                            items[i].style.display = "none";
-                        }
-                        document.getElementById(glossaryItem).style.display = "block";
-
-                        var btns = document.getElementsByClassName("glossaryBtn");
-                        for (var j = 0; j < btns.length; j++) {
-                            btns[j].classList.remove("active");
-                        }
-                        evt.target.classList.add("active");
-                    }
-                </script>
-                <div class="container">
-                    <div class="glossaryBtnMain alphabet-buttons mb-3">
-                        ${alphabetButtons}
-                    </div>
-                    ${glossaryContent}
-                </div>
-            </div>`);
-
-	return glossaryHtml;
+	});
+	
+	return blocks;
 }
+
+/**
+ * ==========================================
+ * GLOSSARY PROCESSOR
+ * ==========================================
+ */
+
+export async function processGlossaryFile(file, onProgress) {
+	const arrayBuffer = await file.arrayBuffer();
+	if (onProgress) onProgress(50);
+	
+	const result = await mammoth.convertToHtml({ arrayBuffer });
+	const html = consolidateLists(result.value);
+	
+	if (onProgress) onProgress(100);
+
+	// Parse terms and definitions
+	// Expects format: Term - Definition or Term: Definition
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(html, 'text/html');
+	const terms = [];
+	
+	doc.body.querySelectorAll('p, li').forEach(node => {
+		const text = node.textContent.trim();
+		if (!text) return;
+		
+		let term = "";
+		let definition = "";
+		
+		if (text.includes(" - ")) {
+			[term, ...definition] = text.split(" - ");
+			definition = definition.join(" - ");
+		} else if (text.includes(": ")) {
+			[term, ...definition] = text.split(": ");
+			definition = definition.join(": ");
+		} else {
+			term = text;
+		}
+		
+		if (term) {
+			terms.push({ 
+				term: term.trim(), 
+				definition: (definition || "").trim() 
+			});
+		}
+	});
+	
+	return terms;
+}
+
+export function generateGlossaryCode(terms) {
+	if (!terms || !terms.length) return "";
+	
+	let html = '<div class="glossary-container">\n';
+	terms.forEach(item => {
+		html += `  <div class="glossary-item">\n`;
+		html += `    <h3 class="glossary-term">${item.term}</h3>\n`;
+		html += `    <p class="glossary-definition">${item.definition}</p>\n`;
+		html += `  </div>\n`;
+	});
+	html += '</div>';
+	
+	return html;
+}
+
+/**
+ * ==========================================
+ * COURSE PROCESSOR
+ * ==========================================
+ */
+
+export async function processCourseFile(file) {
+	const arrayBuffer = await file.arrayBuffer();
+	const result = await mammoth.convertToHtml({ arrayBuffer });
+	const html = consolidateLists(result.value);
+	
+	return {
+		overviewHtml: html,
+		objectivesHtml: "",
+		syllabusHtml: "",
+		faqHtml: "",
+		mainPointsHtml: "",
+		fullHtml: html
+	};
+}
+
+export function generateOverviewCode(data) { return data.overviewHtml || ""; }
+export function generateCourseObjectivesCode(data) { return data.objectivesHtml || ""; }
+export function generateSyllabusCode(data) { return data.syllabusHtml || ""; }
+export function generateFAQCode(data) { return data.faqHtml || ""; }
+export function generateMainPointsCode(data) { return data.mainPointsHtml || ""; }

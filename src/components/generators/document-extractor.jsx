@@ -97,6 +97,13 @@ export default function DocumentExtractor() {
 		setError("");
 
 		try {
+			// Record to media hub
+			const { recordMediaUpload } = await import("@/lib/media-hub");
+			await recordMediaUpload({
+				fileName: selectedFile.name,
+				fileType: selectedFile.type || 'document',
+				fileSize: selectedFile.size
+			});
 			if (fileType === 'word') {
 				await extractWord(selectedFile);
 			} else if (fileType === 'excel') {

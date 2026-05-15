@@ -19,7 +19,10 @@ import {
 	BrainCircuit,
 	ScanText,
 	FileText,
-	ShieldCheck
+	ShieldCheck,
+	Sparkles,
+	LayoutDashboard,
+	Users
 } from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {Tooltip,TooltipContent,TooltipProvider,TooltipTrigger} from "@/components/ui/tooltip";
@@ -27,7 +30,6 @@ import {Separator} from "@/components/ui/separator";
 import {Input} from "@/components/ui/input";
 import {hasAccess} from "@/lib/auth";
 import {useState} from "react";
-import {BrandLogo} from "./brand-logo";
 
 const navGroups=[
 	{
@@ -56,6 +58,18 @@ const navGroups=[
 	}
 ];
 
+const adminNavGroups=[
+	{
+		id: "admin-hub",
+		label: "System Control",
+		icon: ShieldCheck,
+		items: [
+			{id: "dashboard",label: "Dashboard",icon: LayoutDashboard},
+			{id: "admin",label: "User Roles",icon: Users},
+			{id: "media",label: "Media Monitor",icon: ImageIcon},
+		]
+	}
+];
 export function AppSidebar({
 	activeTab,
 	onTabChange,
@@ -64,10 +78,13 @@ export function AppSidebar({
 	onThemeToggle,
 	user,
 	onLogout,
-	className
+	className,
+	adminMode = false
 }) {
 	const [searchQuery,setSearchQuery]=useState("");
-	const [expandedGroups,setExpandedGroups]=useState(["generators","tools"]);
+	const [expandedGroups,setExpandedGroups]=useState(["generators","tools", "admin-hub"]);
+
+	const currentNavGroups = adminMode ? adminNavGroups : navGroups;
 
 	const toggleGroup=(groupId) => {
 		setExpandedGroups(prev =>
@@ -77,10 +94,10 @@ export function AppSidebar({
 		);
 	};
 
-	const filteredGroups=navGroups.map(group => ({
+	const filteredGroups=currentNavGroups.map(group => ({
 		...group,
 		items: group.items.filter(item =>
-			hasAccess(user?.role,item.id)&&
+			(adminMode || hasAccess(user,item.id)) &&
 			item.label.toLowerCase().includes(searchQuery.toLowerCase())
 		)
 	})).filter(group => group.items.length>0);
@@ -95,40 +112,30 @@ export function AppSidebar({
 				)}
 				style={{backgroundColor: 'var(--sidebar)', scrollbarWidth: 'none'}}
 			>
-				{/* Header with Search */}
-				<div className="sticky top-0 z-20 flex-none bg-sidebar border-b border-border shadow-sm">
-					<div className={cn(
-						"flex h-14 items-center gap-3 p-4",
-						collapsed&&"justify-center flex-col"
-					)}>
-						<BrandLogo
-							size="md"
-							className="hover:scale-110 hover:rotate-6 transition-transform duration-300 cursor-pointer"
-						/>
-						{!collapsed&&(
-							<div className="flex flex-col overflow-hidden flex-1">
-								<span className="font-bold text-foreground whitespace-nowrap tracking-tight">Content Suite</span>
-								{user&&<span className="text-[10px] text-muted-foreground truncate uppercase tracking-wider">{user.name}</span>}
-							</div>
-						)}
-					</div>
-
-					{/* Search Bar */}
-					{!collapsed&&(
-						<div className="px-3 pb-3">
-							<div className="relative">
-								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-								<Input
-									type="text"
-									placeholder="Search..."
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									className="pl-9 h-9 bg-background border-border focus-visible:ring-1"
-								/>
-							</div>
-						</div>
+				{/* Simplified Header - Removed repeating logo/title */}
+				<div className="p-4 border-b border-border/50 flex items-center justify-between">
+					{!collapsed && (
+						<span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60">
+							{adminMode ? "Admin Console" : "Intelligence Suite"}
+						</span>
 					)}
+					<div className={cn("w-2 h-2 rounded-full bg-primary", collapsed && "mx-auto")} />
 				</div>
+
+				{!collapsed && (
+					<div className="px-3 pt-2 pb-3">
+						<div className="relative group">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+							<Input
+								type="text"
+								placeholder="Quick search..."
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
+								className="pl-9 h-10 bg-muted/40 border-border/40 focus-visible:ring-primary/40 rounded-xl"
+							/>
+						</div>
+				</div>
+				)}
 
 				{/* Navigation Groups */}
 				<nav className="flex-1 overflow-y-auto p-2 space-y-1">

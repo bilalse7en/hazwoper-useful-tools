@@ -6,7 +6,7 @@ import { AdSenseAd } from "@/components/adsense-ad";
 import { Calendar, User, Clock, ChevronLeft, Share2 } from "lucide-react";
 
 export async function generateMetadata({ params }) {
-  const { slug } = params;
+  const { slug } = await params;
   const post = blogPosts.find((p) => p.slug === slug);
   
   if (!post) return { title: 'Post Not Found' };
@@ -17,8 +17,8 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default function BlogPostPage({ params }) {
-  const { slug } = params;
+export default async function BlogPostPage({ params }) {
+  const { slug } = await params;
   const post = blogPosts.find((p) => p.slug === slug);
 
   if (!post) {
