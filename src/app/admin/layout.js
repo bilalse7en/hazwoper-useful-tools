@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeDialog } from "@/components/theme-dialog";
 import { supabase } from "@/lib/supabase";
+import { Loader2 } from "lucide-react";
 
-export default function AdminLayout({ children }) {
+function AdminLayoutInner({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -78,5 +79,13 @@ export default function AdminLayout({ children }) {
 
       <ThemeDialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen} />
     </div>
+  );
+}
+
+export default function AdminLayout({ children }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>}>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </Suspense>
   );
 }
