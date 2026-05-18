@@ -42,10 +42,10 @@ const iconMap = {
 };
 
 // Free tools that anyone can access (even without login)
-const FREE_TOOL_IDS = ['html-cleaner', 'image-converter', 'video-compressor', 'image-to-text'];
+const FREE_TOOL_IDS = ['html-cleaner', 'image-converter', 'video-compressor', 'image-to-text', 'course', 'blog', 'glossary', 'resources', 'document-extractor'];
 
 // Generator tools that require login + generator access
-const GENERATOR_TOOL_IDS = ['course', 'blog', 'glossary', 'resources', 'document-extractor'];
+const GENERATOR_TOOL_IDS = [];
 
 export function ToolsLanding({ user }) {
   const isGuest = !user;
@@ -282,63 +282,42 @@ export function ToolsLanding({ user }) {
         </div>
       </section>
 
-      {/* Sign Up CTA for Guests / Play Game for Users */}
+      {/* Professional Call to Action */}
       <section className="py-24 container mx-auto px-6">
         <div className="bg-card/40 backdrop-blur-3xl border border-border rounded-[50px] p-10 md:p-20 flex flex-col md:flex-row items-center gap-16 relative overflow-hidden group shadow-2xl">
           <div className="absolute top-0 right-0 p-32 bg-primary/5 rounded-full blur-[120px] -mr-32 -mt-32 group-hover:bg-primary/10 transition-colors" />
           <div className="flex-1 space-y-8 relative z-10">
             <div className="w-20 h-20 rounded-3xl bg-primary shadow-2xl shadow-primary/40 flex items-center justify-center rotate-3 group-hover:rotate-0 transition-transform duration-500">
-               {isGuest ? <LogIn className="w-12 h-12 text-primary-foreground" /> : <Gamepad2 className="w-12 h-12 text-primary-foreground" />}
+               <ShieldCheck className="w-12 h-12 text-primary-foreground" />
             </div>
             <div className="space-y-4">
-              {isGuest ? (
-                <>
-                  <h2 className="text-4xl md:text-5xl font-black leading-tight text-foreground tracking-tight">
-                    Unlock the full<br />
-                    <span className="text-primary">professional suite</span>
-                  </h2>
-                  <p className="text-xl text-muted-foreground max-w-xl font-medium leading-relaxed">
-                    Sign in with Google to access content generators, save your history, and download your results. It takes just one click.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-4xl md:text-5xl font-black leading-tight text-foreground tracking-tight">
-                    Need more access? <br />
-                    <span className="text-primary">Play to win premium time!</span>
-                  </h2>
-                  <p className="text-xl text-muted-foreground max-w-xl font-medium leading-relaxed">
-                    Unlock the complete generator suite for 2 hours just by navigating our training simulator.
-                  </p>
-                </>
-              )}
+              <h2 className="text-4xl md:text-5xl font-black leading-tight text-foreground tracking-tight">
+                Experience the Full<br />
+                <span className="text-primary">Professional Suite</span>
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-xl font-medium leading-relaxed">
+                Join our network of safety professionals and content architects. Synchronize your assets across devices and unlock the full potential of our neural generation engine.
+              </p>
             </div>
-            {isGuest ? (
-              <Button 
-                size="lg" 
-                className="h-16 px-10 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 border-none transition-all hover:scale-[1.05]" 
-                onClick={() => router.push('/auth?mode=login')}
-              >
-                Sign In with Google
-                <ChevronRight className="ml-2 w-5 h-5" />
-              </Button>
-            ) : (
-              <Button size="lg" className="h-16 px-10 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 border-none transition-all hover:scale-[1.05]" onClick={() => window.location.href = '/'}>
-                Initialize Space Runner
-                <ChevronRight className="ml-2 w-5 h-5" />
-              </Button>
-            )}
+            <Button 
+              size="lg" 
+              className="h-16 px-10 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 border-none transition-all hover:scale-[1.05]" 
+              onClick={() => router.push(isGuest ? '/auth?mode=signup' : '/profile')}
+            >
+              {isGuest ? "Initialize Your Account" : "Access Your Profile"}
+              <ChevronRight className="ml-2 w-5 h-5" />
+            </Button>
           </div>
           <div className="relative w-full md:w-[450px] aspect-[4/3] bg-muted/50 border border-border rounded-[40px] overflow-hidden shadow-2xl group-hover:shadow-[0_0_100px_rgba(var(--primary-rgb),0.1)] transition-all">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent mix-blend-overlay" />
-            <div className="absolute inset-0 flex items-center justify-center text-9xl animate-pulse">{isGuest ? "🔐" : "🚀"}</div>
+            <div className="absolute inset-0 flex items-center justify-center text-9xl animate-pulse">🚀</div>
             <div className="absolute bottom-8 left-8 right-8 bg-card/90 backdrop-blur-2xl border border-border p-6 rounded-3xl shadow-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="text-foreground font-black tracking-tight text-lg">{isGuest ? "Professional Suite" : "Space Runner v3.0"}</span>
-                  <span className="text-[10px] text-primary font-black uppercase tracking-widest">{isGuest ? "Sign in to Unlock" : "Active Simulation"}</span>
+                  <span className="text-foreground font-black tracking-tight text-lg">Identity Hub</span>
+                  <span className="text-[10px] text-primary font-black uppercase tracking-widest">Active Verification Flow</span>
                 </div>
-                <Badge className="bg-primary px-4 py-1 font-black text-xs h-8 text-primary-foreground border-none">{isGuest ? "SIGN IN" : "START MISSION"}</Badge>
+                <Badge className="bg-primary px-4 py-1 font-black text-xs h-8 text-primary-foreground border-none">SECURE</Badge>
               </div>
             </div>
           </div>

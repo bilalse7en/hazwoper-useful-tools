@@ -256,7 +256,7 @@ export function CourseGenerator() {
 					</SheetTrigger>
 					<SheetContent side="right" className="w-full sm:max-w-[50%] p-0 glass-panel-deep border-l border-border animate-in slide-in-from-right duration-500 z-[200]">
 						<SheetHeader className="p-8 border-b border-border/50 bg-muted/20">
-							<SheetTitle className="flex items-center gap-3 text-xl font-black">
+							<SheetTitle className="flex items-center gap-3 text-sm font-black">
 								<div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
 									<History className="h-5 w-5 text-primary" />
 								</div>

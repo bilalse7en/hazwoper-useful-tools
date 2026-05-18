@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { User, Shield, ShieldAlert, Search, RefreshCw, Layers, ShieldCheck, Image as ImageIcon, Video, FileText, Clock } from "lucide-react";
+import { User, Shield, ShieldAlert, Search, RefreshCw, Layers, ShieldCheck, Image as ImageIcon, Video, FileText, Clock, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import { InitialLoadingShell } from "@/components/initial-loading-shell";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getTimeRemaining, formatSize } from "@/lib/tool-history";
 
-export default function AdminPage() {
+function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -521,5 +521,13 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'architect@example.com');`}
       </div>
     </div>
     </>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center bg-background"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>}>
+      <AdminDashboard />
+    </Suspense>
   );
 }

@@ -94,14 +94,16 @@ export function HistoryList({ toolType, onRestore, className }) {
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-sm font-bold truncate">{item.file_name}</span>
+                  <span className="text-xs font-bold truncate max-w-[150px] md:max-w-[250px]" title={item.file_name}>
+                    {item.file_name}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 opacity-60">
                    <span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-primary">
                      <Clock className="h-3 w-3" />
                      {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                    </span>
-                   <div className="h-1 w-1 rounded-full bg-border" />
+                   <div className="h-0.5 w-0.5 rounded-full bg-border" />
                    <span className="text-[8px] font-medium italic">
                       {getTimeRemaining(item.expires_at)}
                    </span>

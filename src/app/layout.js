@@ -46,7 +46,7 @@ export const metadata={
 
 import { GlobalHeader } from "@/components/global-header";
 import { Footer } from "@/components/footer";
-import { LoginModal } from "@/components/login-modal";
+
 
 export default function RootLayout({children}) {
 	return (
@@ -111,7 +111,7 @@ export default function RootLayout({children}) {
 					<Toaster position="top-right" toastOptions={{
 						className: 'glass-toast !rounded-2xl !border-border !bg-card/90 !backdrop-blur-2xl !text-foreground !shadow-[0_20px_50px_rgba(0,0,0,0.3)] !p-4 !font-orbitron font-bold',
 					}} />
-					<LoginModal />
+
 				</ThemeProvider>
 			</body>
 		</html>

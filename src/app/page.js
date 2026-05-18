@@ -13,10 +13,24 @@ const ToolsLanding = dynamic(() => import("@/components/tools-landing").then(mod
 	ssr: false
 });
 
+const WelcomeScroll = dynamic(() => import("@/components/welcome-scroll").then(mod => mod.WelcomeScroll), {
+	loading: () => <InitialLoadingShell isReady={false} />,
+	ssr: false
+});
+
 export default function Home() {
 	const router = useRouter();
 	const [isChecking,setIsChecking]=useState(true); 
 	const [user,setUser]=useState(null);
+	const [showWelcome, setShowWelcome] = useState(false);
+
+	useEffect(() => {
+		// Show welcome scroll only once per session
+		const hasSeenWelcome = sessionStorage.getItem('welcome_seen');
+		if (!hasSeenWelcome) {
+			setShowWelcome(true);
+		}
+	}, []);
 
 	useEffect(() => {
 		// Listen for auth state changes
@@ -75,10 +89,17 @@ export default function Home() {
 		return <InitialLoadingShell isReady={false} />;
 	}
 
+	// Handle welcome scroll completion
+	const handleWelcomeComplete = () => {
+		sessionStorage.setItem('welcome_seen', 'true');
+		setShowWelcome(false);
+	};
+
 	// Always show ToolsLanding — it handles both logged-in and guest states
 	return (
 		<>
 			<InitialLoadingShell isReady={true} />
+			{showWelcome && <WelcomeScroll onComplete={handleWelcomeComplete} />}
 			<ToolsLanding user={user} />
 		</>
 	);
