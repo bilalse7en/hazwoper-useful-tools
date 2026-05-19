@@ -66,6 +66,24 @@ export default function RootLayout({children}) {
 				<link rel="dns-prefetch" href="https://media.hazwoper-osha.com" />
 				<link rel="dns-prefetch" href="https://fonts.googleapis.com" />
 				<link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+				<script
+					type="application/ld+json"
+					dangerouslySetInnerHTML={{
+						__html: JSON.stringify({
+							"@context": "https://schema.org",
+							"@type": "Organization",
+							"name": "Content Suite",
+							"url": "https://hazwoper-useful-tools.vercel.app",
+							"logo": "https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif",
+							"description": "Professional content generation platform for safety and technical documentation.",
+							"contactPoint": {
+								"@type": "ContactPoint",
+								"email": "bilalghaffar46@gmail.com",
+								"contactType": "customer service"
+							}
+						})
+					}}
+				/>
 			</head>
 			<body
 				className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}

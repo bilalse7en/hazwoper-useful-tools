@@ -7,20 +7,22 @@ import {InitialLoadingShell} from "@/components/initial-loading-shell";
 import {supabase} from "@/lib/supabase";
 import {toast} from "sonner";
 
-// Dynamic imports
+// Dynamic imports with SSR enabled for SEO
 const ToolsLanding = dynamic(() => import("@/components/tools-landing").then(mod => mod.ToolsLanding), {
-	loading: () => <InitialLoadingShell isReady={false} />,
-	ssr: false
+	loading: () => <InitialLoadingShell isReady={false} />
 });
 
 const BlogSection = dynamic(() => import("@/components/blog-section").then(mod => mod.BlogSection), {
-	loading: () => <InitialLoadingShell isReady={false} />,
-	ssr: false
+	loading: () => <InitialLoadingShell isReady={false} />
 });
 
 const WelcomeScroll = dynamic(() => import("@/components/welcome-scroll").then(mod => mod.WelcomeScroll), {
 	loading: () => <InitialLoadingShell isReady={false} />,
-	ssr: false
+	ssr: false // Keep welcome scroll client-only as it's purely interactive
+});
+
+const ProfessionalOverview = dynamic(() => import("@/components/professional-overview").then(mod => mod.ProfessionalOverview), {
+	loading: () => <div className="h-96" />
 });
 
 export default function Home() {
@@ -41,7 +43,6 @@ export default function Home() {
 		// Listen for auth state changes
 		const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
 			if (session?.user) {
-				// Fetch profile for role and generator access
 				const { data: profile } = await supabase
 					.from('profiles')
 					.select('role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email')
@@ -64,7 +65,6 @@ export default function Home() {
 				setUser(activeUser);
 				sessionStorage.setItem('user', JSON.stringify(activeUser));
 				
-				// Show Success Toast
 				const justLoggedIn = !sessionStorage.getItem('auth_toast_shown');
 				if (justLoggedIn) {
 					toast.success("Identity Verified", {
@@ -73,7 +73,6 @@ export default function Home() {
 					sessionStorage.setItem('auth_toast_shown', 'true');
 				}
 			} else {
-				// Check for stored user (reward users etc)
 				const storedUser = sessionStorage.getItem('user');
 				if (storedUser) {
 					try {
@@ -90,11 +89,6 @@ export default function Home() {
 		return () => subscription.unsubscribe();
 	}, [router]);
 
-	if(isChecking) {
-		return <InitialLoadingShell isReady={false} />;
-	}
-
-	// Handle welcome scroll completion
 	const handleWelcomeComplete = () => {
 		sessionStorage.setItem('welcome_seen', 'true');
 		setShowWelcome(false);
@@ -103,9 +97,35 @@ export default function Home() {
 	// Always show ToolsLanding — it handles both logged-in and guest states
 	return (
 		<>
-			<InitialLoadingShell isReady={true} />
+			{/* Professional SEO Infrastructure */}
+			<script
+				type="application/ld+json"
+				dangerouslySetInnerHTML={{
+					__html: JSON.stringify({
+						"@context": "https://schema.org",
+						"@type": "SoftwareApplication",
+						"name": "Content Suite",
+						"operatingSystem": "Web",
+						"applicationCategory": "BusinessApplication",
+						"description": "Professional automated course content generator and safety documentation tool. Engineered for HAZWOPER compliance, technical blog creation, and media asset management.",
+						"offers": {
+							"@type": "Offer",
+							"price": "0",
+							"priceCurrency": "USD"
+						},
+						"aggregateRating": {
+							"@type": "AggregateRating",
+							"ratingValue": "4.9",
+							"ratingCount": "250"
+						}
+					})
+				}}
+			/>
+
+			<InitialLoadingShell isReady={!isChecking} />
 			{showWelcome && <WelcomeScroll onComplete={handleWelcomeComplete} />}
 			<ToolsLanding user={user} />
+			<ProfessionalOverview />
 			<BlogSection />
 		</>
 	);

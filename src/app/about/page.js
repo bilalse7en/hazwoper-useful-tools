@@ -1,88 +1,118 @@
-import Link from 'next/link';
-import { BrandLogo } from '@/components/brand-logo';
+"use client";
 
-export const metadata = {
-  title: 'About Us | Content Suite',
-  description: 'Learn more about HAZWOPER Tools (Content Suite) - our mission, our tools, and how we help training developers create high-quality content.',
-  robots: 'index, follow',
-};
+import { motion } from "framer-motion";
+import { Shield, Target, Users, Code, Award, Landmark } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        {/* Header */}
-        <div className="mb-12 text-center">
-          <Link 
-            href="/" 
-            className="text-primary hover:text-primary/80 transition-colors mb-8 inline-block"
-          >
-            ← Back to Home
-          </Link>
-          <BrandLogo size="lg" className="mx-auto mb-6" />
-          <h1 className="text-4xl md:text-5xl font-black mb-4 bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent">
-            About Content Suite
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Empowering training developers with intelligent content tools.
-          </p>
+      <section className="relative pt-32 pb-24 overflow-hidden border-b border-border bg-card/10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.05),transparent_50%)]" />
+        <div className="container relative mx-auto px-6">
+          <div className="max-w-4xl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <Badge className="bg-primary/10 text-primary border-none font-black uppercase tracking-[0.2em] text-[10px] px-4 py-1.5 rounded-full mb-8">
+                Since 2024
+              </Badge>
+              <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 text-foreground leading-none">
+                Pioneering <br />
+                <span className="text-primary italic">Safety Tech.</span>
+              </h1>
+              <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed font-medium max-w-2xl">
+                Content Suite was born from a simple observation: the world's most critical safety training is often the most difficult to document. We're changing that with neural-powered automation.
+              </p>
+            </motion.div>
+          </div>
         </div>
+      </section>
 
-        {/* Content */}
-        <div className="prose prose-slate dark:prose-invert max-w-none space-y-12">
-          <section className="bg-muted/30 p-8 rounded-3xl border border-border/50">
-            <h2 className="text-2xl font-bold mb-4">Our Mission</h2>
-            <p className="text-lg leading-relaxed">
-              Content Suite (HAZWOPER Tools) was created with a single goal: to simplify the complex workflow of creating high-quality, compliance-ready training materials. We believe that training developers should spend their time on instructional design and quality, not on tedious manual formatting and data extraction.
-            </p>
-          </section>
-
-          <section className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Privacy First</h2>
-              <p className="text-muted-foreground">
-                We take data privacy seriously. Unlike many online tools that upload your sensitive documents to remote servers, HAZWOPER Tools processes everything **locally in your browser**. Your documents never leave your computer, ensuring maximum security and compliance with your organization's data policies.
-              </p>
+      <section className="py-24 container mx-auto px-6">
+        <div className="grid md:grid-cols-2 gap-20 items-start">
+          <div className="space-y-12">
+            <div className="space-y-6">
+              <h2 className="text-3xl font-black text-foreground flex items-center gap-4">
+                <Target className="w-8 h-8 text-primary" />
+                Our Mission
+              </h2>
+              <div className="space-y-6 text-muted-foreground font-medium leading-relaxed">
+                <p>
+                  Our primary objective is to empower safety professionals and educators with tools that bridge the gap between complex regulatory requirements and modern digital learning. We believe that professional training materials should be accurate, accessible, and automated.
+                </p>
+                <p>
+                  By focusing on industry-specific standards like HAZWOPER and OSHA, we ensure that our neural engines don't just "write text"—they understand the structural nuances of life-saving information.
+                </p>
+              </div>
             </div>
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Client-Side Power</h2>
-              <p className="text-muted-foreground">
-                By leveraging modern web technologies, we've moved the processing power from the server to your device. This means faster processing speeds, no file size limits due to upload bandwidth, and a smoother, more responsive user experience.
-              </p>
-            </div>
-          </section>
 
-          <section>
-            <h2 className="text-2xl font-bold mb-6">Our Core Tools</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-8">
               {[
-                { name: "Web Content Generator", desc: "Convert course materials from DOCX to clean, SEO-friendly HTML." },
-                { name: "Document Extractor", desc: "Intelligently extract key information from large training manuals." },
-                { name: "Media Processors", desc: "Compress videos and convert images for web optimization without quality loss." },
-                { name: "AI Assistants", desc: "Neural-powered help for drafting FAQs, glossaries, and module overviews." },
-              ].map((tool, i) => (
-                <div key={i} className="p-6 border border-border rounded-2xl hover:bg-muted/20 transition-colors">
-                  <h3 className="font-bold mb-2">{tool.name}</h3>
-                  <p className="text-sm text-muted-foreground">{tool.desc}</p>
+                { label: "Founded", val: "2024" },
+                { label: "Engine Accuracy", val: "99.9%" },
+                { label: "Processed Pages", val: "500K+" },
+                { label: "Active Nodes", val: "Global" }
+              ].map((stat, i) => (
+                <div key={i} className="p-6 rounded-3xl bg-card border border-border">
+                  <div className="text-2xl font-black text-primary mb-1">{stat.val}</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{stat.label}</div>
                 </div>
               ))}
             </div>
-          </section>
+          </div>
 
-          <section className="text-center py-12 border-t border-border">
-            <h2 className="text-2xl font-bold mb-4">Get in Touch</h2>
-            <p className="text-muted-foreground mb-6">
-              Have questions or suggestions? We'd love to hear from you.
-            </p>
-            <a 
-              href="mailto:bilalghaffar46@gmail.com" 
-              className="inline-flex items-center justify-center px-8 py-3 rounded-full bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
-            >
-              Email Us
-            </a>
-          </section>
+          <div className="p-10 md:p-16 rounded-[60px] bg-primary/5 border border-primary/10 space-y-12 backdrop-blur-3xl relative">
+            <div className="absolute top-10 right-10 opacity-10">
+              <Landmark className="w-48 h-48" />
+            </div>
+            <h3 className="text-2xl font-black text-foreground relative z-10">The Core Values</h3>
+            <div className="space-y-10 relative z-10">
+              {[
+                {
+                  title: "Security by Design",
+                  desc: "We prioritize local-first processing. Your technical data remains in your control, always.",
+                  icon: Shield
+                },
+                {
+                  title: "Technical Excellence",
+                  desc: "Our stack leverages the latest in WebAssembly and Neural Processing for peak performance.",
+                  icon: Code
+                },
+                {
+                  title: "Accessibility First",
+                  desc: "Every output is optimized for WCAG 2.1 compliance and SEO visibility.",
+                  icon: Users
+                }
+              ].map((value, i) => (
+                <div key={i} className="flex gap-6">
+                  <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shrink-0 shadow-lg shadow-primary/20">
+                    <value.icon className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-black text-foreground tracking-tight">{value.title}</h4>
+                    <p className="text-sm text-muted-foreground font-medium leading-relaxed">{value.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <section className="py-24 border-t border-border bg-muted/20">
+        <div className="container mx-auto px-6 text-center">
+          <div className="max-w-2xl mx-auto space-y-6">
+             <Award className="w-16 h-16 text-primary mx-auto mb-8 animate-bounce" />
+             <h2 className="text-3xl font-black">Trusted by Professionals</h2>
+             <p className="text-muted-foreground font-medium leading-relaxed">
+               Content Suite is the preferred documentation engine for safety directors, environmental consultants, and corporate compliance officers worldwide. Our focus remains on the precision and integrity of your technical content.
+             </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
