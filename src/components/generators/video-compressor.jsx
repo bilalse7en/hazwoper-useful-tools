@@ -1,6 +1,9 @@
 "use client";
 
 import {useState,useRef,useEffect} from "react";
+import {useAuthAction} from "@/lib/use-auth-action";
+import {saveToolHistory} from "@/lib/tool-history";
+import {ToolHistoryPanel} from "@/components/tool-history-panel";
 import {Card} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
@@ -101,6 +104,7 @@ const COMPRESSION_PRESETS=[
 ];
 
 export function VideoCompressor() {
+	const { performAction } = useAuthAction();
 	// --- State ---
 	const [activeFile,setActiveFile]=useState(null);
 	const [targetResolution,setTargetResolution]=useState("original");
@@ -118,13 +122,18 @@ export function VideoCompressor() {
 	const [ffmpegLoaded,setFfmpegLoaded]=useState(false);
 
 	const fileInputRef=useRef(null);
-	const ffmpegRef=useRef(new FFmpeg());
+	const ffmpegRef=useRef(null);
+	const [historyRefresh,setHistoryRefresh]=useState(0);
 
 	const isDevMode = process.env.NODE_ENV === 'development';
 
 	// Load FFmpeg on component mount
 	useEffect(() => {
 		const loadFFmpeg = async () => {
+			// Only instantiate on client
+			if (!ffmpegRef.current) {
+				ffmpegRef.current = new FFmpeg();
+			}
 			const ffmpeg = ffmpegRef.current;
 			
 			ffmpeg.on('log', ({ message }) => {
@@ -221,6 +230,14 @@ export function VideoCompressor() {
 		setError(null);
 
 		try {
+			// Record to media hub
+			const { recordMediaUpload } = await import("@/lib/media-hub");
+			await recordMediaUpload({
+				fileName: activeFile.file.name,
+				fileType: activeFile.file.type || 'video',
+				fileSize: activeFile.file.size
+			});
+
 			const formData=new FormData();
 			formData.append('file',activeFile.file);
 			formData.append('preset',qualityPreset);
@@ -388,6 +405,27 @@ export function VideoCompressor() {
 				reduction: reduction > 0 ? reduction : 0
 			});
 
+			// Save to history
+			try {
+				const { recordMediaUpload } = await import("@/lib/media-hub");
+				await recordMediaUpload({
+					fileName: activeFile.file.name,
+					fileType: 'video/mp4',
+					fileSize: blob.size,
+					download_url: url
+				});
+
+				await saveToolHistory({
+					toolType: 'video_compressor',
+					fileName: activeFile.file.name,
+					fileSize: activeFile.file.size,
+					outputFormat: 'mp4',
+					outputSize: blob.size,
+					reductionPercent: reduction > 0 ? reduction : 0,
+				});
+				setHistoryRefresh(prev => prev + 1);
+			} catch (e) { /* silently fail */ }
+
 			await ffmpeg.deleteFile('input.mp4');
 			await ffmpeg.deleteFile('output.mp4');
 
@@ -410,10 +448,12 @@ export function VideoCompressor() {
 
 	const downloadResult=() => {
 		if(!result) return;
-		const a=document.createElement('a');
-		a.href=result.url;
-		a.download=result.filename;
-		a.click();
+		performAction(() => {
+			const a=document.createElement('a');
+			a.href=result.url;
+			a.download=result.filename;
+			a.click();
+		}, { type: 'download', name: 'Video Compressor' });
 	};
 
 	const reset=() => {
@@ -863,6 +903,11 @@ export function VideoCompressor() {
 				</div>
 
 			</div>
+
+		{/* History Panel */}
+		<div className="w-full max-w-[1600px] mx-auto mt-8 px-4">
+			<ToolHistoryPanel toolType="video_compressor" refreshTrigger={historyRefresh} />
 		</div>
+	</div>
 	);
 }

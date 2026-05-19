@@ -1,6 +1,7 @@
 "use client";
 
 import {useState,useRef,useEffect} from "react";
+import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/button";
 import {Textarea} from "@/components/ui/textarea";
@@ -323,7 +324,7 @@ export function AIAssistant() {
 
 	const saveKey=() => {
 		localStorage.setItem('openrouter_key',openRouterKey);
-		alert("API Key saved!");
+		toast.success("Intelligence Sequence Synchronized");
 	};
 
 	const handleFileSelect=(e) => {

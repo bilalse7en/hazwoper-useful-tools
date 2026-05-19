@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, Fragment } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,8 +26,16 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	Scissors,
-	Download
+	Download,
+	History
 } from "lucide-react";
+import {
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from "@/components/ui/sheet";
 import {
 	processBlogFile,
 	generateBlogCode,
@@ -38,6 +46,10 @@ import {
 } from "@/lib/docx-processor";
 import { PreviewDrawer } from "@/components/preview-drawer";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { useAuthAction } from "@/lib/use-auth-action";
+import { toast } from "sonner";
+import { saveGeneratorState, getLatestGeneratorState } from "@/lib/tool-history";
+import { HistoryList } from "@/components/history-list";
 
 export function BlogGenerator() {
 	const [file, setFile] = useState(null);
@@ -45,7 +57,7 @@ export function BlogGenerator() {
 	const [progress, setProgress] = useState(0);
 	const [progressText, setProgressText] = useState("");
 	const [blogData, setBlogData] = useState(null);
-	const [notification, setNotification] = useState(null);
+	const { performAction } = useAuthAction();
 
 	// Blog Form State
 	const [featuredImage, setFeaturedImage] = useState("");
@@ -89,7 +101,48 @@ export function BlogGenerator() {
 	const [analysisProgress, setAnalysisProgress] = useState(0);
 	const [analysisResult, setAnalysisResult] = useState(null);
 	const [fixedFileUrl, setFixedFileUrl] = useState(null);
+	const [restoredFileName, setRestoredFileName] = useState("");
 	const analyzerInputRef = useRef(null);
+
+	// Load latest state on mount
+	useEffect(() => {
+		const loadState = async () => {
+			const state = await getLatestGeneratorState('blog_generator');
+			if (state) {
+				setBlogData(state.blogData || null);
+				setTitle(state.title || "");
+				setFeaturedImage(state.featuredImage || "");
+				setAltText(state.altText || "");
+				setContentImages(state.contentImages || {});
+				setBlogCode(state.blogCode || "");
+				setFaqCode(state.faqCode || "");
+				setEditorContent(state.editorContent || "");
+				setRawStructure(state.rawStructure || []);
+				if (state.blogData || state.editorContent) {
+					toast.info("Restored last blog session");
+				}
+			}
+		};
+		loadState();
+	}, []);
+
+	// Auto-save helper
+	const persistState = async (updates = {}) => {
+		const currentState = {
+			blogData,
+			title,
+			featuredImage,
+			altText,
+			contentImages,
+			blogCode,
+			faqCode,
+			editorContent,
+			rawStructure,
+			fileName: updates.fileName || file?.name || analyzerFile?.name || restoredFileName || 'Blog Content',
+			...updates
+		};
+		await saveGeneratorState('blog_generator', currentState, currentState.fileName);
+	};
 
 	// --- BODY SCROLL LOCK ---
 	useEffect(() => {
@@ -106,10 +159,10 @@ export function BlogGenerator() {
 		};
 	}, [showReview]);
 
-	// --- NOTIFICATION HANDLER ---
 	const showNotification = (message, type = "success") => {
-		setNotification({ message, type });
-		setTimeout(() => setNotification(null), 3000);
+		if (type === 'error') toast.error(message);
+		else if (type === 'warning' || type === 'info') toast.info(message);
+		else toast.success(message);
 	};
 
 	// --- MEMOIZED DATA FOR EDITOR ---
@@ -162,17 +215,7 @@ export function BlogGenerator() {
 			clearInterval(interval);
 			setProgress(100);
 			setProgressText("Blog content extracted successfully!");
-			setBlogData(data);
-			setTitle(data.blogData.title); // Auto-fill title
-			
-			// Auto-generate FAQ code if FAQs are found
-			if (data.faqData && data.faqData.length > 0) {
-				const faqCode = generateBlogFAQCode(data.faqData);
-				setFaqCode(faqCode);
-				showNotification(`Blog extracted! ${data.faqData.length} FAQs detected and generated.`, "success");
-			} else {
-				showNotification("Blog content extracted!", "success");
-			}
+			await finalizeUpload(data);
 
 			setTimeout(() => {
 				setIsProcessing(false);
@@ -184,6 +227,18 @@ export function BlogGenerator() {
 			setIsProcessing(false);
 			showNotification("Error extraction content: " + error.message, "error");
 		}
+	};
+
+	// Wrap persistState call in handleUpload after success
+	const finalizeUpload = async (data) => {
+		setBlogData(data);
+		setTitle(data.blogData.title);
+		let fCode = "";
+		if (data.faqData && data.faqData.length > 0) {
+			fCode = generateBlogFAQCode(data.faqData);
+			setFaqCode(fCode);
+		}
+		persistState({ blogData: data, title: data.blogData.title, faqCode: fCode });
 	};
 
 	const handleImageChange = (index, value) => {
@@ -332,6 +387,7 @@ export function BlogGenerator() {
 		setBlogCode(code);
 		setActiveView("content");
 		showNotification("Blog code generated (FAQ removed)!");
+		persistState({ blogCode: code, activeView: 'content' });
 	};
 
 	const handleGenerateFAQ = () => {
@@ -346,6 +402,7 @@ export function BlogGenerator() {
 		setFaqCode(code);
 		setActiveView("faq");
 		showNotification(`FAQ code generated! ${blogData.faqData.length} FAQ${blogData.faqData.length > 1 ? 's' : ''} found.`, "success");
+		persistState({ faqCode: code, activeView: 'faq' });
 	};
 
 	// Reset everything
@@ -406,8 +463,25 @@ export function BlogGenerator() {
 	};
 
 	const copyToClipboard = (text) => {
-		navigator.clipboard.writeText(text);
-		showNotification("Copied to clipboard!");
+		performAction(() => {
+			navigator.clipboard.writeText(text);
+		}, { type: 'copy', name: 'Blog HTML' });
+	};
+
+	const handleRestore = (state) => {
+		if (!state) return;
+		setBlogData(state.blogData || null);
+		setTitle(state.title || "");
+		setFeaturedImage(state.featuredImage || "");
+		setAltText(state.altText || "");
+		setContentImages(state.contentImages || {});
+		setBlogCode(state.blogCode || "");
+		setFaqCode(state.faqCode || "");
+		setEditorContent(state.editorContent || "");
+		setRawStructure(state.rawStructure || []);
+		setRestoredFileName(state.fileName || "");
+		if (state.activeView) setActiveView(state.activeView);
+		toast.success("Blog session synchronized");
 	};
 
 	const handleEditorSave = (html, imageData) => {
@@ -444,6 +518,14 @@ export function BlogGenerator() {
 		setAnalysisProgress(10);
 
 		try {
+			// Record to media hub
+			const { recordMediaUpload } = await import("@/lib/media-hub");
+			await recordMediaUpload({
+				fileName: analyzerFile.name,
+				fileType: analyzerFile.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				fileSize: analyzerFile.size
+			});
+
 			const formData = new FormData();
 			formData.append('file', analyzerFile);
 			formData.append('action', 'analyze');
@@ -741,7 +823,7 @@ export function BlogGenerator() {
 	};
 
 	return (
-		<>
+		<Fragment>
 			{/* Reset Confirmation Modal - Full Page Overlay */}
 			{showResetConfirm && (
 				<div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center" style={{zIndex: 9999}}>
@@ -790,6 +872,27 @@ export function BlogGenerator() {
 			)}
 			
 			<div className="space-y-6">
+				<div className="flex justify-end">
+					<Sheet>
+						<SheetTrigger asChild>
+							<Button variant="outline" className="h-11 rounded-xl font-black uppercase tracking-widest text-[10px] gap-2 border-primary/20 hover:bg-primary/5 transition-all shadow-sm">
+								<History className="h-4 w-4 text-primary" /> Neural Sync History
+							</Button>
+						</SheetTrigger>
+						<SheetContent side="right" className="w-full sm:max-w-[50%] p-0 glass-panel-deep border-l border-border animate-in slide-in-from-right duration-500 z-[200]">
+							<SheetHeader className="p-8 border-b border-border/50 bg-muted/20">
+								<SheetTitle className="flex items-center gap-3 text-sm font-black">
+									<div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+										<History className="h-5 w-5 text-primary" />
+									</div>
+									Neural Sync Hub
+								</SheetTitle>
+							</SheetHeader>
+							<HistoryList toolType="blog_generator" onRestore={handleRestore} />
+						</SheetContent>
+					</Sheet>
+				</div>
+
 				{/* Grid Layout */}
 				<div className="grid lg:grid-cols-2 gap-6">
 
@@ -824,8 +927,9 @@ export function BlogGenerator() {
 											onChange={handleAnalyzerFileChange}
 											className="hidden"
 										/>
-										<div className="text-xs text-muted-foreground mt-1 text-center">
-											{analyzerFile ? `Selected: ${analyzerFile.name}` : "No file selected"}
+										<div className="text-xs text-muted-foreground mt-1 text-center font-medium italic">
+											{analyzerFile ? `Selected: ${analyzerFile.name}` : 
+											 restoredFileName ? `Identity Restored: ${restoredFileName}` : "No file selected"}
 										</div>
 									</div>
 
@@ -929,7 +1033,6 @@ export function BlogGenerator() {
 							)}
 						</CardContent>
 					</Card>
-
 				</div>
 
 				{/* RIGHT COLUMN: Output */}
@@ -1017,8 +1120,9 @@ export function BlogGenerator() {
 					</div>
 				</div>
 			</div>
+		</div>
 
-			<PreviewDrawer
+		<PreviewDrawer
 				open={previewOpen}
 				onOpenChange={setPreviewOpen}
 				title={previewTitle}
@@ -1026,23 +1130,12 @@ export function BlogGenerator() {
 				data={activeView === 'faq' ? blogData?.faqData : null}
 			/>
 
-			{notification && (
-				<div className={`notification fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${notification.type === 'error'
-					? 'bg-destructive text-destructive-foreground'
-					: notification.type === 'warning'
-						? 'bg-warning text-warning-foreground'
-						: 'text-foreground'
-					}`}>
-					{notification.type === 'error' ? <AlertCircle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
-					{notification.message}
-				</div>
-			)}
+			{/* Notification system replaced by Sonner */}
 
 			{showReview && (
-				/* FULL SCREEN EDITOR FOR ALL 121 SECTIONS */
 				<div className="fixed inset-0 z-[100] bg-background flex flex-col animate-in fade-in duration-200">
 					{/* Compact Header */}
-					<div className="p-2 px-4 border-b flex items-center justify-between bg-white dark:bg-slate-900 shadow-sm" style={{ background: 'var(--card)', opacity: 1 }}>
+					<div className="p-2 px-4 border-b flex items-center justify-between bg-card dark:bg-slate-900 shadow-sm" style={{ background: 'var(--card)', opacity: 1 }}>
 						<div className="flex items-center gap-2">
 							<Sparkles className="h-5 w-5 text-purple-500" />
 							<div className="flex items-baseline gap-2">
@@ -1090,9 +1183,8 @@ export function BlogGenerator() {
 							title="Full Document - All Sections"
 						/>
 					</div>
-					</div>
-				)}
-			</div>
-		</>
+				</div>
+			)}
+		</Fragment>
 	);
 }

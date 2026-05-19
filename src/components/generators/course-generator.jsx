@@ -14,8 +14,16 @@ import {
 	Eye,
 	Copy,
 	CheckCircle2,
-	AlertCircle
+	AlertCircle,
+	History
 } from "lucide-react";
+import {
+	Sheet,
+	SheetContent,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from "@/components/ui/sheet";
 import {
 	processCourseFile,
 	generateOverviewCode,
@@ -26,6 +34,11 @@ import {
 } from "@/lib/docx-processor";
 import {PreviewDrawer} from "@/components/preview-drawer";
 import {ProgressButton} from "@/components/progress-button";
+import {HistoryList} from "@/components/history-list";
+import {useAuthAction} from "@/lib/use-auth-action";
+import {toast} from "sonner";
+import {useEffect} from "react";
+import {saveGeneratorState, getLatestGeneratorState} from "@/lib/tool-history";
 
 export function CourseGenerator() {
 	const [courseName,setCourseName]=useState("");
@@ -34,7 +47,7 @@ export function CourseGenerator() {
 	const [progress,setProgress]=useState(0);
 	const [progressText,setProgressText]=useState("");
 	const [courseData,setCourseData]=useState(null);
-	const [notification,setNotification]=useState(null);
+	const { performAction } = useAuthAction();
 
 	// Generated Code States
 	const [overviewCode,setOverviewCode]=useState("");
@@ -45,6 +58,7 @@ export function CourseGenerator() {
 
 	// Media URL for Overview (auto-detects if it's video or image)
 	const [mediaUrl,setMediaUrl]=useState("");
+	const [restoredFileName, setRestoredFileName] = useState("");
 
 	// View State
 	const [activeView,setActiveView]=useState("mainpoints"); // mainpoints, overview, objectives, syllabus, faq
@@ -55,9 +69,48 @@ export function CourseGenerator() {
 	const [previewContent,setPreviewContent]=useState("");
 	const [previewTitle,setPreviewTitle]=useState("");
 
+	// Load latest state on mount
+	useEffect(() => {
+		const loadState = async () => {
+			const state = await getLatestGeneratorState('course_generator');
+			if (state) {
+				setCourseName(state.courseName || "");
+				setCourseData(state.courseData || null);
+				setOverviewCode(state.overviewCode || "");
+				setObjectivesCode(state.objectivesCode || "");
+				setSyllabusCode(state.syllabusCode || "");
+				setFaqCode(state.faqCode || "");
+				setMainPointsCode(state.mainPointsCode || "");
+				setMediaUrl(state.mediaUrl || "");
+				if (state.courseData) {
+					toast.info("Restored last session assets");
+				}
+			}
+		};
+		loadState();
+	}, []);
+
+	// Auto-save helper
+	const persistState = async (updates = {}) => {
+		const currentState = {
+			courseName,
+			courseData,
+			overviewCode,
+			objectivesCode,
+			syllabusCode,
+			faqCode,
+			mainPointsCode,
+			mediaUrl,
+			fileName: updates.fileName || file?.name || restoredFileName || courseName || 'Course Content',
+			...updates
+		};
+		await saveGeneratorState('course_generator', currentState, currentState.fileName);
+	};
+
 	const showNotification=(message,type="success") => {
-		setNotification({message,type});
-		setTimeout(() => setNotification(null),3000);
+		if (type === 'error') toast.error(message);
+		else if (type === 'warning' || type === 'info') toast.info(message);
+		else toast.success(message);
 	};
 
 	const handleFileChange=(e) => {
@@ -76,6 +129,13 @@ export function CourseGenerator() {
 		setProgressText("Reading DOCX file...");
 
 		try {
+			// Record to media hub
+			const { recordMediaUpload } = await import("@/lib/media-hub");
+			await recordMediaUpload({
+				fileName: file.name,
+				fileType: file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				fileSize: file.size
+			});
 			// Simulate progress
 			const interval=setInterval(() => {
 				setProgress(p => Math.min(p+10,90));
@@ -88,6 +148,7 @@ export function CourseGenerator() {
 			setProgressText("Course content extracted successfully!");
 			setCourseData(data);
 			showNotification("Course content extracted successfully!","success");
+			persistState({ courseData: data, courseName });
 
 			setTimeout(() => {
 				setIsProcessing(false);
@@ -107,6 +168,7 @@ export function CourseGenerator() {
 		setOverviewCode(code);
 		setActiveView("overview");
 		showNotification("Overview code generated successfully!");
+		persistState({ overviewCode: code, activeView: "overview" });
 	};
 
 	const handleGenerateObjectives=() => {
@@ -115,6 +177,7 @@ export function CourseGenerator() {
 		setObjectivesCode(code);
 		setActiveView("objectives");
 		showNotification("Course Objectives code generated successfully!");
+		persistState({ objectivesCode: code, activeView: "objectives" });
 	};
 
 	const handleGenerateSyllabus=() => {
@@ -123,6 +186,7 @@ export function CourseGenerator() {
 		setSyllabusCode(code);
 		setActiveView("syllabus");
 		showNotification("Syllabus code generated successfully!");
+		persistState({ syllabusCode: code, activeView: "syllabus" });
 	};
 
 	const handleGenerateFAQ=() => {
@@ -131,6 +195,7 @@ export function CourseGenerator() {
 		setFaqCode(code);
 		setActiveView("faq");
 		showNotification("FAQ code generated successfully!");
+		persistState({ faqCode: code, activeView: "faq" });
 	};
 
 	const handleGenerateMainPoints=() => {
@@ -139,15 +204,18 @@ export function CourseGenerator() {
 		setMainPointsCode(code);
 		setActiveView("mainpoints");
 		showNotification("Main Points code generated successfully!");
+		persistState({ mainPointsCode: code, activeView: "mainpoints" });
 	};
 
 	const downloadDemoFile=() => {
-		const link=document.createElement('a');
-		link.href='https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765354187/demo-file-of-website-content-for-3-section.docx';
-		link.download='demo-file-of-website-content-for-3-section.docx';
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
+		performAction(() => {
+			const link=document.createElement('a');
+			link.href='https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765354187/demo-file-of-website-content-for-3-section.docx';
+			link.download='demo-file-of-website-content-for-3-section.docx';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		}, { type: 'download', name: 'Demo Course File' });
 	};
 
 	const openPreview=(content,title) => {
@@ -157,12 +225,49 @@ export function CourseGenerator() {
 	};
 
 	const copyToClipboard=(text) => {
-		navigator.clipboard.writeText(text);
-		showNotification("Copied to clipboard!");
+		performAction(() => {
+			navigator.clipboard.writeText(text);
+		}, { type: 'copy', name: 'Course Code' });
+	};
+
+	const handleRestore = (state) => {
+		if (!state) return;
+		setCourseName(state.courseName || "");
+		setCourseData(state.courseData || null);
+		setOverviewCode(state.overviewCode || "");
+		setObjectivesCode(state.objectivesCode || "");
+		setSyllabusCode(state.syllabusCode || "");
+		setFaqCode(state.faqCode || "");
+		setMainPointsCode(state.mainPointsCode || "");
+		setMediaUrl(state.mediaUrl || "");
+		setRestoredFileName(state.fileName || "");
+		if (state.activeView) setActiveView(state.activeView);
+		toast.success("Identity session synchronized");
 	};
 
 	return (
 		<div className="space-y-6">
+			<div className="flex justify-end">
+				<Sheet>
+					<SheetTrigger asChild>
+						<Button variant="outline" className="h-11 rounded-xl font-black uppercase tracking-widest text-[10px] gap-2 border-primary/20 hover:bg-primary/5 transition-all shadow-sm">
+							<History className="h-4 w-4 text-primary" /> Neural Sync History
+						</Button>
+					</SheetTrigger>
+					<SheetContent side="right" className="w-full sm:max-w-[50%] p-0 glass-panel-deep border-l border-border animate-in slide-in-from-right duration-500 z-[200]">
+						<SheetHeader className="p-8 border-b border-border/50 bg-muted/20">
+							<SheetTitle className="flex items-center gap-3 text-sm font-black">
+								<div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+									<History className="h-5 w-5 text-primary" />
+								</div>
+								Neural Sync Hub
+							</SheetTitle>
+						</SheetHeader>
+						<HistoryList toolType="course_generator" onRestore={handleRestore} />
+					</SheetContent>
+				</Sheet>
+			</div>
+
 			<div className="grid lg:grid-cols-2 gap-6">
 
 				{/* LEFT COLUMN: Controls */}
@@ -211,8 +316,9 @@ export function CourseGenerator() {
 									onChange={handleFileChange}
 									className="hidden"
 								/>
-								<div className="text-xs text-muted-foreground mt-1 text-center">
-									{file ? `Selected: ${file.name}` : "No file selected"}
+								<div className="text-xs text-muted-foreground mt-1 text-center font-medium italic">
+									{file ? `Selected: ${file.name}` : 
+									 restoredFileName ? `Identity Restored: ${restoredFileName}` : "No file selected"}
 								</div>
 								
 								{/* Media URL - Integration */}
@@ -280,6 +386,7 @@ export function CourseGenerator() {
 					)}
 
 				</div>
+
 
 				{/* RIGHT COLUMN: Output */}
 				<div className="space-y-6">
@@ -436,22 +543,7 @@ export function CourseGenerator() {
 				data={activeView==='faq'? courseData?.faqData:null}
 			/>
 
-			{/* Toast Notification */}
-			{notification&&(
-				<div className={`notification fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 shadow-lg ${notification.type==='error'
-					? 'bg-destructive text-destructive-foreground'
-					:notification.type==='warning'
-						? 'bg-warning text-warning-foreground'
-						:'text-foreground'
-					}`}>
-					{notification.type==='error'? (
-						<AlertCircle className="h-5 w-5" />
-					):(
-						<CheckCircle2 className="h-5 w-5" />
-					)}
-					{notification.message}
-				</div>
-			)}
+			{/* Notification system replaced by Sonner */}
 		</div>
 	);
 }
