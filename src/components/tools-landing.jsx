@@ -42,10 +42,10 @@ const iconMap = {
 };
 
 // Free tools that anyone can access (even without login)
-const FREE_TOOL_IDS = ['html-cleaner', 'image-converter', 'video-compressor', 'image-to-text', 'course', 'blog', 'glossary', 'resources', 'document-extractor'];
+const FREE_TOOL_IDS = ['html-cleaner', 'image-converter', 'video-compressor', 'image-to-text', 'document-extractor'];
 
 // Generator tools that require login + generator access
-const GENERATOR_TOOL_IDS = [];
+const GENERATOR_TOOL_IDS = ['course', 'blog', 'glossary', 'resources'];
 
 export function ToolsLanding({ user }) {
   const isGuest = !user;
@@ -142,8 +142,8 @@ export function ToolsLanding({ user }) {
         </div>
       </section>
 
-      {/* Generator Tools Section — Only for logged-in users */}
-      {!isGuest && (
+      {/* Generator Tools Section — Visible to all, but locked without access */}
+      {(
         <section id="generators" className="py-24 container mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
             <div>
@@ -154,9 +154,9 @@ export function ToolsLanding({ user }) {
               <p className="text-muted-foreground font-medium">Advanced AI-powered tools for professional content creation.</p>
             </div>
             {!hasGeneratorAccess && (
-              <Badge variant="outline" className="h-11 px-5 rounded-2xl border-dashed bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/30 gap-3 font-black uppercase text-[10px] tracking-widest">
+              <Badge variant="outline" className="h-11 px-5 rounded-2xl border-dashed bg-primary/10 text-primary border-primary/30 gap-3 font-black uppercase text-[10px] tracking-widest">
                 <ShieldCheck className="w-5 h-5" />
-                Global Access Required
+                {isGuest ? "Login for Purchase/Access" : "Global Access Required"}
               </Badge>
             )}
           </div>
@@ -179,13 +179,15 @@ export function ToolsLanding({ user }) {
                     locked && "opacity-80 grayscale-[0.8]"
                   )}>
                     {locked ? (
-                      <div className="absolute top-8 right-8 z-20">
+                      <div className="absolute top-8 right-8 z-20 flex flex-col items-end gap-2">
+                        <Badge variant="secondary" className="text-[8px] bg-primary/10 text-primary border-primary/20 px-3 py-1 font-black">PAID</Badge>
                         <div className="w-12 h-12 rounded-2xl bg-white/80 dark:bg-black/40 backdrop-blur-xl flex items-center justify-center shadow-2xl border border-black/5 dark:border-white/10 group-hover:scale-110 transition-transform">
-                          <LockIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-500" />
+                          <LockIcon className="w-5 h-5 text-primary" />
                         </div>
                       </div>
                     ) : (
-                      <div className="absolute top-8 right-8 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute top-8 right-8 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end gap-2">
+                        <Badge variant="outline" className="text-[8px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-3 py-1 font-black">PRO</Badge>
                         <div className="w-10 h-10 rounded-xl bg-primary/10 backdrop-blur-xl flex items-center justify-center border border-primary/20">
                           <Sparkles className="w-4 h-4 text-primary" />
                         </div>
@@ -207,13 +209,14 @@ export function ToolsLanding({ user }) {
                         variant={locked ? "outline" : "default"} 
                         className={cn(
                           "w-full h-14 rounded-2xl font-black text-lg transition-all border-none shadow-xl", 
-                          locked ? "bg-muted text-muted-foreground cursor-not-allowed hover:bg-muted" : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:scale-[1.02]"
+                          locked ? "bg-muted text-muted-foreground cursor-default" : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:scale-[1.02]"
                         )}
+                        onClick={locked ? (isGuest ? triggerLogin : undefined) : undefined}
                         asChild={!locked}
                       >
                         {locked ? (
                           <span className="flex items-center gap-2">
-                            Locked Tool
+                            {isGuest ? "Unlock Access" : "Locked Tool"}
                             <ChevronRight className="w-5 h-5 opacity-50" />
                           </span>
                         ) : (

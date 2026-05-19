@@ -4,14 +4,54 @@ import Link from "next/link";
 import { BrandLogo } from "./brand-logo";
 import { Shield, Mail, ExternalLink, BookOpen, Globe, Lock } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { hasAccess, triggerLogin } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 export function Footer({ overrideShow = false }) {
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
+  const [user, setUser] = useState(null);
   
-  // Don't show global footer on tools pages to avoid scrollbar conflicts, 
-  // unless explicitly requested (e.g. within the tools dashboard scroll area)
+  useEffect(() => {
+    const storedUser = sessionStorage.getItem('user');
+    if (storedUser) {
+      try { setUser(JSON.parse(storedUser)); } catch (e) {}
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, has_generator_access')
+          .eq('id', session.user.id)
+          .single();
+        
+        const u = {
+          role: profile?.role || 'user',
+          has_generator_access: profile?.has_generator_access || false
+        };
+        setUser(u);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Don't show global footer on tools pages to avoid scrollbar conflicts
   if (!overrideShow && pathname?.startsWith('/tools')) return null;
+
+  const toolLinks = [
+    { id: "course", label: "Course Content Gen", href: "/tools/web-content" },
+    { id: "blog", label: "Blog Post Generator", href: "/tools/blog-generator" },
+    { id: "glossary", label: "Glossary Extractor", href: "/tools/glossary-generator" },
+    { id: "resources", label: "Resource Generator", href: "/tools/resource-generator" },
+    { id: "video-compressor", label: "Video Optimizer", href: "/tools/video-compressor" },
+    { id: "image-to-text", label: "Neural OCR Engine", href: "/tools/image-to-text" },
+  ];
 
   return (
     <footer className="relative w-full bg-background border-t border-border mt-auto overflow-hidden">
@@ -42,11 +82,29 @@ export function Footer({ overrideShow = false }) {
           <div className="space-y-8">
             <h3 className="font-black text-xs uppercase tracking-[0.3em] text-foreground">Platform Engines</h3>
             <ul className="space-y-4 text-sm text-muted-foreground font-bold">
-              <li><Link href="/tools/web-content" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">Course Content Gen</Link></li>
-              <li><Link href="/tools/blog-generator" className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Blog Post Generator</Link></li>
-              <li><Link href="/tools/glossary-generator" className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Glossary Extractor</Link></li>
-              <li><Link href="/tools/video-compressor" className="hover:text-rose-600 dark:hover:text-rose-400 transition-colors">Video Optimizer</Link></li>
-              <li><Link href="/tools/image-to-text" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Neural OCR Engine</Link></li>
+              {toolLinks.map((tool) => {
+                const allowed = hasAccess(user, tool.id);
+                return (
+                  <li key={tool.id} className="flex items-center gap-2">
+                    {allowed ? (
+                      <Link 
+                        href={tool.href} 
+                        className="transition-colors hover:text-primary"
+                      >
+                        {tool.label}
+                      </Link>
+                    ) : (
+                      <button 
+                        onClick={() => triggerLogin()}
+                        className="transition-colors hover:text-amber-500 opacity-70 text-left"
+                      >
+                        {tool.label}
+                      </button>
+                    )}
+                    {!allowed && <Lock className="w-3 h-3 text-amber-500/50" />}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 

@@ -66,7 +66,7 @@ export async function authenticate(username,password) {
 
 export function hasAccess(user, featureId) {
 	// Free tools that everyone can access
-	const freeTools = ['html-cleaner', 'image-converter', 'video-compressor', 'image-to-text', 'document-extractor', 'course', 'blog', 'glossary', 'resources'];
+	const freeTools = ['html-cleaner', 'image-converter', 'video-compressor', 'image-to-text', 'document-extractor'];
 	if (freeTools.includes(featureId)) return true;
 
 	if(!user) return false;

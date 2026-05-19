@@ -37,11 +37,11 @@ const toolComponents = {
   'document-extractor': DocumentExtractor,
 };
 
-// Free tools that don't require login to USE (but copy/download requires login)
-const FREE_TOOL_SLUGS = ['html-cleaner', 'image-converter', 'video-compressor', 'image-to-text', 'document-extractor', 'web-content', 'blog-generator', 'glossary-generator', 'resource-generator'];
+// Free tools that don't require login to USE
+const FREE_TOOL_SLUGS = ['html-cleaner', 'image-converter', 'video-compressor', 'image-to-text', 'document-extractor'];
 
-// Generator tools that require login (Access is now open to all authenticated users)
-const GENERATOR_TOOL_SLUGS = [];
+// Generator tools that require login and generator access
+const GENERATOR_TOOL_SLUGS = ['web-content', 'blog-generator', 'glossary-generator', 'resource-generator'];
 
 export default function ToolPage({ params }) {
   const router = useRouter();
