@@ -13,6 +13,11 @@ const ToolsLanding = dynamic(() => import("@/components/tools-landing").then(mod
 	ssr: false
 });
 
+const BlogSection = dynamic(() => import("@/components/blog-section").then(mod => mod.BlogSection), {
+	loading: () => <InitialLoadingShell isReady={false} />,
+	ssr: false
+});
+
 const WelcomeScroll = dynamic(() => import("@/components/welcome-scroll").then(mod => mod.WelcomeScroll), {
 	loading: () => <InitialLoadingShell isReady={false} />,
 	ssr: false
@@ -101,6 +106,7 @@ export default function Home() {
 			<InitialLoadingShell isReady={true} />
 			{showWelcome && <WelcomeScroll onComplete={handleWelcomeComplete} />}
 			<ToolsLanding user={user} />
+			<BlogSection />
 		</>
 	);
 }

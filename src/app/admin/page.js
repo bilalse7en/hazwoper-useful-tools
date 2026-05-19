@@ -23,14 +23,32 @@ function AdminDashboard() {
   const activeView = searchParams.get('view') || "dashboard";
   const [mediaItems, setMediaItems] = useState([]);
   const [historyItems, setHistoryItems] = useState([]);
+  const [blogItems, setBlogItems] = useState([]);
 
   useEffect(() => {
-    checkAdmin();
-    fetchUsers();
-    
-    if (activeView === 'media' || activeView === 'dashboard') {
-      fetchMediaData();
+    async function initializeDashboard() {
+      setLoading(true);
+      try {
+        // Sequentially verify and fetch base data
+        await checkAdmin();
+        await fetchUsers();
+        
+        // Context-specific fetching
+        if (activeView === 'media' || activeView === 'dashboard') {
+           await fetchMediaData();
+        }
+        
+        if (activeView === 'blogs') {
+           await fetchBlogData();
+        }
+      } catch (err) {
+        console.error("Neural Dashboard Initialization Failure:", err);
+      } finally {
+        setLoading(false);
+      }
     }
+
+    initializeDashboard();
 
     // Subscribe to REALTIME changes for Admin Monitoring
     const channel = supabase
@@ -41,8 +59,11 @@ function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tool_history' }, () => {
         fetchMediaData();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'blogs' }, () => {
+        fetchBlogData();
+      })
       .subscribe();
-      
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -107,8 +128,33 @@ function AdminDashboard() {
     }
   }
 
+  async function fetchBlogData() {
+    try {
+      const { data, error } = await supabase
+        .from('blogs')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      console.log("Admin Blog Fetch:", data?.length, "items found.");
+      setBlogItems(data || []);
+    } catch (err) {
+      console.error("Error fetching blogs:", err);
+    }
+  }
+
+  async function deleteBlog(id) {
+    if (!confirm("Are you sure you want to delete this editorial sequence?")) return;
+    try {
+      const { error } = await supabase.from('blogs').delete().eq('id', id);
+      if (error) throw error;
+      fetchBlogData();
+    } catch (err) {
+      console.error("Error deleting blog:", err);
+    }
+  }
+
   async function fetchUsers() {
-    setLoading(true);
     // Emergency timeout to ensure the UI becomes interactive if Supabase hangs
     const safetyTimer = setTimeout(() => {
       setLoading(false);
@@ -120,10 +166,12 @@ function AdminDashboard() {
           .select('*');
         
         if (error) throw error;
+        console.log("Admin Identity Fetch:", data?.length, "identities found.");
         setUsers(data || []);
     } catch (err) {
         console.error("Error fetching users:", err);
         // Fallback for demo
+        console.log("Using fail-safe fallback user set.");
         setUsers([
           { id: '1', email: 'admin@example.com', role: 'admin', username: 'Super Admin' },
           { id: '2', email: 'user@example.com', role: 'user', username: 'Standard User' },
@@ -175,12 +223,20 @@ function AdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-border pb-8">
         <div>
           <h1 className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70 capitalize">
-            {activeView === 'dashboard' ? 'System Integrity' : activeView === 'media' ? 'Media Monitoring' : 'User Registry'}
+            {activeView === 'dashboard' ? 'System Integrity' : activeView === 'media' ? 'Media Monitoring' : activeView === 'blogs' ? 'Editorial Management' : 'User Registry'}
           </h1>
           <p className="text-muted-foreground mt-1 font-medium text-sm">
-            {activeView === 'dashboard' ? 'Real-time telemetry and architectural status.' : activeView === 'media' ? 'Global upload tracking and artifact auditing.' : 'Global user identity and permission synchronization.'}
+            {activeView === 'dashboard' ? 'Real-time telemetry and architectural status.' : activeView === 'media' ? 'Global upload tracking and artifact auditing.' : activeView === 'blogs' ? 'Manage professional insights and editorial archives.' : 'Global user identity and permission synchronization.'}
           </p>
         </div>
+        {activeView === 'blogs' && (
+          <Button 
+            onClick={() => router.push('/admin/blogs/new')}
+            className="h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] px-6 shadow-lg shadow-primary/20"
+          >
+            Create New Sequence
+          </Button>
+        )}
         {activeView === 'permissions' && (
           <div className="flex items-center gap-3">
               <div className="relative group">
@@ -340,10 +396,17 @@ function AdminDashboard() {
                         </TableCell>
                         <TableCell>
                            <div className="flex items-center gap-2">
-                             <Clock className="w-3 h-3 text-amber-500" />
-                             <span className="text-[10px] font-bold text-amber-600 uppercase">
-                               {getTimeRemaining(item.expires_at)}
-                             </span>
+                             {item.expires_at ? (
+                               <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-black uppercase tracking-widest text-[9px] py-1 px-3 flex items-center gap-2">
+                                 <Clock className="w-3 h-3" />
+                                 {getTimeRemaining(item.expires_at)}
+                               </Badge>
+                             ) : (
+                               <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-black uppercase tracking-widest text-[9px] py-1 px-3 flex items-center gap-2">
+                                 <ShieldCheck className="w-3 h-3" />
+                                 Permanent Archive
+                               </Badge>
+                             )}
                            </div>
                         </TableCell>
         <TableCell className="pr-10 text-right">
@@ -393,6 +456,51 @@ function AdminDashboard() {
                  </div>
                ))}
              </div>
+          </Card>
+        </div>
+      ) : activeView === 'blogs' ? (
+        <div className="space-y-8 animate-in-fade">
+          <Card className="rounded-[40px] shadow-2xl border-border bg-card/40 backdrop-blur-xl overflow-hidden">
+             <Table>
+                <TableHeader className="bg-muted/30">
+                   <TableRow className="h-14 border-b border-border">
+                      <TableHead className="pl-10 font-black uppercase tracking-widest text-[10px]">Article Detail</TableHead>
+                      <TableHead className="font-black uppercase tracking-widest text-[10px]">Category</TableHead>
+                      <TableHead className="font-black uppercase tracking-widest text-[10px]">Date</TableHead>
+                      <TableHead className="pr-10 text-right font-black uppercase tracking-widest text-[10px]">Actions</TableHead>
+                   </TableRow>
+                </TableHeader>
+                <TableBody>
+                   {blogItems.length === 0 ? (
+                     <TableRow>
+                       <TableCell colSpan={4} className="h-64 text-center font-black uppercase tracking-widest text-xs text-muted-foreground/50 italic">
+                         No editorial sequences detected in registry.
+                       </TableCell>
+                     </TableRow>
+                   ) : (
+                     blogItems.map(blog => (
+                       <TableRow key={blog.id} className="h-24 hover:bg-primary/[0.02] border-b border-border transition-colors group">
+                          <TableCell className="pl-10">
+                            <div className="flex flex-col">
+                               <span className="font-black text-base">{blog.title}</span>
+                               <span className="text-[10px] font-mono text-muted-foreground opacity-60">/{blog.slug}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                             <Badge variant="secondary" className="bg-primary/5 text-primary border-none uppercase text-[9px] font-black">{blog.category}</Badge>
+                          </TableCell>
+                          <TableCell>
+                             <span className="text-xs font-bold text-muted-foreground">{blog.date}</span>
+                          </TableCell>
+                          <TableCell className="pr-10 text-right space-x-2">
+                             <Button variant="ghost" size="sm" className="rounded-xl font-bold bg-muted/50 hover:bg-primary/10 hover:text-primary" onClick={() => router.push(`/admin/blogs/${blog.id}`)}>Edit</Button>
+                             <Button variant="ghost" size="sm" className="rounded-xl font-bold text-destructive/60 hover:text-destructive hover:bg-destructive/10" onClick={() => deleteBlog(blog.id)}>Delete</Button>
+                          </TableCell>
+                       </TableRow>
+                     ))
+                   )}
+                </TableBody>
+             </Table>
           </Card>
         </div>
       ) : (

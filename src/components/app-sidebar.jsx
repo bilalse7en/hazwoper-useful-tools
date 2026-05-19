@@ -67,6 +67,7 @@ const adminNavGroups=[
 			{id: "dashboard",label: "Dashboard",icon: LayoutDashboard},
 			{id: "admin",label: "User Roles",icon: Users},
 			{id: "media",label: "Media Monitor",icon: ImageIcon},
+			{id: "blogs",label: "Editorial",icon: PenTool},
 		]
 	}
 ];

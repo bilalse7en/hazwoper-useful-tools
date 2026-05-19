@@ -141,6 +141,7 @@ export async function deleteToolHistory(id) {
 
 // Calculate time remaining string
 export function getTimeRemaining(expiresAt) {
+  if (!expiresAt) return 'Permanent';
   const now = new Date();
   const expires = new Date(expiresAt);
   const diff = expires - now;
