@@ -1,4 +1,4 @@
-/**
+﻿/**
  * HTML Cleaner utility functions
  * Cleans and sanitizes HTML content
  */
