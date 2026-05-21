@@ -25,7 +25,7 @@ import { toolIdToSlug, toolInfo } from "@/lib/seo";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, isLowEnd } from "@/lib/utils";
 import { triggerLogin } from "@/lib/auth";
 
 const iconMap = {
@@ -76,8 +76,8 @@ export function ToolsLanding({ user }) {
         <div className="container relative mx-auto px-6">
           <div className="max-w-3xl">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
+              animate={isLowEnd() ? false : { opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
               <Badge variant="secondary" className="mb-6 px-4 py-1.5 rounded-full bg-primary/10 text-primary border-primary/20 flex items-center gap-2 w-fit">
@@ -169,8 +169,8 @@ export function ToolsLanding({ user }) {
               return (
                 <motion.div
                   key={tool.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
+                  animate={isLowEnd() ? false : { opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   className="group h-full"
                 >
@@ -263,7 +263,7 @@ export function ToolsLanding({ user }) {
               return (
                 <Link key={tool.id} href={`/tools/${tool.slug}`}>
                   <motion.div
-                    whileHover={{ y: -8, scale: 1.02 }}
+                    whileHover={isLowEnd() ? {} : { y: -8, scale: 1.02 }}
                     className={cn(
                       "p-8 bg-card/60 backdrop-blur-xl border border-border rounded-[32px] hover:border-primary/40 transition-all hover:shadow-2xl group text-center relative overflow-hidden",
                       isGuest && "min-h-[200px] flex flex-col items-center justify-center"

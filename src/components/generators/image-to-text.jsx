@@ -8,7 +8,7 @@ import { ProgressButton } from "@/components/progress-button";
 import { cn } from "@/lib/utils";
 import {useAuthAction} from "@/lib/use-auth-action";
 import {toast} from "sonner";
-import {saveGeneratorState, getLatestGeneratorState} from "@/lib/tool-history";
+import {saveGeneratorState} from "@/lib/tool-history";
 
 export default function ImageToText() {
 	const { performAction } = useAuthAction();
@@ -20,19 +20,7 @@ export default function ImageToText() {
 	const [error,setError]=useState("");
 	const [useAI,setUseAI]=useState(true); // Default to AI mode - using 100% FREE APIs (no quota limits!)
 
-	// Load latest state on mount
-	useEffect(() => {
-		const loadState = async () => {
-			const state = await getLatestGeneratorState('image_to_text');
-			if (state) {
-				setExtractedText(state.extractedText || "");
-				if (state.extractedText) {
-					toast.info("Restored last OCR session");
-				}
-			}
-		};
-		loadState();
-	}, []);
+
 
 	// Auto-save helper
 	const persistState = async (updates = {}) => {

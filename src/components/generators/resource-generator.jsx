@@ -25,9 +25,9 @@ import {
 import { processResourceFile } from "@/lib/excel-processor";
 import { PreviewDrawer } from "@/components/preview-drawer";
 import { ProgressButton } from "@/components/progress-button";
-import { useEffect } from "react";
+
 import { toast } from "sonner";
-import { saveGeneratorState, getLatestGeneratorState } from "@/lib/tool-history";
+import { saveGeneratorState } from "@/lib/tool-history";
 import { HistoryList } from "@/components/history-list";
 import { useAuthAction } from "@/lib/use-auth-action";
 
@@ -47,20 +47,7 @@ export function ResourceGenerator() {
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const [previewContent, setPreviewContent] = useState("");
 
-	// Load latest state on mount
-	useEffect(() => {
-		const loadState = async () => {
-			const state = await getLatestGeneratorState('resource_generator');
-			if (state) {
-				setResourceCode(state.resourceCode || "");
-				setGlossaryLink(state.glossaryLink || "");
-				if (state.resourceCode) {
-					toast.info("Restored last resource session");
-				}
-			}
-		};
-		loadState();
-	}, []);
+
 
 	// Auto-save helper
 	const persistState = async (updates = {}) => {

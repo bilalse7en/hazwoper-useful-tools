@@ -48,7 +48,7 @@ import { PreviewDrawer } from "@/components/preview-drawer";
 import { RichTextEditor } from "@/components/rich-text-editor";
 import { useAuthAction } from "@/lib/use-auth-action";
 import { toast } from "sonner";
-import { saveGeneratorState, getLatestGeneratorState } from "@/lib/tool-history";
+import { saveGeneratorState } from "@/lib/tool-history";
 import { HistoryList } from "@/components/history-list";
 
 export function BlogGenerator() {
@@ -104,27 +104,7 @@ export function BlogGenerator() {
 	const [restoredFileName, setRestoredFileName] = useState("");
 	const analyzerInputRef = useRef(null);
 
-	// Load latest state on mount
-	useEffect(() => {
-		const loadState = async () => {
-			const state = await getLatestGeneratorState('blog_generator');
-			if (state) {
-				setBlogData(state.blogData || null);
-				setTitle(state.title || "");
-				setFeaturedImage(state.featuredImage || "");
-				setAltText(state.altText || "");
-				setContentImages(state.contentImages || {});
-				setBlogCode(state.blogCode || "");
-				setFaqCode(state.faqCode || "");
-				setEditorContent(state.editorContent || "");
-				setRawStructure(state.rawStructure || []);
-				if (state.blogData || state.editorContent) {
-					toast.info("Restored last blog session");
-				}
-			}
-		};
-		loadState();
-	}, []);
+
 
 	// Auto-save helper
 	const persistState = async (updates = {}) => {

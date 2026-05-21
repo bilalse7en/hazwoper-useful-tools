@@ -2,6 +2,7 @@
 
 import {useEffect,useRef,useMemo} from "react";
 import {useTheme} from "next-themes";
+import {isLowEnd} from "@/lib/utils";
 
 export function BackgroundSpace() {
 	const canvasRef=useRef(null);
@@ -13,6 +14,11 @@ export function BackgroundSpace() {
 	useEffect(() => {
 		const canvas=canvasRef.current;
 		if(!canvas) return;
+
+		// Skip heavy effects if performance mode is enabled
+		if (isLowEnd()) {
+			return;
+		}
 		
 		const observer = new IntersectionObserver(
 			([entry]) => {

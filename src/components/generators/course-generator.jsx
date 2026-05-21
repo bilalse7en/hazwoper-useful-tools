@@ -37,8 +37,7 @@ import {ProgressButton} from "@/components/progress-button";
 import {HistoryList} from "@/components/history-list";
 import {useAuthAction} from "@/lib/use-auth-action";
 import {toast} from "sonner";
-import {useEffect} from "react";
-import {saveGeneratorState, getLatestGeneratorState} from "@/lib/tool-history";
+import {saveGeneratorState} from "@/lib/tool-history";
 
 export function CourseGenerator() {
 	const [courseName,setCourseName]=useState("");
@@ -69,26 +68,7 @@ export function CourseGenerator() {
 	const [previewContent,setPreviewContent]=useState("");
 	const [previewTitle,setPreviewTitle]=useState("");
 
-	// Load latest state on mount
-	useEffect(() => {
-		const loadState = async () => {
-			const state = await getLatestGeneratorState('course_generator');
-			if (state) {
-				setCourseName(state.courseName || "");
-				setCourseData(state.courseData || null);
-				setOverviewCode(state.overviewCode || "");
-				setObjectivesCode(state.objectivesCode || "");
-				setSyllabusCode(state.syllabusCode || "");
-				setFaqCode(state.faqCode || "");
-				setMainPointsCode(state.mainPointsCode || "");
-				setMediaUrl(state.mediaUrl || "");
-				if (state.courseData) {
-					toast.info("Restored last session assets");
-				}
-			}
-		};
-		loadState();
-	}, []);
+
 
 	// Auto-save helper
 	const persistState = async (updates = {}) => {

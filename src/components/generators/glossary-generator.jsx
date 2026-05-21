@@ -84,12 +84,27 @@ export function GlossaryGenerator() {
 			// Auto generate code
 			const code = generateGlossaryCode(data);
 			setGlossaryCode(code);
+
+			setProgress(95);
+			setProgressText("Saving session...");
 			
-			await saveGeneratorState('glossary_generator', {
-				glossaryData: data,
-				glossaryCode: code,
-				fileName: file.name
-			}, `Glossary - ${file.name}`);
+			try {
+				await saveGeneratorState('glossary_generator', {
+					glossaryData: data,
+					glossaryCode: code,
+					fileName: file.name
+				}, `Glossary - ${file.name}`);
+			} catch (saveErr) {
+				console.error("Error saving generator state:", saveErr);
+				// Non-blocking: code was generated successfully, just log the save error
+			}
+
+			setProgress(100);
+			setProgressText("Complete!");
+			toast.success("Glossary generated successfully!");
+			
+			// Brief pause so user sees 100% before reset
+			await new Promise(r => setTimeout(r, 800));
 
 		} catch (error) {
 			console.error("Error processing file:", error);

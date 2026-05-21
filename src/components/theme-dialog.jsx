@@ -9,7 +9,10 @@ import {
 	Sparkles,
 	Check,
 	Zap,
+	ZapOff
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 const themes = [
 	{ id: 'light', name: 'Professional Light', icon: Sun, description: 'Clean white workspace' },
@@ -19,6 +22,19 @@ const themes = [
 
 export function ThemeDialog({ open, onOpenChange }) {
 	const { theme, setTheme } = useTheme();
+	const [performanceMode, setPerformanceMode] = useState(false);
+
+	useEffect(() => {
+		if (open && typeof window !== 'undefined') {
+			setPerformanceMode(localStorage.getItem('performance_mode') === 'true');
+		}
+	}, [open]);
+
+	const togglePerformanceMode = (value) => {
+		setPerformanceMode(value);
+		localStorage.setItem('performance_mode', value ? 'true' : 'false');
+		window.location.reload();
+	};
 
 	const handleThemeChange = (themeId) => {
 		setTheme(themeId);
@@ -56,6 +72,35 @@ export function ThemeDialog({ open, onOpenChange }) {
 							</Button>
 						);
 					})}
+				</div>
+
+				<div className="border-t border-border mt-2 pt-6 pb-4">
+					<div className="flex items-center justify-between mb-4">
+						<div className="flex flex-col">
+							<span className="text-sm font-bold">Visual Effects</span>
+							<span className="text-xs text-muted-foreground">Animations & particles</span>
+						</div>
+						<div className="flex items-center bg-muted/50 rounded-xl p-1 border border-border/50 h-10 w-32">
+							<button
+								onClick={() => performanceMode && togglePerformanceMode(false)}
+								className={cn(
+									"flex-1 h-full rounded-lg text-[10px] font-black transition-all",
+									!performanceMode ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"
+								)}
+							>
+								YES
+							</button>
+							<button
+								onClick={() => !performanceMode && togglePerformanceMode(true)}
+								className={cn(
+									"flex-1 h-full rounded-lg text-[10px] font-black transition-all",
+									performanceMode ? "bg-muted-foreground/30 text-foreground" : "text-muted-foreground hover:text-foreground"
+								)}
+							>
+								NO
+							</button>
+						</div>
+					</div>
 				</div>
 			</DialogContent>
 		</Dialog>

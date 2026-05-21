@@ -12,6 +12,7 @@ import {
   Zap,
   CheckCircle2
 } from "lucide-react";
+import { isLowEnd } from "@/lib/utils";
 
 export function ProfessionalOverview() {
   return (
@@ -23,8 +24,8 @@ export function ProfessionalOverview() {
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center mb-24">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
+            whileInView={isLowEnd() ? false : { opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-8"
           >
@@ -80,8 +81,8 @@ export function ProfessionalOverview() {
           ].map((item, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
+              whileInView={isLowEnd() ? false : { opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
               className="space-y-6 p-8 rounded-[32px] bg-card/40 backdrop-blur-xl border border-border hover:border-primary/30 transition-all group"

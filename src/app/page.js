@@ -32,8 +32,8 @@ export default function Home() {
 	const [showWelcome, setShowWelcome] = useState(false);
 
 	useEffect(() => {
-		// Show welcome scroll only once per session
-		const hasSeenWelcome = sessionStorage.getItem('welcome_seen');
+		// Show welcome scroll only once ever
+		const hasSeenWelcome = localStorage.getItem('welcome_seen');
 		if (!hasSeenWelcome) {
 			setShowWelcome(true);
 		}
@@ -90,7 +90,7 @@ export default function Home() {
 	}, [router]);
 
 	const handleWelcomeComplete = () => {
-		sessionStorage.setItem('welcome_seen', 'true');
+		localStorage.setItem('welcome_seen', 'true');
 		setShowWelcome(false);
 	};
 

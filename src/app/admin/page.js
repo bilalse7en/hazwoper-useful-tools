@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { InitialLoadingShell } from "@/components/initial-loading-shell";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getTimeRemaining, formatSize } from "@/lib/tool-history";
+import { toast } from "sonner";
 
 function AdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -154,11 +155,14 @@ function AdminDashboard() {
     }
   }
 
-  async function fetchUsers() {
-    // Emergency timeout to ensure the UI becomes interactive if Supabase hangs
-    const safetyTimer = setTimeout(() => {
-      setLoading(false);
-    }, 4000);
+  async function fetchUsers(silent = false) {
+    if (!silent) {
+        // Emergency timeout to ensure the UI becomes interactive if Supabase hangs
+        const safetyTimer = setTimeout(() => {
+          setLoading(false);
+        }, 4000);
+        setLoading(true);
+    }
 
     try {
         const { data, error } = await supabase
@@ -177,7 +181,6 @@ function AdminDashboard() {
           { id: '2', email: 'user@example.com', role: 'user', username: 'Standard User' },
         ]);
     } finally {
-        clearTimeout(safetyTimer);
         setLoading(false);
     }
   }
@@ -191,9 +194,15 @@ function AdminDashboard() {
           .eq('id', userId);
         
         if (error) throw error;
-        setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        await fetchUsers(true);
+        toast.success("Identity Reconfigured", {
+            description: `Role escalated to ${newRole.toUpperCase()} for target subject.`
+        });
     } catch (err) {
         console.error("Error updating role:", err);
+        toast.error("Escalation Failed", {
+            description: "Neural synchronization error. Check RLS permissions."
+        });
     }
   }
 
@@ -205,9 +214,15 @@ function AdminDashboard() {
           .eq('id', userId);
         
         if (error) throw error;
-        setUsers(users.map(u => u.id === userId ? { ...u, has_generator_access: hasAccess } : u));
+        await fetchUsers(true);
+        toast.success("Access Logic Updated", {
+            description: `Generator suite permissions ${hasAccess ? 'authorized' : 'revoked'}.`
+        });
     } catch (err) {
         console.error("Error updating generator access:", err);
+        toast.error("Initialization Failed", {
+            description: "Access policy synchronization failed."
+        });
     }
   }
 

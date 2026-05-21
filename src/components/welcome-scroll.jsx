@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { toolInfo, toolIdToSlug } from "@/lib/seo";
+import { isLowEnd } from "@/lib/utils";
 
 /* ── icon & gradient maps ──────────────────────────────────── */
 const iconMap = {
@@ -150,22 +151,28 @@ export function WelcomeScroll({ onComplete }) {
         {/* sticky viewport */}
         <div className="sticky top-0 h-screen w-full overflow-hidden">
           {/* ── background grid ─────────────────────────────── */}
-          <div
-            className="absolute inset-0 opacity-[0.06]"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, rgba(139,92,246,0.4) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(139,92,246,0.4) 1px, transparent 1px)
-              `,
-              backgroundSize: "60px 60px",
-              transform: `translateY(${scrollProgress * 120}px)`,
-            }}
-          />
+          {!isLowEnd() && (
+            <div
+              className="absolute inset-0 opacity-[0.06]"
+              style={{
+                backgroundImage: `
+                  linear-gradient(to right, rgba(139,92,246,0.4) 1px, transparent 1px),
+                  linear-gradient(to bottom, rgba(139,92,246,0.4) 1px, transparent 1px)
+                `,
+                backgroundSize: "60px 60px",
+                transform: `translateY(${scrollProgress * 120}px)`,
+              }}
+            />
+          )}
 
           {/* ── ambient glow orbs ───────────────────────────── */}
-          <div className="absolute top-[15%] left-[20%] w-[500px] h-[500px] bg-purple-600/8 rounded-full blur-[150px] pointer-events-none" />
-          <div className="absolute bottom-[20%] right-[15%] w-[400px] h-[400px] bg-blue-600/8 rounded-full blur-[120px] pointer-events-none" />
-          <div className="absolute top-[60%] left-[60%] w-[300px] h-[300px] bg-pink-600/6 rounded-full blur-[100px] pointer-events-none" />
+          {!isLowEnd() && (
+            <>
+              <div className="absolute top-[15%] left-[20%] w-[500px] h-[500px] bg-purple-600/8 rounded-full blur-[150px] pointer-events-none" />
+              <div className="absolute bottom-[20%] right-[15%] w-[400px] h-[400px] bg-blue-600/8 rounded-full blur-[120px] pointer-events-none" />
+              <div className="absolute top-[60%] left-[60%] w-[300px] h-[300px] bg-pink-600/6 rounded-full blur-[100px] pointer-events-none" />
+            </>
+          )}
 
           {/* ── progress bar ────────────────────────────────── */}
           <div className="absolute top-0 left-0 w-full h-0.5 bg-gray-800/40 z-50">

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { blogPosts as staticBlogs } from "@/lib/blog-data";
+import { isLowEnd } from "@/lib/utils";
 
 export function BlogSection() {
   const [blogs, setBlogs] = useState([]);
@@ -74,8 +75,8 @@ export function BlogSection() {
           blogs.map((post, index) => (
             <motion.div
               key={post.slug}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
+              whileInView={isLowEnd() ? false : { opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               className="group flex flex-col h-full bg-card/40 backdrop-blur-xl border border-border hover:border-primary/20 rounded-[32px] overflow-hidden transition-all duration-500 shadow-xl hover:shadow-primary/5"
