@@ -28,11 +28,16 @@ function AdminDashboard() {
 
   useEffect(() => {
     async function initializeDashboard() {
+      // Emergency timeout to ensure the UI becomes interactive if Supabase hangs
+      const safetyTimer = setTimeout(() => {
+        setLoading(false);
+      }, 5000);
+
       setLoading(true);
       try {
         // Sequentially verify and fetch base data
         await checkAdmin();
-        await fetchUsers();
+        await fetchUsers(true); // silent fetch but with its own try/catch
         
         // Context-specific fetching
         if (activeView === 'media' || activeView === 'dashboard') {
@@ -46,6 +51,7 @@ function AdminDashboard() {
         console.error("Neural Dashboard Initialization Failure:", err);
       } finally {
         setLoading(false);
+        clearTimeout(safetyTimer);
       }
     }
 
@@ -74,20 +80,24 @@ function AdminDashboard() {
   // For now, let's just make it a single page that switches views
 
   async function checkAdmin() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.href = '/';
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = '/';
+        return;
+      }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
 
-    if (profile?.role !== 'admin') {
-      window.location.href = '/';
+      if (profile?.role !== 'admin') {
+        window.location.href = '/';
+      }
+    } catch (e) {
+      console.error("Admin verification error:", e);
     }
   }
 
@@ -157,10 +167,6 @@ function AdminDashboard() {
 
   async function fetchUsers(silent = false) {
     if (!silent) {
-        // Emergency timeout to ensure the UI becomes interactive if Supabase hangs
-        const safetyTimer = setTimeout(() => {
-          setLoading(false);
-        }, 4000);
         setLoading(true);
     }
 

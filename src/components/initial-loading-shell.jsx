@@ -8,12 +8,22 @@ export function InitialLoadingShell({ isReady = false }) {
   const [shouldShow, setShouldShow] = useState(true);
 
   useEffect(() => {
+    // Fail-safe: Always hide after 6 seconds to prevent "stuck" UI if something hangs
+    const safetyTimer = setTimeout(() => {
+      setShouldShow(false);
+    }, 6000);
+
     if (isReady) {
       const timer = setTimeout(() => {
         setShouldShow(false);
       }, 100);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(safetyTimer);
+      };
     }
+
+    return () => clearTimeout(safetyTimer);
   }, [isReady]);
 
   if (!shouldShow) return null;

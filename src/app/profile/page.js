@@ -25,33 +25,44 @@ export default function ProfilePage() {
   const router = useRouter()
 
   useEffect(() => {
-    fetchProfile()
+    // Safety fallback: Ensure load screen disappears after 3s
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
+
+    fetchProfile();
+    return () => clearTimeout(timer);
   }, [])
 
   async function fetchProfile() {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      router.push("/")
-      return
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        router.push("/")
+        return
+      }
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single()
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single()
 
-    if (data || session.user) {
-      const activeUser = { ...session.user, ...data };
-      setUser(activeUser)
-      setFirstName(data?.first_name || session.user.user_metadata?.first_name || "")
-      setLastName(data?.last_name || session.user.user_metadata?.last_name || "")
-      setUsername(data?.username || session.user.user_metadata?.username || "")
-      const name = data?.full_name || session.user.user_metadata?.full_name || data?.username || session.user.email.split('@')[0];
-      setFullName(name)
-      setAvatarUrl(data?.avatar_url || session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || "")
+      if (data || session.user) {
+        const activeUser = { ...session.user, ...data };
+        setUser(activeUser)
+        setFirstName(data?.first_name || session.user.user_metadata?.first_name || "")
+        setLastName(data?.last_name || session.user.user_metadata?.last_name || "")
+        setUsername(data?.username || session.user.user_metadata?.username || "")
+        const name = data?.full_name || session.user.user_metadata?.full_name || data?.username || session.user.email.split('@')[0];
+        setFullName(name)
+        setAvatarUrl(data?.avatar_url || session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || "")
+      }
+    } catch (e) {
+      console.error("Profile fetch error:", e);
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleAvatarChange = async (e) => {
@@ -157,7 +168,7 @@ export default function ProfilePage() {
 
   return (
     <>
-    <InitialLoadingShell isReady={!loading && !!user} />
+    <InitialLoadingShell isReady={!loading} />
     <div className="min-h-screen bg-transparent pb-20">
       <div className="container mx-auto px-4 py-12 max-w-2xl animate-in-card">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
