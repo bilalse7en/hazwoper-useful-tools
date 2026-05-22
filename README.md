@@ -20,6 +20,26 @@ You can start editing the page by modifying `app/page.js`. The page auto-updates
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Monitoring & Error Tracking
+
+This project uses **Sentry** for real-time error tracking and performance monitoring.
+1. Add your `NEXT_PUBLIC_SENTRY_DSN` to `.env.local`.
+2. Errors will be automatically reported to your Sentry dashboard.
+
+## Testing
+
+Professional testing is integrated into the workflow:
+- **Unit/Integration Tests**: Powered by `Vitest`. Run with `npm run test`.
+- **E2E Tests**: Powered by `Playwright`. Run with `npm run test:e2e`.
+
+## Code Quality
+
+To maintain a "100% perfect" codebase:
+- **Linting**: ESLint with Next.js core vitals and Prettier rules.
+- **Formatting**: Prettier is configured for consistent code style.
+- **Git Hooks**: Husky and lint-staged ensure only clean code is committed.
+- **CI/CD**: GitHub Actions automatically runs tests and linting on every push.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -34,3 +54,4 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
