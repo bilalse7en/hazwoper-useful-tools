@@ -82,19 +82,21 @@ export async function POST(request) {
     }
 
     // 4. Update Profile Table
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        first_name: firstName,
-        last_name: lastName,
-        full_name: fullName,
-        username: username,
-        avatar_url:
-          avatarUrl ||
-          (isEditingSelf ? user.user_metadata?.avatar_url : undefined),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', finalUserId);
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: finalUserId,
+      first_name: firstName,
+      last_name: lastName,
+      full_name: fullName,
+      username: username,
+      email: isEditingSelf ? user.email : body.email || undefined,
+      avatar_url:
+        avatarUrl ||
+        (isEditingSelf ? user.user_metadata?.avatar_url : undefined),
+      profile_image:
+        avatarUrl ||
+        (isEditingSelf ? user.user_metadata?.avatar_url : undefined),
+      updated_at: new Date().toISOString(),
+    });
 
     if (profileError) throw profileError;
 
