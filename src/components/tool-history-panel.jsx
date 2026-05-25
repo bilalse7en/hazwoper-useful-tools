@@ -1,12 +1,25 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Trash2, FileImage, Video, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { getToolHistory, deleteToolHistory, getTimeRemaining, formatSize } from "@/lib/tool-history";
-import { cn } from "@/lib/utils";
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Clock,
+  Trash2,
+  FileImage,
+  Video,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  getToolHistory,
+  deleteToolHistory,
+  getTimeRemaining,
+  formatSize,
+} from '@/lib/tool-history';
+import { cn } from '@/lib/utils';
 
 export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
   const [history, setHistory] = useState([]);
@@ -29,10 +42,12 @@ export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
   useEffect(() => {
     if (!isOpen || history.length === 0) return;
     const interval = setInterval(() => {
-      setHistory(prev => prev.filter(item => {
-        const expires = new Date(item.expires_at);
-        return expires > new Date();
-      }));
+      setHistory((prev) =>
+        prev.filter((item) => {
+          const expires = new Date(item.expires_at);
+          return expires > new Date();
+        })
+      );
     }, 60000);
     return () => clearInterval(interval);
   }, [isOpen, history.length]);
@@ -40,7 +55,7 @@ export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
   const handleDelete = async (id) => {
     const success = await deleteToolHistory(id);
     if (success) {
-      setHistory(prev => prev.filter(item => item.id !== id));
+      setHistory((prev) => prev.filter((item) => item.id !== id));
     }
   };
 
@@ -55,17 +70,21 @@ export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-full flex items-center justify-between px-6 py-4 rounded-2xl border transition-all duration-300",
+          'w-full flex items-center justify-between px-6 py-4 rounded-2xl border transition-all duration-300',
           isOpen
-            ? "bg-primary/5 border-primary/20 shadow-lg"
-            : "bg-card/40 border-border/50 hover:bg-card/60 hover:border-border"
+            ? 'bg-primary/5 border-primary/20 shadow-lg'
+            : 'bg-card/40 border-border/50 hover:bg-card/60 hover:border-border'
         )}
       >
         <div className="flex items-center gap-3">
-          <div className={cn(
-            "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
-            isOpen ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-          )}>
+          <div
+            className={cn(
+              'w-10 h-10 rounded-xl flex items-center justify-center transition-colors',
+              isOpen
+                ? 'bg-primary/10 text-primary'
+                : 'bg-muted text-muted-foreground'
+            )}
+          >
             <Clock className="w-5 h-5" />
           </div>
           <div className="text-left">
@@ -73,13 +92,23 @@ export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
               Recent History
             </span>
             <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-              {history.length} item{history.length !== 1 ? 's' : ''} · Auto-deletes in 24h
+              {history.length} item{history.length !== 1 ? 's' : ''} ·
+              Auto-deletes in 24h
             </span>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Badge variant="secondary" className="text-[9px] font-black px-3 py-1">{history.length}</Badge>
-          {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          <Badge
+            variant="secondary"
+            className="text-[9px] font-black px-3 py-1"
+          >
+            {history.length}
+          </Badge>
+          {isOpen ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
         </div>
       </button>
 
@@ -88,7 +117,7 @@ export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
         {isOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
+            animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
@@ -102,7 +131,8 @@ export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
               ) : (
                 history.map((item, index) => {
                   const timeLeft = getTimeRemaining(item.expires_at);
-                  const isExpiring = timeLeft.includes('m remaining') && !timeLeft.includes('h');
+                  const isExpiring =
+                    timeLeft.includes('m remaining') && !timeLeft.includes('h');
 
                   return (
                     <motion.div
@@ -120,28 +150,39 @@ export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground truncate">{item.file_name}</p>
+                        <p className="text-sm font-bold text-foreground truncate">
+                          {item.file_name}
+                        </p>
                         <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] text-muted-foreground font-mono">{formatSize(item.file_size)}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            {formatSize(item.file_size)}
+                          </span>
                           {item.reduction_percent > 0 && (
-                            <Badge variant="secondary" className="text-[8px] px-2 py-0 bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
+                            <Badge
+                              variant="secondary"
+                              className="text-[8px] px-2 py-0 bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"
+                            >
                               -{item.reduction_percent}%
                             </Badge>
                           )}
                           {item.output_format && (
-                            <span className="text-[10px] text-muted-foreground font-mono uppercase">{item.output_format}</span>
+                            <span className="text-[10px] text-muted-foreground font-mono uppercase">
+                              {item.output_format}
+                            </span>
                           )}
                         </div>
                       </div>
 
                       {/* Timer */}
                       <div className="flex items-center gap-2 shrink-0">
-                        <div className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider",
-                          isExpiring
-                            ? "bg-red-500/10 text-red-500 border border-red-500/20"
-                            : "bg-muted text-muted-foreground"
-                        )}>
+                        <div
+                          className={cn(
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider',
+                            isExpiring
+                              ? 'bg-red-500/10 text-red-500 border border-red-500/20'
+                              : 'bg-muted text-muted-foreground'
+                          )}
+                        >
                           {isExpiring && <AlertCircle className="w-3 h-3" />}
                           <Clock className="w-3 h-3" />
                           {timeLeft}

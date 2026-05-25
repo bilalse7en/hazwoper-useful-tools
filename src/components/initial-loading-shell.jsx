@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { BrandLogo } from "./brand-logo";
+import { useEffect, useState, useRef } from 'react';
+import { BrandLogo } from './brand-logo';
 
 /**
  * Initial Loading Shell - Optimized for SI and LCP
@@ -7,16 +7,31 @@ import { BrandLogo } from "./brand-logo";
 export function InitialLoadingShell({ isReady = false }) {
   const [shouldShow, setShouldShow] = useState(true);
 
+  const [isActuallyReady, setIsActuallyReady] = useState(false);
+  const mountTimeRef = useRef(null);
+
   useEffect(() => {
-    // Fail-safe: Always hide after 6 seconds to prevent "stuck" UI if something hangs
+    if (mountTimeRef.current === null) {
+      mountTimeRef.current = Date.now();
+    }
+
+    const MIN_LOADING_TIME = 2000; // 2 seconds minimum
+
+    // Fail-safe: Always hide after 8 seconds to prevent "stuck" UI
     const safetyTimer = setTimeout(() => {
-      setShouldShow(false);
-    }, 6000);
+      setIsActuallyReady(true);
+      setTimeout(() => setShouldShow(false), 500); // Allow fade out
+    }, 8000);
 
     if (isReady) {
+      const elapsedTime = Date.now() - mountTimeRef.current;
+      const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+
       const timer = setTimeout(() => {
-        setShouldShow(false);
-      }, 100);
+        setIsActuallyReady(true);
+        setTimeout(() => setShouldShow(false), 500); // Allow fade out
+      }, remainingTime);
+
       return () => {
         clearTimeout(timer);
         clearTimeout(safetyTimer);
@@ -29,17 +44,22 @@ export function InitialLoadingShell({ isReady = false }) {
   if (!shouldShow) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-background transition-opacity duration-500"
-      style={{ 
-        opacity: isReady ? 0 : 1,
-        backgroundColor: 'var(--background)'
+      style={{
+        opacity: isActuallyReady ? 0 : 1,
+        pointerEvents: isActuallyReady ? 'none' : 'auto',
+        backgroundColor: 'var(--background)',
       }}
     >
       <div className="flex flex-col items-center gap-6 px-4">
         {/* Animated GIF Logo - Set to priority for LCP */}
         <div className="relative">
-          <BrandLogo size="lg" animate={true} className="shadow-2xl shadow-primary/40 relative z-10" />
+          <BrandLogo
+            size="lg"
+            animate={true}
+            className="shadow-2xl shadow-primary/40 relative z-10"
+          />
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary via-primary/50 to-primary/20 blur-2xl opacity-20 animate-pulse" />
         </div>
 

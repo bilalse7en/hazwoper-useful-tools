@@ -1,583 +1,631 @@
-"use client";
+'use client';
 
-import {useState,useEffect} from "react";
-import {motion,AnimatePresence} from "framer-motion";
-import {Upload,FileImage,Copy,Download,Loader2,CheckCircle2,AlertCircle,Sparkles,Zap,Clipboard} from "lucide-react";
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Upload,
+  FileImage,
+  Copy,
+  Download,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  Zap,
+  Clipboard,
+} from 'lucide-react';
 import Tesseract from 'tesseract.js';
-import { ProgressButton } from "@/components/progress-button";
-import { cn } from "@/lib/utils";
-import {useAuthAction} from "@/lib/use-auth-action";
-import {toast} from "sonner";
-import {saveGeneratorState} from "@/lib/tool-history";
+import { ProgressButton } from '@/components/progress-button';
+import { cn } from '@/lib/utils';
+import { useAuthAction } from '@/lib/use-auth-action';
+import { toast } from 'sonner';
+import { saveGeneratorState } from '@/lib/tool-history';
 
 export default function ImageToText() {
-	const { performAction } = useAuthAction();
-	const [selectedFile,setSelectedFile]=useState(null);
-	const [previewUrl,setPreviewUrl]=useState(null);
-	const [extractedText,setExtractedText]=useState("");
-	const [isProcessing,setIsProcessing]=useState(false);
-	const [progress,setProgress]=useState(0);
-	const [error,setError]=useState("");
-	const [useAI,setUseAI]=useState(true); // Default to AI mode - using 100% FREE APIs (no quota limits!)
+  const { performAction } = useAuthAction();
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [extractedText, setExtractedText] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState('');
+  const [useAI, setUseAI] = useState(true); // Default to AI mode - using 100% FREE APIs (no quota limits!)
 
+  // Auto-save helper
+  const persistState = async (updates = {}) => {
+    const currentState = {
+      extractedText,
+      fileName: selectedFile?.name || 'OCR Session',
+      ...updates,
+    };
+    await saveGeneratorState('image_to_text', currentState);
+  };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-	// Auto-save helper
-	const persistState = async (updates = {}) => {
-		const currentState = {
-			extractedText,
-			fileName: selectedFile?.name || 'OCR Session',
-			...updates
-		};
-		await saveGeneratorState('image_to_text', currentState);
-	};
+    const validTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/bmp',
+      'image/webp',
+      'image/tiff',
+    ];
+    if (!validTypes.includes(file.type)) {
+      setError(
+        'Please upload a valid image file (JPG, PNG, GIF, BMP, WEBP, TIFF)'
+      );
+      return;
+    }
 
-	const handleFileSelect=(e) => {
-		const file=e.target.files?.[0];
-		if(!file) return;
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      setError('File size must be less than 10MB');
+      return;
+    }
 
-		const validTypes=['image/jpeg','image/jpg','image/png','image/gif','image/bmp','image/webp','image/tiff'];
-		if(!validTypes.includes(file.type)) {
-			setError("Please upload a valid image file (JPG, PNG, GIF, BMP, WEBP, TIFF)");
-			return;
-		}
+    setSelectedFile(file);
+    setError('');
+    setExtractedText('');
+    setProgress(0);
 
-		const maxSize=10*1024*1024; // 10MB
-		if(file.size>maxSize) {
-			setError("File size must be less than 10MB");
-			return;
-		}
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
-		setSelectedFile(file);
-		setError("");
-		setExtractedText("");
-		setProgress(0);
+  // Preprocess image for better OCR accuracy
+  const preprocessImage = (imageUrl, compress = false) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
 
-		const reader=new FileReader();
-		reader.onloadend=() => {
-			setPreviewUrl(reader.result);
-		};
-		reader.readAsDataURL(file);
-	};
+        // Scale up small images for better recognition
+        let scale = Math.max(1, 2000 / Math.max(img.width, img.height));
 
-	// Preprocess image for better OCR accuracy
-	const preprocessImage=(imageUrl, compress = false) => {
-		return new Promise((resolve) => {
-			const img=new Image();
-			img.crossOrigin="anonymous";
-			img.onload=() => {
-				const canvas=document.createElement('canvas');
-				const ctx=canvas.getContext('2d');
-				
-				// Scale up small images for better recognition
-				let scale=Math.max(1,2000/Math.max(img.width,img.height));
-				
-				// If compressing for cloud APIs, cap the dimensions to keep file size low
-				// Free OCR.space has a 1024KB limit. We stay well under.
-				if(compress) {
-					const maxDim = 1200; // Reduced from 1600 for safety
-					if(Math.max(img.width,img.height)*scale > maxDim) {
-						scale = maxDim / Math.max(img.width,img.height);
-					}
-				}
+        // If compressing for cloud APIs, cap the dimensions to keep file size low
+        // Free OCR.space has a 1024KB limit. We stay well under.
+        if (compress) {
+          const maxDim = 1200; // Reduced from 1600 for safety
+          if (Math.max(img.width, img.height) * scale > maxDim) {
+            scale = maxDim / Math.max(img.width, img.height);
+          }
+        }
 
-				canvas.width=img.width*scale;
-				canvas.height=img.height*scale;
-				
-				// Draw original image scaled up
-				ctx.drawImage(img,0,0,canvas.width,canvas.height);
-				
-				// Get image data for processing
-				const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
-				const data=imageData.data;
-				
-				// Convert to grayscale and increase contrast
-				for(let i=0;i<data.length;i+=4) {
-					// Grayscale
-					const gray=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
-					
-					// Increase contrast (factor 1.4)
-					const contrast=1.4;
-					const adjusted=((gray-128)*contrast)+128;
-					const final=Math.max(0,Math.min(255,adjusted));
-					
-					data[i]=final;
-					data[i+1]=final;
-					data[i+2]=final;
-				}
-				
-				ctx.putImageData(imageData,0,0);
-				
-				// Use JPEG for compression, PNG for standard (lossless)
-				const format = compress ? 'image/jpeg' : 'image/png';
-				const quality = compress ? 0.75 : 1.0;
-				resolve(canvas.toDataURL(format, quality));
-			};
-			img.src=imageUrl;
-		});
-	};
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
 
-	const extractWithAI=async (base64Image) => {
-		try {
-			// Log size for debugging (AI Mode)
-			const sizeInMB = (base64Image.length * (3/4)) / (1024 * 1024);
-			console.log(`[OCR] Sending image to Neural Hub. Size: ${sizeInMB.toFixed(2)}MB`);
+        // Draw original image scaled up
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-			setProgress(20);
-			
-			// Start a smooth progress animation while waiting
-			const progressInterval = setInterval(() => {
-				setProgress(prev => {
-					if (prev < 85) return prev + 5;
-					return prev;
-				});
-			}, 800);
+        // Get image data for processing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
 
-			try {
-				const response=await fetch('/api/ocr',{
-					method: 'POST',
-					headers: {'Content-Type': 'application/json'},
-					body: JSON.stringify({image: base64Image})
-				});
+        // Convert to grayscale and increase contrast
+        for (let i = 0; i < data.length; i += 4) {
+          // Grayscale
+          const gray =
+            0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
 
-				clearInterval(progressInterval);
-				setProgress(90);
+          // Increase contrast (factor 1.4)
+          const contrast = 1.4;
+          const adjusted = (gray - 128) * contrast + 128;
+          const final = Math.max(0, Math.min(255, adjusted));
 
-				const data=await response.json();
-				
-				if(!response.ok) {
-					// If server provides a detailed reason, show it, otherwise fallback to generic
-					const errorMsg = data.error || "Neural cluster is busy.";
-					const detailMsg = data.details || "Please try Standard Mode for local processing.";
-					throw new Error(`${errorMsg} ${detailMsg}`);
-				}
+          data[i] = final;
+          data[i + 1] = final;
+          data[i + 2] = final;
+        }
 
-				setProgress(100);
-				
-				// Log success with provider info if available
-				if (data.provider) {
-					console.log(`[OCR] SUCCESS with ${data.provider} in ${data.processingTime}ms`);
-				}
+        ctx.putImageData(imageData, 0, 0);
 
-				return data.text;
-			} finally {
-				clearInterval(progressInterval);
-			}
-		} catch(e) {
-			console.error('[OCR] API Fault:',e);
-			throw e;
-		}
-	};
+        // Use JPEG for compression, PNG for standard (lossless)
+        const format = compress ? 'image/jpeg' : 'image/png';
+        const quality = compress ? 0.75 : 1.0;
+        resolve(canvas.toDataURL(format, quality));
+      };
+      img.src = imageUrl;
+    });
+  };
 
-	const extractWithTesseract=async () => {
-		// Preprocess image for better accuracy
-		setProgress(5);
-		const processedImage=await preprocessImage(previewUrl);
-		setProgress(15);
-		
-		const result=await Tesseract.recognize(
-			processedImage, // Use preprocessed image
-			'eng',
-			{
-				logger: (m) => {
-					if(m.status==='recognizing text') {
-						setProgress(15+Math.round(m.progress*85));
-					}
-				},
-				// Optimal settings for maximum accuracy
-				tessedit_ocr_engine_mode: 1, // LSTM neural network engine (most accurate)
-				tessedit_pageseg_mode: 3, // Fully automatic page segmentation
-				preserve_interword_spaces: 1, // Preserve spacing between words
-				tessedit_char_whitelist: '', // Allow all characters
-			}
-		);
-		return result.data.text.trim();
-	};
+  const extractWithAI = async (base64Image) => {
+    try {
+      // Log size for debugging (AI Mode)
+      const sizeInMB = (base64Image.length * (3 / 4)) / (1024 * 1024);
+      console.log(
+        `[OCR] Sending image to Neural Hub. Size: ${sizeInMB.toFixed(2)}MB`
+      );
 
-	const handleExtractText=async () => {
-		if(!selectedFile) return;
+      setProgress(20);
 
-		setIsProcessing(true);
-		setError("");
-		setProgress(0);
+      // Start a smooth progress animation while waiting
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 85) return prev + 5;
+          return prev;
+        });
+      }, 800);
 
-		try {
-			let text;
+      try {
+        const response = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Image }),
+        });
 
-			if(useAI) {
-				// AI Mode - Preprocess and compress first for better recognition/efficiency
-				setProgress(10);
-				const processedImage=await preprocessImage(previewUrl, true);
-				setProgress(30);
-				text=await extractWithAI(processedImage);
-				setProgress(100);
-			} else {
-				// Standard Mode - Tesseract
-				text=await extractWithTesseract();
-			}
+        clearInterval(progressInterval);
+        setProgress(90);
 
-			if(!text||text.length===0) {
-				setError("No text found in the image. Please try another image with clearer text.");
-			} else {
-				setExtractedText(text);
-				setError("");
-				setProgress(100);
-				toast.success("Intelligence Extracted Successfully");
-				persistState({ extractedText: text });
-			}
-		} catch(err) {
-			console.error('OCR Error:',err);
-			setError(err.message||"Failed to extract text. Please try again with a clearer image.");
-		} finally {
-			setIsProcessing(false);
-		}
-	};
+        const data = await response.json();
 
-	const handleCopy=() => {
-		performAction(() => {
-			navigator.clipboard.writeText(extractedText);
-			setCopied(true);
-			setTimeout(() => setCopied(false),2000);
-		}, { type: 'copy', name: 'Image to Text' });
-	};
+        if (!response.ok) {
+          // If server provides a detailed reason, show it, otherwise fallback to generic
+          const errorMsg = data.error || 'Neural cluster is busy.';
+          const detailMsg =
+            data.details || 'Please try Standard Mode for local processing.';
+          throw new Error(`${errorMsg} ${detailMsg}`);
+        }
 
-	const handleDownload=() => {
-		performAction(() => {
-			const blob=new Blob([extractedText],{type: 'text/plain'});
-			const url=URL.createObjectURL(blob);
-			const a=document.createElement('a');
-			a.href=url;
-			a.download='extracted-text.txt';
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
-		}, { type: 'download', name: 'Image to Text' });
-	};
+        setProgress(100);
 
-	const handleDragOver=(e) => {
-		e.preventDefault();
-		e.stopPropagation();
-	};
+        // Log success with provider info if available
+        if (data.provider) {
+          console.log(
+            `[OCR] SUCCESS with ${data.provider} in ${data.processingTime}ms`
+          );
+        }
 
-	const handleDrop=(e) => {
-		e.preventDefault();
-		e.stopPropagation();
+        return data.text;
+      } finally {
+        clearInterval(progressInterval);
+      }
+    } catch (e) {
+      console.error('[OCR] API Fault:', e);
+      throw e;
+    }
+  };
 
-		const file=e.dataTransfer.files?.[0];
-		if(file) {
-			const event={target: {files: [file]}};
-			handleFileSelect(event);
-		}
-	};
+  const extractWithTesseract = async () => {
+    // Preprocess image for better accuracy
+    setProgress(5);
+    const processedImage = await preprocessImage(previewUrl);
+    setProgress(15);
 
-	// Handle clipboard paste (Ctrl+V)
-	const handlePaste=(e) => {
-		const items=e.clipboardData?.items;
-		if(!items) return;
+    const result = await Tesseract.recognize(
+      processedImage, // Use preprocessed image
+      'eng',
+      {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            setProgress(15 + Math.round(m.progress * 85));
+          }
+        },
+        // Optimal settings for maximum accuracy
+        tessedit_ocr_engine_mode: 1, // LSTM neural network engine (most accurate)
+        tessedit_pageseg_mode: 3, // Fully automatic page segmentation
+        preserve_interword_spaces: 1, // Preserve spacing between words
+        tessedit_char_whitelist: '', // Allow all characters
+      }
+    );
+    return result.data.text.trim();
+  };
 
-		for(let i=0;i<items.length;i++) {
-			if(items[i].type.indexOf('image')!==-1) {
-				const file=items[i].getAsFile();
-				if(file) {
-					const event={target: {files: [file]}};
-					handleFileSelect(event);
-					break;
-				}
-			}
-		}
-	};
+  const handleExtractText = async () => {
+    if (!selectedFile) return;
 
-	// Listen for paste events globally
-	useEffect(() => {
-		document.addEventListener('paste',handlePaste);
-		return () => document.removeEventListener('paste',handlePaste);
-	},[]);
+    setIsProcessing(true);
+    setError('');
+    setProgress(0);
 
-	return (
-		<div className="max-w-6xl mx-auto space-y-8">
-			{/* Header */}
-			<motion.div
-				className="text-center"
-				initial={{opacity: 0,y: -20}}
-				animate={{opacity: 1,y: 0}}
-			>
-				<h2 className="text-4xl font-black bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent mb-3">
-					AI Image to Text Converter
-				</h2>
-				<p className="text-muted-foreground text-lg">
-					Extract text from images using advanced AI or standard OCR
-				</p>
-			</motion.div>
+    try {
+      let text;
 
-			{/* AI Toggle */}
-			<motion.div
-				className="flex justify-center"
-				initial={{opacity: 0}}
-				animate={{opacity: 1}}
-				transition={{delay: 0.1}}
-			>
-				<div className="glass-panel p-2 rounded-full flex gap-2">
-					<button
-						onClick={() => setUseAI(false)}
-						className={`px-6 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${!useAI? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white':'text-foreground/60 hover:text-foreground'
-							}`}
-					>
-						<Zap className="w-4 h-4" />
-						Standard Mode
-					</button>
-					<button
-						onClick={() => setUseAI(true)}
-						className={`px-6 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${useAI? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white':'text-foreground/60 hover:text-foreground'
-							}`}
-					>
-						<Sparkles className="w-4 h-4" />
-						AI Mode (Best)
-					</button>
-				</div>
-			</motion.div>
+      if (useAI) {
+        // AI Mode - Preprocess and compress first for better recognition/efficiency
+        setProgress(10);
+        const processedImage = await preprocessImage(previewUrl, true);
+        setProgress(30);
+        text = await extractWithAI(processedImage);
+        setProgress(100);
+      } else {
+        // Standard Mode - Tesseract
+        text = await extractWithTesseract();
+      }
 
-			<div className="grid lg:grid-cols-2 gap-8">
-				{/* Upload Section */}
-				<motion.div
-					className="space-y-6"
-					initial={{opacity: 0,x: -20}}
-					animate={{opacity: 1,x: 0}}
-					transition={{delay: 0.2}}
-				>
-					<div className="glass-panel p-8 rounded-3xl border border-border">
-						<h3 className="text-2xl font-bold text-foreground mb-4 flex items-center gap-2">
-							<Upload className="w-6 h-6" />
-							Upload Image
-						</h3>
+      if (!text || text.length === 0) {
+        setError(
+          'No text found in the image. Please try another image with clearer text.'
+        );
+      } else {
+        setExtractedText(text);
+        setError('');
+        setProgress(100);
+        toast.success('Intelligence Extracted Successfully');
+        persistState({ extractedText: text });
+      }
+    } catch (err) {
+      console.error('OCR Error:', err);
+      setError(
+        err.message ||
+          'Failed to extract text. Please try again with a clearer image.'
+      );
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-						{/* Drag & Drop Area */}
-						<div
-							className="border-2 border-dashed border-border rounded-2xl p-8 text-center hover:border-primary transition-colors cursor-pointer relative overflow-hidden group"
-							onDragOver={handleDragOver}
-							onDrop={handleDrop}
-							onClick={() => document.getElementById('fileInput')?.click()}
-						>
-							<motion.div
-								className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"
-							/>
+  const handleCopy = () => {
+    performAction(
+      () => {
+        navigator.clipboard.writeText(extractedText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      },
+      { type: 'copy', name: 'Image to Text' }
+    );
+  };
 
-							<div className="relative z-10">
-								<div className="flex justify-center gap-4 mb-4">
-									<FileImage className="w-12 h-12 text-foreground/40" />
-									<Clipboard className="w-12 h-12 text-foreground/40" />
-								</div>
-								<p className="text-lg font-semibold text-foreground mb-2">
-									Drop, click, or paste an image
-								</p>
-								<p className="text-sm text-muted-foreground mb-2">
-									<kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl+V</kbd> to paste from clipboard
-								</p>
-								<p className="text-xs text-muted-foreground">
-									Supports JPG, PNG, GIF, BMP, WEBP, TIFF (max 10MB)
-								</p>
-							</div>
+  const handleDownload = () => {
+    performAction(
+      () => {
+        const blob = new Blob([extractedText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'extracted-text.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      },
+      { type: 'download', name: 'Image to Text' }
+    );
+  };
 
-							<input
-								id="fileInput"
-								type="file"
-								accept="image/*"
-								onChange={handleFileSelect}
-								className="hidden"
-							/>
-						</div>
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
-						{/* Preview */}
-						<AnimatePresence>
-							{previewUrl&&(
-								<motion.div
-									className="mt-6"
-									initial={{opacity: 0,scale: 0.9}}
-									animate={{opacity: 1,scale: 1}}
-									exit={{opacity: 0,scale: 0.9}}
-								>
-									<div className="glass-panel p-4 rounded-2xl overflow-hidden">
-										<img
-											src={previewUrl}
-											alt="Preview"
-											className="w-full h-auto max-h-96 object-contain rounded-xl"
-										/>
-										<p className="text-sm text-muted-foreground mt-3 text-center">
-											{selectedFile?.name}
-										</p>
-									</div>
-								</motion.div>
-							)}
-						</AnimatePresence>
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-						{/* Extract Button */}
-						{selectedFile && !extractedText && (
-							<div className="mt-6">
-								<ProgressButton
-									onClick={handleExtractText}
-									disabled={isProcessing}
-									isLoading={isProcessing}
-									progress={progress}
-									label={useAI ? "Extract Text with AI" : "Extract Text"}
-									loadingLabel={useAI ? "AI Processing..." : "OCR Parsing..."}
-									className={cn(
-										"w-full h-14 rounded-2xl text-white font-semibold transition-all active:scale-[0.98] shadow-md",
-										useAI 
-											? "bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-500/20" 
-											: "bg-gradient-to-r from-primary via-blue-600 to-cyan-600 shadow-blue-500/20"
-									)}
-									variant="default"
-								>
-									{!isProcessing && (
-										<span className="flex items-center justify-center gap-2 text-base">
-											{useAI ? <Sparkles className="w-4 h-4" /> : <FileImage className="w-4 h-4" />}
-											{useAI ? 'Extract Text with AI' : 'Extract Text'}
-										</span>
-									)}
-								</ProgressButton>
-							</div>
-						)}
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      const event = { target: { files: [file] } };
+      handleFileSelect(event);
+    }
+  };
 
-						{/* Error Message */}
-						<AnimatePresence>
-							{error&&(
-								<motion.div
-									className="mt-4 glass-panel p-4 rounded-2xl border-2 border-red-500/50 bg-red-500/10"
-									initial={{opacity: 0,x: -10}}
-									animate={{opacity: 1,x: 0}}
-									exit={{opacity: 0,x: -10}}
-								>
-									<div className="flex items-start gap-3">
-										<AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-										<p className="text-red-500 text-sm font-medium">{error}</p>
-									</div>
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</div>
-				</motion.div>
+  // Handle clipboard paste (Ctrl+V)
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
 
-				{/* Results Section */}
-				<motion.div
-					className="space-y-6"
-					initial={{opacity: 0,x: 20}}
-					animate={{opacity: 1,x: 0}}
-					transition={{delay: 0.3}}
-				>
-					<div className="glass-panel p-8 rounded-3xl border border-border">
-						<h3 className="text-2xl font-bold text-foreground mb-4">
-							Extracted Text
-						</h3>
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const event = { target: { files: [file] } };
+          handleFileSelect(event);
+          break;
+        }
+      }
+    }
+  };
 
-						{extractedText? (
-							<div className="space-y-4">
-								{/* Text Display */}
-								<div className="glass-panel-deep p-6 rounded-2xl max-h-96 overflow-y-auto custom-scrollbar">
-									<pre className="text-foreground whitespace-pre-wrap font-mono text-sm leading-relaxed">
-										{extractedText}
-									</pre>
-								</div>
+  // Listen for paste events globally
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []);
 
-								{/* Action Buttons */}
-								<div className="flex gap-3">
-									<motion.button
-										onClick={handleCopy}
-										className="flex-1 glass-panel px-6 py-3 rounded-2xl border border-border hover:border-primary transition-colors font-semibold flex items-center justify-center gap-2"
-										whileHover={{scale: 1.02}}
-										whileTap={{scale: 0.98}}
-									>
-										{copied? (
-											<>
-												<CheckCircle2 className="w-5 h-5 text-green-500" />
-												<span className="text-green-500">Copied!</span>
-											</>
-										):(
-											<>
-												<Copy className="w-5 h-5" />
-												Copy Text
-											</>
-										)}
-									</motion.button>
+  return (
+    <div className="max-w-6xl mx-auto space-y-8">
+      {/* Header */}
+      <motion.div
+        className="text-center"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <h2 className="text-4xl font-black bg-gradient-to-r from-primary via-blue-500 to-cyan-500 bg-clip-text text-transparent mb-3">
+          AI Image to Text Converter
+        </h2>
+        <p className="text-muted-foreground text-lg">
+          Extract text from images using advanced AI or standard OCR
+        </p>
+      </motion.div>
 
-									<motion.button
-										onClick={handleDownload}
-										className="flex-1 glass-panel px-6 py-3 rounded-2xl border border-border hover:border-primary transition-colors font-semibold flex items-center justify-center gap-2"
-										whileHover={{scale: 1.02}}
-										whileTap={{scale: 0.98}}
-									>
-										<Download className="w-5 h-5" />
-										Download TXT
-									</motion.button>
-								</div>
+      {/* AI Toggle */}
+      <motion.div
+        className="flex justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+      >
+        <div className="glass-panel p-2 rounded-full flex gap-2">
+          <button
+            onClick={() => setUseAI(false)}
+            className={`px-6 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${
+              !useAI
+                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                : 'text-foreground/60 hover:text-foreground'
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            Standard Mode
+          </button>
+          <button
+            onClick={() => setUseAI(true)}
+            className={`px-6 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${
+              useAI
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                : 'text-foreground/60 hover:text-foreground'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            AI Mode (Best)
+          </button>
+        </div>
+      </motion.div>
 
-								{/* Stats */}
-								<div className="glass-panel p-4 rounded-2xl text-center">
-									<p className="text-sm text-muted-foreground">
-										<span className="font-semibold text-foreground">
-											{extractedText.length.toLocaleString()}
-										</span> characters extracted {useAI? 'with AI':'with Tesseract'}
-									</p>
-								</div>
-							</div>
-						):(
-							<div className="text-center py-16">
-								<FileImage className="w-20 h-20 text-foreground/20 mx-auto mb-4" />
-								<p className="text-muted-foreground">
-									Upload an image and click "Extract Text" to see results here
-								</p>
-							</div>
-						)}
-					</div>
+      <div className="grid lg:grid-cols-2 gap-8">
+        {/* Upload Section */}
+        <motion.div
+          className="space-y-6"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="glass-panel p-8 rounded-3xl border border-border">
+            <h3 className="text-2xl font-bold text-foreground mb-4 flex items-center gap-2">
+              <Upload className="w-6 h-6" />
+              Upload Image
+            </h3>
 
-					{/* Info Card */}
-					<div className="glass-panel p-6 rounded-2xl border border-border">
-						<h4 className="font-bold text-foreground mb-3">
-							{useAI? '🤖 AI Mode Features:':'⚡ Standard Mode Features:'}
-						</h4>
-						<ul className="space-y-2 text-sm text-muted-foreground">
-							{useAI? (
-								<>
-									<li className="flex items-start gap-2">
-										<span className="text-primary">•</span>
-										<span>Best accuracy for handwriting & complex layouts</span>
-									</li>
-									<li className="flex items-start gap-2">
-										<span className="text-primary">•</span>
-										<span>Understands context and formatting</span>
-									</li>
-									<li className="flex items-start gap-2">
-										<span className="text-primary">•</span>
-										<span>Perfect for Word screenshots & documents</span>
-									</li>
-									<li className="flex items-start gap-2">
-										<span className="text-primary">•</span>
-										<span>Powered by Google Gemini Vision AI</span>
-									</li>
-								</>
-							):(
-								<>
-									<li className="flex items-start gap-2">
-										<span className="text-primary">•</span>
-										<span>Fast processing with Tesseract OCR</span>
-									</li>
-									<li className="flex items-start gap-2">
-										<span className="text-primary">•</span>
-										<span>Works 100% offline (client-side)</span>
-									</li>
-									<li className="flex items-start gap-2">
-										<span className="text-primary">•</span>
-										<span>Good for printed text & clear images</span>
-									</li>
-									<li className="flex items-start gap-2">
-										<span className="text-primary">•</span>
-										<span>No internet required after first load</span>
-									</li>
-								</>
-							)}
-						</ul>
-					</div>
-				</motion.div>
-			</div>
-		</div>
-	);
+            {/* Drag & Drop Area */}
+            <div
+              className="border-2 border-dashed border-border rounded-2xl p-8 text-center hover:border-primary transition-colors cursor-pointer relative overflow-hidden group"
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('fileInput')?.click()}
+            >
+              <motion.div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+              <div className="relative z-10">
+                <div className="flex justify-center gap-4 mb-4">
+                  <FileImage className="w-12 h-12 text-foreground/40" />
+                  <Clipboard className="w-12 h-12 text-foreground/40" />
+                </div>
+                <p className="text-lg font-semibold text-foreground mb-2">
+                  Drop, click, or paste an image
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">
+                    Ctrl+V
+                  </kbd>{' '}
+                  to paste from clipboard
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Supports JPG, PNG, GIF, BMP, WEBP, TIFF (max 10MB)
+                </p>
+              </div>
+
+              <input
+                id="fileInput"
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </div>
+
+            {/* Preview */}
+            <AnimatePresence>
+              {previewUrl && (
+                <motion.div
+                  className="mt-6"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                >
+                  <div className="glass-panel p-4 rounded-2xl overflow-hidden">
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className="w-full h-auto max-h-96 object-contain rounded-xl"
+                    />
+                    <p className="text-sm text-muted-foreground mt-3 text-center">
+                      {selectedFile?.name}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Extract Button */}
+            {selectedFile && !extractedText && (
+              <div className="mt-6">
+                <ProgressButton
+                  onClick={handleExtractText}
+                  disabled={isProcessing}
+                  isLoading={isProcessing}
+                  progress={progress}
+                  label={useAI ? 'Extract Text with AI' : 'Extract Text'}
+                  loadingLabel={useAI ? 'AI Processing...' : 'OCR Parsing...'}
+                  className={cn(
+                    'w-full h-14 rounded-2xl text-white font-semibold transition-all active:scale-[0.98] shadow-md',
+                    useAI
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-500/20'
+                      : 'bg-gradient-to-r from-primary via-blue-600 to-cyan-600 shadow-blue-500/20'
+                  )}
+                  variant="default"
+                >
+                  {!isProcessing && (
+                    <span className="flex items-center justify-center gap-2 text-base">
+                      {useAI ? (
+                        <Sparkles className="w-4 h-4" />
+                      ) : (
+                        <FileImage className="w-4 h-4" />
+                      )}
+                      {useAI ? 'Extract Text with AI' : 'Extract Text'}
+                    </span>
+                  )}
+                </ProgressButton>
+              </div>
+            )}
+
+            {/* Error Message */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  className="mt-4 glass-panel p-4 rounded-2xl border-2 border-red-500/50 bg-red-500/10"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-500 text-sm font-medium">{error}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        {/* Results Section */}
+        <motion.div
+          className="space-y-6"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="glass-panel p-8 rounded-3xl border border-border">
+            <h3 className="text-2xl font-bold text-foreground mb-4">
+              Extracted Text
+            </h3>
+
+            {extractedText ? (
+              <div className="space-y-4">
+                {/* Text Display */}
+                <div className="glass-panel-deep p-6 rounded-2xl max-h-96 overflow-y-auto custom-scrollbar">
+                  <pre className="text-foreground whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                    {extractedText}
+                  </pre>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <motion.button
+                    onClick={handleCopy}
+                    className="flex-1 glass-panel px-6 py-3 rounded-2xl border border-border hover:border-primary transition-colors font-semibold flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        <span className="text-green-500">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-5 h-5" />
+                        Copy Text
+                      </>
+                    )}
+                  </motion.button>
+
+                  <motion.button
+                    onClick={handleDownload}
+                    className="flex-1 glass-panel px-6 py-3 rounded-2xl border border-border hover:border-primary transition-colors font-semibold flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Download className="w-5 h-5" />
+                    Download TXT
+                  </motion.button>
+                </div>
+
+                {/* Stats */}
+                <div className="glass-panel p-4 rounded-2xl text-center">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {extractedText.length.toLocaleString()}
+                    </span>{' '}
+                    characters extracted {useAI ? 'with AI' : 'with Tesseract'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <FileImage className="w-20 h-20 text-foreground/20 mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  Upload an image and click "Extract Text" to see results here
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Info Card */}
+          <div className="glass-panel p-6 rounded-2xl border border-border">
+            <h4 className="font-bold text-foreground mb-3">
+              {useAI ? '🤖 AI Mode Features:' : '⚡ Standard Mode Features:'}
+            </h4>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              {useAI ? (
+                <>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Best accuracy for handwriting & complex layouts</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Understands context and formatting</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Perfect for Word screenshots & documents</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Powered by Google Gemini Vision AI</span>
+                  </li>
+                </>
+              ) : (
+                <>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Fast processing with Tesseract OCR</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Works 100% offline (client-side)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Good for printed text & clear images</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>No internet required after first load</span>
+                  </li>
+                </>
+              )}
+            </ul>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
 }

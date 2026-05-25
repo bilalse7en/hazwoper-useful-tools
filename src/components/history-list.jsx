@@ -1,21 +1,26 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { getToolHistory, deleteToolHistory, getTimeRemaining, formatSize } from "@/lib/tool-history";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { 
-  History, 
-  Trash2, 
-  Clock, 
-  FileText, 
+import { useState, useEffect } from 'react';
+import {
+  getToolHistory,
+  deleteToolHistory,
+  getTimeRemaining,
+  formatSize,
+} from '@/lib/tool-history';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  History,
+  Trash2,
+  Clock,
+  FileText,
   ChevronRight,
-  Loader2
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { supabase } from "@/lib/supabase";
+  Loader2,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/lib/supabase';
 
 export function HistoryList({ toolType, onRestore, className }) {
   const [history, setHistory] = useState([]);
@@ -27,9 +32,13 @@ export function HistoryList({ toolType, onRestore, className }) {
     // Subscribe to REALTIME additions for this tool
     const channel = supabase
       .channel(`history-${toolType}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tool_history' }, () => {
-        loadHistory();
-      })
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tool_history' },
+        () => {
+          loadHistory();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -41,9 +50,9 @@ export function HistoryList({ toolType, onRestore, className }) {
     setIsLoading(true);
     try {
       const data = await getToolHistory(toolType);
-      setHistory(data.filter(item => item.result_url === 'GENERATOR_STATE'));
+      setHistory(data.filter((item) => item.result_url === 'GENERATOR_STATE'));
     } catch (err) {
-      console.error("[HistoryList] UI Load Failure:", err);
+      console.error('[HistoryList] UI Load Failure:', err);
     } finally {
       setIsLoading(false);
     }
@@ -53,8 +62,8 @@ export function HistoryList({ toolType, onRestore, className }) {
     e.stopPropagation();
     const success = await deleteToolHistory(id);
     if (success) {
-      setHistory(prev => prev.filter(item => item.id !== id));
-      toast.success("Identity record purged");
+      setHistory((prev) => prev.filter((item) => item.id !== id));
+      toast.success('Identity record purged');
     }
   };
 
@@ -77,11 +86,11 @@ export function HistoryList({ toolType, onRestore, className }) {
   }
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <div className={cn('flex flex-col h-full', className)}>
       <ScrollArea className="flex-1 px-4">
         <div className="grid gap-3 py-4">
           {history.map((item) => (
-            <div 
+            <div
               key={item.id}
               onClick={() => {
                 onRestore(item.metadata);
@@ -91,29 +100,35 @@ export function HistoryList({ toolType, onRestore, className }) {
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                 <FileText className="h-5 w-5 text-primary" />
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xs font-bold truncate max-w-[150px] md:max-w-[250px]" title={item.file_name}>
+                  <span
+                    className="text-xs font-bold truncate max-w-[150px] md:max-w-[250px]"
+                    title={item.file_name}
+                  >
                     {item.file_name}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 opacity-60">
-                   <span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-primary">
-                     <Clock className="h-3 w-3" />
-                     {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                   </span>
-                   <div className="h-0.5 w-0.5 rounded-full bg-border" />
-                   <span className="text-[8px] font-medium italic">
-                      {getTimeRemaining(item.expires_at)}
-                   </span>
+                  <span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-primary">
+                    <Clock className="h-3 w-3" />
+                    {new Date(item.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                  <div className="h-0.5 w-0.5 rounded-full bg-border" />
+                  <span className="text-[8px] font-medium italic">
+                    {getTimeRemaining(item.expires_at)}
+                  </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   onClick={(e) => handleDelete(e, item.id)}
                 >
@@ -125,7 +140,7 @@ export function HistoryList({ toolType, onRestore, className }) {
           ))}
         </div>
       </ScrollArea>
-      
+
       <div className="p-6 border-t border-border bg-muted/20">
         <p className="text-[10px] text-center text-muted-foreground/60 uppercase tracking-widest font-black leading-relaxed">
           * Records are automatically purged after 24 hours of inactivity.

@@ -1,31 +1,32 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
 /**
  * Google AdSense Ad Container Component
- * 
+ *
  * Usage:
- * <AdSenseAd 
- *   slot="1234567890" 
- *   format="auto" 
+ * <AdSenseAd
+ *   slot="1234567890"
+ *   format="auto"
  *   responsive={true}
  * />
- * 
+ *
  * Props:
  * - slot: Your AdSense ad slot ID (you'll get this from Google AdSense)
  * - format: Ad format (auto, rectangle, horizontal, vertical)
  * - responsive: Whether ad should be responsive
  * - style: Custom styles for the container
  */
-export function AdSenseAd({ 
-  slot = "0000000000", 
-  format = "auto", 
+export function AdSenseAd({
+  slot = '0000000000',
+  format = 'auto',
   responsive = true,
-  style = {}
+  style = {},
 }) {
   const adRef = useRef(null);
-  const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+  const isProduction =
+    typeof window !== 'undefined' && window.location.hostname !== 'localhost';
 
   useEffect(() => {
     if (!isProduction || !adRef.current) return;
@@ -59,9 +60,10 @@ export function AdSenseAd({
   // Show placeholder in development
   if (!isProduction) {
     return (
-      <div 
+      <div
         className="bg-muted/20 border border-dashed border-muted-foreground/20 rounded-lg p-4 text-center text-xs text-muted-foreground"
-        style={{ minHeight: '90px', ...style }}>
+        style={{ minHeight: '90px', ...style }}
+      >
         Ad Placeholder (Production Only)
       </div>
     );

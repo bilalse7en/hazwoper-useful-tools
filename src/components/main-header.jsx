@@ -1,15 +1,21 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Moon, Sun, Palette } from "lucide-react";
-import { useTheme } from "next-themes";
-import { AppSidebar } from "./app-sidebar";
-import { BrandLogo } from "./brand-logo";
-import { UserNav } from "./user-nav";
-import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu, Moon, Sun, Palette } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { AppSidebar } from './app-sidebar';
+import { BrandLogo } from './brand-logo';
+import { UserNav } from './user-nav';
+import { cn } from '@/lib/utils';
 
-export function MainHeader({ activeTab, onTabChange, onThemeToggle, user, onLogout }) {
+export function MainHeader({
+  activeTab,
+  onTabChange,
+  onThemeToggle,
+  user,
+  onLogout,
+}) {
   const { theme, setTheme } = useTheme();
 
   return (
@@ -27,7 +33,10 @@ export function MainHeader({ activeTab, onTabChange, onThemeToggle, user, onLogo
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="max-w-[300px] p-0 border-r-border">
+            <SheetContent
+              side="left"
+              className="max-w-[300px] p-0 border-r-border"
+            >
               <AppSidebar
                 activeTab={activeTab}
                 onTabChange={onTabChange}
@@ -46,11 +55,18 @@ export function MainHeader({ activeTab, onTabChange, onThemeToggle, user, onLogo
         <div className="flex items-center gap-3">
           <div className="relative group">
             <div className="absolute -inset-2 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-            <BrandLogo size="md" className="relative shadow-lg ring-1 ring-white/10" />
+            <BrandLogo
+              size="md"
+              className="relative shadow-lg ring-1 ring-white/10"
+            />
           </div>
           <div className="hidden sm:flex flex-col">
-            <span className="font-black text-lg tracking-tighter text-foreground uppercase leading-none">Content Suite</span>
-            <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Enterprise</span>
+            <span className="font-black text-lg tracking-tighter text-foreground uppercase leading-none">
+              Content Suite
+            </span>
+            <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
+              Enterprise
+            </span>
           </div>
         </div>
       </div>

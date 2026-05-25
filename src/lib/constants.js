@@ -1,4 +1,4 @@
-export const BRAND_CONFIG={
-	logo: "https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif",
-	name: "Content Suite"
+export const BRAND_CONFIG = {
+  logo: 'https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif',
+  name: 'Content Suite',
 };

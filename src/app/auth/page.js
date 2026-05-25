@@ -1,39 +1,40 @@
-"use client";
+'use client';
 
-import { useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  LogIn, 
-  UserPlus, 
-  Chrome, 
-  ShieldCheck, 
-  Mail, 
-  Lock, 
-  Sparkles, 
+import { useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  LogIn,
+  UserPlus,
+  Chrome,
+  ShieldCheck,
+  Mail,
+  Lock,
+  Sparkles,
   ArrowLeft,
   Loader2,
   CheckCircle2,
-  AlertCircle
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { BrandLogo } from "@/components/brand-logo";
-import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+  AlertCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { BrandLogo } from '@/components/brand-logo';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 function AuthComponent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialMode = searchParams.get("mode") === "signup" ? "signup" : "login";
-  
+  const initialMode =
+    searchParams.get('mode') === 'signup' ? 'signup' : 'login';
+
   const [mode, setMode] = useState(initialMode);
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -42,11 +43,11 @@ function AuthComponent() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-        }
+        },
       });
       if (error) throw error;
     } catch (error) {
-      toast.error("Auth Failure", { description: error.message });
+      toast.error('Auth Failure', { description: error.message });
       setIsLoading(false);
     }
   };
@@ -54,7 +55,7 @@ function AuthComponent() {
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({
@@ -63,20 +64,26 @@ function AuthComponent() {
           options: {
             data: { full_name: fullName },
             emailRedirectTo: `${window.location.origin}/auth/callback`,
-          }
+          },
         });
         if (error) throw error;
-        toast.success("Identity Created", { 
-          description: "Check your email for the confirmation link to activate your profile." 
+        toast.success('Identity Created', {
+          description:
+            'Check your email for the confirmation link to activate your profile.',
         });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
         if (error) throw error;
         router.push('/');
-        toast.success("Welcome Back", { description: "Identity verified. Personal workspace synchronized." });
+        toast.success('Welcome Back', {
+          description: 'Identity verified. Personal workspace synchronized.',
+        });
       }
     } catch (error) {
-      toast.error("Process Halted", { description: error.message });
+      toast.error('Process Halted', { description: error.message });
     } finally {
       setIsLoading(false);
     }
@@ -98,9 +105,15 @@ function AuthComponent() {
       >
         <div className="text-center mb-10 space-y-6">
           <div className="flex justify-center">
-            <div className="relative group p-2 cursor-pointer" onClick={() => router.push('/')}>
+            <div
+              className="relative group p-2 cursor-pointer"
+              onClick={() => router.push('/')}
+            >
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
-              <BrandLogo size="lg" className="relative group-hover:scale-110 transition-transform duration-500" />
+              <BrandLogo
+                size="lg"
+                className="relative group-hover:scale-110 transition-transform duration-500"
+              />
             </div>
           </div>
           <div className="space-y-2">
@@ -115,13 +128,15 @@ function AuthComponent() {
 
         <Card className="p-8 bg-card/60 backdrop-blur-3xl border border-border rounded-[40px] shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
-          
+
           <div className="flex gap-2 p-1 bg-muted/40 rounded-2xl mb-8 border border-border/50">
             <button
               onClick={() => setMode('login')}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                mode === 'login' ? "bg-card text-primary shadow-sm border border-border/50" : "text-muted-foreground hover:text-foreground"
+                'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-all',
+                mode === 'login'
+                  ? 'bg-card text-primary shadow-sm border border-border/50'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <LogIn className="w-3.5 h-3.5" />
@@ -130,8 +145,10 @@ function AuthComponent() {
             <button
               onClick={() => setMode('signup')}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                mode === 'signup' ? "bg-card text-primary shadow-sm border border-border/50" : "text-muted-foreground hover:text-foreground"
+                'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-all',
+                mode === 'signup'
+                  ? 'bg-card text-primary shadow-sm border border-border/50'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <UserPlus className="w-3.5 h-3.5" />
@@ -148,11 +165,13 @@ function AuthComponent() {
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-2"
                 >
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Full Identity Name</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
+                    Full Identity Name
+                  </label>
                   <div className="relative">
                     <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="e.g. John Architect" 
+                    <Input
+                      placeholder="e.g. John Architect"
                       className="pl-11 h-14 bg-muted/30 rounded-2xl border-border/40 focus:border-primary/50"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
@@ -164,12 +183,14 @@ function AuthComponent() {
             </AnimatePresence>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Email Terminal</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
+                Email Terminal
+              </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input 
+                <Input
                   type="email"
-                  placeholder="comm-link@protocol.com" 
+                  placeholder="comm-link@protocol.com"
                   className="pl-11 h-14 bg-muted/30 rounded-2xl border-border/40 focus:border-primary/50"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -179,12 +200,14 @@ function AuthComponent() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Access Phrase</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
+                Access Phrase
+              </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input 
+                <Input
                   type="password"
-                  placeholder="••••••••••••" 
+                  placeholder="••••••••••••"
                   className="pl-11 h-14 bg-muted/30 rounded-2xl border-border/40 focus:border-primary/50"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -193,15 +216,17 @@ function AuthComponent() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isLoading}
               className="w-full h-16 rounded-[22px] bg-primary text-primary-foreground font-black text-lg gap-4 shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 mt-4 group overflow-hidden relative"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+              {isLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
                 <>
-                  {mode === 'login' ? "Verify Identity" : "Initialize Account"}
+                  {mode === 'login' ? 'Verify Identity' : 'Initialize Account'}
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
@@ -209,8 +234,14 @@ function AuthComponent() {
           </form>
 
           <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border/50"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black"><span className="bg-card px-4 text-muted-foreground tracking-[0.3em]">OR</span></div>
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border/50"></div>
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase font-black">
+              <span className="bg-card px-4 text-muted-foreground tracking-[0.3em]">
+                OR
+              </span>
+            </div>
           </div>
 
           <Button
@@ -229,13 +260,13 @@ function AuthComponent() {
           <div className="mt-8 flex items-center gap-4 p-4 rounded-2xl bg-primary/5 border border-primary/10">
             <ShieldCheck className="w-6 h-6 text-primary shrink-0" />
             <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
-              Your credentials are encrypted using military-grade security. 
+              Your credentials are encrypted using military-grade security.
               Active session protection enabled.
             </p>
           </div>
         </Card>
 
-        <button 
+        <button
           onClick={() => router.push('/')}
           className="mt-8 mx-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors group"
         >
@@ -249,7 +280,13 @@ function AuthComponent() {
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        </div>
+      }
+    >
       <AuthComponent />
     </Suspense>
   );
@@ -257,8 +294,20 @@ export default function AuthPage() {
 
 function ArrowRight({ className }) {
   return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
     </svg>
   );
 }

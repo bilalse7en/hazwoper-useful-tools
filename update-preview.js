@@ -4,7 +4,8 @@ console.log('Updating preview-drawer.jsx copyText function...');
 let content = fs.readFileSync('src/components/preview-drawer.jsx', 'utf8');
 
 // Replace the copyText function with SEO processing
-const oldCopyText = /const copyText=async \(text\) => \{[\s\S]*?await navigator\.clipboard\.writeText\(text\);\s*\};/;
+const oldCopyText =
+  /const copyText=async \(text\) => \{[\s\S]*?await navigator\.clipboard\.writeText\(text\);\s*\};/;
 
 const newCopyText = `const copyText=async (text) => {
 		// Process anchor tags to add SEO attributes before copying

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
+import { useEffect } from 'react';
 
 /**
  * JSON-LD Structured Data Component
@@ -13,13 +13,13 @@ export function JsonLd({ data }) {
     script.type = 'application/ld+json';
     script.text = JSON.stringify(data);
     script.id = 'jsonld-script';
-    
+
     // Remove existing script if present
     const existing = document.getElementById('jsonld-script');
     if (existing) {
       existing.remove();
     }
-    
+
     document.head.appendChild(script);
 
     return () => {

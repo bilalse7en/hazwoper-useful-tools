@@ -36,10 +36,10 @@ export function GdprConsent() {
     // For Google AdSense, we'll set the consent mode
     if (window.gtag) {
       window.gtag('consent', 'update', {
-        'analytics_storage': prefs.analytics ? 'granted' : 'denied',
-        'ad_storage': prefs.advertising ? 'granted' : 'denied',
-        'ad_user_data': prefs.advertising ? 'granted' : 'denied',
-        'ad_personalization': prefs.advertising ? 'granted' : 'denied',
+        analytics_storage: prefs.analytics ? 'granted' : 'denied',
+        ad_storage: prefs.advertising ? 'granted' : 'denied',
+        ad_user_data: prefs.advertising ? 'granted' : 'denied',
+        ad_personalization: prefs.advertising ? 'granted' : 'denied',
       });
     }
 
@@ -79,7 +79,7 @@ export function GdprConsent() {
 
   const togglePreference = (key) => {
     if (key === 'necessary') return; // Cannot disable necessary cookies
-    setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   if (!showBanner) return null;
@@ -102,11 +102,24 @@ export function GdprConsent() {
                     <h3 className="text-xl font-bold">Cookie Preferences</h3>
                   </div>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    We use cookies to enhance your experience, analyze site traffic, and serve personalized advertisements. 
-                    By clicking "Accept All", you consent to our use of cookies. Learn more in our{' '}
-                    <a href="/privacy" className="text-primary hover:underline font-medium">Privacy Policy</a>
-                    {' '}and{' '}
-                    <a href="/cookies" className="text-primary hover:underline font-medium">Cookie Policy</a>.
+                    We use cookies to enhance your experience, analyze site
+                    traffic, and serve personalized advertisements. By clicking
+                    "Accept All", you consent to our use of cookies. Learn more
+                    in our{' '}
+                    <a
+                      href="/privacy"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Privacy Policy
+                    </a>{' '}
+                    and{' '}
+                    <a
+                      href="/cookies"
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Cookie Policy
+                    </a>
+                    .
                   </p>
                 </div>
 
@@ -136,7 +149,9 @@ export function GdprConsent() {
               // Customize Panel
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold">Customize Cookie Preferences</h3>
+                  <h3 className="text-xl font-bold">
+                    Customize Cookie Preferences
+                  </h3>
                   <button
                     onClick={() => setShowCustomize(false)}
                     className="p-2 hover:bg-accent rounded-lg transition-colors"
@@ -151,13 +166,18 @@ export function GdprConsent() {
                   <div className="p-4 bg-accent/50 rounded-lg border border-border">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <h4 className="font-semibold mb-1">Strictly Necessary Cookies</h4>
+                        <h4 className="font-semibold mb-1">
+                          Strictly Necessary Cookies
+                        </h4>
                         <p className="text-sm text-muted-foreground">
-                          Essential for the website to function. Cannot be disabled.
+                          Essential for the website to function. Cannot be
+                          disabled.
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Always Active</span>
+                        <span className="text-xs text-muted-foreground">
+                          Always Active
+                        </span>
                         <div className="w-12 h-6 bg-primary rounded-full relative">
                           <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
                         </div>
@@ -169,9 +189,12 @@ export function GdprConsent() {
                   <div className="p-4 bg-accent/50 rounded-lg border border-border">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <h4 className="font-semibold mb-1">Functional Cookies</h4>
+                        <h4 className="font-semibold mb-1">
+                          Functional Cookies
+                        </h4>
                         <p className="text-sm text-muted-foreground">
-                          Remember your preferences (theme, language, tool settings).
+                          Remember your preferences (theme, language, tool
+                          settings).
                         </p>
                       </div>
                       <button
@@ -181,9 +204,11 @@ export function GdprConsent() {
                         }`}
                         aria-label="Toggle functional cookies"
                       >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                          preferences.functional ? 'right-1' : 'left-1'
-                        }`} />
+                        <div
+                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                            preferences.functional ? 'right-1' : 'left-1'
+                          }`}
+                        />
                       </button>
                     </div>
                   </div>
@@ -192,9 +217,12 @@ export function GdprConsent() {
                   <div className="p-4 bg-accent/50 rounded-lg border border-border">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <h4 className="font-semibold mb-1">Analytics Cookies</h4>
+                        <h4 className="font-semibold mb-1">
+                          Analytics Cookies
+                        </h4>
                         <p className="text-sm text-muted-foreground">
-                          Help us understand how you use our website to improve performance.
+                          Help us understand how you use our website to improve
+                          performance.
                         </p>
                       </div>
                       <button
@@ -204,9 +232,11 @@ export function GdprConsent() {
                         }`}
                         aria-label="Toggle analytics cookies"
                       >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                          preferences.analytics ? 'right-1' : 'left-1'
-                        }`} />
+                        <div
+                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                            preferences.analytics ? 'right-1' : 'left-1'
+                          }`}
+                        />
                       </button>
                     </div>
                   </div>
@@ -215,9 +245,12 @@ export function GdprConsent() {
                   <div className="p-4 bg-accent/50 rounded-lg border border-border">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <h4 className="font-semibold mb-1">Advertising Cookies</h4>
+                        <h4 className="font-semibold mb-1">
+                          Advertising Cookies
+                        </h4>
                         <p className="text-sm text-muted-foreground">
-                          Serve personalized ads based on your interests and browsing behavior.
+                          Serve personalized ads based on your interests and
+                          browsing behavior.
                         </p>
                       </div>
                       <button
@@ -227,9 +260,11 @@ export function GdprConsent() {
                         }`}
                         aria-label="Toggle advertising cookies"
                       >
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                          preferences.advertising ? 'right-1' : 'left-1'
-                        }`} />
+                        <div
+                          className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                            preferences.advertising ? 'right-1' : 'left-1'
+                          }`}
+                        />
                       </button>
                     </div>
                   </div>

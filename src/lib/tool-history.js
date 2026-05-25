@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { supabase } from "./supabase";
+import { supabase } from './supabase';
 
 /**
  * Tool History Manager
@@ -9,13 +9,24 @@ import { supabase } from "./supabase";
  */
 
 // Save a tool usage record
-export async function saveToolHistory({ toolType, fileName, fileSize, outputFormat, outputSize, reductionPercent, resultUrl, metadata = {} }) {
-  const { data: { user } } = await supabase.auth.getUser();
+export async function saveToolHistory({
+  toolType,
+  fileName,
+  fileSize,
+  outputFormat,
+  outputSize,
+  reductionPercent,
+  resultUrl,
+  metadata = {},
+}) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   // For generator tools, we often want to update the "latest" state rather than adding new rows every second
   // But for simple tools like image/video, we just insert.
-  
+
   const { data, error } = await supabase
     .from('tool_history')
     .insert({
@@ -28,7 +39,7 @@ export async function saveToolHistory({ toolType, fileName, fileSize, outputForm
       reduction_percent: reductionPercent || 0,
       result_url: resultUrl || null,
       metadata: metadata,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })
     .select()
     .single();
@@ -43,8 +54,14 @@ export async function saveToolHistory({ toolType, fileName, fileSize, outputForm
 /**
  * Specifically for Generators: Save/Update the most recent session state
  */
-export async function saveGeneratorState(toolType, stateData, fileName = 'Generator Session') {
-  const { data: { user } } = await supabase.auth.getUser();
+export async function saveGeneratorState(
+  toolType,
+  stateData,
+  fileName = 'Generator Session'
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   // We save generator states as tool_history entries with result_url = 'GENERATOR_STATE'
@@ -57,7 +74,7 @@ export async function saveGeneratorState(toolType, stateData, fileName = 'Genera
       file_name: fileName || stateData.fileName || 'Generator Session',
       result_url: 'GENERATOR_STATE',
       metadata: stateData,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })
     .select()
     .maybeSingle();
@@ -73,7 +90,9 @@ export async function saveGeneratorState(toolType, stateData, fileName = 'Genera
  * Get the most recent generator state
  */
 export async function getLatestGeneratorState(toolType) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return null;
 
   const { data, error } = await supabase
@@ -92,7 +111,9 @@ export async function getLatestGeneratorState(toolType) {
 
 // Fetch user's tool history (only non-expired)
 export async function getToolHistory(toolType = null) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return [];
 
   let query = supabase
@@ -106,7 +127,7 @@ export async function getToolHistory(toolType = null) {
   }
 
   let { data, error } = await query.gt('expires_at', new Date().toISOString());
-  
+
   // FALLBACK: If expires_at or created_at column is missing (42703), try a simple fetch
   if (error && error.code === '42703') {
     const fallback = await supabase
@@ -127,10 +148,7 @@ export async function getToolHistory(toolType = null) {
 
 // Delete a single history record
 export async function deleteToolHistory(id) {
-  const { error } = await supabase
-    .from('tool_history')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from('tool_history').delete().eq('id', id);
 
   if (error) {
     console.error('[ToolHistory] Delete error:', error);

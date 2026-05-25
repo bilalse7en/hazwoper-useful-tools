@@ -1,11 +1,11 @@
-﻿
-export const blogPosts = [
+﻿export const blogPosts = [
   {
     slug: 'automate-hazwoper-training-content',
     title: 'How to Automate HAZWOPER Training Content Creation',
     date: 'May 10, 2026',
     author: 'Content Suite Team',
-    description: 'Learn how to streamline your HAZWOPER training development workflow using modern automation tools and content extraction techniques.',
+    description:
+      'Learn how to streamline your HAZWOPER training development workflow using modern automation tools and content extraction techniques.',
     category: 'Productivity',
     readTime: '8 min read',
     content: `
@@ -32,14 +32,15 @@ export const blogPosts = [
 
       <h2>Conclusion</h2>
       <p>Automation is no longer just for software developers. Training professionals who embrace these tools can deliver better courses faster, allowing them to focus on what truly matters: keeping workers safe through effective education.</p>
-    `
+    `,
   },
   {
     slug: 'local-first-document-processing',
     title: 'The Benefits of Local-First Document Processing',
     date: 'May 8, 2026',
     author: 'Content Suite Team',
-    description: 'Why processing documents in the browser is safer, faster, and more reliable than traditional cloud-based solutions.',
+    description:
+      'Why processing documents in the browser is safer, faster, and more reliable than traditional cloud-based solutions.',
     category: 'Technology',
     readTime: '6 min read',
     content: `
@@ -56,14 +57,15 @@ export const blogPosts = [
 
       <h2>How It Works</h2>
       <p>Modern browser technologies like WebAssembly (Wasm) and the File System Access API have turned browsers into powerful computation engines. Our suite leverages these technologies to bring desktop-class performance to the web.</p>
-    `
+    `,
   },
   {
     slug: 'optimizing-media-for-lms',
     title: 'Optimizing Media for Your Learning Management System',
     date: 'May 5, 2026',
     author: 'Content Suite Team',
-    description: 'A comprehensive guide on how to prepare images and videos for smooth delivery on platforms like Moodle, Canvas, and Blackboard.',
+    description:
+      'A comprehensive guide on how to prepare images and videos for smooth delivery on platforms like Moodle, Canvas, and Blackboard.',
     category: 'Best Practices',
     readTime: '10 min read',
     content: `
@@ -84,14 +86,15 @@ export const blogPosts = [
 
       <h2>Consistency Matters</h2>
       <p>Maintain consistent aspect ratios and resolution settings across all course modules. This provides a more polished and professional look for your students.</p>
-    `
+    `,
   },
   {
     slug: 'ai-future-hazwoper-training',
     title: 'The Future of AI in HAZWOPER Training Compliance',
     date: 'May 12, 2026',
     author: 'Content Suite Team',
-    description: 'Exploring how artificial intelligence is transforming safety training, from automated compliance checks to personalized learning paths.',
+    description:
+      'Exploring how artificial intelligence is transforming safety training, from automated compliance checks to personalized learning paths.',
     category: 'AI & Safety',
     readTime: '12 min read',
     content: `
@@ -108,14 +111,15 @@ export const blogPosts = [
 
       <h2>The Role of Content Suite</h2>
       <p>Tools like our <strong>AI Assistant</strong> and <strong>Blog Generator</strong> are designed to help safety managers and training developers harness this power without needing a degree in data science. By providing a user-focused interface for complex AI models, we empower you to create the next generation of safety training.</p>
-    `
+    `,
   },
   {
     slug: 'effective-faq-design-for-training',
     title: 'Designing Effective FAQs for Technical Safety Training',
     date: 'May 14, 2026',
     author: 'Content Suite Team',
-    description: 'How to structure your course FAQs to reduce student inquiries and improve learning retention in complex safety subjects.',
+    description:
+      'How to structure your course FAQs to reduce student inquiries and improve learning retention in complex safety subjects.',
     category: 'Instructional Design',
     readTime: '7 min read',
     content: `
@@ -132,14 +136,15 @@ export const blogPosts = [
 
       <h2>Automating FAQ Generation</h2>
       <p>Using our <strong>AI Assistant</strong>, you can ingest module summaries and automatically generate a list of likely student questions. This ensures complete coverage of difficult concepts while saving hours of manual drafting.</p>
-    `
+    `,
   },
   {
     slug: 'web-accessibility-in-safety-education',
     title: 'The Importance of Web Accessibility in Safety Education',
     date: 'May 15, 2026',
     author: 'Content Suite Team',
-    description: 'Ensuring your training materials are inclusive and compliant with WCAG 2.1 standards for all workers.',
+    description:
+      'Ensuring your training materials are inclusive and compliant with WCAG 2.1 standards for all workers.',
     category: 'Compliance',
     readTime: '9 min read',
     content: `
@@ -156,6 +161,6 @@ export const blogPosts = [
 
       <h2>Conclusion</h2>
       <p>By prioritizing accessibility, you ensure that every worker has the opportunity to master life-saving safety protocols. Content Suite helps you achieve this by generating code that adheres to the latest web standards automatically.</p>
-    `
-  }
+    `,
+  },
 ];

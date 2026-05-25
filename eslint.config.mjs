@@ -1,6 +1,6 @@
-import nextVitals from "eslint-config-next/core-web-vitals";
-import prettier from "eslint-plugin-prettier";
-import prettierConfig from "eslint-config-prettier";
+import nextVitals from 'eslint-config-next/core-web-vitals';
+import prettier from 'eslint-plugin-prettier';
+import prettierConfig from 'eslint-config-prettier';
 
 const eslintConfig = [
   ...nextVitals,
@@ -10,18 +10,12 @@ const eslintConfig = [
       prettier,
     },
     rules: {
-      "prettier/prettier": "error",
+      'prettier/prettier': 'error',
     },
   },
   {
-    ignores: [
-      ".next/**",
-      "out/**",
-      "build/**",
-      "next-env.d.ts",
-    ],
+    ignores: ['.next/**', 'out/**', 'build/**', 'next-env.d.ts'],
   },
 ];
-
 
 export default eslintConfig;

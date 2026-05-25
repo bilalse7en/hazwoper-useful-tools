@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import React, { useEffect, useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 export function ProgressButton({
   isLoading,
   progress = 0,
   label,
-  loadingLabel = "Processing",
+  loadingLabel = 'Processing',
   className,
   onClick,
   ...props
@@ -22,13 +22,13 @@ export function ProgressButton({
       const { offsetWidth, offsetHeight } = buttonRef.current;
       setDimensions({ width: offsetWidth, height: offsetHeight });
     }
-    
+
     // Also handle resizing
     const observer = new ResizeObserver((entries) => {
       for (let entry of entries) {
-        setDimensions({ 
-          width: entry.target.offsetWidth, 
-          height: entry.target.offsetHeight 
+        setDimensions({
+          width: entry.target.offsetWidth,
+          height: entry.target.offsetHeight,
         });
       }
     });
@@ -44,10 +44,10 @@ export function ProgressButton({
   const radius = 6; // Standard rounded-md radius is approx 6px
   const w = dimensions.width;
   const h = dimensions.height;
-  
+
   // Straight segments
   const perimeter = 2 * (w + h);
-  
+
   // Dash offset: 0 is full, perimeter is empty
   const strokeDashoffset = perimeter - (progress / 100) * perimeter;
 
@@ -56,8 +56,8 @@ export function ProgressButton({
       <Button
         ref={buttonRef}
         className={cn(
-          "relative w-full z-10 transition-all duration-300",
-          isLoading && "bg-primary/20 text-primary hover:bg-primary/30",
+          'relative w-full z-10 transition-all duration-300',
+          isLoading && 'bg-primary/20 text-primary hover:bg-primary/30',
           className
         )}
         onClick={onClick}
@@ -73,8 +73,8 @@ export function ProgressButton({
       {/* Progress Border SVG */}
       <svg
         className={cn(
-          "absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-300",
-          isLoading ? "opacity-100" : "opacity-0"
+          'absolute top-0 left-0 w-full h-full pointer-events-none transition-opacity duration-300',
+          isLoading ? 'opacity-100' : 'opacity-0'
         )}
         style={{ zIndex: 20 }}
         width={w}
@@ -93,7 +93,7 @@ export function ProgressButton({
           style={{
             strokeDasharray: perimeter,
             strokeDashoffset: strokeDashoffset,
-            transition: "stroke-dashoffset 0.2s ease-out",
+            transition: 'stroke-dashoffset 0.2s ease-out',
           }}
         />
       </svg>

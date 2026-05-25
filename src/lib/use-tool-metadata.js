@@ -1,7 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { toolMetadata, toolInfo, generateToolSchema, generateBreadcrumbSchema } from "@/lib/seo";
+import { useEffect } from 'react';
+import {
+  toolMetadata,
+  toolInfo,
+  generateToolSchema,
+  generateBreadcrumbSchema,
+} from '@/lib/seo';
 
 // Generate metadata on the client side for each tool
 export function useToolMetadata(toolSlug) {

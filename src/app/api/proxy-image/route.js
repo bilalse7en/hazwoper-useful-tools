@@ -11,9 +11,18 @@ export async function GET(request) {
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch image');
-    
+
     const blob = await response.blob();
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    let contentType = response.headers.get('content-type');
+
+    // Force correct MIME type for known extensions if origin is misconfigured
+    if (url.toLowerCase().endsWith('.gif')) {
+      contentType = 'image/gif';
+    } else if (url.toLowerCase().endsWith('.webp')) {
+      contentType = 'image/webp';
+    } else if (!contentType || contentType === 'application/octet-stream') {
+      contentType = 'image/jpeg'; // Fallback
+    }
 
     return new NextResponse(blob, {
       headers: {
@@ -23,6 +32,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('Proxy Error:', error);
-    return NextResponse.json({ error: 'Failed to proxy image' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to proxy image' },
+      { status: 500 }
+    );
   }
 }

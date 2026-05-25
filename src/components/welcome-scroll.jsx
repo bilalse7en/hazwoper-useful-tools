@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from 'react';
 import {
   Sparkles,
   Code,
@@ -13,57 +13,57 @@ import {
   Layout,
   Search,
   ArrowRight,
-} from "lucide-react";
-import { toolInfo, toolIdToSlug } from "@/lib/seo";
-import { isLowEnd } from "@/lib/utils";
+} from 'lucide-react';
+import { toolInfo, toolIdToSlug } from '@/lib/seo';
+import { isLowEnd } from '@/lib/utils';
 
 /* ── icon & gradient maps ──────────────────────────────────── */
 const iconMap = {
-  "web-content": Layout,
-  "blog-generator": FileText,
-  "glossary-generator": BookOpen,
-  "resource-generator": Search,
-  "html-cleaner": Code,
-  "image-converter": ImageIcon,
-  "video-compressor": Video,
-  "ai-assistant": MessageSquare,
-  "image-to-text": Wand2,
-  "document-extractor": FileText,
+  'web-content': Layout,
+  'blog-generator': FileText,
+  'glossary-generator': BookOpen,
+  'resource-generator': Search,
+  'html-cleaner': Code,
+  'image-converter': ImageIcon,
+  'video-compressor': Video,
+  'ai-assistant': MessageSquare,
+  'image-to-text': Wand2,
+  'document-extractor': FileText,
 };
 
 const gradientMap = {
-  "web-content": "from-blue-500 to-cyan-400",
-  "blog-generator": "from-violet-500 to-purple-400",
-  "glossary-generator": "from-amber-500 to-yellow-400",
-  "resource-generator": "from-emerald-500 to-green-400",
-  "html-cleaner": "from-rose-500 to-pink-400",
-  "image-converter": "from-indigo-500 to-blue-400",
-  "video-compressor": "from-teal-500 to-cyan-400",
-  "ai-assistant": "from-fuchsia-500 to-pink-400",
-  "image-to-text": "from-sky-500 to-indigo-400",
-  "document-extractor": "from-lime-500 to-emerald-400",
+  'web-content': 'from-blue-500 to-cyan-400',
+  'blog-generator': 'from-violet-500 to-purple-400',
+  'glossary-generator': 'from-amber-500 to-yellow-400',
+  'resource-generator': 'from-emerald-500 to-green-400',
+  'html-cleaner': 'from-rose-500 to-pink-400',
+  'image-converter': 'from-indigo-500 to-blue-400',
+  'video-compressor': 'from-teal-500 to-cyan-400',
+  'ai-assistant': 'from-fuchsia-500 to-pink-400',
+  'image-to-text': 'from-sky-500 to-indigo-400',
+  'document-extractor': 'from-lime-500 to-emerald-400',
 };
 
 const glowMap = {
-  "web-content": "shadow-blue-500/30",
-  "blog-generator": "shadow-violet-500/30",
-  "glossary-generator": "shadow-amber-500/30",
-  "resource-generator": "shadow-emerald-500/30",
-  "html-cleaner": "shadow-rose-500/30",
-  "image-converter": "shadow-indigo-500/30",
-  "video-compressor": "shadow-teal-500/30",
-  "ai-assistant": "shadow-fuchsia-500/30",
-  "image-to-text": "shadow-sky-500/30",
-  "document-extractor": "shadow-lime-500/30",
+  'web-content': 'shadow-blue-500/30',
+  'blog-generator': 'shadow-violet-500/30',
+  'glossary-generator': 'shadow-amber-500/30',
+  'resource-generator': 'shadow-emerald-500/30',
+  'html-cleaner': 'shadow-rose-500/30',
+  'image-converter': 'shadow-indigo-500/30',
+  'video-compressor': 'shadow-teal-500/30',
+  'ai-assistant': 'shadow-fuchsia-500/30',
+  'image-to-text': 'shadow-sky-500/30',
+  'document-extractor': 'shadow-lime-500/30',
 };
 
 /* ── component ─────────────────────────────────────────────── */
 export function WelcomeScroll({ onComplete }) {
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [typedText, setTypedText] = useState("");
+  const [typedText, setTypedText] = useState('');
   const scrollRef = useRef(null);
 
-  const welcomeText = "Welcome to Content Suite";
+  const welcomeText = 'Welcome to Content Suite';
 
   /* build tools array from shared SEO data */
   const tools = Object.entries(toolIdToSlug).map(([id, slug]) => ({
@@ -71,8 +71,8 @@ export function WelcomeScroll({ onComplete }) {
     slug,
     ...toolInfo[slug],
     Icon: iconMap[slug] || Layout,
-    gradient: gradientMap[slug] || "from-blue-500 to-cyan-400",
-    glow: glowMap[slug] || "shadow-blue-500/30",
+    gradient: gradientMap[slug] || 'from-blue-500 to-cyan-400',
+    glow: glowMap[slug] || 'shadow-blue-500/30',
   }));
 
   /* ── typing effect ──────────────────────────────────────── */
@@ -100,8 +100,8 @@ export function WelcomeScroll({ onComplete }) {
     };
     const ref = scrollRef.current;
     if (ref) {
-      ref.addEventListener("scroll", handleScroll);
-      return () => ref.removeEventListener("scroll", handleScroll);
+      ref.addEventListener('scroll', handleScroll);
+      return () => ref.removeEventListener('scroll', handleScroll);
     }
   }, []);
 
@@ -122,7 +122,7 @@ export function WelcomeScroll({ onComplete }) {
       : 0;
 
     const fromLeft = index % 2 === 0;
-    const translateX = fromLeft ? "-80px" : "80px";
+    const translateX = fromLeft ? '-80px' : '80px';
 
     return {
       opacity: isVisible ? 1 : 0,
@@ -132,9 +132,7 @@ export function WelcomeScroll({ onComplete }) {
     };
   };
 
-  const activeToolIndex = Math.floor(
-    (scrollProgress - heroEnd) / toolRange
-  );
+  const activeToolIndex = Math.floor((scrollProgress - heroEnd) / toolRange);
 
   const showHero = scrollProgress < heroEnd;
   const showTools = scrollProgress >= heroEnd && scrollProgress < toolsEnd;
@@ -159,7 +157,7 @@ export function WelcomeScroll({ onComplete }) {
                   linear-gradient(to right, rgba(139,92,246,0.4) 1px, transparent 1px),
                   linear-gradient(to bottom, rgba(139,92,246,0.4) 1px, transparent 1px)
                 `,
-                backgroundSize: "60px 60px",
+                backgroundSize: '60px 60px',
                 transform: `translateY(${scrollProgress * 120}px)`,
               }}
             />
@@ -180,35 +178,33 @@ export function WelcomeScroll({ onComplete }) {
               className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 transition-all duration-200"
               style={{
                 width: `${scrollProgress * 100}%`,
-                boxShadow: "0 0 20px rgba(168,85,247,0.5)",
+                boxShadow: '0 0 20px rgba(168,85,247,0.5)',
               }}
             />
           </div>
 
           {/* ── tool progress dots ──────────────────────────── */}
-          {showTools &&
-            activeToolIndex >= 0 &&
-            activeToolIndex < toolCount && (
-              <div className="absolute top-5 right-5 z-50 flex items-center gap-3 bg-gray-900/60 backdrop-blur-xl px-4 py-2.5 rounded-full border border-gray-700/40">
-                <div className="flex gap-1">
-                  {tools.map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-1 rounded-full transition-all duration-500 ${
-                        i === activeToolIndex
-                          ? "w-6 bg-gradient-to-r from-purple-400 to-pink-400"
-                          : i < activeToolIndex
-                          ? "w-1.5 bg-purple-500/50"
-                          : "w-1.5 bg-gray-600/50"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-[10px] text-gray-400 font-mono tracking-wider">
-                  {Math.min(activeToolIndex + 1, toolCount)}/{toolCount}
-                </span>
+          {showTools && activeToolIndex >= 0 && activeToolIndex < toolCount && (
+            <div className="absolute top-5 right-5 z-50 flex items-center gap-3 bg-gray-900/60 backdrop-blur-xl px-4 py-2.5 rounded-full border border-gray-700/40">
+              <div className="flex gap-1">
+                {tools.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1 rounded-full transition-all duration-500 ${
+                      i === activeToolIndex
+                        ? 'w-6 bg-gradient-to-r from-purple-400 to-pink-400'
+                        : i < activeToolIndex
+                          ? 'w-1.5 bg-purple-500/50'
+                          : 'w-1.5 bg-gray-600/50'
+                    }`}
+                  />
+                ))}
               </div>
-            )}
+              <span className="text-[10px] text-gray-400 font-mono tracking-wider">
+                {Math.min(activeToolIndex + 1, toolCount)}/{toolCount}
+              </span>
+            </div>
+          )}
 
           {/* ════════════════════════════════════════════════════
               SECTION 1 — WELCOME HERO
@@ -217,8 +213,8 @@ export function WelcomeScroll({ onComplete }) {
             className="absolute inset-0 flex flex-col items-center justify-center p-8 transition-all duration-700"
             style={{
               opacity: showHero ? 1 : 0,
-              transform: showHero ? "translateY(0)" : "translateY(-60px)",
-              pointerEvents: showHero ? "auto" : "none",
+              transform: showHero ? 'translateY(0)' : 'translateY(-60px)',
+              pointerEvents: showHero ? 'auto' : 'none',
             }}
           >
             <div className="max-w-3xl text-center space-y-8">
@@ -234,7 +230,7 @@ export function WelcomeScroll({ onComplete }) {
               <div className="flex justify-center relative">
                 <div className="absolute -inset-6 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 blur-2xl rounded-full animate-pulse" />
                 <img
-                  src="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif"
+                  src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
                   alt="Content Suite"
                   className="relative w-28 h-28 md:w-36 md:h-36 object-contain rounded-3xl"
                 />
@@ -278,7 +274,7 @@ export function WelcomeScroll({ onComplete }) {
                 style={{
                   opacity: visibility.opacity,
                   transform: visibility.transform,
-                  pointerEvents: visibility.opacity > 0 ? "auto" : "none",
+                  pointerEvents: visibility.opacity > 0 ? 'auto' : 'none',
                 }}
               >
                 <div className="relative max-w-2xl w-full">
@@ -352,8 +348,8 @@ export function WelcomeScroll({ onComplete }) {
             className="absolute inset-0 flex flex-col items-center justify-center p-8 transition-all duration-700"
             style={{
               opacity: showFinal ? 1 : 0,
-              transform: showFinal ? "scale(1)" : "scale(0.85)",
-              pointerEvents: showFinal ? "auto" : "none",
+              transform: showFinal ? 'scale(1)' : 'scale(0.85)',
+              pointerEvents: showFinal ? 'auto' : 'none',
             }}
           >
             <div className="text-center space-y-8 max-w-lg">
@@ -361,7 +357,7 @@ export function WelcomeScroll({ onComplete }) {
               <div className="relative inline-block">
                 <div className="absolute -inset-10 bg-gradient-to-r from-purple-500/25 via-pink-500/25 to-purple-500/25 blur-[80px] rounded-full animate-pulse" />
                 <img
-                  src="https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765460885/Hi.gif"
+                  src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
                   alt="Content Suite"
                   className="relative w-36 h-36 md:w-48 md:h-48 mx-auto object-contain rounded-3xl"
                 />
