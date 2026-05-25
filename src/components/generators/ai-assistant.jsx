@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { OptimizedGif } from '@/components/ui/optimized-gif';
+import { BRAND_CONFIG } from '@/lib/constants';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import {
@@ -89,9 +91,6 @@ Helpful Hints:
 - For SEO optimization, recommend "Image Converter" (WebP conversion).
 - For messy Word content, recommend "HTML Cleaner".
 `;
-
-const LOGO_URL =
-  'https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif';
 
 const CodeBlock = ({ children, language }) => {
   const [expanded, setExpanded] = useState(false);
@@ -655,10 +654,13 @@ export function AIAssistant() {
       >
         <div className="p-4">
           <div className="flex items-center gap-3 mb-6 p-2 rounded-2xl bg-primary/5 border border-primary/10">
-            <div className="h-10 w-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 ring-1 ring-primary/20 bg-black">
-              <img
-                src={LOGO_URL}
+            <div className="h-10 w-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 ring-1 ring-primary/20 bg-black flex items-center justify-center">
+              <OptimizedGif
+                src={BRAND_CONFIG.logo}
                 alt="Logo"
+                width={40}
+                height={40}
+                noLoading={true}
                 className="w-full h-full object-cover"
               />
             </div>

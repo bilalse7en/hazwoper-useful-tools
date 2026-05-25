@@ -1,7 +1,6 @@
-'use client';
-
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
   Sparkles,
@@ -54,6 +53,7 @@ const FREE_TOOL_IDS = [
 const GENERATOR_TOOL_IDS = ['course', 'blog', 'glossary', 'resources'];
 
 export function ToolsLanding({ user }) {
+  const router = useRouter();
   const isGuest = !user;
   const isAdmin = user?.role === 'admin';
   const hasGeneratorAccess = user?.has_generator_access || isAdmin;
