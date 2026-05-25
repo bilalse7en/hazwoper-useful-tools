@@ -19,6 +19,7 @@ export function OptimizedGif({
   height,
   priority = false,
   showStatus = false,
+  noLoading = false,
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -46,7 +47,7 @@ export function OptimizedGif({
         containerClassName
       )}
     >
-      {loading && (
+      {loading && !noLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-card/80 backdrop-blur-md z-10 animate-in-fade">
           <div className="relative">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -83,8 +84,8 @@ export function OptimizedGif({
             setError(true);
           }}
           className={cn(
-            'transition-all duration-1000 ease-out',
-            loading
+            !noLoading && 'transition-all duration-1000 ease-out',
+            loading && !noLoading
               ? 'scale-110 blur-2xl opacity-0'
               : 'scale-100 blur-0 opacity-100',
             className

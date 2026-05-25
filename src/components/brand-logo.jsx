@@ -31,6 +31,7 @@ export function BrandLogo({ className, size = 'md', animate = true }) {
         width={sizePixels[size]}
         height={sizePixels[size]}
         priority={true}
+        noLoading={true}
         className={cn('h-full w-full object-cover', animate && 'logo-animate')}
       />
     </div>
