@@ -33,24 +33,8 @@ export async function proxy(request) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Redirection Logic
-  const url = new URL(request.url);
-  const path = url.pathname;
-
-  // Protected routes
-  if (path.startsWith('/tools') || path.startsWith('/admin')) {
-    if (!user) {
-      // Check sessionStorage (note: middleware can't check sessionStorage, so we rely on cookies)
-      // Since we are adding Supabase, we should use cookies.
-      // For now, if no user in Supabase, we might redirect to login.
-      // But if user is using the "rocket game" reward, it might be in sessionStorage.
-      // This is tricky during transition.
-    }
-  }
+  // This will refresh the session if it's expired
+  await supabase.auth.getUser();
 
   return response;
 }

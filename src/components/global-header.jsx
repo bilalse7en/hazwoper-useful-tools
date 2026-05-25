@@ -13,7 +13,19 @@ import { AppSidebar } from './app-sidebar';
 import { ThemeDialog } from './theme-dialog';
 
 export function GlobalHeader({ activeTab, onTabChange }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('user');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -21,59 +33,75 @@ export function GlobalHeader({ activeTab, onTabChange }) {
   const isToolsPage = pathname.startsWith('/tools');
 
   useEffect(() => {
-    // Initial fetch
-    const storedUser = sessionStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        setUser(null);
-      }
-    }
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Header: Auth state change', event, session?.user?.id);
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select(
-            'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
-          )
-          .eq('id', session.user.id)
-          .single();
-
-        const activeUser = {
+        // Set basic info immediately
+        const baseUser = {
           id: session.user.id,
-          first_name:
-            profile?.first_name || session.user.user_metadata?.first_name || '',
-          last_name:
-            profile?.last_name || session.user.user_metadata?.last_name || '',
+          email: session.user.email,
           full_name:
-            profile?.full_name ||
             session.user.user_metadata?.full_name ||
             session.user.user_metadata?.name ||
             '',
-          username: profile?.username || session.user.email,
-          email: profile?.email || session.user.email,
-          role: profile?.role || 'user',
-          has_generator_access: profile?.has_generator_access || false,
           name:
-            profile?.full_name ||
             session.user.user_metadata?.full_name ||
-            profile?.username ||
+            session.user.user_metadata?.name ||
             session.user.email,
           avatar:
-            profile?.avatar_url ||
             session.user.user_metadata?.avatar_url ||
             session.user.user_metadata?.picture ||
             null,
+          role: 'user',
         };
-        setUser(activeUser);
-        sessionStorage.setItem('user', JSON.stringify(activeUser));
+
+        setUser(baseUser);
+        sessionStorage.setItem('user', JSON.stringify(baseUser));
+
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select(
+              'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
+            )
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile) {
+            const activeUser = {
+              ...baseUser,
+              first_name: profile.first_name || baseUser.first_name || '',
+              last_name: profile.last_name || baseUser.last_name || '',
+              full_name: profile.full_name || baseUser.full_name,
+              username: profile.username || baseUser.email,
+              role: profile.role || 'user',
+              has_generator_access: profile.has_generator_access || false,
+              name: profile.full_name || baseUser.name,
+              avatar: profile.avatar_url || baseUser.avatar,
+            };
+            setUser(activeUser);
+            sessionStorage.setItem('user', JSON.stringify(activeUser));
+          }
+        } catch (err) {
+          console.error('Header profile sync error:', err);
+        }
       } else {
-        setUser(null);
-        sessionStorage.removeItem('user');
+        // Only clear if we don't have a reward-user
+        const stored = sessionStorage.getItem('user');
+        let isRewardUser = false;
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            isRewardUser = parsed.id === 'reward-user';
+          } catch (e) {}
+        }
+
+        if (!isRewardUser) {
+          setUser(null);
+          sessionStorage.removeItem('user');
+        }
       }
     });
 
