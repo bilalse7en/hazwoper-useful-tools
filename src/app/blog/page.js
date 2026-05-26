@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -28,39 +29,39 @@ export default function BlogListPage() {
   const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
+    async function fetchBlogs() {
+      setLoading(true);
+      try {
+        const from = (currentPage - 1) * POSTS_PER_PAGE;
+        const to = from + POSTS_PER_PAGE - 1;
+
+        const { data, error, count } = await supabase
+          .from('blogs')
+          .select('*', { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setBlogs(data);
+          setTotalCount(count || data.length);
+        } else {
+          // Fallback to static blogs for demo/initial state
+          setBlogs(staticBlogs.slice(from, from + POSTS_PER_PAGE));
+          setTotalCount(staticBlogs.length);
+        }
+      } catch (err) {
+        console.error('Error fetching blogs:', err);
+        setBlogs(staticBlogs.slice(0, POSTS_PER_PAGE));
+        setTotalCount(staticBlogs.length);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     fetchBlogs();
   }, [currentPage]);
-
-  async function fetchBlogs() {
-    setLoading(true);
-    try {
-      const from = (currentPage - 1) * POSTS_PER_PAGE;
-      const to = from + POSTS_PER_PAGE - 1;
-
-      const { data, error, count } = await supabase
-        .from('blogs')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setBlogs(data);
-        setTotalCount(count || data.length);
-      } else {
-        // Fallback to static blogs for demo/initial state
-        setBlogs(staticBlogs.slice(from, from + POSTS_PER_PAGE));
-        setTotalCount(staticBlogs.length);
-      }
-    } catch (err) {
-      console.error('Error fetching blogs:', err);
-      setBlogs(staticBlogs.slice(0, POSTS_PER_PAGE));
-      setTotalCount(staticBlogs.length);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const totalPages = Math.ceil(totalCount / POSTS_PER_PAGE);
 
@@ -124,13 +125,16 @@ export default function BlogListPage() {
                 >
                   <div className="h-56 bg-muted relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-black/20" />
-                    <img
+                    <Image
                       src={
                         post.image_url ||
-                        `https://source.unsplash.com/800x600/?safety,technology&sig=${index}`
+                        `https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=800&h=600&sig=${index}`
                       }
                       alt={post.title}
+                      width={800}
+                      height={600}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
+                      unoptimized
                     />
                     <div className="absolute top-6 left-6">
                       <Badge className="bg-background/90 backdrop-blur-md text-foreground border-none font-bold text-[10px] uppercase px-3">

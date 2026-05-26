@@ -112,15 +112,8 @@ export function SessionTimer({ onExpire }) {
     return 'from-green-500 to-emerald-600';
   };
 
-  const getTimerIcon = () => {
-    if (!timeRemaining || timeRemaining <= 0) return XCircle;
-    if (timeRemaining < 5 * 60 * 1000) return AlertTriangle;
-    return Clock;
-  };
-
   if (timeRemaining === null) return null;
 
-  const TimerIcon = getTimerIcon();
   const shouldBlink = countdown !== null && countdown <= 10;
 
   return (
@@ -132,7 +125,6 @@ export function SessionTimer({ onExpire }) {
     >
       <AnimatePresence mode="wait">
         {!isExpanded ? (
-          /* CLOSED: Icon only */
           <motion.button
             key="collapsed"
             onClick={() => setIsExpanded(true)}
@@ -143,7 +135,13 @@ export function SessionTimer({ onExpire }) {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <TimerIcon className="w-5 h-5 text-white" />
+            {!timeRemaining || timeRemaining <= 0 ? (
+              <XCircle className="w-5 h-5 text-white" />
+            ) : timeRemaining < 5 * 60 * 1000 ? (
+              <AlertTriangle className="w-5 h-5 text-white" />
+            ) : (
+              <Clock className="w-5 h-5 text-white" />
+            )}
           </motion.button>
         ) : (
           /* OPEN: Timer + Chevron only */

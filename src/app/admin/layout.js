@@ -14,27 +14,66 @@ function AdminLayoutInner({ children }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [user, setUser] = useState(null);
+  const [isChecking, setIsChecking] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
 
   useEffect(() => {
-    const storedUser = sessionStorage.getItem('user');
-    if (storedUser) {
+    async function verifyAccess() {
+      setIsChecking(true);
+
+      // 1. Try session storage first for speed
+      const storedUser = sessionStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          if (parsed.role === 'admin') {
+            setUser(parsed);
+            setIsChecking(false);
+            return;
+          }
+        } catch (e) {}
+      }
+
+      // 2. Verified fallback to direct Supabase session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push('/');
+        return;
+      }
+
       try {
-        const parsed = JSON.parse(storedUser);
-        if (parsed.role !== 'admin') {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, id, email, full_name, avatar_url')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile?.role === 'admin') {
+          const activeUser = {
+            id: profile.id,
+            email: profile.email,
+            name: profile.full_name,
+            avatar: profile.avatar_url,
+            role: profile.role,
+          };
+          setUser(activeUser);
+          sessionStorage.setItem('user', JSON.stringify(activeUser));
+          setIsChecking(false);
+        } else {
           router.push('/');
-          return;
         }
-        setUser(parsed);
-      } catch (e) {
-        setUser(null);
+      } catch (err) {
+        console.error('Core security link failure:', err);
         router.push('/');
       }
-    } else {
-      router.push('/');
     }
-  }, []);
+
+    verifyAccess();
+  }, [router]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -42,6 +81,25 @@ function AdminLayoutInner({ children }) {
     sessionStorage.removeItem('user');
     router.push('/');
   };
+
+  if (isChecking) {
+    return (
+      <div className="min-h-[80vh] flex flex-col items-center justify-center bg-background space-y-6">
+        <div className="relative">
+          <div className="absolute -inset-4 bg-primary/20 blur-2xl rounded-full animate-pulse" />
+          <Loader2 className="w-12 h-12 animate-spin text-primary relative" />
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
+            Verifying Administrative Clearances...
+          </p>
+          <div className="h-0.5 w-32 bg-muted overflow-hidden rounded-full">
+            <div className="h-full bg-primary w-2/3 animate-[loading_2s_ease-in-out_infinite]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const currentView = searchParams.get('view') || 'dashboard';
 

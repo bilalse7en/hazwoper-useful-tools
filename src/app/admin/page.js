@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
@@ -27,6 +28,9 @@ import {
   Clock,
   Loader2,
   Zap,
+  Library,
+  Upload,
+  Trash2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -35,6 +39,19 @@ import { InitialLoadingShell } from '@/components/initial-loading-shell';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getTimeRemaining, formatSize } from '@/lib/tool-history';
 import { toast } from 'sonner';
+import { convertImage } from '@/lib/image-converter';
+
+const formatFileType = (type) => {
+  if (!type) return 'FILE';
+  const t = type.toLowerCase();
+  if (t.includes('spreadsheetml.sheet') || t.includes('excel')) return 'EXCEL';
+  if (t.includes('wordprocessingml.document') || t.includes('msword'))
+    return 'DOCX';
+  if (t.includes('pdf')) return 'PDF';
+  if (t.includes('image/')) return t.split('/').pop().toUpperCase();
+  const ext = t.split('/').pop().toUpperCase();
+  return ext.length > 5 ? ext.substring(0, 5) : ext;
+};
 
 function AdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -44,8 +61,13 @@ function AdminDashboard() {
   const router = useRouter();
   const activeView = searchParams.get('view') || 'dashboard';
   const [mediaItems, setMediaItems] = useState([]);
+  const [libraryItems, setLibraryItems] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
   const [blogItems, setBlogItems] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   useEffect(() => {
     async function initializeDashboard() {
@@ -68,6 +90,10 @@ function AdminDashboard() {
         if (activeView === 'blogs') {
           await fetchBlogData();
         }
+
+        if (activeView === 'media-library') {
+          await fetchLibraryData();
+        }
       } catch (err) {
         console.error('Neural Dashboard Initialization Failure:', err);
       } finally {
@@ -77,6 +103,7 @@ function AdminDashboard() {
     }
 
     initializeDashboard();
+    setCurrentPage(1); // Reset page on view change
 
     // Subscribe to REALTIME changes for Admin Monitoring
     const channel = supabase
@@ -109,28 +136,19 @@ function AdminDashboard() {
     };
   }, [activeView]);
 
-  // Listen for sidebar custom event if needed or just handle via layout
-  // For now, let's just make it a single page that switches views
-
   async function checkAdmin() {
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.href = '/';
-        return;
-      }
+      if (!session) return;
+      setCurrentUserId(session.user.id);
 
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
         .single();
-
-      if (profile?.role !== 'admin') {
-        window.location.href = '/';
-      }
     } catch (e) {
       console.error('Admin verification error:', e);
     }
@@ -143,7 +161,6 @@ function AdminDashboard() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // If sorting fails (missing created_at), retry with basic fetch
       if (mediaErr && mediaErr.code === '42703') {
         const fallback = await supabase.from('media_hub').select('*');
         media = fallback.data;
@@ -151,8 +168,6 @@ function AdminDashboard() {
       }
 
       if (mediaErr) throw mediaErr;
-
-      console.log('Admin Media Fetch:', media?.length, 'items found.');
       setMediaItems(media || []);
 
       let { data: history, error: histErr } = await supabase
@@ -160,7 +175,6 @@ function AdminDashboard() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // If sorting fails (missing created_at), retry with basic fetch
       if (histErr && histErr.code === '42703') {
         const fallback = await supabase.from('tool_history').select('*');
         history = fallback.data;
@@ -174,6 +188,121 @@ function AdminDashboard() {
     }
   }
 
+  async function fetchLibraryData() {
+    try {
+      const { data, error } = await supabase
+        .from('media_hub')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setLibraryItems(data || []);
+    } catch (err) {
+      console.error('Error fetching library:', err);
+    }
+  }
+
+  async function handleDirectUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!currentUserId) {
+      toast.error('Identity not verified. Please refresh.');
+      return;
+    }
+
+    setIsUploading(true);
+    const toastId = toast.loading('Synchronizing asset...');
+
+    try {
+      let fileToUpload = file;
+
+      // GIF special handling: No optimization (to preserve animation) but strict size limit
+      if (file.type.includes('gif')) {
+        const sizeInMb = file.size / (1024 * 1024);
+        if (sizeInMb > 2) {
+          toast.error(
+            'GIF too large. Maximum size is 2MB to ensure performance.',
+            { id: toastId }
+          );
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      // Optimize non-GIF images to WEBP only
+      if (file.type.startsWith('image/') && !file.type.includes('gif')) {
+        toast.loading('Optimizing to WebP format...', { id: toastId });
+        const conversion = await convertImage(file, 'webp', {
+          quality: 80,
+          width: 1920,
+        });
+        fileToUpload = conversion.blob;
+      }
+
+      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const filePath = `library/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, fileToUpload);
+
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('media').getPublicUrl(filePath);
+
+      // Record in Media Hub
+      const { error: dbError } = await supabase.from('media_hub').insert([
+        {
+          file_name: file.name,
+          file_type: file.type,
+          file_size: fileToUpload.size,
+          preview_url: publicUrl,
+          download_url: publicUrl,
+          expires_at: null, // Permanent library asset
+          user_id: currentUserId,
+        },
+      ]);
+
+      if (dbError) throw dbError;
+
+      toast.success('Asset integrated.', {
+        id: toastId,
+        description: 'Global registry synchronized.',
+      });
+      fetchLibraryData();
+    } catch (err) {
+      console.error('Upload failure:', JSON.stringify(err, null, 2) || err);
+      toast.error('Upload failed.', {
+        id: toastId,
+        description:
+          err.message || 'Check database connection or bucket existence.',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function deleteAsset(id, filePath) {
+    if (!confirm('Permanent deletion requested. Proceed?')) return;
+    try {
+      const { error: dbError } = await supabase
+        .from('media_hub')
+        .delete()
+        .eq('id', id);
+      if (dbError) throw dbError;
+
+      // Extract path from URL if possible, or just delete from DB
+      // For now we just refresh DB view
+      fetchLibraryData();
+      toast.success('Asset purged.');
+    } catch (err) {
+      toast.error('Purge failed.');
+    }
+  }
+
   async function fetchBlogData() {
     try {
       const { data, error } = await supabase
@@ -182,7 +311,6 @@ function AdminDashboard() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      console.log('Admin Blog Fetch:', data?.length, 'items found.');
       setBlogItems(data || []);
     } catch (err) {
       console.error('Error fetching blogs:', err);
@@ -202,34 +330,13 @@ function AdminDashboard() {
   }
 
   async function fetchUsers(silent = false) {
-    if (!silent) {
-      setLoading(true);
-    }
-
+    if (!silent) setLoading(true);
     try {
       const { data, error } = await supabase.from('profiles').select('*');
-
       if (error) throw error;
-      console.log('Admin Identity Fetch:', data?.length, 'identities found.');
       setUsers(data || []);
     } catch (err) {
       console.error('Error fetching users:', err);
-      // Fallback for demo
-      console.log('Using fail-safe fallback user set.');
-      setUsers([
-        {
-          id: '1',
-          email: 'admin@example.com',
-          role: 'admin',
-          username: 'Super Admin',
-        },
-        {
-          id: '2',
-          email: 'user@example.com',
-          role: 'user',
-          username: 'Standard User',
-        },
-      ]);
     } finally {
       setLoading(false);
     }
@@ -279,8 +386,100 @@ function AdminDashboard() {
   const filteredUsers = users.filter(
     (u) =>
       u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const paginatedMedia = mediaItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const paginatedBlogs = blogItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPages =
+    activeView === 'permissions'
+      ? Math.ceil(filteredUsers.length / itemsPerPage)
+      : activeView === 'media'
+        ? Math.ceil(mediaItems.length / itemsPerPage)
+        : activeView === 'blogs'
+          ? Math.ceil(blogItems.length / itemsPerPage)
+          : activeView === 'media-library'
+            ? Math.ceil(libraryItems.length / itemsPerPage)
+            : 0;
+
+  const PaginationControls = () => {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between px-10 py-6 border-t border-border bg-muted/10">
+        <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          Page {currentPage} of {totalPages}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="rounded-xl border-border h-9 px-4 font-black uppercase tracking-widest text-[9px] gap-2"
+          >
+            Previous
+          </Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+              if (
+                totalPages > 5 &&
+                p !== 1 &&
+                p !== totalPages &&
+                Math.abs(p - currentPage) > 1
+              ) {
+                if (p === 2 || p === totalPages - 1)
+                  return (
+                    <span key={p} className="px-1 text-muted-foreground">
+                      ...
+                    </span>
+                  );
+                return null;
+              }
+              return (
+                <Button
+                  key={p}
+                  variant={currentPage === p ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setCurrentPage(p)}
+                  className={cn(
+                    'w-9 h-9 rounded-xl font-black text-[10px]',
+                    currentPage === p
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  {p}
+                </Button>
+              );
+            })}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="rounded-xl border-border h-9 px-4 font-black uppercase tracking-widest text-[9px] gap-2"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -297,7 +496,9 @@ function AdminDashboard() {
                     ? 'Editorial Management'
                     : activeView === 'performance'
                       ? 'Optimization Engine'
-                      : 'User Registry'}
+                      : activeView === 'media-library'
+                        ? 'Media Assets'
+                        : 'User Registry'}
             </h1>
             <p className="text-muted-foreground mt-1 font-medium text-sm">
               {activeView === 'dashboard'
@@ -308,7 +509,9 @@ function AdminDashboard() {
                     ? 'Manage professional insights and editorial archives.'
                     : activeView === 'performance'
                       ? 'Resource lifecycle management and neural cache purging.'
-                      : 'Global user identity and permission synchronization.'}
+                      : activeView === 'media-library'
+                        ? 'Professional high-fidelity asset management.'
+                        : 'Global user identity and permission synchronization.'}
             </p>
           </div>
           {activeView === 'blogs' && (
@@ -327,14 +530,17 @@ function AdminDashboard() {
                   placeholder="Search registry..."
                   className="pl-11 h-12 w-64 rounded-xl bg-card/40 border-border focus-visible:ring-primary shadow-inner font-medium transition-all"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
                 />
               </div>
               <Button
                 variant="outline"
                 size="icon"
                 className="h-12 w-12 rounded-xl bg-card/40 border-border hover:bg-primary/5 hover:text-primary transition-all"
-                onClick={fetchUsers}
+                onClick={() => fetchUsers()}
               >
                 <RefreshCw
                   className={cn('w-4 h-4', loading ? 'animate-spin' : '')}
@@ -422,7 +628,7 @@ function AdminDashboard() {
                       </span>
                       <Badge
                         className={cn(
-                          'text-[9px] uppercase font-black',
+                          'text-[9px] uppercase font-black px-2',
                           sys.color
                         )}
                         variant="default"
@@ -462,174 +668,139 @@ function AdminDashboard() {
         ) : activeView === 'media' ? (
           <div className="space-y-8 animate-in-fade">
             <Card className="rounded-[40px] shadow-2xl border-border overflow-hidden bg-card/40 backdrop-blur-xl">
-              <CardHeader className="p-8 border-b border-border bg-muted/20">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-black flex items-center gap-3">
-                    <ImageIcon className="w-6 h-6 text-primary" /> Artifact
-                    Monitoring
-                  </CardTitle>
-                  <Badge
-                    variant="outline"
-                    className="bg-primary/5 text-primary border-primary/20 font-black uppercase tracking-widest text-[9px]"
-                  >
-                    Live Stream
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader className="bg-muted/30">
-                    <TableRow className="hover:bg-transparent border-b border-border h-14">
-                      <TableHead className="pl-10 font-black uppercase tracking-widest text-[10px]">
-                        Media Identification
-                      </TableHead>
-                      <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                        Attributed User
-                      </TableHead>
-                      <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                        Type
-                      </TableHead>
-                      <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                        Dimensions/Size
-                      </TableHead>
-                      <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                        Security Status
-                      </TableHead>
-                      <TableHead className="pr-10 text-right font-black uppercase tracking-widest text-[10px]">
-                        Uploaded
-                      </TableHead>
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="hover:bg-transparent border-b border-border h-14">
+                    <TableHead className="pl-10 font-black uppercase tracking-widest text-[10px]">
+                      Media Identification
+                    </TableHead>
+                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
+                      Attributed User
+                    </TableHead>
+                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
+                      Type
+                    </TableHead>
+                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
+                      Size
+                    </TableHead>
+                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
+                      Security Status
+                    </TableHead>
+                    <TableHead className="pr-10 text-right font-black uppercase tracking-widest text-[10px]">
+                      Uploaded
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedMedia.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="h-64 text-center font-black uppercase tracking-widest text-xs text-muted-foreground/50"
+                      >
+                        No artifacts detected in registry.
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mediaItems.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={5}
-                          className="h-64 text-center font-black uppercase tracking-widest text-xs text-muted-foreground/50 italic"
-                        >
-                          No artifacts currently being tracked by the neural
-                          hub.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      mediaItems.map((item) => (
-                        <TableRow
-                          key={item.id}
-                          className="h-20 hover:bg-primary/[0.02] border-b border-border/50 group transition-colors"
-                        >
-                          <TableCell className="pl-10">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
-                                {item.file_type.includes('image') ? (
-                                  item.preview_url ? (
-                                    <img
-                                      src={item.preview_url}
-                                      alt="Preview"
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <ImageIcon className="w-5 h-5 text-primary" />
-                                  )
-                                ) : item.file_type.includes('video') ? (
-                                  <Video className="w-5 h-5 text-blue-500" />
-                                ) : item.file_type.includes('word') ? (
-                                  <FileText className="w-5 h-5 text-blue-600" />
-                                ) : item.file_type.includes('excel') ? (
-                                  <Layers className="w-5 h-5 text-emerald-600" />
-                                ) : (
-                                  <FileText className="w-5 h-5 text-muted-foreground" />
-                                )}
-                              </div>
-                              <div className="flex flex-col min-w-0">
-                                <span className="font-black text-sm truncate max-w-[200px]">
-                                  {item.file_name}
-                                </span>
-                                <span className="text-[10px] font-mono text-muted-foreground opacity-60">
-                                  ID: {item.id.substring(0, 8)}
-                                </span>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {(() => {
-                              const u = users.find(
-                                (u) => u.id === item.user_id
-                              );
-                              return (
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-sm">
-                                    {u?.full_name ||
-                                      u?.username ||
-                                      'Guest Artifact'}
-                                  </span>
-                                  <span className="text-[10px] text-muted-foreground italic">
-                                    {u?.email || 'External Upload'}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="secondary"
-                              className="text-[9px] font-black uppercase tracking-widest bg-muted text-muted-foreground border-none"
-                            >
-                              {item.file_type
-                                .replace('application/', '')
-                                .replace(
-                                  'vnd.openxmlformats-officedocument.',
-                                  ''
-                                ) || 'Data Stream'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs font-mono font-bold text-muted-foreground">
-                              {formatSize(item.file_size)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {item.expires_at ? (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-black uppercase tracking-widest text-[9px] py-1 px-3 flex items-center gap-2"
-                                >
-                                  <Clock className="w-3 h-3" />
-                                  {getTimeRemaining(item.expires_at)}
-                                </Badge>
+                  ) : (
+                    paginatedMedia.map((item) => (
+                      <TableRow
+                        key={item.id}
+                        className="h-20 hover:bg-primary/[0.02] border-b border-border/50 group transition-colors"
+                      >
+                        <TableCell className="pl-10">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
+                              {item.file_type.includes('image') &&
+                              item.preview_url ? (
+                                <Image
+                                  src={item.preview_url}
+                                  alt="Preview"
+                                  width={48}
+                                  height={48}
+                                  className="w-full h-full object-cover"
+                                  unoptimized
+                                />
                               ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-black uppercase tracking-widest text-[9px] py-1 px-3 flex items-center gap-2"
-                                >
-                                  <ShieldCheck className="w-3 h-3" />
-                                  Permanent Archive
-                                </Badge>
+                                <FileText className="w-5 h-5 text-primary" />
                               )}
                             </div>
-                          </TableCell>
-                          <TableCell className="pr-10 text-right">
-                            <div className="flex flex-col items-end">
-                              <span className="text-sm font-black tabular-nums">
-                                {new Date(item.created_at).toLocaleTimeString(
-                                  [],
-                                  { hour: '2-digit', minute: '2-digit' }
-                                )}
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-black text-sm truncate max-w-[200px]">
+                                {item.file_name}
                               </span>
-                              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                                {new Date(item.created_at).toLocaleDateString()}
+                              <span className="text-[10px] font-mono text-muted-foreground opacity-60">
+                                ID: {item.id.substring(0, 8)}
                               </span>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const u = users.find((u) => u.id === item.user_id);
+                            return (
+                              <div className="flex flex-col">
+                                <span className="font-bold text-sm">
+                                  {u?.full_name || u?.username || 'Guest'}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {u?.email}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] font-black uppercase tracking-widest bg-muted text-muted-foreground border-none"
+                          >
+                            {formatFileType(item.file_type)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-mono font-bold text-muted-foreground">
+                            {formatSize(item.file_size)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {item.expires_at ? (
+                            <Badge
+                              variant="outline"
+                              className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-black uppercase text-[9px] px-3 gap-2"
+                            >
+                              <Clock className="w-3 h-3" />{' '}
+                              {getTimeRemaining(item.expires_at)}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-black uppercase text-[9px] px-3 gap-2"
+                            >
+                              <ShieldCheck className="w-3 h-3" /> Permanent
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="pr-10 text-right">
+                          <div className="flex flex-col items-end">
+                            <span className="text-sm font-black">
+                              {new Date(item.created_at).toLocaleTimeString(
+                                [],
+                                { hour: '2-digit', minute: '2-digit' }
+                              )}
+                            </span>
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                              {new Date(item.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              <PaginationControls />
             </Card>
 
-            {/* History Log Section */}
             <Card className="rounded-[40px] shadow-2xl border-border bg-card/20 backdrop-blur-xl p-8">
               <div className="flex items-center gap-3 mb-6">
                 <Search className="w-5 h-5 text-muted-foreground" />
@@ -660,7 +831,7 @@ function AdminDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-black tabular-nums">
+                      <p className="text-[10px] font-black">
                         {new Date(log.created_at).toLocaleString()}
                       </p>
                       <Badge className="text-[8px] bg-primary/10 text-primary border-none shadow-none mt-1">
@@ -693,17 +864,17 @@ function AdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {blogItems.length === 0 ? (
+                  {paginatedBlogs.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={4}
-                        className="h-64 text-center font-black uppercase tracking-widest text-xs text-muted-foreground/50 italic"
+                        className="h-64 text-center font-black uppercase tracking-widest text-xs text-muted-foreground/50"
                       >
-                        No editorial sequences detected in registry.
+                        No editorial sequences detected.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    blogItems.map((blog) => (
+                    paginatedBlogs.map((blog) => (
                       <TableRow
                         key={blog.id}
                         className="h-24 hover:bg-primary/[0.02] border-b border-border transition-colors group"
@@ -756,12 +927,12 @@ function AdminDashboard() {
                   )}
                 </TableBody>
               </Table>
+              <PaginationControls />
             </Card>
           </div>
         ) : activeView === 'performance' ? (
           <div className="space-y-8 animate-in-fade">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Cache Control Card */}
               <Card className="rounded-[40px] border-border bg-card/40 backdrop-blur-xl p-8 space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-black flex items-center gap-3">
@@ -777,46 +948,37 @@ function AdminDashboard() {
                 </div>
                 <p className="text-sm text-muted-foreground font-medium leading-relaxed">
                   Force synchronization across all edge nodes. This will
-                  invalidate all cached paths and assets, ensuring the next
-                  visitor receives 100% fresh content.
+                  invalidate all cached paths and assets.
                 </p>
                 <div className="pt-4 space-y-3">
                   <Button
                     className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20"
                     onClick={async () => {
-                      const id = toast.loading('Initializing global purge...');
+                      const id = toast.loading('Purging cache...');
                       try {
                         const res = await fetch('/api/admin/clear-cache', {
                           method: 'POST',
                         });
                         const data = await res.json();
-                        if (data.success) {
-                          toast.success('Sector Purged', {
+                        if (data.success)
+                          toast.success('Purged', {
                             id,
                             description: data.message,
                           });
-                        } else {
-                          throw new Error(data.message);
-                        }
+                        else throw new Error(data.message);
                       } catch (err) {
-                        toast.error('Purge Failed', {
-                          id,
-                          description: err.message,
-                        });
+                        toast.error('Failed', { id, description: err.message });
                       }
                     }}
                   >
-                    Flush Global Edge Cache
+                    Flush Global Cache
                   </Button>
                   <Button
                     variant="outline"
                     className="w-full h-14 rounded-2xl border-border hover:bg-primary/5 font-black uppercase tracking-widest text-xs"
                     onClick={() => {
                       localStorage.clear();
-                      toast.success('Memory Wiped', {
-                        description:
-                          'Local client storage has been reformatted.',
-                      });
+                      toast.success('Wiped');
                     }}
                   >
                     Clear Local Memory
@@ -824,25 +986,17 @@ function AdminDashboard() {
                 </div>
               </Card>
 
-              {/* Vercel Resource Shield */}
               <Card className="rounded-[40px] border-black/5 dark:border-white/10 bg-slate-900 dark:bg-black text-white p-8 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
                   <Zap className="w-48 h-48" />
                 </div>
                 <div className="relative z-10 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-black flex items-center gap-3">
-                      <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                      Vercel Resource Shield
-                    </h3>
-                    <Badge className="bg-emerald-500 text-white border-none font-black text-[9px]">
-                      ACTIVE
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-slate-400 font-medium leading-relaxed">
-                    Image Optimization credits are being managed via the{' '}
-                    <strong>OptimizedGif Engine</strong>. Direct processing is
-                    disabled to prevent credit exhaustion.
+                  <h3 className="text-xl font-black flex items-center gap-3">
+                    <ShieldCheck className="w-5 h-5 text-emerald-500" />{' '}
+                    Resource Shield
+                  </h3>
+                  <p className="text-sm text-slate-400 font-medium">
+                    Optimization credits managed via OptimizedGif Engine.
                   </p>
                   <div className="space-y-4 pt-2">
                     {[
@@ -881,14 +1035,10 @@ function AdminDashboard() {
                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                           <div
                             className={cn(
-                              'h-full rounded-full transition-all duration-1000',
+                              'h-full rounded-full',
                               stat.warning ? 'bg-rose-500' : 'bg-emerald-500'
                             )}
-                            style={{
-                              width: stat.warning
-                                ? '100%'
-                                : `${(parseInt(stat.used) / parseInt(stat.limit)) * 100}%`,
-                            }}
+                            style={{ width: stat.warning ? '100%' : '20%' }}
                           />
                         </div>
                       </div>
@@ -904,43 +1054,148 @@ function AdminDashboard() {
                   <ImageIcon className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black tracking-tight">
-                    Optimization Best Practices
-                  </h3>
+                  <h3 className="text-2xl font-black">Best Practices</h3>
                   <p className="text-muted-foreground text-sm font-medium">
-                    Instructional guide for maintaining system integrity.
+                    System integrity guide.
                   </p>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
                 {[
-                  {
-                    title: 'Use OptimizedGif',
-                    desc: 'Never use standard <Image> for GIFs. Use the custom OptimizedGif component to bypass credit spending.',
-                  },
-                  {
-                    title: 'Pre-Compress Media',
-                    desc: 'Always run assets through the conversion suite before final deployment into the registry.',
-                  },
-                  {
-                    title: 'Periodic Purge',
-                    desc: 'Flush the global cache after significant content updates or CSS modifications.',
-                  },
-                ].map((tip, i) => (
+                  'Use OptimizedGif',
+                  'Pre-Compress Media',
+                  'Periodic Purge',
+                ].map((t, i) => (
                   <div
                     key={i}
-                    className="p-6 rounded-3xl bg-muted/20 border border-border/50 group hover:border-primary/30 transition-all"
+                    className="p-6 rounded-3xl bg-muted/20 border border-border/50"
                   >
-                    <h4 className="font-black text-sm uppercase tracking-widest mb-2 group-hover:text-primary transition-colors">
-                      {tip.title}
+                    <h4 className="font-black text-sm uppercase tracking-widest mb-2">
+                      {t}
                     </h4>
-                    <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                      {tip.desc}
+                    <p className="text-xs text-muted-foreground">
+                      Standard optimization protocol for production stability.
                     </p>
                   </div>
                 ))}
               </div>
             </Card>
+          </div>
+        ) : activeView === 'media-library' ? (
+          <div className="space-y-8 animate-in-fade">
+            <Card className="rounded-[40px] border-border bg-card/40 backdrop-blur-xl p-8 shadow-2xl overflow-hidden relative group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
+              <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-6">
+                  <div className="w-16 h-16 rounded-[24px] bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                    <Library className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black tracking-tight">
+                      Direct Asset Integration
+                    </h3>
+                    <p className="text-sm text-muted-foreground font-medium max-w-md mt-1">
+                      Upload and optimize professional high-fidelity assets.
+                      Images are automatically compressed using our optimized
+                      neural pipeline.
+                    </p>
+                  </div>
+                </div>
+                <label className="relative cursor-pointer group/upload">
+                  <div className="h-16 px-10 rounded-[20px] bg-primary text-primary-foreground font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-4 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                    {isUploading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Upload className="w-5 h-5 group-hover/upload:-translate-y-0.5 transition-transform" />
+                    )}
+                    {isUploading ? 'Neural Processing...' : 'Upload New Asset'}
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleDirectUpload}
+                    disabled={isUploading}
+                    accept="image/*,video/*,application/*"
+                  />
+                </label>
+              </div>
+            </Card>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+              {libraryItems
+                .slice(
+                  (currentPage - 1) * itemsPerPage,
+                  currentPage * itemsPerPage
+                )
+                .map((item) => (
+                  <Card
+                    key={item.id}
+                    className="rounded-[36px] overflow-hidden border-border bg-card/40 backdrop-blur-xl group hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500"
+                  >
+                    <div className="aspect-[4/3] relative bg-muted/30 flex items-center justify-center overflow-hidden">
+                      {item.file_type.includes('image') && item.preview_url ? (
+                        <Image
+                          src={item.preview_url}
+                          alt={item.file_name}
+                          width={400}
+                          height={300}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-3 opacity-40 group-hover:opacity-100 transition-opacity">
+                          <FileText className="w-16 h-16 text-primary" />
+                          <span className="text-[10px] font-black uppercase tracking-widest">
+                            {formatFileType(item.file_type)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3 scale-95 group-hover:scale-100">
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="rounded-2xl h-12 w-12 bg-white/10 hover:bg-white/20 border-white/10 text-white backdrop-blur-md"
+                          onClick={() =>
+                            window.open(item.download_url, '_blank')
+                          }
+                        >
+                          <Search className="w-5 h-5" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="rounded-2xl h-12 w-12 bg-rose-500/80 hover:bg-rose-600 border-none text-white backdrop-blur-md"
+                          onClick={() => deleteAsset(item.id)}
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="p-6 space-y-4">
+                      <div className="space-y-1">
+                        <p className="text-sm font-black truncate group-hover:text-primary transition-colors">
+                          {item.file_name}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
+                          Artifact ID: {item.id.substring(0, 8)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                        <span className="text-[11px] font-bold text-muted-foreground">
+                          {formatSize(item.file_size)}
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="text-[9px] bg-primary/5 text-primary border-none px-2 h-5 font-black uppercase"
+                        >
+                          {item.file_type.split('/').pop()}
+                        </Badge>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+            </div>
+            {libraryItems.length > itemsPerPage && <PaginationControls />}
           </div>
         ) : (
           <Card className="rounded-[40px] shadow-2xl border-border overflow-hidden bg-card/40 backdrop-blur-xl animate-in-fade">
@@ -964,32 +1219,24 @@ function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.length === 0 && !loading ? (
+                    {paginatedUsers.length === 0 && !loading ? (
                       <TableRow>
                         <TableCell
                           colSpan={4}
                           className="h-64 text-center font-black tracking-widest text-xs uppercase text-muted-foreground"
                         >
-                          No identity matches found in current sector.
+                          No matches found.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredUsers.map((u) => (
+                      paginatedUsers.map((u) => (
                         <TableRow
                           key={u.id}
-                          className="h-24 hover:bg-primary/[0.02] transition-colors border-b border-border group"
+                          className="h-24 hover:bg-primary/[0.02] border-b border-border group"
                         >
                           <TableCell className="pl-10">
                             <div className="flex items-center gap-4">
-                              <div className="relative">
-                                <div className="absolute -inset-1 bg-primary/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="w-14 h-14 rounded-2xl bg-muted border border-border flex items-center justify-center font-black text-xl text-primary shadow-sm relative overflow-hidden">
-                                  {(u.full_name || u.username || 'U')
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
-                                </div>
-                              </div>
+                              <AvatarItem user={u} />
                               <div className="flex flex-col min-w-0">
                                 <span className="font-black text-lg tracking-tight truncate">
                                   {u.full_name ||
@@ -997,7 +1244,7 @@ function AdminDashboard() {
                                     u.email.split('@')[0]}
                                 </span>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider truncate">
+                                  <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">
                                     {u.first_name} {u.last_name}
                                   </span>
                                   <span className="w-1 h-1 rounded-full bg-border" />
@@ -1014,7 +1261,7 @@ function AdminDashboard() {
                             </code>
                           </TableCell>
                           <TableCell className="text-center">
-                            <div className="flex flex-col items-center gap-2 translate-y-1">
+                            <div className="flex flex-col items-center gap-2">
                               <Switch
                                 checked={
                                   u.has_generator_access || u.role === 'admin'
@@ -1023,52 +1270,42 @@ function AdminDashboard() {
                                 onCheckedChange={(checked) =>
                                   toggleGeneratorAccess(u.id, checked)
                                 }
-                                className="data-[state=checked]:bg-primary border border-border"
                               />
-                              <div className="flex flex-col gap-0.5">
-                                <span
-                                  className={cn(
-                                    'text-[8px] font-black uppercase tracking-widest',
-                                    u.has_generator_access || u.role === 'admin'
-                                      ? 'text-primary'
-                                      : 'text-muted-foreground'
-                                  )}
-                                >
-                                  {u.role === 'admin'
-                                    ? 'Fixed Admin'
-                                    : u.has_generator_access
-                                      ? 'PRO Active'
-                                      : 'Restricted'}
-                                </span>
-                              </div>
+                              <span
+                                className={cn(
+                                  'text-[8px] font-black uppercase tracking-widest',
+                                  u.has_generator_access || u.role === 'admin'
+                                    ? 'text-primary'
+                                    : 'text-muted-foreground'
+                                )}
+                              >
+                                {u.role === 'admin'
+                                  ? 'Fixed Admin'
+                                  : u.has_generator_access
+                                    ? 'PRO Active'
+                                    : 'Restricted'}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-right pr-10">
                             <div className="flex justify-end items-center gap-4">
-                              <div className="flex flex-col items-end">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">
-                                  System Role
-                                </span>
-                                <Badge
-                                  className={cn(
-                                    'uppercase text-[9px] font-black px-2 mt-0.5 border-transparent',
-                                    u.role === 'admin'
-                                      ? 'bg-emerald-500/10 text-emerald-500'
-                                      : 'bg-slate-500/10 text-slate-500 shadow-none border-none'
-                                  )}
-                                  variant="secondary"
-                                >
-                                  {u.role === 'admin'
-                                    ? 'Architect'
-                                    : 'Standard'}
-                                </Badge>
-                              </div>
+                              <Badge
+                                className={cn(
+                                  'uppercase text-[9px] font-black px-2 mt-0.5',
+                                  u.role === 'admin'
+                                    ? 'bg-emerald-500/10 text-emerald-500'
+                                    : 'bg-slate-500/10 text-slate-500'
+                                )}
+                                variant="secondary"
+                              >
+                                {u.role === 'admin' ? 'Architect' : 'Standard'}
+                              </Badge>
                               <Switch
                                 checked={u.role === 'admin'}
                                 onCheckedChange={(checked) =>
                                   toggleAdmin(u.id, checked)
                                 }
-                                className="data-[state=checked]:bg-emerald-500 border border-border"
+                                className="data-[state=checked]:bg-emerald-500"
                               />
                             </div>
                           </TableCell>
@@ -1078,11 +1315,11 @@ function AdminDashboard() {
                   </TableBody>
                 </Table>
               </div>
+              <PaginationControls />
             </CardContent>
           </Card>
         )}
 
-        {/* Manual Guide at the bottom, only on dashboard maybe or both */}
         <div className="p-10 rounded-[40px] bg-card/80 dark:bg-black/50 text-foreground transition-all border border-border space-y-6 shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
             <Shield className="w-64 h-64" />
@@ -1091,29 +1328,12 @@ function AdminDashboard() {
             <h3 className="text-2xl font-black flex items-center gap-3">
               <code className="bg-primary/10 px-3 py-1 rounded-xl text-primary">
                 SQL
-              </code>
-              Manual Role Override Guide
+              </code>{' '}
+              Override Guide
             </h3>
-            <p className="text-slate-400 mt-2 font-medium max-w-2xl">
-              If you encounter synchronization issues or need to recover an
-              architect account, use the following manual override sequence in
-              your Supabase SQL Editor.
-            </p>
-            <pre className="bg-black/50 p-6 rounded-2xl mt-6 border border-white/10 font-mono text-sm group-hover:border-primary/50 transition-colors overflow-x-auto">
-              {`-- Manual Admin Escalation Sequence
-UPDATE public.profiles
-SET role = 'admin',
-    has_generator_access = true,
-    updated_at = NOW()
-WHERE id = (SELECT id FROM auth.users WHERE email = 'architect@example.com');`}
+            <pre className="bg-black/50 p-6 rounded-2xl mt-6 border border-white/10 font-mono text-sm overflow-x-auto">
+              {`UPDATE public.profiles SET role = 'admin', has_generator_access = true WHERE email = 'architect@example.com';`}
             </pre>
-            <div className="mt-6 flex items-center gap-4 text-xs font-black uppercase tracking-widest text-slate-500">
-              <span className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" /> Secure
-                Protocol 7.1
-              </span>
-              <span>Neural Hash Validated</span>
-            </div>
           </div>
         </div>
       </div>
@@ -1121,11 +1341,20 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'architect@example.com');`}
   );
 }
 
+function AvatarItem({ user }) {
+  return (
+    <div className="w-14 h-14 rounded-2xl bg-muted border border-border flex items-center justify-center font-black text-xl text-primary shadow-sm relative overflow-hidden">
+      {(user.full_name || user.username || 'U').charAt(0).toUpperCase()}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+    </div>
+  );
+}
+
 export default function AdminPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[50vh] flex items-center justify-center bg-background">
+        <div className="min-h-[50vh] flex items-center justify-center">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       }

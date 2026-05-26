@@ -26,8 +26,10 @@ export function OptimizedGif({
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    setLoading(true);
-    setError(false);
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(false);
+    });
   }, [src, retryCount]);
 
   const handleRetry = () => {

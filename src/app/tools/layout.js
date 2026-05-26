@@ -23,9 +23,9 @@ export default function ToolsLayout({ children }) {
     const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        queueMicrotask(() => setUser(JSON.parse(storedUser)));
       } catch (e) {
-        setUser(null);
+        queueMicrotask(() => setUser(null));
       }
     }
   }, []);

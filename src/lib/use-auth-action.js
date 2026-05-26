@@ -12,7 +12,7 @@ export function useAuthAction() {
     const stored = sessionStorage.getItem('user');
     if (stored) {
       try {
-        setUser(JSON.parse(stored));
+        queueMicrotask(() => setUser(JSON.parse(stored)));
       } catch (e) {}
     }
   }, []);

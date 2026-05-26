@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -936,13 +937,13 @@ export function BlogGenerator() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in duration-200">
             {/* Logo */}
             <div className="flex justify-center mb-4">
-              <img
+              <Image
                 src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
                 alt="HAZWOPER useful tools"
+                width={64}
+                height={64}
                 className="h-16 w-auto"
-                loading="lazy"
-                width="64"
-                height="64"
+                unoptimized
               />
             </div>
 

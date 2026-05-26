@@ -17,6 +17,7 @@ import {
   Clipboard,
   Zap,
   Send,
+  AlertCircle,
 } from 'lucide-react';
 import { ProgressButton } from '@/components/progress-button';
 import * as mammoth from 'mammoth';

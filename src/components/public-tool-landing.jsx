@@ -143,7 +143,7 @@ export function PublicToolLanding({ toolSlug, onAction }) {
         </h3>
         <div className="prose prose-slate max-w-none dark:prose-invert">
           <p className="text-lg text-muted-foreground leading-relaxed">
-            In today's digital landscape, content consistency and technical
+            In today&apos;s digital landscape, content consistency and technical
             optimization are paramount. A professional{' '}
             <strong>{info.name}</strong> ensures that your materials are not
             just readable, but structured for maximum organic reach and
@@ -165,9 +165,9 @@ export function PublicToolLanding({ toolSlug, onAction }) {
               <p className="text-muted-foreground">
                 Our output is specifically designed to be compatible with major
                 Content Management Systems (CMS) and static site generators. The
-                clean HTML structure avoids the common "bloat" associated with
-                standard document exports, leading to faster page loads and
-                better mobile experiences.
+                clean HTML structure avoids the common &quot;bloat&quot;
+                associated with standard document exports, leading to faster
+                page loads and better mobile experiences.
               </p>
             </div>
           </div>

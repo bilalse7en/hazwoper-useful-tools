@@ -13,19 +13,8 @@ import { AppSidebar } from './app-sidebar';
 import { ThemeDialog } from './theme-dialog';
 
 export function GlobalHeader({ activeTab, onTabChange }) {
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('user');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch (e) {
-          return null;
-        }
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState(null);
+  const [mounted, setMounted] = useState(false);
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -33,6 +22,17 @@ export function GlobalHeader({ activeTab, onTabChange }) {
   const isToolsPage = pathname.startsWith('/tools');
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+
+    // Initial load from session storage
+    const stored = sessionStorage.getItem('user');
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch (e) {}
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -172,7 +172,12 @@ export function GlobalHeader({ activeTab, onTabChange }) {
               <Palette className="h-4 w-4" />
             </Button>
 
-            {user ? (
+            {!mounted ? (
+              <div className="flex items-center gap-2 opacity-0 animate-in fade-in duration-500">
+                <div className="h-9 w-20 bg-primary/5 rounded-xl animate-pulse" />
+                <div className="h-9 w-20 bg-primary/5 rounded-xl animate-pulse" />
+              </div>
+            ) : user ? (
               <div className="flex items-center gap-4 border-l border-white/10 pl-4 ml-2">
                 <UserNav user={user} onLogout={handleLogout} />
               </div>

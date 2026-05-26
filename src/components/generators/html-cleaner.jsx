@@ -101,18 +101,6 @@ export function HTMLCleaner() {
     }
   }, [html]);
 
-  const saveState = async (currentHtml) => {
-    if (!currentHtml) return;
-    await saveGeneratorState(
-      'html_cleaner',
-      {
-        html: currentHtml,
-        options,
-      },
-      `Cleaned HTML - ${new Date().toLocaleTimeString()}`
-    );
-  };
-
   const handleClean = useCallback(() => {
     if (!html.trim()) {
       toast.error('Please enter some HTML first');
@@ -132,7 +120,18 @@ export function HTMLCleaner() {
       setHtml(cleaned);
       setReductionRate(reduction);
       toast.success(`HTML cleaned! Reduced by ${reduction}%`);
-      saveState(cleaned);
+
+      // Auto-save the cleaned state
+      (async () => {
+        await saveGeneratorState(
+          'html_cleaner',
+          {
+            html: cleaned,
+            options,
+          },
+          `Cleaned HTML - ${new Date().toLocaleTimeString()}`
+        );
+      })();
     } catch (error) {
       toast.error('Error cleaning HTML: ' + error.message);
     } finally {

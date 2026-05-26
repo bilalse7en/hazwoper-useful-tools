@@ -24,6 +24,9 @@ import {
   LayoutDashboard,
 } from 'lucide-react';
 import { InitialLoadingShell } from '@/components/initial-loading-shell';
+import { AvatarCropper } from '@/components/avatar-cropper';
+import { recordMediaUpload } from '@/lib/media-hub';
+import { toast } from 'sonner';
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -35,9 +38,59 @@ export default function ProfilePage() {
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [suggestions, setSuggestions] = useState([]);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [pendingImage, setPendingImage] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/');
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (data || session.user) {
+          const activeUser = { ...session.user, ...data };
+          setUser(activeUser);
+          setFirstName(
+            data?.first_name || session.user.user_metadata?.first_name || ''
+          );
+          setLastName(
+            data?.last_name || session.user.user_metadata?.last_name || ''
+          );
+          setUsername(
+            data?.username || session.user.user_metadata?.username || ''
+          );
+          const name =
+            data?.full_name ||
+            session.user.user_metadata?.full_name ||
+            data?.username ||
+            session.user.email.split('@')[0];
+          setFullName(name);
+          setAvatarUrl(
+            data?.avatar_url ||
+              session.user.user_metadata?.avatar_url ||
+              session.user.user_metadata?.picture ||
+              ''
+          );
+        }
+      } catch (e) {
+        console.error('Profile fetch error:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     // Safety fallback: Ensure load screen disappears after 3s
     const timer = setTimeout(() => {
       setLoading(false);
@@ -45,86 +98,73 @@ export default function ProfilePage() {
 
     fetchProfile();
     return () => clearTimeout(timer);
-  }, []);
+  }, [router]);
 
-  async function fetchProfile() {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (data || session.user) {
-        const activeUser = { ...session.user, ...data };
-        setUser(activeUser);
-        setFirstName(
-          data?.first_name || session.user.user_metadata?.first_name || ''
-        );
-        setLastName(
-          data?.last_name || session.user.user_metadata?.last_name || ''
-        );
-        setUsername(
-          data?.username || session.user.user_metadata?.username || ''
-        );
-        const name =
-          data?.full_name ||
-          session.user.user_metadata?.full_name ||
-          data?.username ||
-          session.user.email.split('@')[0];
-        setFullName(name);
-        setAvatarUrl(
-          data?.avatar_url ||
-            session.user.user_metadata?.avatar_url ||
-            session.user.user_metadata?.picture ||
-            ''
-        );
-      }
-    } catch (e) {
-      console.error('Profile fetch error:', e);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const handleAvatarChange = async (e) => {
+  const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPendingImage(reader.result);
+      setCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onCropComplete = async (croppedBlob) => {
     setUpdating(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const fileName = `${user.id}-${Date.now()}.jpg`;
       const filePath = `avatars/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('profiles')
-        .upload(filePath, file);
+      // 1. Upload to Supabase Storage
+      // We try 'profiles' bucket first, fallback to 'media' if it fails
+      let bucket = 'profiles';
+      let { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, croppedBlob, { contentType: 'image/jpeg' });
+
+      if (uploadError) {
+        console.warn('Profiles bucket failed, trying media bucket...');
+        bucket = 'media';
+        const fallbackRes = await supabase.storage
+          .from(bucket)
+          .upload(filePath, croppedBlob, { contentType: 'image/jpeg' });
+        uploadError = fallbackRes.error;
+      }
 
       if (uploadError) throw uploadError;
 
+      // 2. Get Public URL
       const {
         data: { publicUrl },
-      } = supabase.storage.from('profiles').getPublicUrl(filePath);
+      } = supabase.storage.from(bucket).getPublicUrl(filePath);
 
       setAvatarUrl(publicUrl);
 
-      // Auto-save the new avatar URL
+      // 3. Update Profile Table via API
       await saveProfile(firstName, lastName, fullName, username, publicUrl);
-      alert('Avatar updated successfully!');
+
+      // 4. Record in Media Hub (User's requirement)
+      recordMediaUpload({
+        fileName: `Avatar: ${user.username || user.email}`,
+        fileType: 'image/jpeg',
+        fileSize: croppedBlob.size,
+        previewUrl: publicUrl,
+        downloadUrl: publicUrl,
+        expiresAt: null, // Avatars should be permanent
+      });
+
+      toast.success('Identity visual updated.', {
+        description: 'Avatar synchronized across all neural endpoints.',
+      });
     } catch (err) {
       console.error('Error uploading avatar:', err);
-      alert(
-        "Error uploading avatar. Make sure you have a 'profiles' bucket in Supabase storage."
-      );
+      toast.error('Identity update failed.', {
+        description:
+          "Ensure 'profiles' or 'media' bucket exists in Supabase storage.",
+      });
     } finally {
       setUpdating(false);
     }
@@ -204,7 +244,9 @@ export default function ProfilePage() {
         result.user?.user_metadata?.full_name ||
           `${firstName} ${lastName}`.trim()
       );
-      alert('Profile updated successfully!');
+      toast.success('Sequence synchronized.', {
+        description: 'Profile registry updated.',
+      });
     } catch (err) {
       if (err.suggestions) {
         setSuggestions(err.suggestions);
@@ -422,6 +464,12 @@ export default function ProfilePage() {
           </Card>
         </div>
       </div>
+      <AvatarCropper
+        image={pendingImage}
+        open={cropperOpen}
+        onOpenChange={setCropperOpen}
+        onCropComplete={onCropComplete}
+      />
     </>
   );
 }

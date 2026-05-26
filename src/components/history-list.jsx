@@ -44,9 +44,9 @@ export function HistoryList({ toolType, onRestore, className }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [toolType]);
+  }, [toolType, loadHistory]);
 
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getToolHistory(toolType);
@@ -56,7 +56,7 @@ export function HistoryList({ toolType, onRestore, className }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toolType]);
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();

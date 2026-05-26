@@ -90,8 +90,8 @@ export default function CookiePolicy() {
                 not traditional cookies
               </p>
               <p>
-                <strong>Can be disabled:</strong> Yes - but you'll need to reset
-                preferences each visit
+                <strong>Can be disabled:</strong> Yes - but you&apos;ll need to
+                reset preferences each visit
               </p>
             </div>
 
@@ -143,8 +143,8 @@ export default function CookiePolicy() {
                 <strong>Duration:</strong> Up to 2 years
               </p>
               <p>
-                <strong>Can be disabled:</strong> Yes - see "Managing Your
-                Cookie Preferences" below
+                <strong>Can be disabled:</strong> Yes - see &quot;Managing Your
+                Cookie Preferences&quot; below
               </p>
             </div>
           </section>
@@ -200,7 +200,7 @@ export default function CookiePolicy() {
               Through Our Consent Banner
             </h3>
             <p>
-              When you first visit our website, you'll see a cookie consent
+              When you first visit our website, you&apos;ll see a cookie consent
               banner with options to:
             </p>
             <ul className="list-disc pl-6 space-y-2">
@@ -326,14 +326,16 @@ export default function CookiePolicy() {
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 Some features may not work properly (e.g., theme preferences
-                won't be saved)
+                won&apos;t be saved)
               </li>
               <li>You may need to re-enter information more frequently</li>
               <li>
-                You'll still see advertisements, but they won't be personalized
-                to your interests
+                You&apos;ll still see advertisements, but they won&apos;t be
+                personalized to your interests
               </li>
-              <li>We won't be able to remember your consent preferences</li>
+              <li>
+                We won&apos;t be able to remember your consent preferences
+              </li>
             </ul>
           </section>
 
@@ -342,11 +344,11 @@ export default function CookiePolicy() {
               Do Not Track Signals
             </h2>
             <p>
-              Some browsers include "Do Not Track" (DNT) features. Currently,
-              there is no industry standard for responding to DNT signals. Our
-              website does not specifically respond to DNT browser signals, but
-              you can control tracking through the cookie consent options
-              described above.
+              Some browsers include &quot;Do Not Track&quot; (DNT) features.
+              Currently, there is no industry standard for responding to DNT
+              signals. Our website does not specifically respond to DNT browser
+              signals, but you can control tracking through the cookie consent
+              options described above.
             </p>
           </section>
 

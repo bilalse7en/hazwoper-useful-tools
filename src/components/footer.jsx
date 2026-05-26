@@ -25,7 +25,7 @@ export function Footer({ overrideShow = false }) {
     const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        queueMicrotask(() => setUser(JSON.parse(storedUser)));
       } catch (e) {}
     }
 
@@ -91,9 +91,9 @@ export function Footer({ overrideShow = false }) {
           <div className="space-y-8">
             <BrandLogo size="sm" />
             <p className="text-sm text-muted-foreground leading-relaxed font-medium">
-              The world's most advanced content automation suite for HAZWOPER
-              professionals. Built with neural processing for high-speed, secure
-              documentation.
+              The world&apos;s most advanced content automation suite for
+              HAZWOPER professionals. Built with neural processing for
+              high-speed, secure documentation.
             </p>
             <div className="flex items-center gap-6">
               <Link

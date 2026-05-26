@@ -28,35 +28,35 @@ export default function BlogPostPage({ params }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPost();
-  }, [slug]);
+    async function fetchPost() {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('blogs')
+          .select('*')
+          .eq('slug', slug)
+          .single();
 
-  async function fetchPost() {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('blogs')
-        .select('*')
-        .eq('slug', slug)
-        .single();
+        if (error && error.code !== 'PGRST116') throw error;
 
-      if (error && error.code !== 'PGRST116') throw error;
-
-      if (data) {
-        setPost(data);
-      } else {
-        // Fallback to static
+        if (data) {
+          setPost(data);
+        } else {
+          // Fallback to static
+          const staticPost = staticBlogs.find((p) => p.slug === slug);
+          setPost(staticPost || null);
+        }
+      } catch (err) {
+        console.error('Error fetching post:', err);
         const staticPost = staticBlogs.find((p) => p.slug === slug);
         setPost(staticPost || null);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Error fetching post:', err);
-      const staticPost = staticBlogs.find((p) => p.slug === slug);
-      setPost(staticPost || null);
-    } finally {
-      setLoading(false);
     }
-  }
+
+    fetchPost();
+  }, [slug]);
 
   if (loading) {
     return (
@@ -75,7 +75,7 @@ export default function BlogPostPage({ params }) {
             Post Not Located
           </h1>
           <p className="text-muted-foreground max-w-md mx-auto">
-            The editorial sequence you've requested is not present in our
+            The editorial sequence you&apos;ve requested is not present in our
             registry. It may have been archived or relocated.
           </p>
         </div>

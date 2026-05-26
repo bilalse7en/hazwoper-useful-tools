@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { OptimizedGif } from '@/components/ui/optimized-gif';
 import { BRAND_CONFIG } from '@/lib/constants';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,8 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+const LOGO_URL = BRAND_CONFIG.logo;
 
 const MODELS = [
   {
@@ -655,13 +657,13 @@ export function AIAssistant() {
         <div className="p-4">
           <div className="flex items-center gap-3 mb-6 p-2 rounded-2xl bg-primary/5 border border-primary/10">
             <div className="h-10 w-10 rounded-xl overflow-hidden shadow-lg shadow-primary/20 ring-1 ring-primary/20 bg-black flex items-center justify-center">
-              <OptimizedGif
+              <Image
                 src={BRAND_CONFIG.logo}
                 alt="Logo"
                 width={40}
                 height={40}
-                noLoading={true}
                 className="w-full h-full object-cover"
+                unoptimized
               />
             </div>
             <div>
@@ -811,10 +813,13 @@ export function AIAssistant() {
             </div>
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl overflow-hidden border border-primary/20 shadow-lg">
-                <img
+                <Image
                   src={LOGO_URL}
                   alt="Logo"
+                  width={36}
+                  height={36}
                   className="w-full h-full object-cover"
+                  unoptimized
                 />
               </div>
               <div>
@@ -865,10 +870,13 @@ export function AIAssistant() {
               <div className="relative group">
                 <div className="absolute inset-0 bg-primary/20 blur-3xl group-hover:bg-primary/30 transition-all duration-500 rounded-full" />
                 <div className="relative h-24 w-24 rounded-[2.5rem] overflow-hidden border-2 border-primary/20 shadow-2xl transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
-                  <img
+                  <Image
                     src={LOGO_URL}
                     alt="Branding"
+                    width={96}
+                    height={96}
                     className="w-full h-full object-cover"
+                    unoptimized
                   />
                 </div>
               </div>
@@ -922,10 +930,13 @@ export function AIAssistant() {
                   {m.role === 'user' ? (
                     'U'
                   ) : (
-                    <img
+                    <Image
                       src={LOGO_URL}
                       alt="Assistant"
+                      width={36}
+                      height={36}
                       className="w-full h-full object-cover"
+                      unoptimized
                     />
                   )}
                 </div>

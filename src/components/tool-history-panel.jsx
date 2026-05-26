@@ -26,15 +26,14 @@ export function ToolHistoryPanel({ toolType, refreshTrigger = 0 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Fetch history
-  const fetchHistory = async () => {
-    setLoading(true);
-    const data = await getToolHistory(toolType);
-    setHistory(data);
-    setLoading(false);
-  };
-
   useEffect(() => {
+    const fetchHistory = async () => {
+      setLoading(true);
+      const data = await getToolHistory(toolType);
+      setHistory(data || []);
+      setLoading(false);
+    };
+
     fetchHistory();
   }, [toolType, refreshTrigger]);
 

@@ -254,8 +254,8 @@ export function ResourceGenerator() {
                     className="form-control text-xs"
                   />
                   <p className="text-[9px] text-muted-foreground italic pl-1">
-                    If provided, this will be used for the "Glossary" button
-                    link. Defaults to #.
+                    If provided, this will be used for the &quot;Glossary&quot;
+                    button link. Defaults to #.
                   </p>
                 </div>
 

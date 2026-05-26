@@ -6,35 +6,29 @@ import { X, Settings } from 'lucide-react';
 export function GdprConsent() {
   const [showBanner, setShowBanner] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
-  const [preferences, setPreferences] = useState({
-    necessary: true, // Always true, cannot be disabled
-    functional: true,
-    analytics: true,
-    advertising: true,
-  });
-
-  useEffect(() => {
-    // Check if user has already made a consent choice
-    const consentGiven = localStorage.getItem('gdpr-consent');
-    if (!consentGiven) {
-      // Small delay to avoid layout shift on initial page load
-      setTimeout(() => setShowBanner(true), 1000);
-    } else {
-      // Load saved preferences
-      try {
-        const saved = JSON.parse(consentGiven);
-        setPreferences(saved);
-        applyConsent(saved);
-      } catch (e) {
-        console.error('Error loading consent preferences:', e);
+  const [preferences, setPreferences] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gdpr-consent');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error('Error loading consent preferences:', e);
+        }
       }
     }
-  }, []);
+    return {
+      necessary: true,
+      functional: true,
+      analytics: true,
+      advertising: true,
+    };
+  });
 
   const applyConsent = (prefs) => {
     // Apply consent preferences
     // For Google AdSense, we'll set the consent mode
-    if (window.gtag) {
+    if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('consent', 'update', {
         analytics_storage: prefs.analytics ? 'granted' : 'denied',
         ad_storage: prefs.advertising ? 'granted' : 'denied',
@@ -44,8 +38,24 @@ export function GdprConsent() {
     }
 
     // Store in localStorage for persistence
-    localStorage.setItem('gdpr-consent', JSON.stringify(prefs));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('gdpr-consent', JSON.stringify(prefs));
+    }
   };
+
+  useEffect(() => {
+    // Check if user has already made a consent choice
+    const consentGiven = localStorage.getItem('gdpr-consent');
+    if (!consentGiven) {
+      // Small delay to avoid layout shift on initial page load
+      setTimeout(() => setShowBanner(true), 1000);
+    }
+  }, []);
+
+  // Separate effect for applying consent to external systems (gtag)
+  useEffect(() => {
+    applyConsent(preferences);
+  }, [preferences]);
 
   const handleAcceptAll = () => {
     const allAccepted = {
@@ -104,8 +114,8 @@ export function GdprConsent() {
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     We use cookies to enhance your experience, analyze site
                     traffic, and serve personalized advertisements. By clicking
-                    "Accept All", you consent to our use of cookies. Learn more
-                    in our{' '}
+                    &quot;Accept All&quot;, you consent to our use of cookies.
+                    Learn more in our{' '}
                     <a
                       href="/privacy"
                       className="text-primary hover:underline font-medium"

@@ -90,12 +90,34 @@ const GENERATOR_TOOL_SLUGS = [
 
 export default function ToolPage({ params }) {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const storedUser = sessionStorage.getItem('user');
+      if (storedUser) {
+        try {
+          return JSON.parse(storedUser);
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
+
   const unwrappedParams = use(params);
   const toolSlug = unwrappedParams.tool;
   const ToolComponent = toolComponents[toolSlug];
 
   useToolMetadata(toolSlug);
+  const toolSchema = generateToolSchema(toolSlug);
+  const breadcrumbSchema = generateBreadcrumbSchema(toolSlug);
+
+  useEffect(() => {
+    if (!ToolComponent) {
+      router.push('/');
+    }
+  }, [ToolComponent, router]);
+
   if (!ToolComponent) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center bg-background">
@@ -107,29 +129,6 @@ export default function ToolPage({ params }) {
         </div>
       </div>
     );
-  }
-
-  const toolSchema = generateToolSchema(toolSlug);
-  const breadcrumbSchema = generateBreadcrumbSchema(toolSlug);
-
-  useEffect(() => {
-    if (!ToolComponent) {
-      router.push('/');
-      return;
-    }
-
-    const storedUser = sessionStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        setUser(null);
-      }
-    }
-  }, [ToolComponent, router]);
-
-  if (!ToolComponent) {
-    return null;
   }
 
   const isFree = FREE_TOOL_SLUGS.includes(toolSlug);

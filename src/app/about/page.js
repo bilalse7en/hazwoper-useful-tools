@@ -24,9 +24,10 @@ export default function AboutPage() {
                 <span className="text-primary italic">Safety Tech.</span>
               </h1>
               <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed font-medium max-w-2xl">
-                Content Suite was born from a simple observation: the world's
-                most critical safety training is often the most difficult to
-                document. We're changing that with neural-powered automation.
+                Content Suite was born from a simple observation: the
+                world&apos;s most critical safety training is often the most
+                difficult to document. We&apos;re changing that with
+                neural-powered automation.
               </p>
             </motion.div>
           </div>
@@ -51,9 +52,9 @@ export default function AboutPage() {
                 </p>
                 <p>
                   By focusing on industry-specific standards like HAZWOPER and
-                  OSHA, we ensure that our neural engines don't just "write
-                  text"—they understand the structural nuances of life-saving
-                  information.
+                  OSHA, we ensure that our neural engines don&apos;t just
+                  &quot;write text&quot;—they understand the structural nuances
+                  of life-saving information.
                 </p>
               </div>
             </div>

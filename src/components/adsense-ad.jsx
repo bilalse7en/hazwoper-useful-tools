@@ -29,7 +29,8 @@ export function AdSenseAd({
     typeof window !== 'undefined' && window.location.hostname !== 'localhost';
 
   useEffect(() => {
-    if (!isProduction || !adRef.current) return;
+    const currentAdRef = adRef.current;
+    if (!isProduction || !currentAdRef) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -44,16 +45,16 @@ export function AdSenseAd({
             }, 100);
             setTimeout(() => clearInterval(interval), 5000);
           } catch (e) {}
-          observer.unobserve(adRef.current);
+          observer.unobserve(currentAdRef);
         }
       },
       { rootMargin: '200px' } // Load when 200px from viewport
     );
 
-    observer.observe(adRef.current);
+    observer.observe(currentAdRef);
 
     return () => {
-      if (adRef.current) observer.unobserve(adRef.current);
+      if (currentAdRef) observer.unobserve(currentAdRef);
     };
   }, [isProduction, slot]);
 

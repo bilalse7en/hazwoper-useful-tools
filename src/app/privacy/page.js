@@ -30,11 +30,11 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">Introduction</h2>
             <p>
-              Welcome to Content Suite, operated by Bilal ("we," "our," or
-              "us"). We are committed to protecting your privacy and ensuring
-              transparency about how we collect, use, and share your
-              information. This Privacy Policy explains our data practices for
-              our website and web-based tools.
+              Welcome to Content Suite, operated by Bilal (&quot;we,&quot;
+              &quot;our,&quot; or &quot;us&quot;). We are committed to
+              protecting your privacy and ensuring transparency about how we
+              collect, use, and share your information. This Privacy Policy
+              explains our data practices for our website and web-based tools.
             </p>
           </section>
 
@@ -295,7 +295,9 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-3">Children's Privacy</h2>
+            <h2 className="text-2xl font-semibold mb-3">
+              Children&apos;s Privacy
+            </h2>
             <p>
               Our services are not directed to children under 16 years of age.
               We do not knowingly collect personal information from children. If
@@ -323,7 +325,7 @@ export default function PrivacyPolicy() {
             <p>
               We may update this Privacy Policy from time to time. We will
               notify you of any material changes by posting the new policy on
-              this page and updating the "Last Updated" date.
+              this page and updating the &quot;Last Updated&quot; date.
             </p>
           </section>
 

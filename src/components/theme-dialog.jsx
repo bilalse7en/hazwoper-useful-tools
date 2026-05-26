@@ -39,7 +39,9 @@ export function ThemeDialog({ open, onOpenChange }) {
 
   useEffect(() => {
     if (open && typeof window !== 'undefined') {
-      setPerformanceMode(localStorage.getItem('performance_mode') === 'true');
+      queueMicrotask(() =>
+        setPerformanceMode(localStorage.getItem('performance_mode') === 'true')
+      );
     }
   }, [open]);
 

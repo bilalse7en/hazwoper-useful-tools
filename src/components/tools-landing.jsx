@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -54,6 +55,12 @@ const GENERATOR_TOOL_IDS = ['course', 'blog', 'glossary', 'resources'];
 
 export function ToolsLanding({ user }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true));
+  }, []);
+
   const isGuest = !user;
   const isAdmin = user?.role === 'admin';
   const hasGeneratorAccess = user?.has_generator_access || isAdmin;
@@ -86,8 +93,8 @@ export function ToolsLanding({ user }) {
         <div className="container relative mx-auto px-6">
           <div className="max-w-3xl">
             <motion.div
-              initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
-              animate={isLowEnd() ? false : { opacity: 1, y: 0 }}
+              initial={mounted && isLowEnd() ? false : { opacity: 0, y: 30 }}
+              whileInView={mounted && isLowEnd() ? false : { opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
               <Badge
@@ -208,8 +215,10 @@ export function ToolsLanding({ user }) {
               return (
                 <motion.div
                   key={tool.id}
-                  initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
-                  animate={isLowEnd() ? false : { opacity: 1, y: 0 }}
+                  initial={
+                    mounted && isLowEnd() ? false : { opacity: 0, y: 20 }
+                  }
+                  animate={mounted && isLowEnd() ? false : { opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   className="group h-full"
                 >
@@ -332,7 +341,9 @@ export function ToolsLanding({ user }) {
               return (
                 <Link key={tool.id} href={`/tools/${tool.slug}`}>
                   <motion.div
-                    whileHover={isLowEnd() ? {} : { y: -8, scale: 1.02 }}
+                    whileHover={
+                      mounted && isLowEnd() ? {} : { y: -8, scale: 1.02 }
+                    }
                     className={cn(
                       'p-8 bg-card/60 backdrop-blur-xl border border-border rounded-[32px] hover:border-primary/40 transition-all hover:shadow-2xl group text-center relative overflow-hidden',
                       isGuest &&

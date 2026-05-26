@@ -30,6 +30,7 @@ export default function ImageToText() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [useAI, setUseAI] = useState(true); // Default to AI mode - using 100% FREE APIs (no quota limits!)
+  const [copied, setCopied] = useState(false);
 
   // Auto-save helper
   const persistState = async (updates = {}) => {
@@ -41,7 +42,7 @@ export default function ImageToText() {
     await saveGeneratorState('image_to_text', currentState);
   };
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -77,7 +78,7 @@ export default function ImageToText() {
       setPreviewUrl(reader.result);
     };
     reader.readAsDataURL(file);
-  };
+  }, []);
 
   // Preprocess image for better OCR accuracy
   const preprocessImage = (imageUrl, compress = false) => {
@@ -308,27 +309,30 @@ export default function ImageToText() {
   };
 
   // Handle clipboard paste (Ctrl+V)
-  const handlePaste = (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+  const handlePaste = useCallback(
+    (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
 
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          const event = { target: { files: [file] } };
-          handleFileSelect(event);
-          break;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            const event = { target: { files: [file] } };
+            handleFileSelect(event);
+            break;
+          }
         }
       }
-    }
-  };
+    },
+    [handleFileSelect]
+  );
 
   // Listen for paste events globally
   useEffect(() => {
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, []);
+  }, [handlePaste]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -571,7 +575,8 @@ export default function ImageToText() {
               <div className="text-center py-16">
                 <FileImage className="w-20 h-20 text-foreground/20 mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  Upload an image and click "Extract Text" to see results here
+                  Upload an image and click &quot;Extract Text&quot; to see
+                  results here
                 </p>
               </div>
             )}

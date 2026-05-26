@@ -71,14 +71,17 @@ export function ImageConverter() {
     setDragActive(e.type === 'dragenter' || e.type === 'dragover');
   }, []);
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(Array.from(e.dataTransfer.files));
-    }
-  }, []);
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(Array.from(e.dataTransfer.files));
+      }
+    },
+    [handleFiles]
+  );
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {

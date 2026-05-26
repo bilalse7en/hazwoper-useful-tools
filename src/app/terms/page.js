@@ -34,8 +34,8 @@ export default function TermsOfService() {
             <p>
               Welcome to Content Suite. By accessing or using our website and
               services, you agree to be bound by these Terms of Service
-              ("Terms"). If you do not agree to these Terms, please do not use
-              our services.
+              (&quot;Terms&quot;). If you do not agree to these Terms, please do
+              not use our services.
             </p>
           </section>
 
@@ -166,8 +166,8 @@ export default function TermsOfService() {
             <h3 className="text-xl font-semibold mb-2 mt-4">Google AdSense</h3>
             <p>
               Our website displays advertisements served by Google AdSense.
-              These ads are subject to Google's terms and privacy policies. We
-              do not control the content of these advertisements.
+              These ads are subject to Google&apos;s terms and privacy policies.
+              We do not control the content of these advertisements.
             </p>
 
             <h3 className="text-xl font-semibold mb-2 mt-4">External Links</h3>
@@ -184,8 +184,9 @@ export default function TermsOfService() {
             </h2>
             <p>
               <strong>
-                OUR SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT
-                WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED.
+                OUR SERVICES ARE PROVIDED &quot;AS IS&quot; AND &quot;AS
+                AVAILABLE&quot; WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS
+                OR IMPLIED.
               </strong>
             </p>
             <p className="mt-3">We do not warrant that:</p>
@@ -225,8 +226,8 @@ export default function TermsOfService() {
               You agree to indemnify, defend, and hold harmless Content Suite,
               its affiliates, and their respective officers, directors,
               employees, and agents from any claims, liabilities, damages,
-              losses, costs, or expenses (including reasonable attorneys' fees)
-              arising from:
+              losses, costs, or expenses (including reasonable attorneys&apos;
+              fees) arising from:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Your use of the services</li>

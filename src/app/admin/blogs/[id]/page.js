@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, use, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -54,6 +55,26 @@ export default function AdminBlogEditPage({ params }) {
   });
 
   useEffect(() => {
+    async function fetchBlog() {
+      try {
+        const { data, error } = await supabase
+          .from('blogs')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setFormData(data);
+        }
+      } catch (err) {
+        toast.error('Failed to retrieve editorial data.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     async function init() {
       if (!isNew) {
         await fetchBlog();
@@ -79,7 +100,7 @@ export default function AdminBlogEditPage({ params }) {
       }
     }
     init();
-  }, [id]);
+  }, [id, isNew]);
 
   // Auto-Read Time Calculation
   useEffect(() => {
@@ -87,26 +108,6 @@ export default function AdminBlogEditPage({ params }) {
     const minutes = Math.ceil(words / 200); // 200 wpm average
     setFormData((prev) => ({ ...prev, read_time: `${minutes} min read` }));
   }, [formData.content]);
-
-  async function fetchBlog() {
-    try {
-      const { data, error } = await supabase
-        .from('blogs')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      if (data) {
-        setFormData(data);
-      }
-    } catch (err) {
-      toast.error('Failed to retrieve editorial data.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const titleToSlug = (title) => {
     return title
@@ -240,9 +241,8 @@ export default function AdminBlogEditPage({ params }) {
       const extendedContent = Array.from({ length: extendedBodyCount })
         .map(
           (_, i) => `
-        <h3>Module ${i + 1}: Tactical Implementation</h3>
         <p>Analyzing the core metrics of ${focusTitle} requires a granular approach to data management. We have engineered our sequence to handle large-scale document transfers with zero latency. For professionals in the HAZWOPER sector, this translates to more time in the field and less time battling fragmented tooling.</p>
-        <p>Each phase of the digital lifecycle is monitored for security and efficiency. Our Image Converter, for instance, doesn't just change formats—it optimizes the byte-size for rapid field viewing on low-bandwidth devices. Similarly, the HTML Cleaner ensures your reporting satisfies strict WCAG accessibility mandates.</p>
+        <p>Each phase of the digital lifecycle is monitored for security and efficiency. Our Image Converter, for instance, doesn&apos;t just change formats—it optimizes the byte-size for rapid field viewing on low-bandwidth devices. Similarly, the HTML Cleaner ensures your reporting satisfies strict WCAG accessibility mandates.</p>
         <p>Furthermore, the ${focusTitle} workflow is built on a private-first architecture. Unlike other cloud-based solutions, our tools process sensitive data locally before persistence, providing a robust shield for proprietary environmental data.</p>
       `
         )
@@ -568,10 +568,13 @@ export default function AdminBlogEditPage({ params }) {
                 </div>
               ) : formData.image_url ? (
                 <>
-                  <img
+                  <Image
                     src={formData.image_url}
                     className="w-full h-full object-cover"
                     alt="Hero"
+                    width={400}
+                    height={225}
+                    unoptimized
                   />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-black text-[10px] text-white uppercase tracking-widest">
                     Change Asset

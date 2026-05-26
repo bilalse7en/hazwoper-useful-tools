@@ -64,7 +64,7 @@ export default function NotFound() {
             Identity Not Found
           </h2>
           <p className="text-xl text-muted-foreground font-medium max-w-lg mx-auto leading-relaxed">
-            The neural path you've requested does not exist in our primary
+            The neural path you&apos;ve requested does not exist in our primary
             sector. It may have been relocated or purged from the registry.
           </p>
         </div>

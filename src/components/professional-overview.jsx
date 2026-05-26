@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Shield,
@@ -15,6 +16,12 @@ import {
 import { isLowEnd } from '@/lib/utils';
 
 export function ProfessionalOverview() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    queueMicrotask(() => setMounted(true));
+  }, []);
+
   return (
     <section className="py-32 relative overflow-hidden bg-background">
       {/* Decorative background elements */}
@@ -24,8 +31,8 @@ export function ProfessionalOverview() {
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center mb-24">
           <motion.div
-            initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
-            whileInView={isLowEnd() ? false : { opacity: 1, y: 0 }}
+            initial={mounted && isLowEnd() ? false : { opacity: 0, y: 20 }}
+            whileInView={mounted && isLowEnd() ? false : { opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-8"
           >
@@ -84,8 +91,8 @@ export function ProfessionalOverview() {
           ].map((item, i) => (
             <motion.div
               key={i}
-              initial={isLowEnd() ? false : { opacity: 0, y: 20 }}
-              whileInView={isLowEnd() ? false : { opacity: 1, y: 0 }}
+              initial={mounted && isLowEnd() ? false : { opacity: 0, y: 20 }}
+              whileInView={mounted && isLowEnd() ? false : { opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
               className="space-y-6 p-8 rounded-[32px] bg-card/40 backdrop-blur-xl border border-border hover:border-primary/30 transition-all group"
@@ -111,19 +118,20 @@ export function ProfessionalOverview() {
                 The Future of Professional Safety Documentation
               </h3>
               <p className="text-muted-foreground leading-relaxed font-medium">
-                In today's highly regulated industrial landscape, the accuracy
-                of safety training and technical documentation is paramount.
-                Legacy systems often rely on manual data entry or inefficient
-                "copy-paste" workflows that are prone to human error and consume
-                hundreds of hours of professional time.
+                In today&apos;s highly regulated industrial landscape, the
+                accuracy of safety training and technical documentation is
+                paramount. Legacy systems often rely on manual data entry or
+                inefficient &quot;copy-paste&quot; workflows that are prone to
+                human error and consume hundreds of hours of professional time.
               </p>
               <p className="text-muted-foreground leading-relaxed font-medium">
                 Our Content Suite is designed to eliminate these bottlenecks. By
                 leveraging automated extraction protocols, we allow safety
                 directors and course architects to transform static documents
-                into dynamic, web-optimized resources in seconds. This isn't
-                just about speed—it's about ensuring that every safety protocol
-                is accurately preserved and clearly communicated.
+                into dynamic, web-optimized resources in seconds. This
+                isn&apos;t just about speed&mdash;it&apos;s about ensuring that
+                every safety protocol is accurately preserved and clearly
+                communicated.
               </p>
               <ul className="space-y-4">
                 {[

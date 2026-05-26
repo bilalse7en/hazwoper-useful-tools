@@ -23,6 +23,7 @@ import {
   Sparkles,
   LayoutDashboard,
   Users,
+  Library,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -71,6 +72,7 @@ const adminNavGroups = [
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'admin', label: 'User Roles', icon: Users },
+      { id: 'media-library', label: 'Media Assets', icon: Library },
       { id: 'media', label: 'Media Monitor', icon: ImageIcon },
       { id: 'blogs', label: 'Editorial', icon: PenTool },
       { id: 'performance', label: 'Optimization', icon: Zap },

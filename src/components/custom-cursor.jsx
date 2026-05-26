@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 
+const glowColors = {
+  light: '#0062ff', // Blue for light theme
+  dark: '#a855f7', // Purple for dark theme
+  nebula: '#3b82f6', // Blue for Cosmic Nebula
+};
+
 export function CustomCursor() {
   const canvasRef = useRef(null);
   const cursorRef = useRef(null);
@@ -12,14 +18,9 @@ export function CustomCursor() {
   const mouseRef = useRef({ x: -100, y: -100 });
   const ballsRef = useRef([]);
 
-  const glowColors = {
-    light: '#0062ff', // Blue for light theme
-    dark: '#a855f7', // Purple for dark theme
-    nebula: '#3b82f6', // Blue for Cosmic Nebula
-  };
-
   useEffect(() => {
-    setMounted(true);
+    // Avoid synchronous setState in effect for hydration
+    const timer = setTimeout(() => setMounted(true), 0);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -192,11 +193,12 @@ export function CustomCursor() {
     render();
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', onMouseMove);
       cancelAnimationFrame(animationFrame);
     };
-  }, [theme, mounted]);
+  }, [theme, mounted, isPointer]);
 
   if (!mounted) return null;
 

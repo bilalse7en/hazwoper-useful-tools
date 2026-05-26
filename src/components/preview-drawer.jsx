@@ -31,12 +31,36 @@ export function PreviewDrawer({
   const [copied, setCopied] = useState(false);
   const [copiedMap, setCopiedMap] = useState({});
   const [viewMode, setViewMode] = useState('visual'); // visual, code
-  const [localContent, setLocalContent] = useState('');
+  const [localContent, setLocalContent] = useState(
+    initialCode || initialContent || ''
+  );
+  const [localFaqData, setLocalFaqData] = useState(
+    Array.isArray(data) ? [...data] : []
+  );
 
-  // Sync local content when initial content/code changes
-  useEffect(() => {
+  // Sync state when props change (React-recommended pattern for prop-to-state sync)
+  const [prevInitial, setPrevInitial] = useState(
+    initialCode || initialContent || ''
+  );
+  const [prevData, setPrevData] = useState(data);
+
+  if ((initialCode || initialContent || '') !== prevInitial) {
+    setPrevInitial(initialCode || initialContent || '');
     setLocalContent(initialCode || initialContent || '');
-  }, [initialContent, initialCode, open]);
+  }
+
+  if (data !== prevData) {
+    setLocalFaqData(Array.isArray(data) ? [...data] : []);
+    setPrevData(data);
+  }
+
+  const updateFaq = (index, field, value) => {
+    setLocalFaqData((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
 
   const handleCopy = async () => {
     if (localContent) {
@@ -166,7 +190,7 @@ export function PreviewDrawer({
                 </div>
 
                 <div className="space-y-3">
-                  {data.map((faq, idx) => {
+                  {localFaqData.map((faq, idx) => {
                     const qKey = `q-${idx}`;
                     const aKey = `a-${idx}`;
                     const isQCopied = copiedMap[qKey];
@@ -211,7 +235,11 @@ export function PreviewDrawer({
                                   isQCopied ? 'bg-green-500/5' : ''
                                 }`}
                                 onBlur={(e) => {
-                                  faq.question = e.target.innerText;
+                                  updateFaq(
+                                    idx,
+                                    'question',
+                                    e.target.innerText
+                                  );
                                 }}
                               >
                                 {faq.question}
@@ -263,7 +291,7 @@ export function PreviewDrawer({
                                   : 'bg-muted/20'
                               }`}
                               onBlur={(e) => {
-                                faq.answer = e.target.innerHTML;
+                                updateFaq(idx, 'answer', e.target.innerHTML);
                               }}
                               dangerouslySetInnerHTML={{
                                 __html: processSEO(faq.answer),
