@@ -49,6 +49,7 @@ export const metadata = {
 
 import { GlobalHeader } from '@/components/global-header';
 import { Footer } from '@/components/footer';
+import { EnvironmentalSetup } from '@/components/environmental-setup';
 
 export default function RootLayout({ children }) {
   return (
@@ -141,6 +142,7 @@ export default function RootLayout({ children }) {
             <Footer />
           </div>
           <GdprConsent />
+          <EnvironmentalSetup />
           <Toaster
             position="top-right"
             toastOptions={{

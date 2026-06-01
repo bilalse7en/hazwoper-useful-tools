@@ -10,6 +10,7 @@ import {
   Globe,
   Lock,
   Search,
+  MessageSquare,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -172,6 +173,14 @@ export function Footer({ overrideShow = false }) {
                   className="hover:text-foreground transition-colors flex items-center gap-2"
                 >
                   <Globe className="w-4 h-4" /> About Our Neural Hub
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="hover:text-amber-500 transition-colors flex items-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" /> Contact Industry Experts
                 </Link>
               </li>
               <li>

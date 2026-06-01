@@ -91,6 +91,12 @@ export function MainHeader({
           >
             About
           </Link>
+          <Link
+            href="/contact"
+            className="text-sm font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+          >
+            Contact
+          </Link>
         </nav>
       </div>
 
