@@ -529,7 +529,21 @@ export function CourseGenerator() {
                     {activeView === 'mainpoints' && 'Main Points Code'}
                     {activeView === 'overview' && 'Overview Code'}
                     {activeView === 'objectives' && 'Course Objectives Code'}
-                    {activeView === 'syllabus' && 'Syllabus Code'}
+                    {activeView === 'syllabus' && (
+                      <span className="flex items-center gap-2">
+                        Syllabus Code
+                        {courseData?.syllabusModules && (
+                          <span className="ml-1 px-1.5 py-0.5 rounded bg-primary/10 text-[9px] font-black text-primary border border-primary/20">
+                            L=
+                            {courseData.syllabusModules.reduce(
+                              (acc, m) => acc + (m.lessons?.length || 0),
+                              0
+                            )}{' '}
+                            M={courseData.syllabusModules.length}
+                          </span>
+                        )}
+                      </span>
+                    )}
                     {activeView === 'faq' && 'Full FAQ HTML Code'}
                   </h4>
                   <div className="flex gap-2">

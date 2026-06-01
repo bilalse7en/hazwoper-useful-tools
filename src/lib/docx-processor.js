@@ -4,34 +4,62 @@
 // SHARED UTILS
 // ==========================================
 
-function ensureProfessionalLinks(html) {
+export function ensureProfessionalLinks(html) {
   if (!html) return '';
   // Add target="_blank" and proper rel attributes for SEO
   let processedHtml = html.replace(
     /\<a\s+(?:[^\>]*?\s+)?href=(["'])(.*?)\1([^\>]*)\>/gi,
     (match, p1, p2, p3) => {
-      // Remove any existing target or rel attributes from p3 to avoid duplicates
       let cleanP3 = p3.replace(/\s+(target|rel)=["'][^"']*?["']/gi, '').trim();
-
-      // Check if this is an internal link (hazwoper-osha.com)
       const isInternalLink = p2.toLowerCase().includes('hazwoper-osha.com');
-
-      // Build the new anchor tag
       let newTag = '\<a href="' + p2 + '" target="_blank"';
-
-      // Add rel="noopener noreferrer" only for external links (SEO best practice)
       if (!isInternalLink) {
         newTag += ' rel="noopener noreferrer"';
       }
-
       if (cleanP3) newTag += ' ' + cleanP3;
       newTag += '\>';
       return newTag;
     }
   );
 
-  // Replace all &nbsp; with regular space for cleaner code
-  return processedHtml.replace(/&nbsp;/g, ' ');
+  processedHtml = processedHtml.replace(/&nbsp;/g, ' ');
+
+  // FORMATTING RULE: 1 block level element tag in 1 line
+  const blockTags = [
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'p',
+    'div',
+    'ul',
+    'ol',
+    'li',
+    'hr',
+    'table',
+    'tr',
+    'thead',
+    'tbody',
+    'th',
+    'td',
+    'style',
+    'script',
+    'iframe',
+  ];
+
+  let clean = processedHtml.replace(/\s+/g, ' ').trim();
+  blockTags.forEach((tag) => {
+    clean = clean.replace(new RegExp(`<${tag}(\\s|\\>|\\/)`, 'gi'), '\n$&');
+    clean = clean.replace(new RegExp(`</${tag}>`, 'gi'), '$&\n');
+  });
+
+  return clean
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join('\n');
 }
 
 function stripBoldWrapper(html) {
@@ -154,6 +182,7 @@ const courseData = {
   syllabusModules: [],
   courseObjectivesIntro: '',
   mainPointsList: [],
+  syllabusIntro: '',
   fileProcessed: false,
 };
 
@@ -169,6 +198,7 @@ export function resetCourseData() {
   courseData.syllabusModules = [];
   courseData.courseObjectivesIntro = '';
   courseData.mainPointsList = [];
+  courseData.syllabusIntro = '';
   courseData.fileProcessed = false;
 }
 
@@ -216,8 +246,29 @@ function extractOverview(elementsArray) {
   let overviewStart = -1;
   elementsArray.forEach((element, i) => {
     const text = element.textContent.trim().toLowerCase();
-    if (text.includes('overview') && overviewStart === -1) overviewStart = i;
+    if (
+      (text === 'overview' ||
+        text === 'course overview' ||
+        text.includes('objective') ||
+        text.includes('overview') ||
+        text.includes('1.1')) &&
+      element.tagName.match(/^H[1-6]$/i) &&
+      overviewStart === -1
+    ) {
+      overviewStart = i;
+    }
   });
+
+  if (overviewStart === -1) {
+    elementsArray.forEach((element, i) => {
+      const text = element.textContent.trim().toLowerCase();
+      if (
+        (text === 'overview' || text === 'course overview') &&
+        overviewStart === -1
+      )
+        overviewStart = i;
+    });
+  }
 
   if (overviewStart !== -1) {
     const overviewEnd = elementsArray.findIndex(
@@ -271,8 +322,10 @@ function extractCourseObjectives(elementsArray) {
     if (
       text.includes('course objectives') ||
       text.includes('learning objectives') ||
+      text.includes('main points') ||
       (text.includes('objectives') && element.tagName.match(/^H[1-6]$/i)) ||
-      text.match(/^\d+\.\d*\s*.*objectives/i)
+      text.match(/^\d+\.\d*\s*.*objectives/i) ||
+      text.match(/^1\.2/)
     ) {
       objectivesStart = i;
       break;
@@ -398,6 +451,35 @@ function extractAllSyllabusContent(elementsArray) {
     syllabusStartIndex = objectivesEndIndex !== -1 ? objectivesEndIndex : 0;
   }
 
+  // Pre-scan for the intro paragraph (e.g., "This course consists of...")
+  for (let i = syllabusStartIndex; i < elementsArray.length; i++) {
+    const element = elementsArray[i];
+    const text = element.textContent.trim();
+    if (!text) continue;
+    const lowerText = text.toLowerCase();
+
+    // The intro paragraph usually says "consists of" or matches the course title
+    if (
+      (lowerText.includes('consists of') ||
+        lowerText.includes('sequential order') ||
+        (lowerText.includes(courseData.courseTitle.toLowerCase()) &&
+          text.length > 30)) &&
+      element.tagName === 'P' &&
+      !courseData.syllabusIntro
+    ) {
+      courseData.syllabusIntro = element.innerHTML.trim();
+      break;
+    }
+
+    // Don't go too deep into lessons
+    if (
+      text.match(/lesson\s*\d+:/i) ||
+      text.match(/module\s*\d+:/i) ||
+      i > syllabusStartIndex + 10
+    )
+      break;
+  }
+
   for (let i = syllabusStartIndex; i < elementsArray.length; i++) {
     const element = elementsArray[i];
     const text = element.textContent.trim();
@@ -423,7 +505,7 @@ function extractAllSyllabusContent(elementsArray) {
       lowerText.includes('final examination') ||
       lowerText.includes('faq') ||
       lowerText.includes('frequently asked questions') ||
-      (tagName.match(/^H[1-3]$/i) && i > syllabusStartIndex + 2)
+      (tagName.match(/^H[1-2]$/i) && i > syllabusStartIndex + 5)
     ) {
       break;
     }
@@ -476,6 +558,7 @@ function extractAllSyllabusContent(elementsArray) {
       currentLesson = {
         title: lessonSegments[0] || text,
         items: [],
+        description: '',
       };
 
       const nestedList = element.querySelector('ul');
@@ -495,6 +578,7 @@ function extractAllSyllabusContent(elementsArray) {
             currentModule.lessons.push({
               title: segment.trim(),
               items: [],
+              description: '',
             });
           }
         });
@@ -514,19 +598,24 @@ function extractAllSyllabusContent(elementsArray) {
         currentLesson = {
           title: `Lesson ${currentModule.lessons.length + 1}: ${text.substring(0, 50)}...`,
           items: [element.innerHTML.trim()],
+          description: '',
         };
       }
     } else if (
       tagName === 'P' &&
       text &&
-      currentModule &&
-      !currentModule.description
+      !text.match(/^Module\s*\d+:/i) &&
+      !text.match(/^Lesson\s*\d+:/i)
     ) {
-      if (
-        text.length > 20 &&
-        !text.match(/^Module\s*\d+:/i) &&
-        !text.match(/^Lesson\s*\d+:/i)
-      ) {
+      if (currentLesson) {
+        // Capture P as lesson description
+        if (currentLesson.description) {
+          currentLesson.description += ' ' + text;
+        } else {
+          currentLesson.description = text;
+        }
+      } else if (currentModule && !currentModule.description) {
+        // If no lesson yet, it's module description
         currentModule.description = text;
       }
     }
@@ -619,7 +708,7 @@ function extractLessonsDirectly(elementsArray, startIndex) {
     ) {
       if (currentLesson) defaultModule.lessons.push(currentLesson);
 
-      currentLesson = { title: text, items: [] };
+      currentLesson = { title: text, items: [], description: '' };
 
       const nestedList = element.querySelector('ul');
       if (nestedList) {
@@ -641,6 +730,18 @@ function extractLessonsDirectly(elementsArray, startIndex) {
       !text.match(/^Lesson\s*\d+:/i)
     ) {
       currentLesson.items.push(element.innerHTML.trim());
+    } else if (
+      tagName === 'P' &&
+      currentLesson &&
+      text &&
+      !text.match(/^Lesson\s*\d+:/i)
+    ) {
+      // Capture P as description
+      if (currentLesson.description) {
+        currentLesson.description += ' ' + text;
+      } else {
+        currentLesson.description = text;
+      }
     }
   }
 
@@ -761,17 +862,32 @@ function extractMainPoints(elementsArray) {
   let mainPointsStart = -1;
 
   // Look for "For Business (Tier Pricing):" or similar headings
-  elementsArray.forEach((element, i) => {
+  for (let i = 0; i < elementsArray.length; i++) {
+    const element = elementsArray[i];
     const text = element.textContent.trim().toLowerCase();
-    if (
+    const tagName = element.tagName;
+
+    // VERY robust detection for the "For Business" heading
+    const isForBusiness =
       (text.includes('for business') && text.includes('tier pricing')) ||
       text.includes('for business (tier pricing)') ||
+      text.includes('tier pricing') ||
       text.includes('main points') ||
-      text.includes('course main points')
+      text.includes('course facts') ||
+      text.includes('course details') ||
+      (text.startsWith('for business') && text.length < 50);
+
+    if (
+      isForBusiness &&
+      (tagName.match(/^H[1-6]$/i) ||
+        element.querySelector('strong') ||
+        element.querySelector('b') ||
+        i < 20)
     ) {
       mainPointsStart = i;
+      break; // Take the FIRST occurrence
     }
-  });
+  }
 
   if (mainPointsStart === -1) return;
 
@@ -787,7 +903,7 @@ function extractMainPoints(elementsArray) {
           text.includes('objectives') ||
           text.includes('syllabus') ||
           text.includes('faq'))) ||
-      i > mainPointsStart + 50
+      i > mainPointsStart + 100
     ) {
       // Safety limit
       mainPointsEnd = i;
@@ -812,6 +928,20 @@ function extractMainPoints(elementsArray) {
       const itemText = element.innerHTML.trim();
       if (itemText) {
         courseData.mainPointsList.push(itemText);
+      }
+    } else if (tagName === 'P') {
+      const currentText = element.textContent.trim();
+      const cleanText = currentText.replace(/^[•\-\*\s]+/, '').trim();
+      if (
+        (currentText.startsWith('•') ||
+          currentText.startsWith('-') ||
+          currentText.startsWith('*') ||
+          currentText.toLowerCase().includes('available in')) &&
+        cleanText
+      ) {
+        courseData.mainPointsList.push(
+          element.innerHTML.trim().replace(/^[•\-\*\s]+/, '')
+        );
       }
     }
   }
@@ -925,27 +1055,31 @@ export function generateSyllabusCode(data) {
           let lessonItemsHTML = '';
 
           if (lesson.items && lesson.items.length > 0) {
-            lessonItemsHTML = lesson.items
-              .map((item) => {
-                const cleanItem = item.replace(/\s+/g, ' ').trim();
-                return `<li>${cleanItem}</li>`;
-              })
-              .join('');
+            lessonItemsHTML = `
+                                <ul>
+                                    ${lesson.items
+                                      .map((item) => {
+                                        const cleanItem = item
+                                          .replace(/\s+/g, ' ')
+                                          .trim();
+                                        return `<li>${cleanItem}</li>`;
+                                      })
+                                      .join('')}
+                                </ul>`;
+          }
 
-            modulesHTML += `
+          let descriptionHTML = '';
+          if (lesson.description) {
+            descriptionHTML = `<p class="pl-3 mb-2">${lesson.description}</p>`;
+          }
+
+          modulesHTML += `
                             <div class="sbox">
                                 <h4 class="fs-5 fw-normal font-poppins">${lesson.title}</h4>
                                 <hr class="border-3 my-2" style="background: #ffcd05;opacity: 1;padding: 2px;">
-                                <ul>
-                                    ${lessonItemsHTML}
-                                </ul>
+                                ${descriptionHTML}
+                                ${lessonItemsHTML}
                             </div>`;
-          } else {
-            modulesHTML += `
-                            <div class="sbox">
-                                <h4 class="fs-5 fw-normal font-poppins">${lesson.title}</h4>
-                            </div>`;
-          }
         });
       } else {
         // MODULE-BASED STRUCTURE: Module with lessons inside
@@ -955,26 +1089,30 @@ export function generateSyllabusCode(data) {
           let lessonItemsHTML = '';
 
           if (lesson.items && lesson.items.length > 0) {
-            lessonItemsHTML = lesson.items
-              .map((item) => {
-                const cleanItem = item.replace(/\s+/g, ' ').trim();
-                return `<li>${cleanItem}</li>`;
-              })
-              .join('');
-
-            lessonsHTML += `
-                            <li>
-                                ${lesson.title}
+            lessonItemsHTML = `
                                 <ul>
-                                    ${lessonItemsHTML}
-                                </ul>
-                            </li>`;
-          } else {
-            lessonsHTML += `
-                            <li>
-                                ${lesson.title}
-                            </li>`;
+                                    ${lesson.items
+                                      .map((item) => {
+                                        const cleanItem = item
+                                          .replace(/\s+/g, ' ')
+                                          .trim();
+                                        return `<li>${cleanItem}</li>`;
+                                      })
+                                      .join('')}
+                                </ul>`;
           }
+
+          let descriptionHTML = '';
+          if (lesson.description) {
+            descriptionHTML = `<p class="mb-1">${lesson.description}</p>`;
+          }
+
+          lessonsHTML += `
+                            <li class="mb-2">
+                                <strong>${lesson.title}</strong>
+                                ${descriptionHTML}
+                                ${lessonItemsHTML}
+                            </li>`;
         });
 
         // MODULE STRUCTURE
@@ -1000,8 +1138,19 @@ export function generateSyllabusCode(data) {
       '<div class="sbox"><p>No syllabus content could be extracted. Please check the document structure.</p></div>';
   }
   const courseTitle = data.courseTitle || 'Course';
+  const lessonCountDisplay = `<span class="badge badge-warning text-dark fs-6 fw-bold px-2 py-1" style="background:#ffcd05; border-radius:4px;">${totalLessons} lessons</span>`;
+  const moduleCountDisplay =
+    !isLessonsOnly && data.syllabusModules.length > 1
+      ? `divided into <span class="badge badge-warning text-dark fs-6 fw-bold px-2 py-1" style="background:#ffcd05; border-radius:4px;">${data.syllabusModules.length} modules</span>`
+      : '';
+
+  // Use original intro if captured, otherwise fallback to generated one
+  const introParagraph = data.syllabusIntro
+    ? `<p>${data.syllabusIntro}</p>`
+    : `<p>This ${courseTitle} consists of ${lessonCountDisplay} ${moduleCountDisplay}. Students are required to take each lesson in sequential order as listed below.</p>`;
+
   return ensureProfessionalLinks(`<h2 class="fs-2 mb-3">${courseTitle} Course Syllabus</h2>
-        <p>This ${courseTitle} consists of ${totalLessons} lessons ${!isLessonsOnly && data.syllabusModules.length > 1 ? `divided into ${data.syllabusModules.length} modules` : ''}. Students are required to take each lesson in sequential order as listed below.</p>
+        ${introParagraph}
         <div style="background: #f2f3f5;padding-bottom:1px;">
             <div class="border-0 pl-3 sbox" style="background-color: #ffcd05;">
                 <div class="fs-5 fw-normal lh-sm m-0 text-uppercase">${isLessonsOnly ? 'Lessons' : 'Lessons'}</div>
@@ -1066,24 +1215,28 @@ export function generateMainPointsCode(data) {
       // Extract the languages mentioned
       const hasEnglish = lowerItem.includes('english');
       const hasSpanish =
-        lowerItem.includes('spanish') || lowerItem.includes('espa├▒ol');
+        lowerItem.includes('spanish') ||
+        lowerItem.includes('español') ||
+        lowerItem.includes('espa\u00f1ol') ||
+        lowerItem.includes('espa├▒ol');
 
       // Build the flag HTML
       let flagHTML = '<strong>Available in: </strong>';
 
       if (hasEnglish && hasSpanish) {
         // Both languages
-        flagHTML += `<img src="https://flagcdn.com/24x18/us.png" srcset="https://flagcdn.com/48x36/us.png 2x" width="24" height="18" alt="United States"> English | <img src="https://flagcdn.com/24x18/es.png" srcset="https://flagcdn.com/48x36/es.png 2x" width="24" height="18" alt="Espa├▒a"> Espa├▒ol`;
+        flagHTML += `<img src="https://flagcdn.com/24x18/us.png" srcset="https://flagcdn.com/48x36/us.png 2x" width="24" height="18" alt="United States"> English | <img src="https://flagcdn.com/24x18/es.png" srcset="https://flagcdn.com/48x36/es.png 2x" width="24" height="18" alt="Espa\u00f1a"> Espa\u00f1ol`;
       } else if (hasEnglish) {
         // English only
         flagHTML += `<img src="https://flagcdn.com/24x18/us.png" srcset="https://flagcdn.com/48x36/us.png 2x" width="24" height="18" alt="United States"> English`;
       } else if (hasSpanish) {
         // Spanish only
-        flagHTML += `<img src="https://flagcdn.com/24x18/es.png" srcset="https://flagcdn.com/48x36/es.png 2x" width="24" height="18" alt="Espa├▒a"> Espa├▒ol`;
+        flagHTML += `<img src="https://flagcdn.com/24x18/es.png" srcset="https://flagcdn.com/48x36/es.png 2x" width="24" height="18" alt="Espa\u00f1a"> Espa\u00f1ol`;
       } else {
-        // No specific language detected, keep original
+        // No specific language detected
         flagHTML =
-          'Available in: ' + item.replace(/available\s*in\s*:?\s*/gi, '');
+          '<strong>Available in: </strong>' +
+          item.replace(/available\s*in\s*:?\s*/gi, '');
       }
 
       processedItem = flagHTML;
@@ -1093,7 +1246,16 @@ export function generateMainPointsCode(data) {
     if (hasFlags) {
       mainPointsHTML += `  <li><span style="display: ruby;">${processedItem}</span></li>\n`;
     } else {
-      mainPointsHTML += `  <li>${processedItem}</li>\n`;
+      // Bold items that might be headings or important details
+      if (
+        processedItem.toLowerCase().startsWith('in accordance with') ||
+        processedItem.toLowerCase().startsWith('covers essential') ||
+        processedItem.toLowerCase().includes('available in')
+      ) {
+        mainPointsHTML += `  <li>${processedItem}</li>\n`;
+      } else {
+        mainPointsHTML += `  <li>${processedItem}</li>\n`;
+      }
     }
   });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { useAuthAction } from '@/lib/use-auth-action';
 import { saveToolHistory } from '@/lib/tool-history';
 import { ToolHistoryPanel } from '@/components/tool-history-panel';
@@ -666,10 +667,13 @@ export function VideoCompressor() {
                   </svg>
 
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <img
+                    <Image
                       src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
                       alt="Processing"
+                      width={64}
+                      height={64}
                       className="w-16 h-16 rounded-full object-cover animate-bounce shadow-xl ring-2 ring-primary/30"
+                      unoptimized
                     />
                   </div>
                 </div>

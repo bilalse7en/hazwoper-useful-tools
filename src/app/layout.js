@@ -79,8 +79,15 @@ export default function RootLayout({ children }) {
         <link rel="dns-prefetch" href="https://media.hazwoper-osha.com" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
-        <script
+      </head>
+      <body
+        className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}
+        suppressHydrationWarning
+      >
+        <Script
+          id="organization-json-ld"
           type="application/ld+json"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               '@context': 'https://schema.org',
@@ -98,11 +105,6 @@ export default function RootLayout({ children }) {
             }),
           }}
         />
-      </head>
-      <body
-        className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}
-        suppressHydrationWarning
-      >
         <Script
           id="google-consent"
           strategy="afterInteractive"

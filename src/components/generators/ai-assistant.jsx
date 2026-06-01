@@ -949,10 +949,13 @@ export function AIAssistant() {
                 >
                   {m.attachment && (
                     <div className="rounded-xl overflow-hidden border border-border/50 max-w-[200px]">
-                      <img
+                      <Image
                         src={m.attachment}
                         alt="Attached"
+                        width={400}
+                        height={300}
                         className="w-full h-auto"
+                        unoptimized
                       />
                     </div>
                   )}
@@ -968,10 +971,13 @@ export function AIAssistant() {
                     {m.type === 'image' ? (
                       <div className="space-y-2">
                         <div className="relative group rounded-lg overflow-hidden">
-                          <img
+                          <Image
                             src={m.url}
                             alt="Generated"
+                            width={300}
+                            height={300}
                             className="w-full h-auto max-w-[300px]"
+                            unoptimized
                           />
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <Button
@@ -1060,10 +1066,13 @@ export function AIAssistant() {
           {filePreview && (
             <div className="mb-2 p-2 bg-card/60 border border-border/50 rounded-xl flex items-center gap-2">
               {attachedFile.type.startsWith('image/') ? (
-                <img
+                <Image
                   src={filePreview}
                   alt="Preview"
+                  width={40}
+                  height={40}
                   className="h-10 w-10 rounded-lg object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">

@@ -90,19 +90,22 @@ const GENERATOR_TOOL_SLUGS = [
 
 export default function ToolPage({ params }) {
   const router = useRouter();
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
+  const [mounted, setMounted] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      setMounted(true);
       const storedUser = sessionStorage.getItem('user');
       if (storedUser) {
         try {
-          return JSON.parse(storedUser);
+          setUser(JSON.parse(storedUser));
         } catch (e) {
-          return null;
+          setUser(null);
         }
       }
-    }
-    return null;
-  });
+    });
+  }, []);
 
   const unwrappedParams = use(params);
   const toolSlug = unwrappedParams.tool;
@@ -118,7 +121,7 @@ export default function ToolPage({ params }) {
     }
   }, [ToolComponent, router]);
 
-  if (!ToolComponent) {
+  if (!ToolComponent || !mounted) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center bg-background">
         <div className="animate-pulse flex flex-col items-center gap-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   getToolHistory,
   deleteToolHistory,
@@ -26,6 +26,18 @@ export function HistoryList({ toolType, onRestore, className }) {
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadHistory = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await getToolHistory(toolType);
+      setHistory(data.filter((item) => item.result_url === 'GENERATOR_STATE'));
+    } catch (err) {
+      console.error('[HistoryList] UI Load Failure:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toolType]);
+
   useEffect(() => {
     loadHistory();
 
@@ -45,18 +57,6 @@ export function HistoryList({ toolType, onRestore, className }) {
       supabase.removeChannel(channel);
     };
   }, [toolType, loadHistory]);
-
-  const loadHistory = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await getToolHistory(toolType);
-      setHistory(data.filter((item) => item.result_url === 'GENERATOR_STATE'));
-    } catch (err) {
-      console.error('[HistoryList] UI Load Failure:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toolType]);
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();

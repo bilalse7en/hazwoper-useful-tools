@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload,
@@ -444,10 +445,13 @@ export default function ImageToText() {
                   exit={{ opacity: 0, scale: 0.9 }}
                 >
                   <div className="glass-panel p-4 rounded-2xl overflow-hidden">
-                    <img
+                    <Image
                       src={previewUrl}
                       alt="Preview"
+                      width={800}
+                      height={600}
                       className="w-full h-auto max-h-96 object-contain rounded-xl"
+                      unoptimized
                     />
                     <p className="text-sm text-muted-foreground mt-3 text-center">
                       {selectedFile?.name}

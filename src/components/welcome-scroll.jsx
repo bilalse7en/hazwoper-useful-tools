@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Image from 'next/image';
 import {
   Sparkles,
   Code,
@@ -229,10 +230,13 @@ export function WelcomeScroll({ onComplete }) {
               {/* logo */}
               <div className="flex justify-center relative">
                 <div className="absolute -inset-6 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 blur-2xl rounded-full animate-pulse" />
-                <img
+                <Image
                   src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
                   alt="Content Suite"
+                  width={144}
+                  height={144}
                   className="relative w-28 h-28 md:w-36 md:h-36 object-contain rounded-3xl"
+                  unoptimized
                 />
               </div>
 
@@ -356,10 +360,13 @@ export function WelcomeScroll({ onComplete }) {
               {/* logo */}
               <div className="relative inline-block">
                 <div className="absolute -inset-10 bg-gradient-to-r from-purple-500/25 via-pink-500/25 to-purple-500/25 blur-[80px] rounded-full animate-pulse" />
-                <img
+                <Image
                   src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
                   alt="Content Suite"
+                  width={192}
+                  height={192}
                   className="relative w-36 h-36 md:w-48 md:h-48 mx-auto object-contain rounded-3xl"
+                  unoptimized
                 />
               </div>
 

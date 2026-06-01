@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
   Save,
@@ -1014,10 +1015,13 @@ export function RichTextEditor({ content, onSave, title = 'Editor' }) {
       {featuredImageUrl && (
         <div className="fixed left-0 right-0 z-[190] bg-gradient-to-b from-gray-50 to-transparent dark:from-gray-900 px-10 py-2 mt-14">
           <div className="flex items-center gap-4 max-w-xl mx-auto">
-            <img
+            <Image
               src={featuredImageUrl}
               alt={featuredImageAlt || 'Featured image preview'}
+              width={96}
+              height={64}
               className="h-16 w-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
+              unoptimized
               onError={(e) => {
                 e.target.style.display = 'none';
               }}
