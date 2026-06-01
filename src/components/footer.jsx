@@ -9,6 +9,7 @@ import {
   BookOpen,
   Globe,
   Lock,
+  Search,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -159,10 +160,18 @@ export function Footer({ overrideShow = false }) {
               </li>
               <li>
                 <Link
-                  href="/about"
-                  className="hover:text-foreground transition-colors"
+                  href="/tools"
+                  className="hover:text-primary transition-colors flex items-center gap-2"
                 >
-                  About Our Neural Hub
+                  <Search className="w-4 h-4" /> Systems Index (Tools)
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/about"
+                  className="hover:text-foreground transition-colors flex items-center gap-2"
+                >
+                  <Globe className="w-4 h-4" /> About Our Neural Hub
                 </Link>
               </li>
               <li>

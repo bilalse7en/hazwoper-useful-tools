@@ -13,6 +13,7 @@ import {
 } from '@/lib/seo';
 import { useToolMetadata } from '@/lib/use-tool-metadata';
 import nextDynamic from 'next/dynamic';
+import { ToolInfo } from '@/components/tool-info';
 import { triggerLogin } from '@/lib/auth';
 
 // Dynamically import all tool components with no SSR from the index file
@@ -269,6 +270,10 @@ export default function ToolPage({ params }) {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="space-y-8">
           <ToolComponent />
+          <ToolInfo slug={toolSlug} />
+          <div className="pt-20">
+            <AdSenseAd slot="tool_page_bottom" />
+          </div>
         </div>
       </div>
     </>

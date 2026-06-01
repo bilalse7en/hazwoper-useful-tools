@@ -60,6 +60,12 @@ const navGroups = [
       { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
       { id: 'video-compressor', label: 'Video Compressor', icon: Video },
       { id: 'ai-assistant', label: 'AI UNIVERSE', icon: BrainCircuit },
+      {
+        id: 'tools-directory',
+        label: 'Systems Index',
+        icon: Library,
+        href: '/tools',
+      },
     ],
   },
 ];
@@ -200,7 +206,13 @@ export function AppSidebar({
                             'bg-primary/10 text-primary font-semibold shadow-sm',
                           !isActive && 'hover:bg-accent/50 hover:translate-x-1'
                         )}
-                        onClick={() => onTabChange(item.id)}
+                        onClick={() => {
+                          if (item.href) {
+                            window.location.href = item.href;
+                          } else {
+                            onTabChange(item.id);
+                          }
+                        }}
                       >
                         {isActive && (
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>

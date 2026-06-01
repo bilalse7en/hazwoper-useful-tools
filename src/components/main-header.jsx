@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu, Moon, Sun, Palette } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import Link from 'next/link';
 import { AppSidebar } from './app-sidebar';
 import { BrandLogo } from './brand-logo';
 import { UserNav } from './user-nav';
@@ -69,6 +70,28 @@ export function MainHeader({
             </span>
           </div>
         </div>
+
+        {/* Desktop Navigation Links for SEO/AdSense Persistence */}
+        <nav className="hidden md:flex items-center gap-8 ml-8">
+          <Link
+            href="/tools"
+            className="text-sm font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+          >
+            Tools
+          </Link>
+          <Link
+            href="/blog"
+            className="text-sm font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+          >
+            Blog
+          </Link>
+          <Link
+            href="/about"
+            className="text-sm font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+          >
+            About
+          </Link>
+        </nav>
       </div>
 
       {/* Right Side Actions */}

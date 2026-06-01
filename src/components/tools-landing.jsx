@@ -124,7 +124,7 @@ export function ToolsLanding({ user }) {
                       className="h-14 px-8 rounded-2xl font-bold shadow-lg shadow-primary/25 bg-primary hover:bg-primary/90 text-primary-foreground border-none"
                       asChild
                     >
-                      <Link href="#free-tools">
+                      <Link href="/tools">
                         Explore Free Tools
                         <ArrowRight className="ml-2 w-5 h-5" />
                       </Link>
@@ -160,7 +160,7 @@ export function ToolsLanding({ user }) {
                       className="h-14 px-8 rounded-2xl font-bold shadow-lg shadow-primary/25 bg-primary hover:bg-primary/90 text-primary-foreground border-none"
                       asChild
                     >
-                      <Link href="#all-tools">
+                      <Link href="/tools">
                         Explore All Tools
                         <ArrowRight className="ml-2 w-5 h-5" />
                       </Link>
