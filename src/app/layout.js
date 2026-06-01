@@ -33,7 +33,7 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: 'Course Content Generator | Content Suite',
+  title: 'HAZWOPER Content Suite | Professional Generator',
   description:
     'Extract Overview, Syllabus, FAQs, Glossary, Resources and Blog Content from your documents. Professional web content generation tool.',
   keywords:
