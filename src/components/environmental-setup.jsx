@@ -9,7 +9,6 @@ import {
   Sparkles,
   Moon,
   Sun,
-  Galaxy,
   CheckCircle2,
   Zap,
   ShieldCheck,
@@ -199,7 +198,7 @@ export function EnvironmentalSetup() {
                   {[
                     { id: 'light', icon: Sun, label: 'Light' },
                     { id: 'dark', icon: Moon, label: 'Dark' },
-                    { id: 'nebula', icon: Galaxy, label: 'Nebula' },
+                    { id: 'nebula', icon: Sparkles, label: 'Nebula' },
                   ].map((t) => (
                     <button
                       key={t.id}
