@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
-import { BrandLogo } from './brand-logo';
+import { BRAND_CONFIG } from '@/lib/constants';
 
 /**
  * Initial Loading Shell - Optimized for SI and LCP
+ * Uses a plain <img> tag for the GIF to prevent React re-render cycles
+ * from restarting the GIF animation mid-loop.
  */
 export function InitialLoadingShell({ isReady = false }) {
   const [shouldShow, setShouldShow] = useState(true);
-
   const [isActuallyReady, setIsActuallyReady] = useState(false);
   const mountTimeRef = useRef(null);
 
@@ -53,13 +54,19 @@ export function InitialLoadingShell({ isReady = false }) {
       }}
     >
       <div className="flex flex-col items-center gap-6 px-4">
-        {/* Animated GIF Logo - Set to priority for LCP */}
+        {/* Animated GIF Logo — plain <img> to avoid re-render restarts */}
         <div className="relative">
-          <BrandLogo
-            size="lg"
-            animate={true}
-            className="shadow-2xl shadow-primary/40 relative z-10"
-          />
+          <div className="relative z-10 h-16 w-16 lg:h-24 lg:w-24 shrink-0 overflow-hidden rounded-2xl shadow-2xl shadow-primary/40">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={BRAND_CONFIG.logo}
+              alt="Content Suite Logo"
+              width={96}
+              height={96}
+              fetchPriority="high"
+              className="h-full w-full object-cover"
+            />
+          </div>
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary via-primary/50 to-primary/20 blur-2xl opacity-20 animate-pulse" />
         </div>
 
@@ -73,7 +80,7 @@ export function InitialLoadingShell({ isReady = false }) {
           </p>
         </div>
 
-        {/* Loading Bars */}
+        {/* Loading Dots */}
         <div className="flex gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
           <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:150ms] opacity-70" />
