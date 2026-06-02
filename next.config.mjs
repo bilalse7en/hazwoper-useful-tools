@@ -81,7 +81,7 @@ export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://github.com/getsentry/sentry-webpack-plugin#options
 
-  org: 'my-own-19',
+  org: 'hazwoper-useful-tools',
   project: 'hazwoper-useful-tools',
 
   // Only print logs for uploading source maps in CI
