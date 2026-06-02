@@ -272,10 +272,6 @@ export default function ToolPage({ params }) {
         <div className="space-y-8">
           <ToolBreadcrumbs slug={toolSlug} />
           <ToolComponent />
-          <ToolInfo slug={toolSlug} />
-          <div className="pt-20">
-            <AdSenseAd slot="tool_page_bottom" />
-          </div>
         </div>
       </div>
     </>
