@@ -94,8 +94,10 @@ export default withSentryConfig(nextConfig, {
   widenClientFileUpload: true,
 
   // Automatically annotate React components to show their full name in breadcrumbs and sourcemaps
-  reactComponentAnnotation: {
-    enabled: true,
+  webpack: {
+    reactComponentAnnotation: {
+      enabled: true,
+    },
   },
 
   // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
