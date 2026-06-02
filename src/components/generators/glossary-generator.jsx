@@ -53,6 +53,9 @@ export function GlossaryGenerator() {
     const selectedFile = e.target.files[0];
     if (selectedFile && selectedFile.name.endsWith('.docx')) {
       setFile(selectedFile);
+      // Reset generated states for new file context
+      setGlossaryData(null);
+      setGlossaryCode('');
     } else {
       toast.error('Invalid file type. Please upload a .docx file.');
     }

@@ -23,7 +23,7 @@ function AdminLayoutInner({ children }) {
       setIsChecking(true);
 
       // 1. Try session storage first for speed
-      const storedUser = sessionStorage.getItem('user');
+      const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);

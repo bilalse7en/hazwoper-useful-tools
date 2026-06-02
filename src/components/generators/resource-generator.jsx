@@ -75,6 +75,8 @@ export function ResourceGenerator() {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      // Reset generated states for new file context
+      setResourceCode('');
       showNotification(`Selected: ${e.target.files[0].name}`, 'info');
     }
   };

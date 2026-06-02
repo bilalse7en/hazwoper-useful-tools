@@ -9,7 +9,7 @@ export function useAuthAction() {
 
   useEffect(() => {
     // Check session storage for user
-    const stored = sessionStorage.getItem('user');
+    const stored = localStorage.getItem('user');
     if (stored) {
       try {
         queueMicrotask(() => setUser(JSON.parse(stored)));

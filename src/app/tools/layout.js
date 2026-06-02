@@ -20,7 +20,7 @@ export default function ToolsLayout({ children }) {
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
 
   useEffect(() => {
-    const storedUser = sessionStorage.getItem('user');
+    const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         queueMicrotask(() => setUser(JSON.parse(storedUser)));

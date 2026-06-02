@@ -24,7 +24,7 @@ export function Footer({ overrideShow = false }) {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const storedUser = sessionStorage.getItem('user');
+    const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
         queueMicrotask(() => setUser(JSON.parse(storedUser)));

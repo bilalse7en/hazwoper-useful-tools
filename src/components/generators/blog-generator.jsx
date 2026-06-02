@@ -192,6 +192,13 @@ export function BlogGenerator() {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      // Reset all generated states for new file context
+      setBlogData(null);
+      setBlogCode('');
+      setFaqCode('');
+      setRawStructure([]);
+      setEditorContent('');
+      setActiveView('content');
       showNotification(`Selected: ${e.target.files[0].name}`, 'info');
     }
   };

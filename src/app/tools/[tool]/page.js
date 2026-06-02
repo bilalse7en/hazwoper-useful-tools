@@ -98,7 +98,7 @@ export default function ToolPage({ params }) {
   useEffect(() => {
     requestAnimationFrame(() => {
       setMounted(true);
-      const storedUser = sessionStorage.getItem('user');
+      const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
           setUser(JSON.parse(storedUser));

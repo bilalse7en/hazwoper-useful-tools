@@ -25,8 +25,8 @@ export function GlobalHeader({ activeTab, onTabChange }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
 
-    // Initial load from session storage
-    const stored = sessionStorage.getItem('user');
+    // Initial load from local storage for instant UI responsiveness
+    const stored = localStorage.getItem('user');
     if (stored) {
       try {
         setUser(JSON.parse(stored));
@@ -38,28 +38,6 @@ export function GlobalHeader({ activeTab, onTabChange }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Header: Auth state change', event, session?.user?.id);
       if (session?.user) {
-        // Set basic info immediately
-        const baseUser = {
-          id: session.user.id,
-          email: session.user.email,
-          full_name:
-            session.user.user_metadata?.full_name ||
-            session.user.user_metadata?.name ||
-            '',
-          name:
-            session.user.user_metadata?.full_name ||
-            session.user.user_metadata?.name ||
-            session.user.email,
-          avatar:
-            session.user.user_metadata?.avatar_url ||
-            session.user.user_metadata?.picture ||
-            null,
-          role: 'user',
-        };
-
-        setUser(baseUser);
-        sessionStorage.setItem('user', JSON.stringify(baseUser));
-
         try {
           const { data: profile } = await supabase
             .from('profiles')
@@ -69,39 +47,40 @@ export function GlobalHeader({ activeTab, onTabChange }) {
             .eq('id', session.user.id)
             .single();
 
-          if (profile) {
-            const activeUser = {
-              ...baseUser,
-              first_name: profile.first_name || baseUser.first_name || '',
-              last_name: profile.last_name || baseUser.last_name || '',
-              full_name: profile.full_name || baseUser.full_name,
-              username: profile.username || baseUser.email,
-              role: profile.role || 'user',
-              has_generator_access: profile.has_generator_access || false,
-              name: profile.full_name || baseUser.name,
-              avatar: profile.avatar_url || baseUser.avatar,
-            };
-            setUser(activeUser);
-            sessionStorage.setItem('user', JSON.stringify(activeUser));
-          }
+          const activeUser = {
+            id: session.user.id,
+            email: session.user.email,
+            full_name:
+              profile?.full_name || session.user.user_metadata?.full_name || '',
+            name:
+              profile?.full_name ||
+              session.user.user_metadata?.full_name ||
+              session.user.email,
+            role: profile?.role || 'user',
+            has_generator_access: profile?.has_generator_access || false,
+            avatar:
+              profile?.avatar_url ||
+              session.user.user_metadata?.avatar_url ||
+              null,
+            ...profile,
+          };
+
+          setUser(activeUser);
+          localStorage.setItem('user', JSON.stringify(activeUser));
         } catch (err) {
           console.error('Header profile sync error:', err);
+          // Fallback to basic info if profile fetch fails
+          const baseUser = {
+            id: session.user.id,
+            email: session.user.email,
+            name: session.user.user_metadata?.full_name || session.user.email,
+            role: 'user',
+          };
+          setUser(baseUser);
         }
       } else {
-        // Only clear if we don't have a reward-user
-        const stored = sessionStorage.getItem('user');
-        let isRewardUser = false;
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            isRewardUser = parsed.id === 'reward-user';
-          } catch (e) {}
-        }
-
-        if (!isRewardUser) {
-          setUser(null);
-          sessionStorage.removeItem('user');
-        }
+        setUser(null);
+        localStorage.removeItem('user');
       }
     });
 

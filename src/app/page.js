@@ -45,7 +45,7 @@ export default function Home() {
   const [isChecking, setIsChecking] = useState(true);
   const [user, setUser] = useState(() => {
     if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('user');
+      const stored = localStorage.getItem('user');
       if (stored) {
         try {
           return JSON.parse(stored);
@@ -78,20 +78,34 @@ export default function Home() {
         const {
           data: { session },
         } = await supabase.auth.getSession();
+
         if (session?.user) {
           console.log('Home: Initial session found', session.user.id);
-          // Minimal user info until profile loads
+
+          // Before we stop checking, let's try to get the profile
+          // so paid tools don't flicker or stay hidden
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select(
+              'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
+            )
+            .eq('id', session.user.id)
+            .single();
+
           const baseUser = {
             id: session.user.id,
-            ...session.user.user_metadata,
             email: session.user.email,
-            name:
-              session.user.user_metadata?.full_name ||
-              session.user.user_metadata?.name ||
-              session.user.email,
-            role: 'user', // Default until profile loads
+            name: session.user.user_metadata?.full_name || session.user.email,
+            role: profile?.role || 'user',
+            has_generator_access: profile?.has_generator_access || false,
+            ...profile,
           };
+
           setUser(baseUser);
+          localStorage.setItem('user', JSON.stringify(baseUser));
+        } else {
+          // If no session, clear storage
+          localStorage.removeItem('user');
         }
       } catch (e) {
         console.error('Auth initialization error:', e);
@@ -108,30 +122,9 @@ export default function Home() {
       console.log('Home: Auth state change', event, session?.user?.id);
 
       if (session?.user) {
-        // Set basic info immediately
-        const baseUser = {
-          id: session.user.id,
-          email: session.user.email,
-          full_name:
-            session.user.user_metadata?.full_name ||
-            session.user.user_metadata?.name ||
-            '',
-          name:
-            session.user.user_metadata?.full_name ||
-            session.user.user_metadata?.name ||
-            session.user.email,
-          avatar:
-            session.user.user_metadata?.avatar_url ||
-            session.user.user_metadata?.picture ||
-            null,
-          role: 'user', // Default
-        };
-
-        setUser(baseUser);
-        sessionStorage.setItem('user', JSON.stringify(baseUser));
-
+        setIsChecking(true); // Re-check if state changes
         try {
-          const { data: profile, error } = await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .select(
               'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
@@ -139,51 +132,45 @@ export default function Home() {
             .eq('id', session.user.id)
             .single();
 
-          if (!error && profile) {
-            const activeUser = {
-              ...baseUser,
-              first_name: profile.first_name || baseUser.first_name || '',
-              last_name: profile.last_name || baseUser.last_name || '',
-              full_name: profile.full_name || baseUser.full_name,
-              username: profile.username || baseUser.email,
-              role: profile.role || 'user',
-              has_generator_access: profile.has_generator_access || false,
-              name: profile.full_name || baseUser.name,
-              avatar: profile.avatar_url || baseUser.avatar,
-            };
+          const activeUser = {
+            id: session.user.id,
+            email: session.user.email,
+            full_name:
+              profile?.full_name || session.user.user_metadata?.full_name || '',
+            name:
+              profile?.full_name ||
+              session.user.user_metadata?.full_name ||
+              session.user.email,
+            role: profile?.role || 'user',
+            has_generator_access: profile?.has_generator_access || false,
+            avatar:
+              profile?.avatar_url ||
+              session.user.user_metadata?.avatar_url ||
+              null,
+            ...profile,
+          };
 
-            setUser(activeUser);
-            sessionStorage.setItem('user', JSON.stringify(activeUser));
+          setUser(activeUser);
+          localStorage.setItem('user', JSON.stringify(activeUser));
 
-            const justLoggedIn = !sessionStorage.getItem('auth_toast_shown');
-            if (justLoggedIn && event === 'SIGNED_IN') {
-              toast.success('Identity Verified', {
-                description: `Welcome back, ${activeUser.name || 'Architect'}. Professional suite fully synchronized.`,
-              });
-              sessionStorage.setItem('auth_toast_shown', 'true');
-            }
+          const justLoggedIn = !sessionStorage.getItem('auth_toast_shown');
+          if (justLoggedIn && event === 'SIGNED_IN') {
+            toast.success('Identity Verified', {
+              description: `Welcome back, ${activeUser.name || 'Architect'}. Professional suite fully synchronized.`,
+            });
+            sessionStorage.setItem('auth_toast_shown', 'true');
           }
         } catch (err) {
           console.error('Profile sync error:', err);
+        } finally {
+          setIsChecking(false);
         }
       } else {
-        // Only clear if we don't have a reward-user (legacy support)
-        const storedUser = sessionStorage.getItem('user');
-        let isRewardUser = false;
-        if (storedUser) {
-          try {
-            const parsed = JSON.parse(storedUser);
-            isRewardUser = parsed.id === 'reward-user';
-          } catch (e) {}
-        }
-
-        if (!isRewardUser) {
-          setUser(null);
-          sessionStorage.removeItem('user');
-          sessionStorage.removeItem('auth_toast_shown');
-        }
+        setUser(null);
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('auth_toast_shown');
+        setIsChecking(false);
       }
-      setIsChecking(false);
     });
 
     return () => {
