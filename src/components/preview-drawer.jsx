@@ -200,8 +200,8 @@ export function PreviewDrawer({
                       <div
                         key={idx}
                         className={`group border rounded-2xl overflow-hidden transition-all duration-500 p-4 relative ${
-                          isQCopied || isACopied
-                            ? 'bg-green-50/5 border-green-500/30'
+                          isQCopied && isACopied
+                            ? 'bg-green-50/5 border-green-500/30 shadow-[0_0_20px_rgba(34,197,94,0.05)]'
                             : 'bg-card border-border/50 hover:border-primary/20'
                         }`}
                       >
@@ -216,8 +216,8 @@ export function PreviewDrawer({
                         <div className="flex justify-between items-start gap-3 mb-3">
                           <div className="flex items-start gap-3 flex-1">
                             <span
-                              className={`flex items-center justify-center w-7 h-7 rounded-lg font-bold text-xs shrink-0 shadow-sm ${
-                                isQCopied
+                              className={`flex items-center justify-center w-7 h-7 rounded-lg font-bold text-xs shrink-0 shadow-sm transition-all duration-500 ${
+                                isQCopied && isACopied
                                   ? 'bg-green-500 text-white'
                                   : 'bg-primary/10 text-primary'
                               }`}
