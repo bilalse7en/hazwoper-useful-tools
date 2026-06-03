@@ -58,6 +58,22 @@ const DocumentExtractor = nextDynamic(
   () => import('@/components/generators').then((m) => m.DocumentExtractor),
   { ssr: false }
 );
+const VideoConverter = nextDynamic(
+  () => import('@/components/generators').then((m) => m.VideoConverter),
+  { ssr: false }
+);
+const AudioConverter = nextDynamic(
+  () => import('@/components/generators').then((m) => m.AudioConverter),
+  { ssr: false }
+);
+const VideoToGif = nextDynamic(
+  () => import('@/components/generators').then((m) => m.VideoToGif),
+  { ssr: false }
+);
+const WordToHtml = nextDynamic(
+  () => import('@/components/generators').then((m) => m.WordToHtml),
+  { ssr: false }
+);
 
 // Map slugs to components
 const toolComponents = {
@@ -71,6 +87,10 @@ const toolComponents = {
   'ai-assistant': AIAssistant,
   'image-to-text': ImageToText,
   'document-extractor': DocumentExtractor,
+  'video-converter': VideoConverter,
+  'audio-converter': AudioConverter,
+  'video-to-gif': VideoToGif,
+  'word-to-html': WordToHtml,
 };
 
 // Free tools that don't require login to USE
@@ -80,6 +100,10 @@ const FREE_TOOL_SLUGS = [
   'video-compressor',
   'image-to-text',
   'document-extractor',
+  'video-converter',
+  'audio-converter',
+  'video-to-gif',
+  'word-to-html',
 ];
 
 // Generator tools that require login and generator access

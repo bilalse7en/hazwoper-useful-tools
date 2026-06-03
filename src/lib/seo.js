@@ -100,6 +100,46 @@ export const toolMetadata = {
     canonical: '/tools/document-extractor',
     ogImage: '/og-document-extractor.png',
   },
+  'video-converter': {
+    title:
+      'Video Converter - Convert Videos Between MP4, WebM, MOV, AVI Online | Content Suite',
+    description:
+      'Free online video converter. Convert between MP4, WebM, MOV, AVI, and GIF formats. Browser-based processing for complete privacy. No upload required.',
+    keywords:
+      'video converter, MP4 to WebM, convert video online, video format converter, MOV to MP4, AVI converter, free video converter, browser video converter',
+    canonical: '/tools/video-converter',
+    ogImage: '/og-video-converter.png',
+  },
+  'audio-converter': {
+    title:
+      'Audio Converter - Convert MP3, WAV, AAC, OGG Online | Content Suite',
+    description:
+      'Professional browser-based audio converter. Convert between MP3, WAV, AAC, OGG, and M4A formats. High-fidelity re-encoding with complete privacy.',
+    keywords:
+      'audio converter, MP3 converter, WAV to MP3, convert audio online, AAC converter, free audio converter, browser audio processing, OGG to MP3',
+    canonical: '/tools/audio-converter',
+    ogImage: '/og-audio-converter.png',
+  },
+  'video-to-gif': {
+    title:
+      'Video to GIF Converter - Create GIFs Under 10 Seconds | Content Suite',
+    description:
+      'Professional video to GIF converter. Optimized for short training clips under 10 seconds. High-quality output with custom framerate and scaling controls.',
+    keywords:
+      'video to GIF, convert video to GIF, short video converter, 10 second GIF, training GIFs, animated GIF maker, browser video processing',
+    canonical: '/tools/video-to-gif',
+    ogImage: '/og-video-to-gif.png',
+  },
+  'word-to-html': {
+    title:
+      'Word to HTML Converter - Clean Word Content for Web | Content Suite',
+    description:
+      'Professional Word to HTML converter. Remove messy inline styles, extra spans, and empty tags from Word content. Optimized for clean web publishing.',
+    keywords:
+      'Word to HTML, clean word content, remove word styles, word to clean html, docx to html, legacy content migration, web content cleaner',
+    canonical: '/tools/word-to-html',
+    ogImage: '/og-word-to-html.png',
+  },
   privacy: {
     title: 'Privacy Policy | Content Suite',
     description:
@@ -138,6 +178,10 @@ export const toolIdToSlug = {
   'ai-assistant': 'ai-assistant',
   'image-to-text': 'image-to-text',
   'document-extractor': 'document-extractor',
+  'video-converter': 'video-converter',
+  'audio-converter': 'audio-converter',
+  'video-to-gif': 'video-to-gif',
+  'word-to-html': 'word-to-html',
 };
 
 // Reverse mapping
@@ -297,7 +341,7 @@ export const toolInfo = {
     description: 'Extract content from documents',
     category: 'Content Creation',
     detailedDescription:
-      'The ultimate tool for bulk content extraction. Analyze complex DOCX structures and pull out tables, lists, and images with precision.',
+      'The ultimate tool for bulk content extraction. Analyze complex DOCX structures and pull out tables, lists, and images with precision. Whether you are migrating content between platforms or auditing legacy training documents, the Document Extractor automates what would otherwise take hours of manual copy-paste work.',
     benefits: [
       'Precise table and list extraction',
       'Image and media asset gathering',
@@ -306,6 +350,70 @@ export const toolInfo = {
     ],
     howToUse:
       'Submit your DOCX document. Use the extraction dashboard to filter for specific elements like tables or images, and export them as needed.',
+  },
+  'video-converter': {
+    name: 'Video Converter',
+    icon: '🎞️',
+    description: 'Convert videos between formats',
+    category: 'Media Tools',
+    detailedDescription:
+      'Need to convert a video from one format to another? Our browser-based Video Converter handles the heavy lifting using FFmpeg WebAssembly technology. Convert between MP4, WebM, MOV, AVI, and even animated GIF — all without uploading your files to any server. Your videos stay on your device the entire time, ensuring complete privacy and zero bandwidth costs.',
+    benefits: [
+      'Browser-based FFmpeg conversion — no uploads needed',
+      'Support for MP4, WebM, MOV, AVI, and GIF output',
+      'Adjustable quality presets for file size control',
+      'Batch processing for multiple videos at once',
+    ],
+    howToUse:
+      'Drag and drop your video files into the converter. Choose your desired output format and quality level. Click convert and download your re-encoded videos instantly from your browser.',
+  },
+  'audio-converter': {
+    name: 'Audio Converter',
+    icon: '🎵',
+    description: 'Convert between audio formats',
+    category: 'Media Tools',
+    detailedDescription:
+      'The Audio Converter is a high-performance utility designed for safety training developers who need to re-encode audio assets for web delivery. Whether you are converting live safety recordings from WAV to compact MP3 or preparing OGG files for specialized players, our tool ensures acoustic integrity. Powered by FFmpeg WebAssembly, all processing happens locally in your browser, ensuring that your proprietary audio content never leaves your device.',
+    benefits: [
+      'High-fidelity re-encoding (MP3, WAV, AAC, OGG)',
+      'Adjustable bitrate settings for file size control',
+      'Batch processing for multiple audio files',
+      'Zero-upload, 100% private browser-based conversion',
+    ],
+    howToUse:
+      'Upload your audio files. Select the target format (like MP3 or WAV) and choose a bitrate preset. Click Convert to process your files and download the results immediately.',
+  },
+  'video-to-gif': {
+    name: 'Video to GIF',
+    icon: '🎞️',
+    description: 'Create high-quality training GIFs',
+    category: 'Media Tools',
+    detailedDescription:
+      'The Video to GIF converter is specifically optimized for creating short, high-performance demonstrations for safety training modules. Designed for clips under 10 seconds, it uses advanced Lanczos scaling and palette generation to ensure that your GIFs are crisp and professional. By converting demonstration videos into lightweight GIFs, you can improve learning retention without the overhead of heavy video players.',
+    benefits: [
+      'Optimized for 10-second high-fidelity training clips',
+      'Advanced palette generation for vibrant color accuracy',
+      'Customizable scaling and framerate for LMS compatibility',
+      'Privacy-first local processing via FFmpeg WASM',
+    ],
+    howToUse:
+      'Select a short video clip (recommend under 10 seconds). Configure your output dimensions and framerate. The tool will generate a high-quality animated GIF instantly for your training manual.',
+  },
+  'word-to-html': {
+    name: 'Word to HTML',
+    icon: '📝',
+    description: 'Clean conversion of Word content',
+    category: 'Content Creation',
+    detailedDescription:
+      'The Word to HTML converter is an essential utility for technical writers and safety managers who need to migrate content from Microsoft Word into web-based training modules. Word exports are notoriously bloated with non-standard XML tags and thousands of lines of inline styles. This tool strips away the mess, allowing you to selectively remove empty tags, attributes, and extra spans while maintaining the structural integrity of your text.',
+    benefits: [
+      'Strips messy Microsoft Word XML and inline styling',
+      'One-click removal of empty tags and extra spans',
+      'Live preview of cleaned HTML output',
+      'Supports batch cleaning of large document segments',
+    ],
+    howToUse:
+      'Paste your content directly from a Word document or upload a .docx file. Use the cleaning filters on the right to toggle specific removals. Copy the sanitized, lightweight HTML ready for your CMS.',
   },
 };
 

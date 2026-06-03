@@ -20,6 +20,9 @@ import {
   Search,
   ChevronRight,
   LogIn,
+  Repeat,
+  Music,
+  FileType,
 } from 'lucide-react';
 import { toolIdToSlug, toolInfo } from '@/lib/seo';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +42,10 @@ const iconMap = {
   'ai-assistant': MessageSquare,
   'image-to-text': Wand2,
   'document-extractor': FileText,
+  'video-converter': Repeat,
+  'audio-converter': Music,
+  'video-to-gif': Video,
+  'word-to-html': FileType,
 };
 
 // Free tools that anyone can access (even without login)
@@ -48,6 +55,10 @@ const FREE_TOOL_IDS = [
   'video-compressor',
   'image-to-text',
   'document-extractor',
+  'video-converter',
+  'audio-converter',
+  'video-to-gif',
+  'word-to-html',
 ];
 
 // Generator tools that require login + generator access
@@ -115,8 +126,10 @@ export function ToolsLanding({ user }) {
                     <span className="text-primary">Content Tools</span>
                   </h1>
                   <p className="text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl font-medium">
-                    Powerful browser-based tools for image conversion, video
-                    compression, OCR, and more. No sign-up required to start.
+                    Professional browser-based tools including{' '}
+                    <strong>High-Quality Video to GIF</strong> (optimized for
+                    10-second clips), <strong>Batch Audio Conversion</strong>,
+                    video compression, and OCR. 100% private processing.
                   </p>
                   <div className="flex flex-wrap gap-4">
                     <Button
@@ -125,7 +138,7 @@ export function ToolsLanding({ user }) {
                       asChild
                     >
                       <Link href="/tools">
-                        Explore Free Tools
+                        Explore Free Hub
                         <ArrowRight className="ml-2 w-5 h-5" />
                       </Link>
                     </Button>
@@ -136,7 +149,7 @@ export function ToolsLanding({ user }) {
                       onClick={() => router.push('/auth?mode=login')}
                     >
                       <LogIn className="mr-2 w-5 h-5" />
-                      Sign In for Full Access
+                      Sign In for AI Access
                     </Button>
                   </div>
                 </>
@@ -254,25 +267,25 @@ export function ToolsLanding({ user }) {
                       </div>
                     )}
 
-                    <CardContent className="p-10 flex flex-col h-full relative z-10">
+                    <CardContent className="p-8 flex flex-col h-full relative z-10">
                       <div
                         className={cn(
-                          'w-20 h-20 rounded-[28px] mb-8 flex items-center justify-center transition-all duration-500 shadow-xl bg-primary/10 border border-border text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:rotate-6',
+                          'w-16 h-16 rounded-[22px] mb-6 flex items-center justify-center transition-all duration-500 shadow-lg bg-primary/10 border border-border text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:rotate-6',
                           locked && 'bg-muted opacity-50'
                         )}
                       >
-                        <Icon className="w-10 h-10" />
+                        <Icon className="w-8 h-8" />
                       </div>
-                      <h3 className="text-2xl font-black mb-4 text-foreground tracking-tight">
+                      <h3 className="text-xl font-black mb-2 text-foreground tracking-tight">
                         {tool.name}
                       </h3>
-                      <p className="text-muted-foreground text-base leading-relaxed mb-10 font-medium flex-1">
+                      <p className="text-muted-foreground text-sm leading-relaxed mb-8 font-medium flex-1 line-clamp-3">
                         {tool.description}
                       </p>
                       <Button
                         variant={locked ? 'outline' : 'default'}
                         className={cn(
-                          'w-full h-14 rounded-2xl font-black text-lg transition-all border-none shadow-xl',
+                          'w-full h-12 rounded-xl font-black text-base transition-all border-none shadow-lg',
                           locked
                             ? 'bg-muted text-muted-foreground cursor-default'
                             : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:scale-[1.02]'
@@ -345,21 +358,21 @@ export function ToolsLanding({ user }) {
                       mounted && isLowEnd() ? {} : { y: -8, scale: 1.02 }
                     }
                     className={cn(
-                      'p-8 bg-card/60 backdrop-blur-xl border border-border rounded-[32px] hover:border-primary/40 transition-all hover:shadow-2xl group text-center relative overflow-hidden',
+                      'p-6 bg-card/60 backdrop-blur-xl border border-border rounded-[28px] hover:border-primary/40 transition-all hover:shadow-2xl group text-center relative overflow-hidden',
                       isGuest &&
-                        'min-h-[200px] flex flex-col items-center justify-center'
+                        'min-h-[160px] flex flex-col items-center justify-center'
                     )}
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-6 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 shadow-md">
-                      <Icon className="w-7 h-7" />
+                    <div className="w-12 h-12 rounded-[18px] bg-primary/10 mx-auto mb-4 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 shadow-md">
+                      <Icon className="w-6 h-6" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] block text-foreground opacity-80 group-hover:text-primary group-hover:opacity-100 transition-colors">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] block text-foreground opacity-80 group-hover:text-primary group-hover:opacity-100 transition-colors">
                       {tool.name?.replace(' Generator', '')}
                     </span>
                     {isGuest && (
                       <Badge
                         variant="secondary"
-                        className="mt-4 text-[8px] bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 px-3 py-1"
+                        className="mt-3 text-[7px] bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 px-2.5 py-0.5 font-black uppercase"
                       >
                         FREE
                       </Badge>

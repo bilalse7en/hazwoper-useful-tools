@@ -19,11 +19,14 @@ import {
   BrainCircuit,
   ScanText,
   FileText,
+  Repeat,
+  Music,
   ShieldCheck,
   Sparkles,
   LayoutDashboard,
   Users,
   Library,
+  FileType,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -59,6 +62,10 @@ const navGroups = [
       { id: 'image-to-text', label: 'Image to Text', icon: ScanText },
       { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
       { id: 'video-compressor', label: 'Video Compressor', icon: Video },
+      { id: 'video-converter', label: 'Video Converter', icon: Repeat },
+      { id: 'audio-converter', label: 'Audio Converter', icon: Music },
+      { id: 'video-to-gif', label: 'Video to GIF', icon: Video },
+      { id: 'word-to-html', label: 'Word to HTML', icon: FileType },
       { id: 'ai-assistant', label: 'AI UNIVERSE', icon: BrainCircuit },
       {
         id: 'tools-directory',

@@ -14,6 +14,7 @@ import {
   Layout,
   Search,
   ArrowRight,
+  FileType,
 } from 'lucide-react';
 import { toolInfo, toolIdToSlug } from '@/lib/seo';
 import { isLowEnd } from '@/lib/utils';
@@ -30,6 +31,10 @@ const iconMap = {
   'ai-assistant': MessageSquare,
   'image-to-text': Wand2,
   'document-extractor': FileText,
+  'video-converter': Repeat,
+  'audio-converter': Music,
+  'video-to-gif': Video,
+  'word-to-html': FileType,
 };
 
 const gradientMap = {
@@ -43,6 +48,10 @@ const gradientMap = {
   'ai-assistant': 'from-fuchsia-500 to-pink-400',
   'image-to-text': 'from-sky-500 to-indigo-400',
   'document-extractor': 'from-lime-500 to-emerald-400',
+  'video-converter': 'from-orange-500 to-red-400',
+  'audio-converter': 'from-pink-500 to-rose-400',
+  'video-to-gif': 'from-yellow-500 to-amber-400',
+  'word-to-html': 'from-blue-600 to-indigo-500',
 };
 
 const glowMap = {
@@ -56,6 +65,10 @@ const glowMap = {
   'ai-assistant': 'shadow-fuchsia-500/30',
   'image-to-text': 'shadow-sky-500/30',
   'document-extractor': 'shadow-lime-500/30',
+  'video-converter': 'shadow-orange-500/30',
+  'audio-converter': 'shadow-pink-500/30',
+  'video-to-gif': 'shadow-yellow-500/30',
+  'word-to-html': 'shadow-blue-600/30',
 };
 
 /* ── component ─────────────────────────────────────────────── */
@@ -248,8 +261,9 @@ export function WelcomeScroll({ onComplete }) {
 
               {/* subtitle */}
               <p className="text-base md:text-xl text-gray-400 font-light max-w-2xl mx-auto leading-relaxed">
-                Your all-in-one professional toolkit for content generation,
-                media processing, and intelligent automation.
+                Advanced content automation, high-fidelity media processing
+                (Under 10s GIF, Batch Audio), and industrial-grade security for
+                safety professionals.
               </p>
 
               {/* scroll hint */}
