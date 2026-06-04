@@ -19,7 +19,8 @@ export function ProfessionalOverview() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    queueMicrotask(() => setMounted(true));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
   }, []);
 
   return (
@@ -32,8 +33,7 @@ export function ProfessionalOverview() {
         <div className="max-w-4xl mx-auto text-center mb-24">
           <motion.div
             initial={mounted && isLowEnd() ? false : { opacity: 0, y: 20 }}
-            whileInView={mounted && isLowEnd() ? false : { opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-8"
           >
             <Shield className="w-4 h-4 text-primary" />
@@ -92,8 +92,7 @@ export function ProfessionalOverview() {
             <motion.div
               key={i}
               initial={mounted && isLowEnd() ? false : { opacity: 0, y: 20 }}
-              whileInView={mounted && isLowEnd() ? false : { opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
               transition={{ delay: i * 0.1 }}
               className="space-y-6 p-8 rounded-[32px] bg-card/40 backdrop-blur-xl border border-border hover:border-primary/30 transition-all group"
             >

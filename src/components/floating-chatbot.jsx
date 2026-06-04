@@ -51,7 +51,10 @@ export function FloatingChatbot() {
       const script = document.createElement('script');
       script.src = 'https://js.puter.com/v2/';
       script.async = true;
-      script.onload = () => setPuterReady(true);
+      script.onload = () => {
+        window.puter.quiet = true;
+        setPuterReady(true);
+      };
       document.head.appendChild(script);
     } else if (window.puter) {
       setPuterReady(true);

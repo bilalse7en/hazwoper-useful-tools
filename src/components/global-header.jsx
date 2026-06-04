@@ -37,7 +37,11 @@ export function GlobalHeader({ activeTab, onTabChange }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Header: Auth state change', event, session?.user?.id);
+
       if (session?.user) {
+        // Optimized: Check if we already have this user in state to avoid redundant profile fetches
+        if (user?.id === session.user.id) return;
+
         try {
           const { data: profile } = await supabase
             .from('profiles')
@@ -69,7 +73,6 @@ export function GlobalHeader({ activeTab, onTabChange }) {
           localStorage.setItem('user', JSON.stringify(activeUser));
         } catch (err) {
           console.error('Header profile sync error:', err);
-          // Fallback to basic info if profile fetch fails
           const baseUser = {
             id: session.user.id,
             email: session.user.email,
@@ -77,6 +80,7 @@ export function GlobalHeader({ activeTab, onTabChange }) {
             role: 'user',
           };
           setUser(baseUser);
+          localStorage.setItem('user', JSON.stringify(baseUser));
         }
       } else {
         setUser(null);
@@ -85,12 +89,12 @@ export function GlobalHeader({ activeTab, onTabChange }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [user?.id]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    sessionStorage.removeItem('user');
+    localStorage.removeItem('user');
     router.push('/');
   };
 

@@ -69,7 +69,8 @@ export function ToolsLanding({ user }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    queueMicrotask(() => setMounted(true));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
   }, []);
 
   const isGuest = !user;
@@ -105,8 +106,8 @@ export function ToolsLanding({ user }) {
           <div className="max-w-3xl">
             <motion.div
               initial={mounted && isLowEnd() ? false : { opacity: 0, y: 30 }}
-              whileInView={mounted && isLowEnd() ? false : { opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
             >
               <Badge
                 variant="secondary"
@@ -231,7 +232,9 @@ export function ToolsLanding({ user }) {
                   initial={
                     mounted && isLowEnd() ? false : { opacity: 0, y: 20 }
                   }
-                  animate={mounted && isLowEnd() ? false : { opacity: 1, y: 0 }}
+                  animate={
+                    mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }
+                  }
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   className="group h-full"
                 >
