@@ -7,6 +7,11 @@ import { DelayedScriptLoader } from '@/components/delayed-script-loader';
 import { Toaster } from 'sonner';
 import './globals.css';
 
+import { GlobalHeader } from '@/components/global-header';
+import { Footer } from '@/components/footer';
+import { EnvironmentalSetup } from '@/components/environmental-setup';
+import { FloatingChatbot } from '@/components/floating-chatbot';
+
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
@@ -46,11 +51,6 @@ export const metadata = {
     'google-adsense-account': 'ca-pub-9874465109252768',
   },
 };
-
-import { GlobalHeader } from '@/components/global-header';
-import { Footer } from '@/components/footer';
-import { EnvironmentalSetup } from '@/components/environmental-setup';
-import { FloatingChatbot } from '@/components/floating-chatbot';
 
 export default function RootLayout({ children }) {
   return (
