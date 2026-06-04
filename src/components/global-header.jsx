@@ -25,7 +25,7 @@ export function GlobalHeader({ activeTab, onTabChange }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
 
-    // Initial load from local storage for instant UI responsiveness
+    // Initial load from local storage
     const stored = localStorage.getItem('user');
     if (stored) {
       try {
@@ -39,9 +39,6 @@ export function GlobalHeader({ activeTab, onTabChange }) {
       console.log('Header: Auth state change', event, session?.user?.id);
 
       if (session?.user) {
-        // Optimized: Check if we already have this user in state to avoid redundant profile fetches
-        if (user?.id === session.user.id) return;
-
         try {
           const { data: profile } = await supabase
             .from('profiles')
@@ -89,7 +86,7 @@ export function GlobalHeader({ activeTab, onTabChange }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [user?.id]);
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

@@ -15,6 +15,8 @@ import {
   Search,
   ArrowRight,
   FileType,
+  Repeat,
+  Music,
 } from 'lucide-react';
 import { toolInfo, toolIdToSlug } from '@/lib/seo';
 import { isLowEnd } from '@/lib/utils';
