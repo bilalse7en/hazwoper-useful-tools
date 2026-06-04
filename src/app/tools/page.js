@@ -138,16 +138,28 @@ export default function ToolsDirectoryPage() {
                         </span>
                       </div>
                     </div>
-                    <Button
-                      size="lg"
-                      className="h-16 px-10 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 border-none transition-all group-hover:scale-[1.05]"
-                      asChild
-                    >
-                      <Link href={`/tools/${tool.slug}`}>
-                        Initialize Tool
-                        <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                      </Link>
-                    </Button>
+                    <div className="flex flex-col gap-3 w-full">
+                      <Button
+                        size="lg"
+                        className="h-14 px-10 rounded-2xl font-black text-base bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 border-none transition-all group-hover:scale-[1.05]"
+                        asChild
+                      >
+                        <Link href={`/tools/${tool.slug}`}>
+                          Initialize Tool
+                          <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="lg"
+                        className="h-12 px-10 rounded-2xl font-black text-xs uppercase tracking-widest text-muted-foreground hover:text-primary transition-all"
+                        asChild
+                      >
+                        <Link href={`/tools/${tool.slug}/details`}>
+                          View Full Details
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Dynamic background pulse */}

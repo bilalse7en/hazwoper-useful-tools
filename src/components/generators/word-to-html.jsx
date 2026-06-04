@@ -543,7 +543,7 @@ export function WordToHtml() {
               <div className="flex-1 overflow-hidden relative group">
                 {isPreviewMode ? (
                   <div
-                    className="absolute inset-0 p-6 overflow-y-auto prose prose-invert prose-xs max-w-none text-foreground prose-p:my-2 bg-background/10"
+                    className="absolute inset-0 p-6 overflow-y-auto preview-container prose prose-invert prose-xs max-w-none text-foreground prose-p:my-2 bg-background/10"
                     dangerouslySetInnerHTML={{ __html: cleanedHtml }}
                   />
                 ) : (

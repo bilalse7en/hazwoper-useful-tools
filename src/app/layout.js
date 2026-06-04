@@ -50,6 +50,7 @@ export const metadata = {
 import { GlobalHeader } from '@/components/global-header';
 import { Footer } from '@/components/footer';
 import { EnvironmentalSetup } from '@/components/environmental-setup';
+import { FloatingChatbot } from '@/components/floating-chatbot';
 
 export default function RootLayout({ children }) {
   return (
@@ -143,6 +144,7 @@ export default function RootLayout({ children }) {
           </div>
           <GdprConsent />
           <EnvironmentalSetup />
+          <FloatingChatbot />
           <Toaster
             position="top-right"
             toastOptions={{

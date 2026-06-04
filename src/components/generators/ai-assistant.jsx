@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BRAND_CONFIG } from '@/lib/constants';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import {
   Bot,
   Send,
@@ -53,6 +52,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { toolInfo } from '@/lib/seo';
 
 const LOGO_URL = BRAND_CONFIG.logo;
 
@@ -61,13 +61,13 @@ const MODELS = [
     id: 'assistant',
     label: 'Neural Assistant',
     icon: Bot,
-    provider: 'Open Intelligence',
+    provider: 'GPT Intelligence',
   },
   {
     id: 'coder',
     label: 'Pro Coder',
     icon: Terminal,
-    provider: 'DeepSeek Core',
+    provider: 'Claude Core',
   },
   {
     id: 'image-gen',
@@ -77,22 +77,24 @@ const MODELS = [
   },
 ];
 
-const PROJECT_KNOWLEDGE = `
-You are the Official Neural Assistant for "HAZWOPER Useful Tools". 
-Key Platform Features:
-1. Course Generator: Extracts Overview, Syllabus, Objectives, and FAQ from DOCX. Use this for building website course pages.
-2. Blog Generator: Processes DOCX files into beautiful blog HTML with featured images.
-3. Video Compressor: Uses local FFmpeg to compress large training videos (25MB to 5MB) without quality loss.
-4. Image Converter: Batch converts JPG/PNG to WebP for faster loading.
-5. HTML Cleaner: Sanitizes messy HTML from Word documents.
-6. Glossary & Resource Generators: Create lists and downloads for course pages.
+// Compact knowledge base for system prompt — kept short to avoid URI limits
+const TOOL_SUMMARY = Object.entries(toolInfo)
+  .map(([slug, info]) => `${info.name}: ${info.description}`)
+  .join('\n');
 
-Helpful Hints:
-- If a user needs to build a course page, recommend "Course Generator".
-- If a user has large videos, suggest "Video Compressor".
-- For SEO optimization, recommend "Image Converter" (WebP conversion).
-- For messy Word content, recommend "HTML Cleaner".
-`;
+const SYSTEM_PROMPT = `You are the AI Universe assistant for "HAZWOPER Useful Tools" (Content Suite).
+You help users with professional content tools for safety training.
+
+Available Tools:
+${TOOL_SUMMARY}
+
+Rules:
+1. Provide specific, helpful answers about our tools.
+2. Recommend the best tool for the user's workflow.
+3. All media tools process locally in the browser (privacy-first).
+4. Content generators require login; media tools are free.
+5. Every tool has a /details page with technical specs.
+6. Keep answers professional and concise.`;
 
 const CodeBlock = ({ children, language }) => {
   const [expanded, setExpanded] = useState(false);
@@ -244,18 +246,34 @@ export function AIAssistant() {
   const [attachedFile, setAttachedFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [openRouterKey, setOpenRouterKey] = useState('');
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [puterReady, setPuterReady] = useState(false);
 
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  // Load Puter.js SDK dynamically
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.puter) {
+      const script = document.createElement('script');
+      script.src = 'https://js.puter.com/v2/';
+      script.async = true;
+      script.onload = () => {
+        setPuterReady(true);
+        console.log('[AI Universe] Puter.js Neural Engine loaded.');
+      };
+      script.onerror = () => {
+        console.error('[AI Universe] Failed to load Puter.js SDK.');
+      };
+      document.head.appendChild(script);
+    } else if (window.puter) {
+      setPuterReady(true);
+    }
+  }, []);
+
   // Load saved data on mount
   useEffect(() => {
-    const savedKey = localStorage.getItem('openrouter_key') || '';
-    setOpenRouterKey(savedKey);
-
     const savedSessions = localStorage.getItem('ai_sessions');
     const savedCurrentId = localStorage.getItem('ai_current_session_id');
 
@@ -373,11 +391,6 @@ export function AIAssistant() {
     }
   }, [messages]);
 
-  const saveKey = () => {
-    localStorage.setItem('openrouter_key', openRouterKey);
-    toast.success('Intelligence Sequence Synchronized');
-  };
-
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -396,14 +409,6 @@ export function AIAssistant() {
     setFilePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
-
-  const fileToBase64 = (file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = (error) => reject(error);
-    });
 
   const handleSend = async () => {
     if ((!input.trim() && !attachedFile) || isLoading) return;
@@ -428,7 +433,7 @@ export function AIAssistant() {
     removeAttachment();
     setIsLoading(true);
 
-    // IMAGE GENERATION (Instant via Pollinations)
+    // IMAGE GENERATION (Pollinations - still the best free image gen)
     if (selectedModel === 'image-gen') {
       try {
         const enhancedPrompt = `${currentInput}, cinematic lighting, high resolution, 8k, highly detailed, professional masterpiece`;
@@ -436,7 +441,6 @@ export function AIAssistant() {
         const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&private=true&enhance=true&seed=${seed}`;
 
         // Create a temporary loading message
-        const loadingMsgIndex = messages.length;
         setMessages((prev) => [
           ...prev,
           {
@@ -447,8 +451,8 @@ export function AIAssistant() {
           },
         ]);
 
-        // Preload the image to ensure it's ready before displaying
-        const img = new Image();
+        // Preload the image using native browser HTMLImageElement
+        const img = new window.Image();
 
         await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
@@ -457,7 +461,7 @@ export function AIAssistant() {
                 'Image generation timed out. The service might be busy.'
               )
             );
-          }, 30000); // 30 seconds timeout
+          }, 30000);
 
           img.onload = () => {
             clearTimeout(timeout);
@@ -491,12 +495,7 @@ export function AIAssistant() {
             .filter((m) => !m.tempId)
             .concat({
               role: 'assistant',
-              content: `⚠️ Image generation failed: ${error.message}. This can happen when:
-- The service is experiencing high load
-- Your prompt contains restricted content
-- Network connectivity issues
-
-**Tip:** Try simplifying your prompt or wait a moment before trying again.`,
+              content: `⚠️ Image generation failed: ${error.message}. Try simplifying your prompt or wait a moment before trying again.`,
               timestamp: new Date(),
             })
         );
@@ -506,108 +505,45 @@ export function AIAssistant() {
       return;
     }
 
-    // TEXT & CODE GENERATION
+    // TEXT & CODE GENERATION — Powered by Puter.js (Free, No Key Required)
     try {
+      if (!window.puter) {
+        throw new Error(
+          'AI engine is still loading. Please wait a moment and try again.'
+        );
+      }
+
       const systemPrompt =
         selectedModel === 'coder'
-          ? 'You are a professional software engineer. Provide high-quality, efficient code. ' +
-            PROJECT_KNOWLEDGE
-          : 'You are a helpful assistant for HAZWOPER Useful Tools. ' +
-            PROJECT_KNOWLEDGE;
+          ? 'You are a professional software engineer. Provide high-quality, efficient code with clear explanations. ' +
+            SYSTEM_PROMPT
+          : SYSTEM_PROMPT;
 
-      const chatMessages = [
+      // Build conversation history for context
+      const chatHistory = messages
+        .filter((m) => !m.type && !m.tempId)
+        .slice(-10) // Keep last 10 messages for context
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const fullMessages = [
         { role: 'system', content: systemPrompt },
-        ...messages
-          .filter((m) => !m.type)
-          .map((m) => ({ role: m.role, content: m.content })),
+        ...chatHistory,
         { role: 'user', content: currentInput },
       ];
 
-      // Try OpenRouter if Key is provided, else use Free Neural Cluster
-      if (openRouterKey) {
-        const routerModel =
-          selectedModel === 'coder'
-            ? 'deepseek/deepseek-coder-33b-instruct'
-            : 'meta-llama/llama-3.1-405b-instruct';
-        try {
-          const orResponse = await fetch(
-            'https://openrouter.ai/api/v1/chat/completions',
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${openRouterKey}`,
-                'HTTP-Referer': window.location.origin,
-                'X-Title': 'HAZWOPER AI',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: routerModel,
-                messages: chatMessages,
-              }),
-            }
-          );
-          const orData = await orResponse.json();
-          if (orData.choices?.[0]?.message) {
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: 'assistant',
-                content: orData.choices[0].message.content,
-                timestamp: new Date(),
-                model: 'Llama 3.1',
-              },
-            ]);
-            setIsLoading(false);
-            return;
-          }
-        } catch (e) {
-          console.warn('OpenRouter failed, falling back to free cluster.');
-        }
-      }
-
-      // Free Neural Cluster (Pollinations - 100% Working)
-      const pollinationsModel =
-        selectedModel === 'coder' ? 'searchgpt' : 'openai';
-      const pollinationsUrl = `https://text.pollinations.ai/`;
-
-      const response = await fetch(pollinationsUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: chatMessages,
-          model: pollinationsModel,
-          seed: Math.floor(Math.random() * 1000000),
-          json: false,
-        }),
+      // Puter.js AI Chat — Free, Unlimited, Intelligent
+      const response = await window.puter.ai.chat(currentInput, {
+        model: 'gpt-4o-mini',
+        messages: fullMessages,
       });
 
-      if (!response.ok) {
-        // Fallback to GET request if POST fails
-        const lastMsg = currentInput;
-        const fallbackUrl = `https://text.pollinations.ai/${encodeURIComponent(lastMsg)}?model=${pollinationsModel}&system=${encodeURIComponent(systemPrompt)}`;
-        const fallbackResponse = await fetch(fallbackUrl);
-        if (!fallbackResponse.ok) throw new Error('Neural cluster unavailable');
-        const fallbackText = await fallbackResponse.text();
+      // Extract text from Puter response
+      const responseText =
+        typeof response === 'string'
+          ? response
+          : response?.message?.content || response?.toString() || '';
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: fallbackText.trim(),
-            timestamp: new Date(),
-            model: selectedModel === 'coder' ? 'DeepSeek' : 'Neural 3.5',
-          },
-        ]);
-        return;
-      }
-
-      const responseText = await response.text();
-
-      // Clean up Pollinations specific branding or notices if they appear
-      const cleanText = responseText
-        .replace(/IMPORTANT NOTICE:[\s\S]*?\n\n/g, '')
-        .replace(/Pollinations\.ai/gi, 'Neural Intelligence')
-        .trim();
+      const cleanText = responseText.trim();
 
       setMessages((prev) => [
         ...prev,
@@ -615,17 +551,18 @@ export function AIAssistant() {
           role: 'assistant',
           content:
             cleanText ||
-            'Neural cluster is processing. Please try again in a moment.',
+            'I processed your request but received an empty response. Please try rephrasing your question.',
           timestamp: new Date(),
-          model: selectedModel === 'coder' ? 'DeepSeek' : 'Neural 3.5',
+          model: selectedModel === 'coder' ? 'Pro Coder' : 'Neural GPT',
         },
       ]);
     } catch (error) {
+      console.error('[AI Universe Error]:', error);
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: `Error: ${error.message}. The neural network is currently under high load. Please try again shortly.`,
+          content: `Error: ${error.message}. Please try again.`,
           timestamp: new Date(),
         },
       ]);
@@ -736,65 +673,25 @@ export function AIAssistant() {
         </div>
 
         <div className="p-4 border-t border-border/50">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-2 h-9 text-[10px] font-black uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all rounded-xl"
-              >
-                <Settings2 className="h-3.5 w-3.5" /> Settings
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-2xl">
-              <DialogHeader className="flex flex-row items-center gap-4">
-                <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-lg">
-                  <ShieldCheck className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <DialogTitle className="text-lg font-black uppercase tracking-tight">
-                    Intelligence Config
-                  </DialogTitle>
-                  <DialogDescription className="text-[9px] uppercase font-bold tracking-widest text-primary/60">
-                    Secure Neural Encryption
-                  </DialogDescription>
-                </div>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    OpenRouter Key
-                  </label>
-                  <Input
-                    type="password"
-                    value={openRouterKey}
-                    onChange={(e) => setOpenRouterKey(e.target.value)}
-                    placeholder="sk-or-v1-..."
-                    className="h-10 rounded-xl text-xs font-mono"
-                  />
-                </div>
-                <Button
-                  onClick={saveKey}
-                  className="w-full h-10 rounded-xl font-black uppercase tracking-wider text-[10px]"
-                >
-                  Save Key
-                </Button>
-                <div className="pt-4 border-t border-border/50">
-                  <Button
-                    variant="destructive"
-                    onClick={clearAllChats}
-                    className="w-full h-10 rounded-xl font-black uppercase tracking-wider text-[10px]"
-                  >
-                    Clear All History
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button
+            variant="destructive"
+            onClick={clearAllChats}
+            className="w-full h-9 rounded-xl font-black uppercase tracking-wider text-[10px]"
+          >
+            Clear All History
+          </Button>
 
           <div className="mt-4 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-primary/5 border border-primary/10 select-none">
-            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            <div
+              className={cn(
+                'h-1.5 w-1.5 rounded-full',
+                puterReady
+                  ? 'bg-green-500 animate-pulse'
+                  : 'bg-yellow-500 animate-bounce'
+              )}
+            />
             <span className="text-[7px] font-black uppercase tracking-[0.2em] text-primary/60">
-              Neural Active & Secure
+              {puterReady ? 'Neural Active & Secure' : 'Engine Loading...'}
             </span>
           </div>
         </div>

@@ -216,6 +216,8 @@ export default function Home() {
       <InitialLoadingShell isReady={!isChecking} />
       {showWelcome && <WelcomeScroll onComplete={handleWelcomeComplete} />}
       <ToolsLanding user={user} />
+      <ProfessionalOverview />
+      <BlogSection />
     </>
   );
 }
