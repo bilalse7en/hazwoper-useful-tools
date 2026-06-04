@@ -41,29 +41,32 @@ export default function ToolsLayout({ children }) {
 
   const currentToolSlug = pathname.split('/').pop();
   const activeTab = slugToToolId[currentToolSlug] || 'course';
+  const isDetailsPage = pathname.endsWith('/details');
 
   return (
     <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px)] relative">
-      {/* Sidebar */}
-      <AppSidebar
-        activeTab={activeTab}
-        onTabChange={(tab) => {
-          if (tab === 'admin') {
-            router.push('/admin');
-            return;
-          }
-          const nextSlug = Object.entries(slugToToolId).find(
-            ([s, id]) => id === tab
-          )?.[0];
-          if (nextSlug) router.push(`/tools/${nextSlug}`);
-        }}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onThemeToggle={() => setThemeDialogOpen(true)}
-        user={user}
-        onLogout={handleLogout}
-        className="hidden lg:block h-full relative z-30"
-      />
+      {/* Sidebar - Hidden on details pages */}
+      {!isDetailsPage && (
+        <AppSidebar
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            if (tab === 'admin') {
+              router.push('/admin');
+              return;
+            }
+            const nextSlug = Object.entries(slugToToolId).find(
+              ([s, id]) => id === tab
+            )?.[0];
+            if (nextSlug) router.push(`/tools/${nextSlug}`);
+          }}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onThemeToggle={() => setThemeDialogOpen(true)}
+          user={user}
+          onLogout={handleLogout}
+          className="hidden lg:block h-full relative z-30"
+        />
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
