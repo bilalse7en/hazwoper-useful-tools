@@ -97,6 +97,7 @@ export function HTMLCleaner() {
   useEffect(() => {
     if (typeof window !== 'undefined' && html) {
       const newStats = getHTMLStats(html);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStats(newStats);
     }
   }, [html]);

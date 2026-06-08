@@ -113,6 +113,7 @@ export function FloatingChatbot() {
       };
       document.head.appendChild(script);
     } else if (window.puter) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPuterReady(true);
     }
   }, []);

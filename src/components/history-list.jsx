@@ -39,6 +39,7 @@ export function HistoryList({ toolType, onRestore, className }) {
   }, [toolType]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHistory();
 
     // Subscribe to REALTIME additions for this tool

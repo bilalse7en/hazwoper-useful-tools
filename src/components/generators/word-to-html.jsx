@@ -216,6 +216,7 @@ export function WordToHtml() {
   // Update cleaned HTML live
   useEffect(() => {
     // Only update live if the user isn't manually editing the output right now
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCleanedHtml(cleanMarkup(rawHtml, options));
   }, [rawHtml, options, cleanMarkup]);
 

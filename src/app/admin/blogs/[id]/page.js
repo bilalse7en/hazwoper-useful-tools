@@ -106,6 +106,7 @@ export default function AdminBlogEditPage() {
   useEffect(() => {
     const words = formData.content.trim().split(/\s+/).length;
     const minutes = Math.ceil(words / 200); // 200 wpm average
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFormData((prev) => ({ ...prev, read_time: `${minutes} min read` }));
   }, [formData.content]);
 

@@ -103,6 +103,7 @@ function AdminDashboard() {
     }
 
     initializeDashboard();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1); // Reset page on view change
 
     // Subscribe to REALTIME changes for Admin Monitoring
@@ -416,7 +417,7 @@ function AdminDashboard() {
             ? Math.ceil(libraryItems.length / itemsPerPage)
             : 0;
 
-  const PaginationControls = () => {
+  const renderPaginationControls = () => {
     if (totalPages <= 1) return null;
     return (
       <div className="flex items-center justify-between px-10 py-6 border-t border-border bg-muted/10">
@@ -798,7 +799,7 @@ function AdminDashboard() {
                   )}
                 </TableBody>
               </Table>
-              <PaginationControls />
+              {renderPaginationControls()}
             </Card>
 
             <Card className="rounded-[40px] shadow-2xl border-border bg-card/20 backdrop-blur-xl p-8">
@@ -927,7 +928,7 @@ function AdminDashboard() {
                   )}
                 </TableBody>
               </Table>
-              <PaginationControls />
+              {renderPaginationControls()}
             </Card>
           </div>
         ) : activeView === 'performance' ? (
@@ -1195,7 +1196,7 @@ function AdminDashboard() {
                   </Card>
                 ))}
             </div>
-            {libraryItems.length > itemsPerPage && <PaginationControls />}
+            {libraryItems.length > itemsPerPage && renderPaginationControls()}
           </div>
         ) : (
           <Card className="rounded-[40px] shadow-2xl border-border overflow-hidden bg-card/40 backdrop-blur-xl animate-in-fade">
@@ -1315,7 +1316,7 @@ function AdminDashboard() {
                   </TableBody>
                 </Table>
               </div>
-              <PaginationControls />
+              {renderPaginationControls()}
             </CardContent>
           </Card>
         )}

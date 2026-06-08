@@ -40,6 +40,16 @@ const ProfessionalOverview = dynamic(
   }
 );
 
+const IndustryInsights = dynamic(
+  () =>
+    import('@/components/industry-insights').then(
+      (mod) => mod.IndustryInsights
+    ),
+  {
+    loading: () => <div className="h-96" />,
+  }
+);
+
 import { useAuth } from '@/components/auth-provider';
 
 export default function Home() {
@@ -108,6 +118,7 @@ export default function Home() {
       <InitialLoadingShell isReady={!isChecking} />
       {showWelcome && <WelcomeScroll onComplete={handleWelcomeComplete} />}
       <ToolsLanding user={user} />
+      <IndustryInsights />
       <ProfessionalOverview />
       <BlogSection />
     </>

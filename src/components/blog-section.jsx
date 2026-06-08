@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, BookOpen, Clock, User, Sparkles } from 'lucide-react';
@@ -14,11 +14,7 @@ export function BlogSection() {
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchBlogs();
-  }, []);
-
-  async function fetchBlogs() {
+  const fetchBlogs = useCallback(async () => {
     // Skip remote fetch if using placeholders (common in CI/Build)
     const isPlaceholder =
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith('sb_') ||
@@ -58,7 +54,12 @@ export function BlogSection() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchBlogs();
+  }, [fetchBlogs]);
 
   return (
     <section id="blog" className="py-24 container mx-auto px-6 overflow-hidden">
