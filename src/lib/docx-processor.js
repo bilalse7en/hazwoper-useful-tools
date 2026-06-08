@@ -467,14 +467,16 @@ function extractAllSyllabusContent(elementsArray) {
       element.tagName === 'P' &&
       !courseData.syllabusIntro
     ) {
-      courseData.syllabusIntro = element.innerHTML.trim();
+      courseData.syllabusIntro = element.textContent
+        .replace(/\s+/g, ' ')
+        .trim();
       break;
     }
 
     // Don't go too deep into lessons
     if (
-      text.match(/lesson\s*\d+:/i) ||
-      text.match(/module\s*\d+:/i) ||
+      text.match(/^lesson\s*\d+:/i) ||
+      text.match(/^module\s*\d+:/i) ||
       i > syllabusStartIndex + 10
     )
       break;
@@ -510,7 +512,7 @@ function extractAllSyllabusContent(elementsArray) {
       break;
     }
 
-    if (text.match(/^Module\s*\d+:/i) || text.match(/^MODULE\s*\d+/i)) {
+    if (text.match(/^Module\s*\d+:/i)) {
       if (currentModule) {
         if (currentLesson) {
           currentModule.lessons.push(currentLesson);
@@ -544,7 +546,7 @@ function extractAllSyllabusContent(elementsArray) {
         }
         if (nextText.toLowerCase().includes('final examination')) break;
       }
-    } else if (text.match(/lesson\s*\d+:/i)) {
+    } else if (text.match(/^Lesson\s*\d+:/i)) {
       if (!currentModule) {
         currentModule = {
           title: `${courseData.courseTitle || 'Course'} Content`,
@@ -702,8 +704,6 @@ function extractLessonsDirectly(elementsArray, startIndex) {
 
     if (
       text.match(/^Lesson\s*\d+:/i) ||
-      text.match(/^LESSON\s*\d+/i) ||
-      (tagName === 'P' && text.match(/\d+\./)) ||
       (tagName.match(/^H[3-4]$/i) && text.length < 100)
     ) {
       if (currentLesson) defaultModule.lessons.push(currentLesson);
@@ -1138,16 +1138,16 @@ export function generateSyllabusCode(data) {
       '<div class="sbox"><p>No syllabus content could be extracted. Please check the document structure.</p></div>';
   }
   const courseTitle = data.courseTitle || 'Course';
-  const lessonCountDisplay = `<span class="badge badge-warning text-dark fs-6 fw-bold px-2 py-1" style="background:#ffcd05; border-radius:4px;">${totalLessons} lessons</span>`;
+  const lessonCountDisplay = `${totalLessons} lessons`;
   const moduleCountDisplay =
     !isLessonsOnly && data.syllabusModules.length > 1
-      ? `divided into <span class="badge badge-warning text-dark fs-6 fw-bold px-2 py-1" style="background:#ffcd05; border-radius:4px;">${data.syllabusModules.length} modules</span>`
+      ? `broken down into ${data.syllabusModules.length} modules`
       : '';
 
   // Use original intro if captured, otherwise fallback to generated one
   const introParagraph = data.syllabusIntro
     ? `<p>${data.syllabusIntro}</p>`
-    : `<p>This ${courseTitle} consists of ${lessonCountDisplay} ${moduleCountDisplay}. Students are required to take each lesson in sequential order as listed below.</p>`;
+    : `<p>The ${courseTitle} consists of ${data.syllabusModules.length} modules broken down into ${totalLessons} hazardous materials and emergency response lessons. Students are required to take each lesson in sequential order as listed below.</p>`;
 
   return ensureProfessionalLinks(`<h2 class="fs-2 mb-3">${courseTitle} Course Syllabus</h2>
         ${introParagraph}

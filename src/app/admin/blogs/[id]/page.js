@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, use, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft,
   Save,
@@ -27,9 +27,9 @@ import { cn } from '@/lib/utils';
 import { recordMediaUpload } from '@/lib/media-hub';
 import { convertImage } from '@/lib/image-converter';
 
-export default function AdminBlogEditPage({ params }) {
-  const unwrappedParams = use(params);
-  const id = unwrappedParams.id;
+export default function AdminBlogEditPage({ params: paramsProp }) {
+  const params = useParams();
+  const id = params.id;
   const isNew = id === 'new';
   const router = useRouter();
   const fileInputRef = useRef(null);

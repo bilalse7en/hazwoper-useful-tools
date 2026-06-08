@@ -1,9 +1,7 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
 import { AdSenseAd } from '@/components/adsense-ad';
@@ -118,7 +116,7 @@ const GENERATOR_TOOL_SLUGS = [
   'resource-generator',
 ];
 
-export default function ToolPage({ params }) {
+export default function ToolPage({ params: paramsProp }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState(null);
@@ -137,8 +135,8 @@ export default function ToolPage({ params }) {
     });
   }, []);
 
-  const unwrappedParams = use(params);
-  const toolSlug = unwrappedParams.tool;
+  const params = useParams();
+  const toolSlug = params.tool;
   const ToolComponent = toolComponents[toolSlug];
 
   useToolMetadata(toolSlug);

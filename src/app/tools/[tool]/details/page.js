@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   slugToToolId,
@@ -23,11 +23,11 @@ import {
 } from 'lucide-react';
 import { AdSenseAd } from '@/components/adsense-ad';
 
-export default function ToolDetailsPage({ params }) {
+export default function ToolDetailsPage({ params: paramsProp }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const unwrappedParams = use(params);
-  const toolSlug = unwrappedParams.tool;
+  const params = useParams();
+  const toolSlug = params.tool;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

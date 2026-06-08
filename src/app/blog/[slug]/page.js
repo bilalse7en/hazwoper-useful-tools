@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -21,9 +22,9 @@ import { supabase } from '@/lib/supabase';
 import { blogPosts as staticBlogs } from '@/lib/blog-data';
 import { cn } from '@/lib/utils';
 
-export default function BlogPostPage({ params }) {
-  const unwrappedParams = use(params);
-  const slug = unwrappedParams.slug;
+export default function BlogPostPage({ params: paramsProp }) {
+  const params = useParams();
+  const slug = params.slug;
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
 
