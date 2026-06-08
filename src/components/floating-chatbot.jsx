@@ -48,12 +48,68 @@ export function FloatingChatbot() {
   // Load Puter.js SDK
   useEffect(() => {
     if (typeof window !== 'undefined' && !window.puter) {
+      // Suppress Puter's console noise
+      const originalLog = console.log;
+      const originalError = console.error;
+      const originalWarn = console.warn;
+
+      const suppressPuterNoise = () => {
+        console.log = (...args) => {
+          if (
+            args[0] &&
+            typeof args[0] === 'string' &&
+            args[0].includes('puter.com')
+          )
+            return;
+          originalLog.apply(console, args);
+        };
+        console.error = (...args) => {
+          if (
+            args[0] &&
+            typeof args[0] === 'string' &&
+            args[0].includes('puter.com')
+          )
+            return;
+          if (
+            args[0] &&
+            typeof args[0].message === 'string' &&
+            args[0].message.includes('puter.com')
+          )
+            return;
+          originalError.apply(console, args);
+        };
+        console.warn = (...args) => {
+          if (
+            args[0] &&
+            typeof args[0] === 'string' &&
+            args[0].includes('puter.com')
+          )
+            return;
+          originalWarn.apply(console, args);
+        };
+      };
+
+      suppressPuterNoise();
+
       const script = document.createElement('script');
       script.src = 'https://js.puter.com/v2/';
       script.async = true;
       script.onload = () => {
-        window.puter.quiet = true;
+        if (window.puter) {
+          window.puter.quiet = true;
+        }
         setPuterReady(true);
+        // Keep suppressed for a bit to catch post-load noise
+        setTimeout(() => {
+          console.log = originalLog;
+          console.error = originalError;
+          console.warn = originalWarn;
+        }, 5000);
+      };
+      script.onerror = () => {
+        console.log = originalLog;
+        console.error = originalError;
+        console.warn = originalWarn;
       };
       document.head.appendChild(script);
     } else if (window.puter) {
