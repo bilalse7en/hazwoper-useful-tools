@@ -59,7 +59,7 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="google-adsense-account" content="ca-pub-9874465109252768" />
         <meta
-          http-equiv="Content-Security-Policy"
+          httpEquiv="Content-Security-Policy"
           content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://js.puter.com https://*.google.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.puter.com wss://api.puter.com https://*.googlesyndication.com; frame-src 'self' https://*.google.com https://*.doubleclick.net; object-src 'none'; upgrade-insecure-requests;"
         />
         {/* Standard script tag used instead of next/script to avoid data-nscript attribute which violates AdSense head tag policies */}
