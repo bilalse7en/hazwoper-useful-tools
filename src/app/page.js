@@ -40,144 +40,36 @@ const ProfessionalOverview = dynamic(
   }
 );
 
+import { useAuth } from '@/components/auth-provider';
+
 export default function Home() {
   const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('user');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch (e) {
-          return null;
-        }
-      }
-    }
-    return null;
-  });
+  const { user, loading: isChecking } = useAuth();
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     // Show welcome scroll only once ever
     const hasSeenWelcome = localStorage.getItem('welcome_seen');
     if (!hasSeenWelcome) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowWelcome(true);
     }
   }, []);
 
   useEffect(() => {
-    // Safety fallback: Ensure we always stop checking after 3 seconds
-    const timer = setTimeout(() => {
-      setIsChecking(false);
-    }, 3000);
+    if (user) {
+      const justLoggedIn = !sessionStorage.getItem('auth_toast_shown');
+      const hasJustLoggedIn = sessionStorage.getItem('just_logged_in');
 
-    // Initial session check
-    const checkSession = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          console.log('Home: Initial session found', session.user.id);
-
-          // Before we stop checking, let's try to get the profile
-          // so paid tools don't flicker or stay hidden
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select(
-              'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
-            )
-            .eq('id', session.user.id)
-            .single();
-
-          const baseUser = {
-            id: session.user.id,
-            email: session.user.email,
-            name: session.user.user_metadata?.full_name || session.user.email,
-            role: profile?.role || 'user',
-            has_generator_access: profile?.has_generator_access || false,
-            ...profile,
-          };
-
-          setUser(baseUser);
-          localStorage.setItem('user', JSON.stringify(baseUser));
-        } else {
-          // If no session, clear storage
-          localStorage.removeItem('user');
-        }
-      } catch (e) {
-        console.error('Auth initialization error:', e);
-      } finally {
-        setIsChecking(false);
+      if (justLoggedIn && hasJustLoggedIn) {
+        toast.success('Identity Verified', {
+          description: `Welcome back, ${user.name || 'Architect'}. Professional suite fully synchronized.`,
+        });
+        sessionStorage.setItem('auth_toast_shown', 'true');
+        sessionStorage.removeItem('just_logged_in');
       }
-    };
-    checkSession();
-
-    // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Home: Auth state change', event, session?.user?.id);
-
-      if (session?.user) {
-        setIsChecking(true); // Re-check if state changes
-        try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select(
-              'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
-            )
-            .eq('id', session.user.id)
-            .single();
-
-          const activeUser = {
-            id: session.user.id,
-            email: session.user.email,
-            full_name:
-              profile?.full_name || session.user.user_metadata?.full_name || '',
-            name:
-              profile?.full_name ||
-              session.user.user_metadata?.full_name ||
-              session.user.email,
-            role: profile?.role || 'user',
-            has_generator_access: profile?.has_generator_access || false,
-            avatar:
-              profile?.avatar_url ||
-              session.user.user_metadata?.avatar_url ||
-              null,
-            ...profile,
-          };
-
-          setUser(activeUser);
-          localStorage.setItem('user', JSON.stringify(activeUser));
-
-          const justLoggedIn = !sessionStorage.getItem('auth_toast_shown');
-          if (justLoggedIn && event === 'SIGNED_IN') {
-            toast.success('Identity Verified', {
-              description: `Welcome back, ${activeUser.name || 'Architect'}. Professional suite fully synchronized.`,
-            });
-            sessionStorage.setItem('auth_toast_shown', 'true');
-          }
-        } catch (err) {
-          console.error('Profile sync error:', err);
-        } finally {
-          setIsChecking(false);
-        }
-      } else {
-        setUser(null);
-        localStorage.removeItem('user');
-        sessionStorage.removeItem('auth_toast_shown');
-        setIsChecking(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timer);
-    };
-  }, [router]);
+    }
+  }, [user]);
 
   const handleWelcomeComplete = () => {
     localStorage.setItem('welcome_seen', 'true');

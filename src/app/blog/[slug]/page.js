@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { blogPosts as staticBlogs } from '@/lib/blog-data';
 import { cn } from '@/lib/utils';
 
-export default function BlogPostPage({ params: paramsProp }) {
+export default function BlogPostPage() {
   const params = useParams();
   const slug = params.slug;
   const [post, setPost] = useState(null);

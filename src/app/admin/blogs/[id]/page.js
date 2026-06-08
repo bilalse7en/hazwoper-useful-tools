@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 import { recordMediaUpload } from '@/lib/media-hub';
 import { convertImage } from '@/lib/image-converter';
 
-export default function AdminBlogEditPage({ params: paramsProp }) {
+export default function AdminBlogEditPage() {
   const params = useParams();
   const id = params.id;
   const isNew = id === 'new';

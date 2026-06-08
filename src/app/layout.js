@@ -11,6 +11,7 @@ import { GlobalHeader } from '@/components/global-header';
 import { Footer } from '@/components/footer';
 import { EnvironmentalSetup } from '@/components/environmental-setup';
 import { FloatingChatbot } from '@/components/floating-chatbot';
+import { AuthProvider } from '@/components/auth-provider';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -57,6 +58,10 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="google-adsense-account" content="ca-pub-9874465109252768" />
+        <meta
+          http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://js.puter.com https://*.google.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.puter.com wss://api.puter.com https://*.googlesyndication.com; frame-src 'self' https://*.google.com https://*.doubleclick.net; object-src 'none'; upgrade-insecure-requests;"
+        />
         {/* Standard script tag used instead of next/script to avoid data-nscript attribute which violates AdSense head tag policies */}
         <script
           async
@@ -136,22 +141,24 @@ export default function RootLayout({ children }) {
           themes={['light', 'dark', 'nebula']}
           storageKey="content-suite-theme"
         >
-          <BackgroundSpace />
-          <div className="flex flex-col min-h-screen relative">
-            <GlobalHeader />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
-          <GdprConsent />
-          <EnvironmentalSetup />
-          <FloatingChatbot />
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              className:
-                'glass-toast !rounded-2xl !border-border !bg-card/90 !backdrop-blur-2xl !text-foreground !shadow-[0_20px_50px_rgba(0,0,0,0.3)] !p-4 !font-orbitron font-bold',
-            }}
-          />
+          <AuthProvider>
+            <BackgroundSpace />
+            <div className="flex flex-col min-h-screen relative">
+              <GlobalHeader />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+            <GdprConsent />
+            <EnvironmentalSetup />
+            <FloatingChatbot />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                className:
+                  'glass-toast !rounded-2xl !border-border !bg-card/90 !backdrop-blur-2xl !text-foreground !shadow-[0_20px_50px_rgba(0,0,0,0.3)] !p-4 !font-orbitron font-bold',
+              }}
+            />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useAuth } from '@/components/auth-provider';
 import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
 import { AdSenseAd } from '@/components/adsense-ad';
@@ -116,23 +117,14 @@ const GENERATOR_TOOL_SLUGS = [
   'resource-generator',
 ];
 
-export default function ToolPage({ params: paramsProp }) {
+export default function ToolPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    requestAnimationFrame(() => {
-      setMounted(true);
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          setUser(null);
-        }
-      }
-    });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
   }, []);
 
   const params = useParams();

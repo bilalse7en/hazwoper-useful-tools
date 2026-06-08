@@ -77,6 +77,7 @@ function AuthComponent() {
           password,
         });
         if (error) throw error;
+        sessionStorage.setItem('just_logged_in', 'true');
         router.push('/');
         toast.success('Welcome Back', {
           description: 'Identity verified. Personal workspace synchronized.',

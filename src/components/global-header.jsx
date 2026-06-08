@@ -12,8 +12,10 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AppSidebar } from './app-sidebar';
 import { ThemeDialog } from './theme-dialog';
 
+import { useAuth } from './auth-provider';
+
 export function GlobalHeader({ activeTab, onTabChange }) {
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const router = useRouter();
@@ -24,75 +26,10 @@ export function GlobalHeader({ activeTab, onTabChange }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
-
-    // Initial load from local storage
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch (e) {}
-    }
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Header: Auth state change', event, session?.user?.id);
-
-      if (session?.user) {
-        try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select(
-              'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
-            )
-            .eq('id', session.user.id)
-            .single();
-
-          const activeUser = {
-            id: session.user.id,
-            email: session.user.email,
-            full_name:
-              profile?.full_name || session.user.user_metadata?.full_name || '',
-            name:
-              profile?.full_name ||
-              session.user.user_metadata?.full_name ||
-              session.user.email,
-            role: profile?.role || 'user',
-            has_generator_access: profile?.has_generator_access || false,
-            avatar:
-              profile?.avatar_url ||
-              session.user.user_metadata?.avatar_url ||
-              null,
-            ...profile,
-          };
-
-          setUser(activeUser);
-          localStorage.setItem('user', JSON.stringify(activeUser));
-        } catch (err) {
-          console.error('Header profile sync error:', err);
-          const baseUser = {
-            id: session.user.id,
-            email: session.user.email,
-            name: session.user.user_metadata?.full_name || session.user.email,
-            role: 'user',
-          };
-          setUser(baseUser);
-          localStorage.setItem('user', JSON.stringify(baseUser));
-        }
-      } else {
-        setUser(null);
-        localStorage.removeItem('user');
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    localStorage.removeItem('user');
-    router.push('/');
+    await logout();
   };
 
   return (
