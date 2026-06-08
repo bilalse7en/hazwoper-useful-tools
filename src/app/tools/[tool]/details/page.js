@@ -79,7 +79,7 @@ export default function ToolDetailsPage({ params: paramsProp }) {
 
             <div className="hidden lg:block">
               <AdSenseAd
-                slot="6543210987"
+                slot="2228101298"
                 format="vertical"
                 className="mt-6 rounded-2xl overflow-hidden border border-border/50"
               />
@@ -167,7 +167,7 @@ export default function ToolDetailsPage({ params: paramsProp }) {
                 Sponsored Content
               </span>
               <AdSenseAd
-                slot="9876543210"
+                slot="2228101298"
                 format="horizontal"
                 className="rounded-3xl overflow-hidden ring-1 ring-border/50 bg-muted/5 shadow-sm"
               />
