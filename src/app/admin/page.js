@@ -36,6 +36,7 @@ import { getTimeRemaining, formatSize } from '@/lib/tool-history';
 import { toast } from 'sonner';
 import { convertImage } from '@/lib/image-converter';
 import { toolInfo } from '@/lib/seo';
+import { PuterAgent } from '@/components/admin/puter-agent';
 
 const formatFileType = (type) => {
   if (!type) return 'FILE';
@@ -1048,6 +1049,8 @@ function AdminDashboard() {
               searchKey="title"
             />
           </div>
+        ) : activeView === 'puter-agent' ? (
+          <PuterAgent />
         ) : activeView === 'performance' ? (
           <div className="space-y-8 animate-in-fade">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

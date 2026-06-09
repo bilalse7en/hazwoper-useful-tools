@@ -202,9 +202,23 @@ function loadImage(file) {
       URL.revokeObjectURL(img.src);
       resolve(img);
     };
-    img.onerror = () => {
+    img.onerror = (e) => {
       URL.revokeObjectURL(img.src);
-      reject(new Error('Failed to load image'));
+      console.error(
+        'Image Decode Error:',
+        e,
+        'File:',
+        file.name,
+        'Type:',
+        file.type,
+        'Size:',
+        file.size
+      );
+      reject(
+        new Error(
+          `Failed to decode image asset: ${file.type} (${file.size} bytes)`
+        )
+      );
     };
     img.src = URL.createObjectURL(file);
   });

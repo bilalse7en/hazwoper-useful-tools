@@ -16,6 +16,7 @@ import {
   Sparkles,
   Upload,
   Image as ImageIcon,
+  Bot,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { recordMediaUpload } from '@/lib/media-hub';
 import { convertImage } from '@/lib/image-converter';
+import { markdownToHtml } from '@/lib/html-converter';
 
 export default function AdminBlogEditPage() {
   const params = useParams();
@@ -38,6 +40,8 @@ export default function AdminBlogEditPage() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [imageGenerating, setImageGenerating] = useState(false);
+  const [originalImageUrl, setOriginalImageUrl] = useState(null);
+  const [puterReady, setPuterReady] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -66,6 +70,7 @@ export default function AdminBlogEditPage() {
         if (error) throw error;
         if (data) {
           setFormData(data);
+          setOriginalImageUrl(data.image_url);
         }
       } catch (err) {
         toast.error('Failed to retrieve editorial data.');
@@ -76,6 +81,17 @@ export default function AdminBlogEditPage() {
     }
 
     async function init() {
+      // Load Puter SDK
+      if (typeof window !== 'undefined' && !window.puter) {
+        const script = document.createElement('script');
+        script.src = 'https://js.puter.com/v2/';
+        script.async = true;
+        script.onload = () => setPuterReady(true);
+        document.head.appendChild(script);
+      } else if (window.puter) {
+        setPuterReady(true);
+      }
+
       if (!isNew) {
         await fetchBlog();
       } else {
@@ -195,90 +211,95 @@ export default function AdminBlogEditPage() {
       return;
     }
 
+    if (!puterReady || !window.puter) {
+      toast.error('Puter AI Engine not initialized. Please refresh.');
+      return;
+    }
+
     setIsAIModalOpen(false);
     setGenerating(true);
+    const toastId = 'ai-gen';
     toast.loading(
-      `Synthesizing ${aiInput.wordCount} word technical sequence...`,
-      { id: 'ai-gen' }
+      `Synthesizing ${aiInput.wordCount} word professional editorial...`,
+      { id: toastId }
     );
 
     try {
-      const prompt = aiInput.title.toLowerCase();
-      const targetWords = parseInt(aiInput.wordCount) || 2000;
+      const systemPrompt = `You are an elite HAZWOPER and Industrial Safety technical writer. 
+      Your goal is to write a comprehensive, research-driven blog post of approximately ${aiInput.wordCount} words.
+      
+      Requirements:
+      1. Create a professional, authoritative title (do not use the user's prompt as the title).
+      2. Use semantic HTML (h2, h3, p, strong, ul, li).
+      3. Include at least ONE professional <table> with technical data.
+      4. Include at least ONE <blockquote> using <q> or <blockquote> tags.
+      5. Tone: Highly professional, industrial, and authoritative.
+      6. Output ONLY a valid JSON object:
+      {
+        "title": "Professional Title Here",
+        "content": "HTML Body Content Here",
+        "summary": "1-sentence SEO summary"
+      }`;
 
-      const appTools = [
-        {
-          name: 'Image Conversion Engine',
-          desc: 'Our high-fidelity converter supports WEBP, PNG, and JPG while maintaining industrial metadata standards.',
-        },
-        {
-          name: 'HTML Structural Deep-Cleaner',
-          desc: 'A precision tool for sanitizing messy regulatory code into pristine, accessible HTML5.',
-        },
-        {
-          name: 'HAZWOPER Productivity Suite',
-          desc: 'The foundational ecosystem designed for environmental safety professionals and architectural compliance.',
-        },
-        {
-          name: 'Document Neural Analyzer',
-          desc: 'Automated extraction and analysis of complex technical documentation for HAZWOPER reporting.',
-        },
-      ];
+      const response = await window.puter.ai.chat(`Topic: "${aiInput.title}"`, {
+        model: 'gpt-4o',
+        messages: [{ role: 'system', content: systemPrompt }],
+      });
 
-      // Project Identity Context
-      let focusTitle = aiInput.title.replace(/write a blog about/i, '').trim();
-      focusTitle = focusTitle.charAt(0).toUpperCase() + focusTitle.slice(1);
+      const text =
+        typeof response === 'string'
+          ? response
+          : response?.message?.content || response?.toString();
 
-      // Build an extensive multi-section "smart" blog
-      const intro = `<h2>Executive Synthesis: ${focusTitle}</h2><p>In the evolving landscape of industrial safety and digital documentation, the ${focusTitle} represents a critical milestone. This comprehensive deep-dive explores how the integration of professional utility tools streamlines the professional sequence.</p>`;
+      // Intelligent Failsafe Parser
+      let data = { title: '', content: '', summary: '' };
+      const objectMatch = text.match(/\{[\s\S]*\}/);
 
-      const toolSection = `<h3>The Digital Arsenal: Integrated Solutions</h3>
-        <ul>
-          ${appTools.map((t) => `<li><strong>${t.name}:</strong> ${t.desc}</li>`).join('')}
-        </ul>
-        <p>By utilizing these integrated components, our platform ensures that every ${focusTitle} maintains 100% architectural integrity while optimizing for speed and compliance.</p>`;
+      if (objectMatch) {
+        try {
+          data = JSON.parse(objectMatch[0]);
+        } catch (e) {
+          console.warn(
+            'JSON fragment detected but unparseable, using raw recovery.'
+          );
+        }
+      }
 
-      const extendedBodyCount = Math.ceil(targetWords / 400); // Create segments of ~400 words
-      const extendedContent = Array.from({ length: extendedBodyCount })
-        .map(
-          (_, i) => `
-        <p>Analyzing the core metrics of ${focusTitle} requires a granular approach to data management. We have engineered our sequence to handle large-scale document transfers with zero latency. For professionals in the HAZWOPER sector, this translates to more time in the field and less time battling fragmented tooling.</p>
-        <p>Each phase of the digital lifecycle is monitored for security and efficiency. Our Image Converter, for instance, doesn&apos;t just change formats—it optimizes the byte-size for rapid field viewing on low-bandwidth devices. Similarly, the HTML Cleaner ensures your reporting satisfies strict WCAG accessibility mandates.</p>
-        <p>Furthermore, the ${focusTitle} workflow is built on a private-first architecture. Unlike other cloud-based solutions, our tools process sensitive data locally before persistence, providing a robust shield for proprietary environmental data.</p>
-      `
-        )
-        .join('');
-
-      const mockDescription = `An extensive, research-driven ${targetWords}-word analysis of ${focusTitle}, detailing the tactical advantages of the Bilal Productivity Suite.`;
-      const mockContent = `
-        ${intro}
-        ${toolSection}
-        ${extendedContent}
-        <h3>Final Professional Resolution</h3>
-        <p>Mastering the digital landscape of the HAZWOPER industry starts with the right foundation. Our suite provides the professional-grade tools required for modern excellence.</p>
-      `;
+      // If parsing failed or we have raw text
+      if (!data.title || !data.content) {
+        console.log('Initiating Raw Neural Recovery Sequence...');
+        // Extract title from first # or H1/H2
+        const titleMatch = text.match(
+          /(?:#|<h2>|<h3>)\s*(.*?)(?:\n|<\/h[1-3]>|$)/i
+        );
+        data.title = titleMatch ? titleMatch[1].trim() : aiInput.title;
+        // Perfect HTML Transformation
+        data.content = markdownToHtml(text.trim());
+        data.summary = text.replace(/[#*`]/g, '').substring(0, 160) + '...';
+      }
 
       setFormData((prev) => ({
         ...prev,
-        title: focusTitle,
-        description: mockDescription.trim(),
-        content: mockContent.trim(),
-        category: 'Safety Technology',
-        read_time: `${Math.ceil(targetWords / 200)} min read`,
-        slug: titleToSlug(focusTitle),
+        title: data.title || aiInput.title,
+        description:
+          data.summary ||
+          'Professional editorial sequence synthesized by Puter AI.',
+        content: data.content,
+        category: 'Technical safety',
+        read_time: `${Math.ceil(parseInt(aiInput.wordCount) / 200)} min read`,
+        slug: titleToSlug(data.title || aiInput.title),
       }));
 
-      toast.success('Long-form Professional Sequence Synchronized.', {
-        id: 'ai-gen',
+      toast.success('Sequence Synchronized (Acoustic Recovery Active).', {
+        id: toastId,
       });
     } catch (err) {
-      toast.error('AI Core expansion failed.', { id: 'ai-gen' });
+      toast.error('AI Synthesis failed. Check connectivity.', { id: toastId });
       console.error(err);
     } finally {
       setGenerating(false);
     }
   };
-
   const generateAIImage = async () => {
     if (!formData.title) {
       toast.error('Please provide a title to guide the neural artist.');
@@ -286,63 +307,120 @@ export default function AdminBlogEditPage() {
     }
 
     setImageGenerating(true);
-    toast.loading(
-      'Neural artist is drawing and persisting your hero image...',
-      { id: 'img-gen' }
-    );
+    const toastId = 'img-gen';
+    toast.loading('Consulting Puter AI for the perfect prompt...', {
+      id: toastId,
+    });
 
     try {
-      // 1. Generate the URL
-      const basePrompt = `professional cinematic 8k photography, industrial safety workspace, ${formData.title}, clean minimal composition, high-end corporate aesthetic, photorealistic`;
-      const encodedPrompt = encodeURIComponent(basePrompt);
-      const tempImageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}/?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+      // 1. Ask Puter for an optimized image prompt
+      let finalizedPrompt = `professional cinematic 8k photography, industrial safety workspace, ${formData.title}, clean minimal composition, high-end corporate aesthetic, photorealistic`;
 
-      // 2. Fetch the image blob via our proxy to avoid CORS/Broken Links
-      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(tempImageUrl)}`;
-      const response = await fetch(proxyUrl);
-      if (!response.ok)
-        throw new Error('Failed to capture neural stream via proxy.');
+      if (puterReady && window.puter) {
+        try {
+          const puterResponse = await window.puter.ai.chat(
+            `I need a professional, high-end photography prompt for an article titled "${formData.title}". 
+            Context: Industrial safety, HAZWOPER, professional workspace. 
+            Rules: No text in image, 8k resolution, cinematic lighting. 
+            Output only the 1-sentence prompt itself.`,
+            { model: 'gpt-4o' }
+          );
+          const aiPrompt =
+            typeof puterResponse === 'string'
+              ? puterResponse
+              : puterResponse?.message?.content || puterResponse?.toString();
+          if (aiPrompt) finalizedPrompt = aiPrompt.trim();
+        } catch (e) {
+          console.warn('Puter prompt enhancement failed, using fallback.');
+        }
+      }
+
+      toast.loading(
+        'Neural artist is drawing and persisting your hero image...',
+        {
+          id: toastId,
+        }
+      );
+
+      // 2. Generate the URL (Pollinations - Improved Endpoint)
+      const encodedPrompt = encodeURIComponent(finalizedPrompt);
+      const tempImageUrl = `https://pollinations.ai/p/${encodedPrompt}?width=1280&height=720&nologo=true&seed=${Math.floor(Math.random() * 10000)}`;
+
+      // 3. Fetch via Proxy with Failover Architecture
+      let response;
+      try {
+        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(tempImageUrl)}`;
+        response = await fetch(proxyUrl);
+
+        if (!response.ok) {
+          console.warn(
+            `Neural Synthesis Layer 1 blocked (${response.status}). Initiating industrial failover...`
+          );
+          // Failover: High-quality professional industrial safety photo
+          const failoverKeyword =
+            formData.category?.toLowerCase() || 'industrial safety';
+          const fallbackUrl = `https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&q=80&w=1280&h=720&sig=${Date.now()}`;
+          response = await fetch(
+            `/api/proxy-image?url=${encodeURIComponent(fallbackUrl)}`
+          );
+        }
+      } catch (e) {
+        console.error('Circuit Breaker Tripped:', e);
+        throw new Error(
+          'Neural transmission failure. The AI engine is currently unreachable.'
+        );
+      }
+
+      if (!response.ok || response.status === 415) {
+        throw new Error(
+          `Editorial Block: ${response.status}. The visual provider rejected the request as unsafe or invalid.`
+        );
+      }
 
       const rawBlob = await response.blob();
+      if (!rawBlob || rawBlob.size < 100) {
+        throw new Error(
+          'Synchronized sequence is too small or corrupt. Neural stream compromised.'
+        );
+      }
+
       const rawFile = new File([rawBlob], 'raw_gen.jpg', {
-        type: 'image/jpeg',
+        type: rawBlob.type || 'image/jpeg',
       });
 
-      // 3. Neural Optimization (Compression & Conversion)
+      // 4. Neural Optimization (Compression & Conversion)
+      console.log(
+        'Synthesizing optimized asset from raw stream...',
+        rawBlob.type,
+        rawBlob.size
+      );
       const optimized = await convertImage(rawFile, 'webp', {
         quality: 80,
         width: 1280,
       });
       const optimizedBlob = optimized.blob;
 
-      // 4. Upload to your Supabase Storage (Assumes 'media' bucket exists)
+      // 5. Upload to Supabase
       const fileName = `ai_optimized_${Date.now()}.webp`;
       const filePath = `blog-media/${fileName}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('media')
         .upload(filePath, optimizedBlob, {
           contentType: 'image/webp',
           upsert: true,
         });
 
-      if (error) {
-        if (error.message.includes('Bucket not found')) {
-          throw new Error(
-            "Neural Storage Error: Please create a 'media' bucket in Supabase Storage with public access."
-          );
-        }
-        throw error;
-      }
+      if (error) throw error;
 
-      // 5. Get the permanent Public URL
+      // 6. Get Public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from('media').getPublicUrl(filePath);
 
       setFormData((prev) => ({ ...prev, image_url: publicUrl }));
 
-      // Track in Media Hub (Permanent)
+      // 7. Track in Media Hub
       recordMediaUpload({
         fileName: fileName,
         fileType: 'image/webp',
@@ -353,17 +431,14 @@ export default function AdminBlogEditPage() {
       });
 
       toast.success(
-        `AI Asset Optimized (${optimized.reduction}% reduction) & Persisted.`,
-        { id: 'img-gen' }
+        `Asset Optimized (${optimized.reduction}% reduction) & Persisted.`,
+        { id: toastId }
       );
     } catch (err) {
-      toast.error(err.message || 'Neural drawing or persistence failed.');
-      console.error(
-        'Neural Error Details:',
-        err.message,
-        err.details,
-        err.hint
-      );
+      toast.error(err.message || 'Neural drawing or persistence failed.', {
+        id: toastId,
+      });
+      console.error('Neural Error:', err);
     } finally {
       setImageGenerating(false);
     }
@@ -374,6 +449,27 @@ export default function AdminBlogEditPage() {
     setSaving(true);
 
     const { id: _, created_at, updated_at, ...cleanedData } = formData;
+
+    // Handle image cleanup if it was changed
+    if (originalImageUrl && originalImageUrl !== formData.image_url) {
+      try {
+        if (
+          originalImageUrl.includes(
+            '/storage/v1/object/public/media/blog-media/'
+          )
+        ) {
+          const oldPath = originalImageUrl.split('blog-media/').pop();
+          if (oldPath) {
+            await supabase.storage
+              .from('media')
+              .remove([`blog-media/${oldPath}`]);
+            console.log('Orphaned asset deleted:', oldPath);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to cleanup old asset:', e);
+      }
+    }
 
     const finalData = {
       ...cleanedData,
@@ -488,10 +584,24 @@ export default function AdminBlogEditPage() {
                   variant="outline"
                   className="rounded-xl border-primary/20 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest h-9 px-4 hover:bg-primary hover:text-white transition-all gap-2"
                 >
-                  <Sparkles
+                  <Bot
                     className={cn('w-3.5 h-3.5', generating && 'animate-pulse')}
                   />
-                  {generating ? 'Calculating...' : 'Spark AI Engine'}
+                  {generating ? 'Negotiating...' : 'Puter AI Synthesis'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const sanitized = markdownToHtml(formData.content);
+                    setFormData((prev) => ({ ...prev, content: sanitized }));
+                    toast.success('Sequence Sanitized to Professional HTML');
+                  }}
+                  className="rounded-full bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest gap-2"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Sanitize to HTML
                 </Button>
               </div>
 
@@ -610,13 +720,13 @@ export default function AdminBlogEditPage() {
               disabled={imageGenerating || !formData.title}
               className="w-full h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 text-[10px] font-black uppercase tracking-widest transition-all gap-2"
             >
-              <Sparkles
+              <Bot
                 className={cn(
                   'w-3.5 h-3.5',
                   imageGenerating && 'animate-pulse'
                 )}
               />
-              {imageGenerating ? 'Drawing...' : 'Neural Image Spark'}
+              {imageGenerating ? 'Drawing...' : 'Puter AI Image Synthesis'}
             </Button>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
@@ -734,9 +844,9 @@ export default function AdminBlogEditPage() {
             <CardHeader className="p-10 pb-6">
               <CardTitle className="text-3xl font-black tracking-tighter flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                  <Sparkles className="w-6 h-6" />
+                  <Bot className="w-6 h-6" />
                 </div>
-                Neural Synthesis
+                Puter AI Synthesis
               </CardTitle>
               <p className="text-muted-foreground mt-2 font-medium">
                 Define your editorial parameters to ignite the generation
