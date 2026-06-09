@@ -39,6 +39,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { hasAccess } from '@/lib/auth';
 import { useState } from 'react';
+import { useAuth } from '@/components/auth-provider';
 
 const navGroups = [
   {
@@ -46,10 +47,11 @@ const navGroups = [
     label: 'Generators',
     icon: Zap,
     items: [
-      { id: 'course', label: 'Web Content', icon: GraduationCap },
-      { id: 'blog', label: 'Blog', icon: PenTool },
-      { id: 'glossary', label: 'Glossary', icon: BookOpen },
-      { id: 'resources', label: 'Resources', icon: FileSpreadsheet },
+      { id: 'web-content', label: 'Web Content', icon: GraduationCap },
+      { id: 'blog-generator', label: 'Blog', icon: PenTool },
+      { id: 'glossary-generator', label: 'Glossary', icon: BookOpen },
+      { id: 'resource-generator', label: 'Resources', icon: FileSpreadsheet },
+      { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
     ],
   },
   {
@@ -60,7 +62,6 @@ const navGroups = [
       { id: 'html-cleaner', label: 'HTML Cleaner', icon: Code },
       { id: 'image-converter', label: 'Image Converter', icon: ImageIcon },
       { id: 'image-to-text', label: 'Image to Text', icon: ScanText },
-      { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
       { id: 'video-compressor', label: 'Video Compressor', icon: Video },
       { id: 'video-converter', label: 'Video Converter', icon: Repeat },
       { id: 'audio-converter', label: 'Audio Converter', icon: Music },
@@ -88,6 +89,7 @@ const adminNavGroups = [
       { id: 'media-library', label: 'Media Assets', icon: Library },
       { id: 'media', label: 'Media Monitor', icon: ImageIcon },
       { id: 'blogs', label: 'Editorial', icon: PenTool },
+      { id: 'tools', label: 'Tool Config', icon: Wrench },
       { id: 'performance', label: 'Optimization', icon: Zap },
     ],
   },
@@ -104,6 +106,7 @@ export function AppSidebar({
   adminMode = false,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const { toolSettings } = useAuth();
   const [expandedGroups, setExpandedGroups] = useState([
     'generators',
     'tools',
@@ -125,7 +128,7 @@ export function AppSidebar({
       ...group,
       items: group.items.filter(
         (item) =>
-          (adminMode || hasAccess(user, item.id)) &&
+          (adminMode || hasAccess(user, item.id, toolSettings)) &&
           item.label.toLowerCase().includes(searchQuery.toLowerCase())
       ),
     }))

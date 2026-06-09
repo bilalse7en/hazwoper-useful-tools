@@ -2,63 +2,45 @@
 
 export const ROLES = {
   admin: ['*'],
-  blog_creator: [
-    'blog',
-    'html-cleaner',
-    'image-converter',
-    'video-compressor',
-    'image-to-text',
-    'document-extractor',
-    'ai-assistant',
-  ],
-  content_creator: [
-    'course',
-    'glossary',
-    'resources',
-    'html-cleaner',
-    'image-converter',
-    'video-compressor',
-    'image-to-text',
-    'document-extractor',
-    'ai-assistant',
-  ],
-  user: [
-    'html-cleaner',
-    'image-converter',
-    'video-compressor',
-    'image-to-text',
-    'document-extractor',
-    'ai-assistant',
-  ],
+  user: [],
 };
 
+// Map tool IDs used in the app to human-readable labels and icons for sidebar
 export const NAV_ITEMS = [
-  { id: 'course', label: 'Web Content Generator', icon: 'GraduationCap' },
-  { id: 'glossary', label: 'Glossary Generator', icon: 'BookOpen' },
-  { id: 'resources', label: 'Resource Generator', icon: 'FileSpreadsheet' },
-  { id: 'blog', label: 'Blog Generator', icon: 'PenTool' },
+  { id: 'web-content', label: 'Web Content Generator', icon: 'GraduationCap' },
+  { id: 'blog-generator', label: 'Blog Generator', icon: 'PenTool' },
+  { id: 'glossary-generator', label: 'Glossary Generator', icon: 'BookOpen' },
+  {
+    id: 'resource-generator',
+    label: 'Resource Generator',
+    icon: 'FileSpreadsheet',
+  },
+  { id: 'document-extractor', label: 'Document Extractor', icon: 'FileText' },
   { id: 'html-cleaner', label: 'HTML Cleaner', icon: 'Code' },
   { id: 'image-converter', label: 'Image Converter', icon: 'ImageIcon' },
   { id: 'image-to-text', label: 'Image to Text', icon: 'ScanText' },
   { id: 'video-compressor', label: 'Video Compressor', icon: 'Video' },
+  { id: 'video-converter', label: 'Video Converter', icon: 'Repeat' },
+  { id: 'audio-converter', label: 'Audio Converter', icon: 'Music' },
+  { id: 'video-to-gif', label: 'Video to GIF', icon: 'Video' },
+  { id: 'word-to-html', label: 'Word to HTML', icon: 'FileType' },
+  { id: 'ai-assistant', label: 'AI UNIVERSE', icon: 'BrainCircuit' },
 ];
 
 import { supabase } from './supabase';
 
 export async function authenticate(username, password) {
   try {
-    // Try Supabase first if configured
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: username.includes('@') ? username : `${username}@example.com`, // Assuming email for Supabase
+        email: username.includes('@') ? username : `${username}@example.com`,
         password: password,
       });
 
       if (!error && data.user) {
-        // Fetch profile for role
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role, username')
+          .select('role, username, has_generator_access')
           .eq('id', data.user.id)
           .single();
 
@@ -66,13 +48,13 @@ export async function authenticate(username, password) {
           id: data.user.id,
           username: profile?.username || username,
           email: data.user.email,
-          role: profile?.role || 'content_creator', // Default role
+          role: profile?.role || 'user',
+          has_generator_access: profile?.has_generator_access || false,
           name: profile?.username || username,
         };
       }
     }
 
-    // Fallback to existing API
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -89,41 +71,86 @@ export async function authenticate(username, password) {
   return null;
 }
 
-export function hasAccess(user, featureId) {
-  // Free tools that everyone can access
-  const freeTools = [
+/**
+ * Modernized Access Control
+ * 1. Admin always has access
+ * 2. If tool is set to FREE in database, everyone has access
+ * 3. If tool is set to PAID in database:
+ *    - Authenticated users with has_generator_access (PRO) get access
+ *    - Admins get access
+ *    - Guests/Standard users are restricted
+ */
+export function hasAccess(user, featureId, toolSettings = null) {
+  // 1. Admin Overload
+  if (user?.role === 'admin') return true;
+
+  // 2. Resolve Tool ID (handles both 'course' and 'web-content')
+  const { toolIdToSlug } = require('./seo');
+  const slug = toolIdToSlug[featureId] || featureId;
+
+  // 3. Database Check
+  if (toolSettings) {
+    const isFree = toolSettings[slug] ?? toolSettings[featureId] ?? null;
+
+    // If explicitly FREE in DB
+    if (isFree === true) return true;
+
+    // If explicitly PAID in DB
+    if (isFree === false) {
+      if (!user) return false;
+      return user.has_generator_access === true || user.role === 'admin';
+    }
+  }
+
+  // 4. Default Fallbacks (if not in DB)
+  const defaultFreeTools = [
     'html-cleaner',
     'image-converter',
     'video-compressor',
     'image-to-text',
-    'document-extractor',
+    'word-to-html',
+    'video-converter',
+    'audio-converter',
+    'video-to-gif',
   ];
-  if (freeTools.includes(featureId)) return true;
 
-  if (!user) return false;
-  const role = user.role;
-  const allowed = ROLES[role];
-  if (!allowed) return false;
-
-  // Admin always has access
-  if (allowed.includes('*')) return true;
-
-  // Check if it's a generator tool
-  const isGenerator = [
-    'course',
-    'blog',
-    'glossary',
-    'resources',
-    'document-extractor',
-  ].includes(featureId);
-
-  if (isGenerator) {
-    // Only allow if they have explicit generator access OR if their role naturally includes it
-    return user.has_generator_access === true || user.role === 'admin';
+  if (defaultFreeTools.includes(featureId) || defaultFreeTools.includes(slug)) {
+    return true;
   }
 
-  // Utility tools are accessible if they are in the role's allowed list
-  return allowed.includes(featureId);
+  // Generators are paid by default if not specified
+  const isGenerator =
+    [
+      'course',
+      'web-content',
+      'blog',
+      'blog-generator',
+      'glossary',
+      'glossary-generator',
+      'resources',
+      'resource-generator',
+      'document-extractor',
+      'ai-assistant',
+    ].includes(featureId) ||
+    [
+      'course',
+      'web-content',
+      'blog',
+      'blog-generator',
+      'glossary',
+      'glossary-generator',
+      'resources',
+      'resource-generator',
+      'document-extractor',
+      'ai-assistant',
+    ].includes(slug);
+
+  if (isGenerator) {
+    if (!user) return false;
+    return user.has_generator_access === true;
+  }
+
+  return false;
 }
 
 export function triggerLogin() {

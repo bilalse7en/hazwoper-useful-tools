@@ -15,10 +15,10 @@ import {
 } from '@/lib/seo';
 import { useToolMetadata } from '@/lib/use-tool-metadata';
 import nextDynamic from 'next/dynamic';
-import { ToolInfo } from '@/components/tool-info';
 import { ToolBreadcrumbs } from '@/components/tool-breadcrumbs';
 import { triggerLogin } from '@/lib/auth';
 import { cn } from '@/lib/utils';
+import { ToolAccessGuard } from '@/components/tool-access-guard';
 
 // Dynamically import all tool components with no SSR from the index file
 const CourseGenerator = nextDynamic(
@@ -96,31 +96,9 @@ const toolComponents = {
   'word-to-html': WordToHtml,
 };
 
-// Free tools that don't require login to USE
-const FREE_TOOL_SLUGS = [
-  'html-cleaner',
-  'image-converter',
-  'video-compressor',
-  'image-to-text',
-  'document-extractor',
-  'video-converter',
-  'audio-converter',
-  'video-to-gif',
-  'word-to-html',
-];
-
-// Generator tools that require login and generator access
-const GENERATOR_TOOL_SLUGS = [
-  'web-content',
-  'blog-generator',
-  'glossary-generator',
-  'resource-generator',
-];
-
 export default function ToolPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const { user } = useAuth();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -130,6 +108,8 @@ export default function ToolPage() {
   const params = useParams();
   const toolSlug = params.tool;
   const ToolComponent = toolComponents[toolSlug];
+  const { user, loading, toolSettings } = useAuth();
+  const toolId = slugToToolId[toolSlug];
 
   useToolMetadata(toolSlug);
   const toolSchema = generateToolSchema(toolSlug);
@@ -141,7 +121,7 @@ export default function ToolPage() {
     }
   }, [ToolComponent, router]);
 
-  if (!ToolComponent || !mounted) {
+  if (!ToolComponent || !mounted || loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center bg-background">
         <div className="animate-pulse flex flex-col items-center gap-4">
@@ -154,16 +134,8 @@ export default function ToolPage() {
     );
   }
 
-  const isFree = FREE_TOOL_SLUGS.includes(toolSlug);
-  const isGenerator = GENERATOR_TOOL_SLUGS.includes(toolSlug);
-  const hasAccess =
-    user &&
-    (isFree ||
-      user.role === 'admin' ||
-      (isGenerator && user.has_generator_access));
-
   return (
-    <>
+    <ToolAccessGuard toolId={toolId}>
       {toolSchema && <JsonLd data={toolSchema} />}
       {breadcrumbSchema && <JsonLd data={breadcrumbSchema} />}
 
@@ -182,7 +154,7 @@ export default function ToolPage() {
           <ToolComponent />
         </div>
       </div>
-    </>
+    </ToolAccessGuard>
   );
 }
 

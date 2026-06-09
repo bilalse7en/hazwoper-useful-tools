@@ -8,10 +8,12 @@ const AuthContext = createContext({
   loading: true,
   refreshUser: () => {},
   logout: () => {},
+  toolSettings: {},
 });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [toolSettings, setToolSettings] = useState({});
   const [loading, setLoading] = useState(true);
 
   const logout = async () => {
@@ -88,6 +90,30 @@ export function AuthProvider({ children }) {
     // Check active session
     const initAuth = async () => {
       setLoading(true);
+      try {
+        // Fetch Tool Settings
+        const { data: settings, error } = await supabase
+          .from('tool_settings')
+          .select('id, is_free');
+        if (error) {
+          if (error.code === '42P01') {
+            console.warn(
+              'Tool settings table not found. Defaulting to hardcoded values.'
+            );
+          } else {
+            throw error;
+          }
+        } else if (settings) {
+          const settingsMap = settings.reduce((acc, curr) => {
+            acc[curr.id] = curr.is_free;
+            return acc;
+          }, {});
+          setToolSettings(settingsMap);
+        }
+      } catch (err) {
+        console.error('Error fetching tool settings in provider:', err);
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -125,7 +151,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, refreshUser, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, refreshUser, logout, toolSettings }}
+    >
       {children}
     </AuthContext.Provider>
   );

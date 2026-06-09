@@ -33,6 +33,10 @@ const iconMap = {
   'ai-assistant': MessageSquare,
   'image-to-text': Wand2,
   'document-extractor': FileText,
+  'video-converter': Zap,
+  'audio-converter': Zap,
+  'video-to-gif': Video,
+  'word-to-html': FileText,
 };
 
 export default function ToolsDirectoryPage() {

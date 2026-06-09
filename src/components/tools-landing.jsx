@@ -29,7 +29,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn, isLowEnd } from '@/lib/utils';
-import { triggerLogin } from '@/lib/auth';
+import { triggerLogin, hasAccess } from '@/lib/auth';
+import { useAuth } from '@/components/auth-provider';
 
 const iconMap = {
   course: Layout,
@@ -77,25 +78,48 @@ export function ToolsLanding({ user }) {
   const isAdmin = user?.role === 'admin';
   const hasGeneratorAccess = user?.has_generator_access || isAdmin;
 
+  const { toolSettings } = useAuth();
+
   const tools = Object.entries(toolIdToSlug).map(([id, slug]) => ({
     id,
     slug,
     ...toolInfo[slug],
   }));
 
-  // For guests: only show free tools
-  // For logged-in: show everything
-  const freeTools = tools.filter((t) => FREE_TOOL_IDS.includes(t.id));
-  const generatorTools = tools.filter((t) => GENERATOR_TOOL_IDS.includes(t.id));
-  const utilityTools = tools.filter(
-    (t) => !GENERATOR_TOOL_IDS.includes(t.id) && !FREE_TOOL_IDS.includes(t.id)
-  );
+  // Determine free/paid dynamically based on database SLUG
+  const isToolFree = (tool) => {
+    // Check dynamic settings first using the SLUG (key in toolInfo/database)
+    if (toolSettings && toolSettings[tool.slug] !== undefined) {
+      return toolSettings[tool.slug] === true;
+    }
 
-  // Combine remaining utility tools that aren't free (like ai-assistant)
-  const allUtilityForGuest = freeTools;
-  const allUtilityForUser = tools.filter(
-    (t) => !GENERATOR_TOOL_IDS.includes(t.id)
-  );
+    // Fallback to hardcoded logic if database is empty/loading
+    const FREE_TOOL_SLUGS = [
+      'html-cleaner',
+      'image-converter',
+      'video-compressor',
+      'image-to-text',
+      'document-extractor',
+      'video-converter',
+      'audio-converter',
+      'video-to-gif',
+      'word-to-html',
+    ];
+    return FREE_TOOL_SLUGS.includes(tool.slug);
+  };
+
+  const freeTools = tools.filter((t) => isToolFree(t));
+  const generatorAndPaidTools = tools.filter((t) => !isToolFree(t));
+
+  // Determine access based on user role and dynamic settings
+  const hasAccessToTool = (tool) => {
+    // If it's free in the database, everyone has access
+    if (toolSettings && toolSettings[tool.slug] === true) return true;
+
+    // Fallback/Hardcoded checks via auth.js
+    // Note: hasAccess expects toolId (e.g. 'course') but we can also pass slug and update hasAccess to handle both
+    return hasAccess(user, tool.id, toolSettings);
+  };
 
   return (
     <div className="min-h-screen bg-transparent pb-20">
@@ -202,10 +226,10 @@ export function ToolsLanding({ user }) {
             <div>
               <h2 className="text-4xl font-black mb-3 flex items-center gap-4 text-foreground">
                 <Wand2 className="w-10 h-10 text-primary" />
-                Content Generators
+                Professional Tools
               </h2>
               <p className="text-muted-foreground font-medium">
-                Advanced AI-powered tools for professional content creation.
+                Advanced AI-powered generators and specialized utilities.
               </p>
             </div>
             {!hasGeneratorAccess && (
@@ -222,9 +246,9 @@ export function ToolsLanding({ user }) {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {generatorTools.map((tool, index) => {
+            {generatorAndPaidTools.map((tool, index) => {
               const Icon = iconMap[tool.id] || Layout;
-              const locked = !hasGeneratorAccess;
+              const locked = !hasAccessToTool(tool.id);
 
               return (
                 <motion.div
@@ -352,7 +376,10 @@ export function ToolsLanding({ user }) {
                 : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
             )}
           >
-            {(isGuest ? freeTools : allUtilityForUser).map((tool, index) => {
+            {(isGuest
+              ? freeTools
+              : tools.filter((t) => !generatorAndPaidTools.includes(t))
+            ).map((tool, index) => {
               const Icon = iconMap[tool.id] || Layout;
               return (
                 <Link key={tool.id} href={`/tools/${tool.slug}`}>

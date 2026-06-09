@@ -4,14 +4,8 @@ import { Suspense, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
+import { createColumnHelper } from '@tanstack/react-table';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -40,6 +34,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { getTimeRemaining, formatSize } from '@/lib/tool-history';
 import { toast } from 'sonner';
 import { convertImage } from '@/lib/image-converter';
+import { toolInfo } from '@/lib/seo';
 
 const formatFileType = (type) => {
   if (!type) return 'FILE';
@@ -56,7 +51,6 @@ const formatFileType = (type) => {
 function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const searchParams = useSearchParams();
   const router = useRouter();
   const activeView = searchParams.get('view') || 'dashboard';
@@ -66,8 +60,376 @@ function AdminDashboard() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
   const [blogItems, setBlogItems] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [toolSettings, setToolSettings] = useState({});
+
+  const columnHelper = createColumnHelper();
+
+  // Columns for Tools
+  const toolColumns = [
+    columnHelper.accessor((row) => row[0], {
+      id: 'slug',
+      header: 'Tool Identity',
+      cell: (info) => {
+        const slug = info.getValue();
+        const tool = toolInfo[slug];
+        if (!tool) return slug;
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-muted border border-border flex items-center justify-center text-primary text-xl shadow-inner">
+              {tool.icon}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-sm tracking-tight">
+                {tool.name}
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground opacity-50 uppercase tracking-tighter">
+                {slug}
+              </span>
+            </div>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor((row) => toolInfo[row[0]]?.category || 'Utility', {
+      id: 'category',
+      header: 'Category',
+      cell: (info) => (
+        <Badge
+          variant="secondary"
+          className="bg-primary/5 text-primary border-none uppercase text-[8px] font-black px-2 py-1"
+        >
+          {info.getValue()}
+        </Badge>
+      ),
+    }),
+    columnHelper.accessor((row) => toolSettings[row[0]] ?? true, {
+      id: 'isFree',
+      header: 'Monetization Status',
+      cell: (info) => {
+        const isFree = info.getValue();
+        const toolId = info.row.original[0];
+        return (
+          <div className="flex items-center gap-3 justify-center">
+            <span
+              className={cn(
+                'text-[10px] font-black uppercase tracking-tighter transition-colors',
+                isFree ? 'text-emerald-500' : 'text-muted-foreground opacity-40'
+              )}
+            >
+              Free
+            </span>
+            <Switch
+              checked={isFree}
+              onCheckedChange={(checked) => toggleToolFree(toolId, checked)}
+              className="scale-75 data-[state=checked]:bg-emerald-500"
+            />
+            <span
+              className={cn(
+                'text-[10px] font-black uppercase tracking-tighter transition-colors',
+                !isFree ? 'text-primary' : 'text-muted-foreground opacity-40'
+              )}
+            >
+              Paid
+            </span>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor((row) => toolSettings[row[0]] ?? true, {
+      id: 'accessLevel',
+      header: 'Access Level',
+      cell: (info) => {
+        const isFree = info.getValue();
+        return (
+          <div className="text-right">
+            <Badge
+              className={cn(
+                'uppercase text-[9px] font-black px-3 py-1',
+                isFree
+                  ? 'bg-emerald-500/10 text-emerald-500'
+                  : 'bg-primary/10 text-primary'
+              )}
+              variant="secondary"
+            >
+              {isFree ? 'Open' : 'Restricted'}
+            </Badge>
+          </div>
+        );
+      },
+    }),
+  ];
+
+  // Columns for Users
+  const userColumns = [
+    columnHelper.accessor('email', {
+      id: 'email',
+      header: 'User Identity',
+      cell: (info) => {
+        const u = info.row.original;
+        return (
+          <div className="flex items-center gap-4">
+            <AvatarItem user={u} />
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-lg tracking-tight truncate leading-tight">
+                {u.full_name ||
+                  u.username ||
+                  (u.email ? u.email.split('@')[0] : 'Unknown')}
+              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                  {u.first_name} {u.last_name}
+                </span>
+                <span className="w-1 h-1 rounded-full bg-border" />
+                <span className="text-[10px] font-medium text-muted-foreground truncate opacity-70 italic shadow-sm">
+                  {u.email}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor('id', {
+      header: 'Registry Reference',
+      cell: (info) => (
+        <code className="text-[10px] font-mono bg-muted/50 px-2 py-1 rounded-md text-muted-foreground border border-border shadow-inner">
+          {info.getValue().substring(0, 18)}...
+        </code>
+      ),
+    }),
+    columnHelper.accessor('has_generator_access', {
+      header: 'Generator Suite',
+      cell: (info) => {
+        const u = info.row.original;
+        const hasAccess = u.has_generator_access || u.role === 'admin';
+        return (
+          <div className="flex flex-col items-center gap-2">
+            <Switch
+              checked={hasAccess}
+              disabled={u.role === 'admin'}
+              onCheckedChange={(checked) =>
+                toggleGeneratorAccess(u.id, checked)
+              }
+              className="data-[state=checked]:bg-primary"
+            />
+            <span
+              className={cn(
+                'text-[9px] font-black uppercase tracking-widest',
+                hasAccess ? 'text-primary' : 'text-muted-foreground opacity-50'
+              )}
+            >
+              {u.role === 'admin'
+                ? 'Fixed Admin'
+                : hasAccess
+                  ? 'PRO Active'
+                  : 'Restricted'}
+            </span>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor('role', {
+      header: 'Escalation',
+      cell: (info) => {
+        const u = info.row.original;
+        const isAdmin = u.role === 'admin';
+        return (
+          <div className="flex justify-end items-center gap-4">
+            <Badge
+              className={cn(
+                'uppercase text-[9px] font-black px-3 py-1',
+                isAdmin
+                  ? 'bg-emerald-500/10 text-emerald-500'
+                  : 'bg-slate-500/10 text-slate-500'
+              )}
+              variant="secondary"
+            >
+              {isAdmin ? 'Architect' : 'Standard'}
+            </Badge>
+            <Switch
+              checked={isAdmin}
+              onCheckedChange={(checked) => toggleAdmin(u.id, checked)}
+              className="data-[state=checked]:bg-emerald-500"
+            />
+          </div>
+        );
+      },
+    }),
+  ];
+
+  // Columns for Media
+  const mediaColumns = [
+    columnHelper.accessor('file_name', {
+      header: 'Media Identification',
+      cell: (info) => {
+        const item = info.row.original;
+        return (
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center relative overflow-hidden shadow-inner group-hover:scale-105 transition-transform duration-300">
+              {item.file_type.includes('image') && item.preview_url ? (
+                <Image
+                  src={item.preview_url}
+                  alt="Preview"
+                  width={48}
+                  height={48}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <FileText className="w-6 h-6 text-primary" />
+              )}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="font-black text-sm truncate max-w-[200px] leading-tight">
+                {item.file_name}
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground opacity-60 uppercase mt-0.5">
+                ID: {item.id.substring(0, 8)}
+              </span>
+            </div>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor('user_id', {
+      header: 'Attributed User',
+      cell: (info) => {
+        const userId = info.getValue();
+        const u = users.find((user) => user.id === userId);
+        return (
+          <div className="flex flex-col">
+            <span className="font-black text-sm text-foreground/80">
+              {u?.full_name || u?.username || 'Guest'}
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium opacity-70">
+              {u?.email}
+            </span>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor('file_type', {
+      header: 'Type',
+      cell: (info) => (
+        <Badge
+          variant="secondary"
+          className="text-[9px] font-black uppercase tracking-widest bg-muted/50 text-muted-foreground border-none px-2 py-0.5"
+        >
+          {formatFileType(info.getValue())}
+        </Badge>
+      ),
+    }),
+    columnHelper.accessor('file_size', {
+      header: 'Size',
+      cell: (info) => (
+        <span className="text-[11px] font-mono font-bold text-muted-foreground bg-muted/20 px-2 py-0.5 rounded">
+          {formatSize(info.getValue())}
+        </span>
+      ),
+    }),
+    columnHelper.accessor('expires_at', {
+      header: 'Security Status',
+      cell: (info) => {
+        const expiresAt = info.getValue();
+        return expiresAt ? (
+          <Badge
+            variant="outline"
+            className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-black uppercase text-[9px] px-3 py-1 gap-2"
+          >
+            <Clock className="w-3.5 h-3.5" /> {getTimeRemaining(expiresAt)}
+          </Badge>
+        ) : (
+          <Badge
+            variant="outline"
+            className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-black uppercase text-[9px] px-3 py-1 gap-2"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" /> Permanent
+          </Badge>
+        );
+      },
+    }),
+    columnHelper.accessor('created_at', {
+      header: 'Uploaded',
+      cell: (info) => {
+        const date = new Date(info.getValue());
+        return (
+          <div className="flex flex-col items-end">
+            <span className="text-sm font-black text-foreground/90">
+              {date.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-60 tracking-wider font-mono">
+              {date.toLocaleDateString()}
+            </span>
+          </div>
+        );
+      },
+    }),
+  ];
+
+  // Columns for Blogs
+  const blogColumns = [
+    columnHelper.accessor('title', {
+      header: 'Article Detail',
+      cell: (info) => {
+        const blog = info.row.original;
+        return (
+          <div className="flex flex-col">
+            <span className="font-black text-base text-foreground leading-tight">
+              {blog.title}
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground opacity-60 mt-0.5 shadow-sm">
+              /{blog.slug}
+            </span>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor('category', {
+      header: 'Category',
+      cell: (info) => (
+        <Badge
+          variant="secondary"
+          className="bg-primary/5 text-primary border-none uppercase text-[9px] font-black px-3 py-1"
+        >
+          {info.getValue()}
+        </Badge>
+      ),
+    }),
+    columnHelper.accessor('date', {
+      header: 'Date',
+      cell: (info) => (
+        <span className="text-xs font-bold text-muted-foreground bg-muted/20 px-2 py-1 rounded">
+          {info.getValue()}
+        </span>
+      ),
+    }),
+    columnHelper.accessor('id', {
+      header: 'Actions',
+      cell: (info) => (
+        <div className="text-right space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-xl font-black uppercase text-[9px] tracking-widest bg-muted/50 hover:bg-primary/10 hover:text-primary transition-all shadow-sm"
+            onClick={() => router.push(`/admin/blogs/${info.getValue()}`)}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-xl font-black uppercase text-[9px] tracking-widest text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-all shadow-sm"
+            onClick={() => deleteBlog(info.getValue())}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    }),
+  ];
 
   useEffect(() => {
     async function initializeDashboard() {
@@ -94,6 +456,10 @@ function AdminDashboard() {
         if (activeView === 'media-library') {
           await fetchLibraryData();
         }
+
+        if (activeView === 'tools') {
+          await fetchToolSettings();
+        }
       } catch (err) {
         console.error('Neural Dashboard Initialization Failure:', err);
       } finally {
@@ -103,8 +469,6 @@ function AdminDashboard() {
     }
 
     initializeDashboard();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCurrentPage(1); // Reset page on view change
 
     // Subscribe to REALTIME changes for Admin Monitoring
     const channel = supabase
@@ -318,6 +682,48 @@ function AdminDashboard() {
     }
   }
 
+  async function fetchToolSettings() {
+    try {
+      const { data, error } = await supabase.from('tool_settings').select('*');
+      if (error) {
+        if (error.code === '42P01') {
+          console.error(
+            'Database Table Missing: Please run the provided SQL query in Supabase to create the "tool_settings" table.'
+          );
+          toast.error('Database setup required', {
+            description: 'Run SQL query in Supabase dashboard.',
+          });
+        }
+        throw error;
+      }
+      const settingsMap = (data || []).reduce((acc, curr) => {
+        acc[curr.id] = curr.is_free;
+        return acc;
+      }, {});
+      setToolSettings(settingsMap);
+    } catch (err) {
+      console.error('Error fetching tool settings:', err);
+    }
+  }
+
+  async function toggleToolFree(toolId, isFree) {
+    try {
+      const { error } = await supabase.from('tool_settings').upsert({
+        id: toolId,
+        is_free: isFree,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setToolSettings((prev) => ({ ...prev, [toolId]: isFree }));
+      toast.success('Tool Access Updated', {
+        description: `${toolId} is now ${isFree ? 'FREE' : 'PAID'}.`,
+      });
+    } catch (err) {
+      console.error('Error updating tool access:', err);
+      toast.error('Failed to update tool access');
+    }
+  }
+
   async function deleteBlog(id) {
     if (!confirm('Are you sure you want to delete this editorial sequence?'))
       return;
@@ -384,104 +790,6 @@ function AdminDashboard() {
     }
   }
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const paginatedMedia = mediaItems.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const paginatedBlogs = blogItems.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages =
-    activeView === 'permissions'
-      ? Math.ceil(filteredUsers.length / itemsPerPage)
-      : activeView === 'media'
-        ? Math.ceil(mediaItems.length / itemsPerPage)
-        : activeView === 'blogs'
-          ? Math.ceil(blogItems.length / itemsPerPage)
-          : activeView === 'media-library'
-            ? Math.ceil(libraryItems.length / itemsPerPage)
-            : 0;
-
-  const renderPaginationControls = () => {
-    if (totalPages <= 1) return null;
-    return (
-      <div className="flex items-center justify-between px-10 py-6 border-t border-border bg-muted/10">
-        <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-          Page {currentPage} of {totalPages}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="rounded-xl border-border h-9 px-4 font-black uppercase tracking-widest text-[9px] gap-2"
-          >
-            Previous
-          </Button>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-              if (
-                totalPages > 5 &&
-                p !== 1 &&
-                p !== totalPages &&
-                Math.abs(p - currentPage) > 1
-              ) {
-                if (p === 2 || p === totalPages - 1)
-                  return (
-                    <span key={p} className="px-1 text-muted-foreground">
-                      ...
-                    </span>
-                  );
-                return null;
-              }
-              return (
-                <Button
-                  key={p}
-                  variant={currentPage === p ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setCurrentPage(p)}
-                  className={cn(
-                    'w-9 h-9 rounded-xl font-black text-[10px]',
-                    currentPage === p
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground'
-                  )}
-                >
-                  {p}
-                </Button>
-              );
-            })}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="rounded-xl border-border h-9 px-4 font-black uppercase tracking-widest text-[9px] gap-2"
-          >
-            Next
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
       <InitialLoadingShell isReady={!loading} />
@@ -524,30 +832,16 @@ function AdminDashboard() {
             </Button>
           )}
           {activeView === 'permissions' && (
-            <div className="flex items-center gap-3">
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                <Input
-                  placeholder="Search registry..."
-                  className="pl-11 h-12 w-64 rounded-xl bg-card/40 border-border focus-visible:ring-primary shadow-inner font-medium transition-all"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-12 w-12 rounded-xl bg-card/40 border-border hover:bg-primary/5 hover:text-primary transition-all"
-                onClick={() => fetchUsers()}
-              >
-                <RefreshCw
-                  className={cn('w-4 h-4', loading ? 'animate-spin' : '')}
-                />
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 rounded-xl bg-card/40 border-border hover:bg-primary/5 hover:text-primary transition-all"
+              onClick={() => fetchUsers()}
+            >
+              <RefreshCw
+                className={cn('w-4 h-4', loading ? 'animate-spin' : '')}
+              />
+            </Button>
           )}
         </div>
 
@@ -668,139 +962,11 @@ function AdminDashboard() {
           </div>
         ) : activeView === 'media' ? (
           <div className="space-y-8 animate-in-fade">
-            <Card className="rounded-[40px] shadow-2xl border-border overflow-hidden bg-card/40 backdrop-blur-xl">
-              <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow className="hover:bg-transparent border-b border-border h-14">
-                    <TableHead className="pl-10 font-black uppercase tracking-widest text-[10px]">
-                      Media Identification
-                    </TableHead>
-                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                      Attributed User
-                    </TableHead>
-                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                      Type
-                    </TableHead>
-                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                      Size
-                    </TableHead>
-                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                      Security Status
-                    </TableHead>
-                    <TableHead className="pr-10 text-right font-black uppercase tracking-widest text-[10px]">
-                      Uploaded
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedMedia.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={6}
-                        className="h-64 text-center font-black uppercase tracking-widest text-xs text-muted-foreground/50"
-                      >
-                        No artifacts detected in registry.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedMedia.map((item) => (
-                      <TableRow
-                        key={item.id}
-                        className="h-20 hover:bg-primary/[0.02] border-b border-border/50 group transition-colors"
-                      >
-                        <TableCell className="pl-10">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center relative overflow-hidden group-hover:scale-105 transition-transform">
-                              {item.file_type.includes('image') &&
-                              item.preview_url ? (
-                                <Image
-                                  src={item.preview_url}
-                                  alt="Preview"
-                                  width={48}
-                                  height={48}
-                                  className="w-full h-full object-cover"
-                                  unoptimized
-                                />
-                              ) : (
-                                <FileText className="w-5 h-5 text-primary" />
-                              )}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-black text-sm truncate max-w-[200px]">
-                                {item.file_name}
-                              </span>
-                              <span className="text-[10px] font-mono text-muted-foreground opacity-60">
-                                ID: {item.id.substring(0, 8)}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            const u = users.find((u) => u.id === item.user_id);
-                            return (
-                              <div className="flex flex-col">
-                                <span className="font-bold text-sm">
-                                  {u?.full_name || u?.username || 'Guest'}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {u?.email}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className="text-[9px] font-black uppercase tracking-widest bg-muted text-muted-foreground border-none"
-                          >
-                            {formatFileType(item.file_type)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs font-mono font-bold text-muted-foreground">
-                            {formatSize(item.file_size)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {item.expires_at ? (
-                            <Badge
-                              variant="outline"
-                              className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-black uppercase text-[9px] px-3 gap-2"
-                            >
-                              <Clock className="w-3 h-3" />{' '}
-                              {getTimeRemaining(item.expires_at)}
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-black uppercase text-[9px] px-3 gap-2"
-                            >
-                              <ShieldCheck className="w-3 h-3" /> Permanent
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="pr-10 text-right">
-                          <div className="flex flex-col items-end">
-                            <span className="text-sm font-black">
-                              {new Date(item.created_at).toLocaleTimeString(
-                                [],
-                                { hour: '2-digit', minute: '2-digit' }
-                              )}
-                            </span>
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase">
-                              {new Date(item.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              {renderPaginationControls()}
-            </Card>
+            <DataTable
+              columns={mediaColumns}
+              data={mediaItems}
+              searchKey="file_name"
+            />
 
             <Card className="rounded-[40px] shadow-2xl border-border bg-card/20 backdrop-blur-xl p-8">
               <div className="flex items-center gap-3 mb-6">
@@ -846,90 +1012,11 @@ function AdminDashboard() {
           </div>
         ) : activeView === 'blogs' ? (
           <div className="space-y-8 animate-in-fade">
-            <Card className="rounded-[40px] shadow-2xl border-border bg-card/40 backdrop-blur-xl overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow className="h-14 border-b border-border">
-                    <TableHead className="pl-10 font-black uppercase tracking-widest text-[10px]">
-                      Article Detail
-                    </TableHead>
-                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                      Category
-                    </TableHead>
-                    <TableHead className="font-black uppercase tracking-widest text-[10px]">
-                      Date
-                    </TableHead>
-                    <TableHead className="pr-10 text-right font-black uppercase tracking-widest text-[10px]">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedBlogs.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={4}
-                        className="h-64 text-center font-black uppercase tracking-widest text-xs text-muted-foreground/50"
-                      >
-                        No editorial sequences detected.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedBlogs.map((blog) => (
-                      <TableRow
-                        key={blog.id}
-                        className="h-24 hover:bg-primary/[0.02] border-b border-border transition-colors group"
-                      >
-                        <TableCell className="pl-10">
-                          <div className="flex flex-col">
-                            <span className="font-black text-base">
-                              {blog.title}
-                            </span>
-                            <span className="text-[10px] font-mono text-muted-foreground opacity-60">
-                              /{blog.slug}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className="bg-primary/5 text-primary border-none uppercase text-[9px] font-black"
-                          >
-                            {blog.category}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs font-bold text-muted-foreground">
-                            {blog.date}
-                          </span>
-                        </TableCell>
-                        <TableCell className="pr-10 text-right space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="rounded-xl font-bold bg-muted/50 hover:bg-primary/10 hover:text-primary"
-                            onClick={() =>
-                              router.push(`/admin/blogs/${blog.id}`)
-                            }
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="rounded-xl font-bold text-destructive/60 hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => deleteBlog(blog.id)}
-                          >
-                            Delete
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              {renderPaginationControls()}
-            </Card>
+            <DataTable
+              columns={blogColumns}
+              data={blogItems}
+              searchKey="title"
+            />
           </div>
         ) : activeView === 'performance' ? (
           <div className="space-y-8 animate-in-fade">
@@ -1198,127 +1285,18 @@ function AdminDashboard() {
             </div>
             {libraryItems.length > itemsPerPage && renderPaginationControls()}
           </div>
+        ) : activeView === 'tools' ? (
+          <div className="space-y-8 animate-in-fade">
+            <DataTable
+              columns={toolColumns}
+              data={Object.entries(toolInfo).sort((a, b) =>
+                a[1].name.localeCompare(b[1].name)
+              )}
+              searchKey="slug"
+            />
+          </div>
         ) : (
-          <Card className="rounded-[40px] shadow-2xl border-border overflow-hidden bg-card/40 backdrop-blur-xl animate-in-fade">
-            <CardContent className="p-0">
-              <div className="relative overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-muted/30 sticky top-0 z-10">
-                    <TableRow className="hover:bg-transparent h-16 border-b border-border">
-                      <TableHead className="w-[350px] font-black uppercase tracking-widest text-[10px] pl-10 text-muted-foreground">
-                        User Identity
-                      </TableHead>
-                      <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">
-                        Registry Reference
-                      </TableHead>
-                      <TableHead className="font-black uppercase tracking-widest text-[10px] text-center text-muted-foreground">
-                        Generator Suite
-                      </TableHead>
-                      <TableHead className="font-black uppercase tracking-widest text-[10px] text-right pr-10 text-muted-foreground">
-                        Escalation
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedUsers.length === 0 && !loading ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={4}
-                          className="h-64 text-center font-black tracking-widest text-xs uppercase text-muted-foreground"
-                        >
-                          No matches found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedUsers.map((u) => (
-                        <TableRow
-                          key={u.id}
-                          className="h-24 hover:bg-primary/[0.02] border-b border-border group"
-                        >
-                          <TableCell className="pl-10">
-                            <div className="flex items-center gap-4">
-                              <AvatarItem user={u} />
-                              <div className="flex flex-col min-w-0">
-                                <span className="font-black text-lg tracking-tight truncate">
-                                  {u.full_name ||
-                                    u.username ||
-                                    u.email.split('@')[0]}
-                                </span>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">
-                                    {u.first_name} {u.last_name}
-                                  </span>
-                                  <span className="w-1 h-1 rounded-full bg-border" />
-                                  <span className="text-[10px] font-medium text-muted-foreground truncate opacity-70 italic">
-                                    {u.email}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <code className="text-[10px] font-mono bg-muted/50 px-2 py-1 rounded-md text-muted-foreground border border-border">
-                              {u.id.substring(0, 18)}...
-                            </code>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex flex-col items-center gap-2">
-                              <Switch
-                                checked={
-                                  u.has_generator_access || u.role === 'admin'
-                                }
-                                disabled={u.role === 'admin'}
-                                onCheckedChange={(checked) =>
-                                  toggleGeneratorAccess(u.id, checked)
-                                }
-                              />
-                              <span
-                                className={cn(
-                                  'text-[8px] font-black uppercase tracking-widest',
-                                  u.has_generator_access || u.role === 'admin'
-                                    ? 'text-primary'
-                                    : 'text-muted-foreground'
-                                )}
-                              >
-                                {u.role === 'admin'
-                                  ? 'Fixed Admin'
-                                  : u.has_generator_access
-                                    ? 'PRO Active'
-                                    : 'Restricted'}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right pr-10">
-                            <div className="flex justify-end items-center gap-4">
-                              <Badge
-                                className={cn(
-                                  'uppercase text-[9px] font-black px-2 mt-0.5',
-                                  u.role === 'admin'
-                                    ? 'bg-emerald-500/10 text-emerald-500'
-                                    : 'bg-slate-500/10 text-slate-500'
-                                )}
-                                variant="secondary"
-                              >
-                                {u.role === 'admin' ? 'Architect' : 'Standard'}
-                              </Badge>
-                              <Switch
-                                checked={u.role === 'admin'}
-                                onCheckedChange={(checked) =>
-                                  toggleAdmin(u.id, checked)
-                                }
-                                className="data-[state=checked]:bg-emerald-500"
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              {renderPaginationControls()}
-            </CardContent>
-          </Card>
+          <DataTable columns={userColumns} data={users} searchKey="email" />
         )}
 
         <div className="p-10 rounded-[40px] bg-card/80 dark:bg-black/50 text-foreground transition-all border border-border space-y-6 shadow-2xl relative overflow-hidden group">

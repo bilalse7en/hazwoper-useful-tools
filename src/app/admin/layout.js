@@ -109,11 +109,7 @@ function AdminLayoutInner({ children }) {
       <AppSidebar
         activeTab={currentView}
         onTabChange={(tab) => {
-          if (tab === 'tools') {
-            router.push('/tools/web-content');
-          } else {
-            router.push(`/admin?view=${tab === 'admin' ? 'permissions' : tab}`);
-          }
+          router.push(`/admin?view=${tab === 'admin' ? 'permissions' : tab}`);
         }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}

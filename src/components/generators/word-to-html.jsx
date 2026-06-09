@@ -74,12 +74,30 @@ export function WordToHtml() {
     const doc = parser.parseFromString(processingHtml, 'text/html');
     const body = doc.body;
 
-    // 1. Office Tag Removal
+    // 1. Office Tag Removal & DIV unwrapping
     if (opts.removeOfficeTags) {
       const problematicTags = body.querySelectorAll(
         'xml, style, link, meta, script'
       );
       problematicTags.forEach((el) => el.remove());
+
+      // Unwrap DIVs: Replace div with its children or convert to P if it's just text
+      const divs = body.querySelectorAll('div');
+      divs.forEach((div) => {
+        const parent = div.parentNode;
+        if (!parent) return;
+
+        if (div.children.length === 0 && div.textContent.trim()) {
+          // Convert to P if it's just text
+          const p = doc.createElement('p');
+          p.innerHTML = div.innerHTML;
+          parent.replaceChild(p, div);
+        } else {
+          // Unwrap if it has children or is just a container
+          while (div.firstChild) parent.insertBefore(div.firstChild, div);
+          div.remove();
+        }
+      });
 
       const all = body.querySelectorAll('*');
       all.forEach((el) => {
@@ -147,12 +165,21 @@ export function WordToHtml() {
       body.querySelectorAll('*').forEach((el) => el.removeAttribute('style'));
     }
 
-    // 4. Remove Attributes
+    // 4. Remove Attributes (Aggressive: only keep href, src, alt)
     if (opts.removeAttributes) {
       body.querySelectorAll('*').forEach((el) => {
-        Array.from(el.attributes).forEach((attr) =>
-          el.removeAttribute(attr.name)
-        );
+        const tagName = el.tagName.toLowerCase();
+        Array.from(el.attributes).forEach((attr) => {
+          const attrName = attr.name.toLowerCase();
+          // Keep only essential attributes
+          if (
+            (tagName === 'a' && attrName === 'href') ||
+            (tagName === 'img' && (attrName === 'src' || attrName === 'alt'))
+          ) {
+            return;
+          }
+          el.removeAttribute(attr.name);
+        });
       });
     }
 
@@ -239,6 +266,21 @@ export function WordToHtml() {
 
   const toggleOption = (key) =>
     setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const applyAllCleaners = () => {
+    setOptions({
+      removeEmptyTags: true,
+      removeAttributes: true,
+      removeStyles: true,
+      removeSpans: true,
+      removeBrTags: true,
+      removeComments: true,
+      removeOfficeTags: true,
+      removeNbsp: true,
+      fixLists: true,
+    });
+    toast.success('All cleaners applied');
+  };
 
   const handleCopy = () => {
     performAction(
@@ -364,6 +406,24 @@ export function WordToHtml() {
                 accept=".docx"
                 className="hidden"
               />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={applyAllCleaners}
+                    className="h-10 w-10 rounded-xl text-green-500 hover:bg-green-500/10 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  className="text-[10px] font-black uppercase tracking-widest bg-popover text-popover-foreground border-border/40"
+                >
+                  Apply All Cleaners
+                </TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

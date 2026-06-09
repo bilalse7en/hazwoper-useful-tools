@@ -50,6 +50,7 @@ export default function ToolsLayout({ children }) {
         <AppSidebar
           activeTab={activeTab}
           onTabChange={(tab) => {
+            setSidebarCollapsed(true);
             if (tab === 'admin') {
               router.push('/admin');
               return;
