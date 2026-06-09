@@ -167,7 +167,7 @@ export default function ToolsDirectoryPage() {
                   </div>
 
                   {/* Dynamic background pulse */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[50px]" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[50px] z-[-1]" />
                 </div>
               </motion.div>
             );
