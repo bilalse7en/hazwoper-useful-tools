@@ -25,6 +25,7 @@ import {
   Library,
   Upload,
   Trash2,
+  ArrowRight,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -363,6 +364,35 @@ function AdminDashboard() {
             <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-60 tracking-wider font-mono">
               {date.toLocaleDateString()}
             </span>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor('id', {
+      id: 'actions',
+      header: 'Actions',
+      cell: (info) => {
+        const item = info.row.original;
+        return (
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 rounded-xl bg-card border-border hover:bg-primary/10 hover:text-primary transition-all shadow-sm"
+              onClick={() =>
+                window.open(item.download_url || item.preview_url, '_blank')
+              }
+            >
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="destructive"
+              size="icon"
+              className="h-9 w-9 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border-none transition-all shadow-sm"
+              onClick={() => deleteAsset(item.id)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         );
       },
@@ -1175,17 +1205,15 @@ function AdminDashboard() {
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
               <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 rounded-[24px] bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                    <Library className="w-8 h-8" />
+                  <div className="w-16 h-16 rounded-[24px] bg-primary/10 flex items-center justify-center text-primary shadow-inner text-2xl">
+                    <Upload />
                   </div>
                   <div>
                     <h3 className="text-2xl font-black tracking-tight">
-                      Direct Asset Integration
+                      Asset Integration Engine
                     </h3>
                     <p className="text-sm text-muted-foreground font-medium max-w-md mt-1">
-                      Upload and optimize professional high-fidelity assets.
-                      Images are automatically compressed using our optimized
-                      neural pipeline.
+                      Centralized ingestion unit for professional assets.
                     </p>
                   </div>
                 </div>
@@ -1196,7 +1224,7 @@ function AdminDashboard() {
                     ) : (
                       <Upload className="w-5 h-5 group-hover/upload:-translate-y-0.5 transition-transform" />
                     )}
-                    {isUploading ? 'Neural Processing...' : 'Upload New Asset'}
+                    {isUploading ? 'Synchronizing...' : 'Import Media Artifact'}
                   </div>
                   <input
                     type="file"
@@ -1209,81 +1237,11 @@ function AdminDashboard() {
               </div>
             </Card>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-              {libraryItems
-                .slice(
-                  (currentPage - 1) * itemsPerPage,
-                  currentPage * itemsPerPage
-                )
-                .map((item) => (
-                  <Card
-                    key={item.id}
-                    className="rounded-[36px] overflow-hidden border-border bg-card/40 backdrop-blur-xl group hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500"
-                  >
-                    <div className="aspect-[4/3] relative bg-muted/30 flex items-center justify-center overflow-hidden">
-                      {item.file_type.includes('image') && item.preview_url ? (
-                        <Image
-                          src={item.preview_url}
-                          alt={item.file_name}
-                          width={400}
-                          height={300}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-3 opacity-40 group-hover:opacity-100 transition-opacity">
-                          <FileText className="w-16 h-16 text-primary" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">
-                            {formatFileType(item.file_type)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3 scale-95 group-hover:scale-100">
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="rounded-2xl h-12 w-12 bg-white/10 hover:bg-white/20 border-white/10 text-white backdrop-blur-md"
-                          onClick={() =>
-                            window.open(item.download_url, '_blank')
-                          }
-                        >
-                          <Search className="w-5 h-5" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="rounded-2xl h-12 w-12 bg-rose-500/80 hover:bg-rose-600 border-none text-white backdrop-blur-md"
-                          onClick={() => deleteAsset(item.id)}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-black truncate group-hover:text-primary transition-colors">
-                          {item.file_name}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-                          Artifact ID: {item.id.substring(0, 8)}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                        <span className="text-[11px] font-bold text-muted-foreground">
-                          {formatSize(item.file_size)}
-                        </span>
-                        <Badge
-                          variant="secondary"
-                          className="text-[9px] bg-primary/5 text-primary border-none px-2 h-5 font-black uppercase"
-                        >
-                          {item.file_type.split('/').pop()}
-                        </Badge>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-            </div>
-            {libraryItems.length > itemsPerPage && renderPaginationControls()}
+            <DataTable
+              columns={mediaColumns}
+              data={libraryItems}
+              searchKey="file_name"
+            />
           </div>
         ) : activeView === 'tools' ? (
           <div className="space-y-8 animate-in-fade">
