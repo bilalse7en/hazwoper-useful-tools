@@ -2,13 +2,19 @@
 
 import Link from 'next/link';
 import { ChevronRight, Home, LayoutGrid } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { toolInfo } from '@/lib/seo';
 
-export function ToolBreadcrumbs({ slug }) {
+export function ToolBreadcrumbs({ slug, className }) {
   const tool = toolInfo[slug];
 
   return (
-    <nav className="flex items-center gap-2 mb-8 text-[11px] font-black uppercase tracking-widest overflow-x-auto no-scrollbar whitespace-nowrap py-4 border-b border-border/50">
+    <nav
+      className={cn(
+        'flex items-center gap-2 mb-8 text-[11px] font-black uppercase tracking-widest overflow-x-auto no-scrollbar whitespace-nowrap py-4 border-b border-border/50',
+        className
+      )}
+    >
       <Link
         href="/"
         className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors group"
@@ -29,9 +35,9 @@ export function ToolBreadcrumbs({ slug }) {
 
       <ChevronRight className="w-3 h-3 text-border shrink-0" />
 
-      <div className="flex items-center gap-2 text-primary bg-primary/5 px-4 py-1.5 rounded-full border border-primary/20">
-        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-        <span>{tool?.name || 'Active Tool'}</span>
+      <div className="flex items-center gap-2 text-primary bg-primary/5 px-4 py-1.5 rounded-full border border-primary/20 shrink-0 min-w-0">
+        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+        <span className="truncate">{tool?.name || 'Active Protocol'}</span>
       </div>
     </nav>
   );

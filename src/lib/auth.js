@@ -88,6 +88,11 @@ export function hasAccess(user, featureId, toolSettings = null) {
   const { toolIdToSlug } = require('./seo');
   const slug = toolIdToSlug[featureId] || featureId;
 
+  // Special Case: Chat is free for ALL logged in users, always locked for guests
+  if (slug === 'chat' || featureId === 'chat') {
+    return !!user;
+  }
+
   // 3. Database Check
   if (toolSettings) {
     const isFree = toolSettings[slug] ?? toolSettings[featureId] ?? null;
@@ -112,6 +117,7 @@ export function hasAccess(user, featureId, toolSettings = null) {
     'video-converter',
     'audio-converter',
     'video-to-gif',
+    'chat',
   ];
 
   if (defaultFreeTools.includes(featureId) || defaultFreeTools.includes(slug)) {

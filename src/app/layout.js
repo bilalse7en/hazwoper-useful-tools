@@ -12,6 +12,8 @@ import { Footer } from '@/components/footer';
 import { EnvironmentalSetup } from '@/components/environmental-setup';
 import { FloatingChatbot } from '@/components/floating-chatbot';
 import { AuthProvider } from '@/components/auth-provider';
+import { ChatProvider } from '@/components/chat-provider';
+import { BlockedOverlay } from '@/components/chat/BlockedOverlay';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -142,22 +144,25 @@ export default function RootLayout({ children }) {
           storageKey="content-suite-theme"
         >
           <AuthProvider>
-            <BackgroundSpace />
-            <div className="flex flex-col min-h-screen relative">
-              <GlobalHeader />
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </div>
-            <GdprConsent />
-            <EnvironmentalSetup />
-            <FloatingChatbot />
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                className:
-                  'glass-toast !rounded-2xl !border-border !bg-card/90 !backdrop-blur-2xl !text-foreground !shadow-[0_20px_50px_rgba(0,0,0,0.3)] !p-4 !font-orbitron font-bold',
-              }}
-            />
+            <ChatProvider>
+              <BackgroundSpace />
+              <div className="flex flex-col min-h-screen relative">
+                <GlobalHeader />
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </div>
+              <GdprConsent />
+              <EnvironmentalSetup />
+              <FloatingChatbot />
+              <BlockedOverlay />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  className:
+                    'glass-toast !rounded-2xl !border-border !bg-card/90 !backdrop-blur-2xl !text-foreground !shadow-[0_20px_50px_rgba(0,0,0,0.3)] !p-4 !font-orbitron font-bold',
+                }}
+              />
+            </ChatProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

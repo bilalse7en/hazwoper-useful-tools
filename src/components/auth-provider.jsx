@@ -38,6 +38,15 @@ export function AuthProvider({ children }) {
         console.error('Profile fetch error:', error);
       }
 
+      // Sync avatar from Gmail metadata to profile Table if profile avatar is missing
+      const metadataAvatar = sessionUser.user_metadata?.avatar_url;
+      if (metadataAvatar && !profile?.avatar_url) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: metadataAvatar })
+          .eq('id', sessionUser.id);
+      }
+
       const activeUser = {
         id: sessionUser.id,
         email: sessionUser.email,
@@ -49,8 +58,7 @@ export function AuthProvider({ children }) {
           sessionUser.email,
         role: profile?.role || 'user',
         has_generator_access: profile?.has_generator_access || false,
-        avatar:
-          profile?.avatar_url || sessionUser.user_metadata?.avatar_url || null,
+        avatar: profile?.avatar_url || metadataAvatar || null,
         ...profile,
       };
 
@@ -137,7 +145,30 @@ export function AuthProvider({ children }) {
 
       if (session?.user) {
         await fetchProfile(session.user);
+
+        // Mark as online
+        await supabase
+          .from('profiles')
+          .update({ is_online: true })
+          .eq('id', session.user.id);
+
+        // Set up presence channel
+        const presenceChannel = supabase.channel('online-users');
+        presenceChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({
+              user_id: session.user.id,
+              online_at: new Date().toISOString(),
+            });
+          }
+        });
       } else {
+        if (user?.id) {
+          await supabase
+            .from('profiles')
+            .update({ is_online: false })
+            .eq('id', user.id);
+        }
         setUser(null);
         localStorage.removeItem('user');
         sessionStorage.removeItem('auth_toast_shown');
@@ -148,7 +179,7 @@ export function AuthProvider({ children }) {
     return () => {
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [user?.id]);
 
   return (
     <AuthContext.Provider

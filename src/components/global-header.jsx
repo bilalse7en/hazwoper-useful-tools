@@ -11,11 +11,13 @@ import { Menu, Moon, Sun, Palette, LogIn, UserPlus } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AppSidebar } from './app-sidebar';
 import { ThemeDialog } from './theme-dialog';
-
+import { MessageCircle } from 'lucide-react';
 import { useAuth } from './auth-provider';
+import { useChat } from '@/components/chat-provider';
 
 export function GlobalHeader({ activeTab, onTabChange }) {
   const { user, logout } = useAuth();
+  const { totalUnread } = useChat();
   const [mounted, setMounted] = useState(false);
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const router = useRouter();
@@ -88,6 +90,24 @@ export function GlobalHeader({ activeTab, onTabChange }) {
             >
               <Palette className="h-4 w-4" />
             </Button>
+
+            {user && (
+              <div className="relative group/chat">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary transition-colors relative"
+                  onClick={() => router.push('/chat')}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {totalUnread > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground text-[8px] font-black flex items-center justify-center rounded-full ring-2 ring-background animate-in zoom-in duration-300">
+                      {totalUnread > 9 ? '9+' : totalUnread}
+                    </span>
+                  )}
+                </Button>
+              </div>
+            )}
 
             {!mounted ? (
               <div className="flex items-center gap-2 opacity-0 animate-in fade-in duration-500">

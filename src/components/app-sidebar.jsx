@@ -27,6 +27,8 @@ import {
   Users,
   Library,
   FileType,
+  Activity,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +54,7 @@ const navGroups = [
       { id: 'glossary', label: 'Glossary', icon: BookOpen },
       { id: 'resources', label: 'Resources', icon: FileSpreadsheet },
       { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
+      { id: 'chat', label: 'Neural Chat', icon: MessageCircle },
     ],
   },
   {
@@ -88,6 +91,7 @@ const adminNavGroups = [
       { id: 'admin', label: 'User Roles', icon: Users },
       { id: 'media-library', label: 'Media Assets', icon: Library },
       { id: 'media', label: 'Media Monitor', icon: ImageIcon },
+      { id: 'chat-monitor', label: 'Signal Monitor', icon: Activity },
       { id: 'blogs', label: 'Editorial', icon: PenTool },
       { id: 'tools', label: 'Tool Config', icon: Wrench },
       { id: 'performance', label: 'Optimization', icon: Zap },
