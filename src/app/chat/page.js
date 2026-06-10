@@ -91,6 +91,14 @@ function ChatContent() {
             </div>
 
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => (window.location.href = '/tools/course')}
+                className="h-9 px-4 rounded-xl border-primary/30 hover:bg-primary/5 text-primary text-[9px] font-black tracking-widest gap-2 uppercase"
+              >
+                Back to Tools
+              </Button>
               {activePrivateId && (
                 <Button
                   variant="ghost"

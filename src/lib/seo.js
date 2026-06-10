@@ -182,7 +182,6 @@ export const toolIdToSlug = {
   'audio-converter': 'audio-converter',
   'video-to-gif': 'video-to-gif',
   'word-to-html': 'word-to-html',
-  chat: 'chat',
 };
 
 // Reverse mapping

@@ -54,7 +54,6 @@ const navGroups = [
       { id: 'glossary', label: 'Glossary', icon: BookOpen },
       { id: 'resources', label: 'Resources', icon: FileSpreadsheet },
       { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
-      { id: 'chat', label: 'Neural Chat', icon: MessageCircle },
     ],
   },
   {
