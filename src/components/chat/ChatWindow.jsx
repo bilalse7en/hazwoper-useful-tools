@@ -381,6 +381,59 @@ export function ChatWindow({
                 <Ban className="w-4 h-4" />
                 SEVER CONNECTION
               </DropdownMenuItem>
+
+              {user?.role === 'admin' && (
+                <>
+                  <div className="h-px bg-border/40 my-1 mx-2" />
+                  {receiverProfile.is_frozen ? (
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from('profiles')
+                          .update({ is_frozen: false })
+                          .eq('id', receiverId);
+                        if (!error) {
+                          setReceiverProfile((prev) => ({
+                            ...prev,
+                            is_frozen: false,
+                          }));
+                          toast.success('Identity Restored', {
+                            description: 'Full signal clearance granted.',
+                          });
+                        }
+                      }}
+                      className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10 focus:bg-emerald-500/10"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      UNFREEZE / RESTORE
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from('profiles')
+                          .update({ is_frozen: true })
+                          .eq('id', receiverId);
+                        if (!error) {
+                          setReceiverProfile((prev) => ({
+                            ...prev,
+                            is_frozen: true,
+                          }));
+                          toast.error('Identity Frozen', {
+                            description: 'Messenger protocols suspended.',
+                          });
+                        }
+                      }}
+                      className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-red-500 hover:bg-red-500/10 focus:bg-red-500/10"
+                    >
+                      <Ban className="w-4 h-4" />
+                      FREEZE IDENTITY
+                    </DropdownMenuItem>
+                  )}
+                </>
+              )}
+
+              <div className="h-px bg-border/40 my-1 mx-2" />
               <DropdownMenuItem
                 onClick={() => {
                   if (
@@ -394,7 +447,7 @@ export function ChatWindow({
                 className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10"
               >
                 <Trash2 className="w-4 h-4" />
-                CLEAR CHAT
+                PURGE RECENT CHAT
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -444,28 +497,43 @@ export function ChatWindow({
                     className="flex items-center gap-2 mb-0.5 cursor-pointer group/sender"
                     onClick={() => handleProfileClick(msg.sender)}
                   >
-                    <div className="w-5 h-5 rounded-lg bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center text-[10px] font-black">
-                      {msg.sender?.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={msg.sender.avatar_url}
-                          alt=""
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.parentElement.innerText = (msg.sender
-                              ?.full_name || 'U')[0].toUpperCase();
-                          }}
-                        />
-                      ) : (
-                        (msg.sender?.full_name || 'U')[0].toUpperCase()
+                    <div className="relative w-5 h-5">
+                      <div className="w-full h-full rounded-lg bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center text-[10px] font-black">
+                        {msg.sender?.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={msg.sender.avatar_url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerText = (msg.sender
+                                ?.full_name || 'U')[0].toUpperCase();
+                            }}
+                          />
+                        ) : (
+                          (msg.sender?.full_name || 'U')[0].toUpperCase()
+                        )}
+                      </div>
+                      {msg.sender?.is_online && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-background shadow-sm shadow-emerald-500/50" />
                       )}
                     </div>
-                    <span className="text-[8px] font-black uppercase text-primary/40 tracking-widest group-hover/sender:text-primary transition-colors">
-                      {msg.sender?.full_name ||
-                        msg.sender?.username ||
-                        'Subject'}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-black uppercase text-primary/40 tracking-widest group-hover/sender:text-primary transition-colors flex items-center gap-1.5">
+                        {msg.sender?.full_name ||
+                          msg.sender?.username ||
+                          'Subject'}
+                        {msg.sender?.role === 'admin' && (
+                          <ShieldCheck className="w-2 h-2 text-primary" />
+                        )}
+                      </span>
+                      <span className="text-[6px] font-bold uppercase tracking-tighter opacity-30">
+                        {msg.sender?.is_online
+                          ? 'Signal Active'
+                          : 'Link Offline'}
+                      </span>
+                    </div>
                   </div>
                 )}
 

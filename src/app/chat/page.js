@@ -165,7 +165,7 @@ function ChatContent() {
                         side="bottom"
                         className="bg-rose-500 text-white font-black uppercase text-[9px] tracking-widest border-none"
                       >
-                        Clear Private Line
+                        Purge All Signals (Wipe History)
                       </TooltipContent>
                     </Tooltip>
 

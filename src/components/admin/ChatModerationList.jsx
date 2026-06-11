@@ -238,7 +238,7 @@ export function ChatModerationList({ onOpenChat }) {
                 {u.is_frozen ? (
                   <DropdownMenuItem
                     onClick={() => toggleFreeze(u, false)}
-                    className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10"
+                    className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10"
                   >
                     <ShieldCheck className="w-4 h-4" />
                     REVOKE FREEZE (RESTORE)
@@ -248,7 +248,7 @@ export function ChatModerationList({ onOpenChat }) {
                     disabled={isAdmin}
                     onClick={() => toggleFreeze(u, true)}
                     className={cn(
-                      'rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-red-500 hover:bg-red-500/10',
+                      'rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-red-500 hover:bg-red-500/5',
                       isAdmin && 'opacity-20 grayscale'
                     )}
                   >
