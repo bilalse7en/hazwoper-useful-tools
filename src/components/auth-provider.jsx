@@ -179,6 +179,37 @@ export function AuthProvider({ children }) {
     return () => {
       subscription?.unsubscribe();
     };
+  }, []);
+
+  // Dedicated real-time listener for user profile changes
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const profileSubscription = supabase
+      .channel(`profile-sync-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Real-time profile update:', payload.new);
+          // Pure functional update to avoid stale closure issues
+          setUser((prev) => {
+            const updated = { ...prev, ...payload.new };
+            localStorage.setItem('user', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profileSubscription);
+    };
   }, [user?.id]);
 
   return (

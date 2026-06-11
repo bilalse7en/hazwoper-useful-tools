@@ -66,6 +66,22 @@ export function PuterAgent() {
   const [targetWordCount, setTargetWordCount] = useState('5000');
 
   useEffect(() => {
+    const fetchSuggestions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('blog_suggestions')
+          .select('*')
+          .eq('status', 'suggested')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setSuggestions(data || []);
+      } catch (err) {
+        console.error('Error fetching suggestions:', err);
+      }
+    };
+
+    fetchSuggestions();
     if (typeof window !== 'undefined' && !window.puter) {
       const script = document.createElement('script');
       script.src = 'https://js.puter.com/v2/';
@@ -102,14 +118,12 @@ export function PuterAgent() {
           ? response
           : response?.message?.content || response?.toString();
 
-      // Improved multi-stage extraction
       let jsonStr = '';
       const arrayMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
 
       if (arrayMatch) {
         jsonStr = arrayMatch[0];
       } else {
-        // Fallback: try to find start and end of array manually
         const firstBracket = text.indexOf('[');
         const lastBracket = text.lastIndexOf(']');
         if (firstBracket !== -1 && lastBracket !== -1) {
@@ -117,20 +131,34 @@ export function PuterAgent() {
         }
       }
 
-      if (!jsonStr) {
-        console.error('Raw AI Output:', text);
-        throw new Error('Neural extraction failed - No JSON array found');
-      }
+      if (!jsonStr) throw new Error('Neural extraction failed');
 
-      const data = JSON.parse(jsonStr);
-      setSuggestions(data);
-      toast.success('Neural Strategy Synchronized.', { id: toastId });
+      const rawData = JSON.parse(jsonStr);
 
-      // Handle Auto-Publish
-      if (autoPublish && data.length > 0) {
+      // Save to database for persistence
+      const inserts = rawData.map((blog) => ({
+        title: blog.title,
+        summary: blog.summary,
+        slug: blog.slug + '-' + Math.random().toString(36).substring(2, 6),
+        suggested_content: blog.suggested_content,
+        category: blog.category || 'Industrial Excellence',
+        status: 'suggested',
+      }));
+
+      const { data: savedData, error: saveError } = await supabase
+        .from('blog_suggestions')
+        .insert(inserts)
+        .select();
+
+      if (saveError) throw saveError;
+
+      setSuggestions(savedData);
+      toast.success('Neural Strategy Synchronized and Saved.', { id: toastId });
+
+      if (autoPublish && savedData.length > 0) {
         toast.info('Auto-Live sequence initiated...');
-        for (let i = 0; i < data.length; i++) {
-          await publishBlog(data[i], i, true);
+        for (let i = 0; i < savedData.length; i++) {
+          await publishBlog(savedData[i], i, true);
         }
       }
     } catch (err) {
@@ -141,6 +169,20 @@ export function PuterAgent() {
     }
   };
 
+  const deleteSuggestion = async (id, index) => {
+    try {
+      const { error } = await supabase
+        .from('blog_suggestions')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      setSuggestions((prev) => prev.filter((_, i) => i !== index));
+      toast.success('Strategy dismissed.');
+    } catch (err) {
+      toast.error('Failed to dismiss strategy.');
+    }
+  };
+
   const publishBlog = async (blog, index, silent = false) => {
     setIsPublishing(index);
     const toastId = silent
@@ -148,27 +190,30 @@ export function PuterAgent() {
       : toast.loading(`Deploying "${blog.title}"...`);
 
     try {
-      const { error } = await supabase.from('blogs').insert([
+      // 1. Move to main blogs table
+      const { error: insertError } = await supabase.from('blogs').insert([
         {
           title: blog.title,
           summary: blog.summary,
-          slug: blog.slug + '-' + Date.now().toString().slice(-4),
-          content: blog.suggested_content,
+          slug: blog.slug,
+          content: blog.suggested_content || blog.content,
           category: blog.category || 'Professional Suite',
           created_at: new Date().toISOString(),
         },
       ]);
 
-      if (error) throw error;
+      if (insertError) throw insertError;
+
+      // 2. Remove from suggestions (or update status)
+      await supabase.from('blog_suggestions').delete().eq('id', blog.id);
 
       toast.success('Sequence live on main feed.', { id: toastId });
-      // Remove published suggestion
       setSuggestions((prev) => prev.filter((_, i) => i !== index));
     } catch (err) {
+      console.error(err);
       toast.error('Deployment failed.', { id: toastId });
     } finally {
       setIsPublishing(null);
-      if (silent) setSuggestions((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -275,19 +320,28 @@ export function PuterAgent() {
                       <Layout className="w-3 h-3 shrink-0" />
                       <span className="truncate">/{blog.slug}</span>
                     </div>
-                    <Button
-                      onClick={() => publishBlog(blog, idx)}
-                      disabled={isPublishing !== null}
-                      className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 shadow-xl shadow-primary/20"
-                    >
-                      {isPublishing === idx ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          Deploy Sequence <ArrowRight className="w-3 h-3" />
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => deleteSuggestion(blog.id, idx)}
+                        className="flex-1 h-12 rounded-xl border-border hover:bg-red-500/10 hover:text-red-500 font-black uppercase tracking-widest text-[10px]"
+                      >
+                        Dismiss Strategy
+                      </Button>
+                      <Button
+                        onClick={() => publishBlog(blog, idx)}
+                        disabled={isPublishing !== null}
+                        className="flex-[2] h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 shadow-xl shadow-primary/20"
+                      >
+                        {isPublishing === idx ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            Deploy Sequence <ArrowRight className="w-3 h-3" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

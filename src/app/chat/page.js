@@ -6,9 +6,23 @@ import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ToolAccessGuard } from '@/components/tool-access-guard';
 import { ToolBreadcrumbs } from '@/components/tool-breadcrumbs';
 import { useAuth } from '@/components/auth-provider';
+import { useChat } from '@/components/chat-provider';
 import { useSearchParams } from 'next/navigation';
-import { Loader2, ShieldCheck, Globe, MessageCircle } from 'lucide-react';
+import {
+  Loader2,
+  ShieldCheck,
+  Globe,
+  MessageCircle,
+  Trash2,
+  AlertOctagon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export default function ChatPage() {
   return (
@@ -26,6 +40,7 @@ export default function ChatPage() {
 
 function ChatContent() {
   const { user } = useAuth();
+  const { clearAllMessages } = useChat();
   const searchParams = useSearchParams();
   const [activePrivateId, setActivePrivateId] = useState(null);
 
@@ -91,11 +106,107 @@ function ChatContent() {
             </div>
 
             <div className="flex gap-2">
+              <TooltipProvider>
+                {/* GLOBAL PURGE: Admin Only */}
+                {!activePrivateId && user?.role === 'admin' && (
+                  <div className="flex flex-col gap-1 border-r border-border/30 pr-3 mr-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                'ARE YOU SURE? This will permanently PURGE ALL GLOBAL messages for everyone.'
+                              )
+                            ) {
+                              clearAllMessages(true);
+                            }
+                          }}
+                          className="h-8 w-8 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border-none transition-all"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="bottom"
+                        className="bg-rose-500 text-white font-black uppercase text-[9px] tracking-widest border-none"
+                      >
+                        Purge Global Hub
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+
+                {/* PRIVATE PURGE: Accessible to participants */}
+                {activePrivateId && (
+                  <div className="flex flex-col gap-1 border-r border-border/30 pr-3 mr-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                'CLERANCE PROTOCOL: This will wipe your entire private thread with this partner. Proceed?'
+                              )
+                            ) {
+                              clearAllMessages(false, activePrivateId);
+                            }
+                          }}
+                          className="h-8 w-8 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border-none transition-all"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="bottom"
+                        className="bg-rose-500 text-white font-black uppercase text-[9px] tracking-widest border-none"
+                      >
+                        Clear Private Line
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {/* MASS PURGE: Admin Only */}
+                    {user?.role === 'admin' && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  'MASS PURGE PROTOCOL: This will wipe ALL messages across ALL channels for EVERY user. Proceed?'
+                                )
+                              ) {
+                                clearAllMessages(false);
+                              }
+                            }}
+                            className="h-8 w-8 rounded-lg bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white border-none transition-all"
+                          >
+                            <AlertOctagon className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          className="bg-orange-600 text-white font-black uppercase text-[9px] tracking-widest border-none"
+                        >
+                          SYSTEM MASS PURGE
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                )}
+              </TooltipProvider>
+
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => (window.location.href = '/tools/course')}
-                className="h-9 px-4 rounded-xl border-primary/30 hover:bg-primary/5 text-primary text-[9px] font-black tracking-widest gap-2 uppercase"
+                className="h-10 px-4 rounded-xl border-primary/30 hover:bg-primary/5 text-primary text-[9px] font-black tracking-widest gap-2 uppercase"
               >
                 Back to Tools
               </Button>
@@ -104,13 +215,13 @@ function ChatContent() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setActivePrivateId(null)}
-                  className="h-9 px-4 rounded-xl border border-border/40 hover:bg-primary/5 text-[9px] font-black tracking-widest gap-2 uppercase"
+                  className="h-10 px-4 rounded-xl border border-border/40 hover:bg-primary/5 text-[9px] font-black tracking-widest gap-2 uppercase"
                 >
                   <Globe className="w-3.5 h-3.5" />
                   Exit Private
                 </Button>
               )}
-              <div className="h-9 px-4 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-2">
+              <div className="h-10 px-4 rounded-xl bg-primary/10 border border-primary/20 flex items-center gap-2">
                 <ShieldCheck className="w-3.5 h-3.5 text-primary" />
                 <span className="text-[9px] font-black uppercase tracking-widest text-primary">
                   Secure Channel 01

@@ -34,6 +34,7 @@ import {
 export function ChatModerationList({ onOpenChat }) {
   const [users, setUsers] = useState([]);
   const [reports, setReports] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -59,6 +60,15 @@ export function ChatModerationList({ onOpenChat }) {
         .limit(50);
 
       setReports(reportData || []);
+
+      // Fetch recent messages
+      const { data: messageData } = await supabase
+        .from('messages')
+        .select('*, sender:profiles!sender_id(full_name, email, role)')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      setMessages(messageData || []);
     } catch (err) {
       console.error('Moderation Sync Error:', err);
       // If table doesn't exist, we might need SQL execution
@@ -81,6 +91,11 @@ export function ChatModerationList({ onOpenChat }) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'user_interactions' },
+        () => fetchUsers()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
         () => fetchUsers()
       )
       .subscribe();
@@ -302,6 +317,47 @@ export function ChatModerationList({ onOpenChat }) {
         </div>
 
         <div className="space-y-6">
+          {/* Live Signal Intercept */}
+          <div className="p-6 rounded-[32px] bg-emerald-500/5 border border-emerald-500/10 space-y-4">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 flex items-center gap-2">
+              <Activity className="w-3 h-3" />
+              Live Signal Intercept
+            </h3>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto no-scrollbar">
+              {messages.length === 0 ? (
+                <div className="text-center py-6 opacity-20">
+                  <p className="text-[9px] font-black uppercase tracking-widest">
+                    No active signals detected
+                  </p>
+                </div>
+              ) : (
+                messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="p-3 rounded-2xl bg-card/40 border border-border/40 space-y-1 hover:border-emerald-500/20 transition-colors cursor-pointer group"
+                    onClick={() => onOpenChat(msg.sender_id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[8px] font-black text-primary uppercase tracking-widest">
+                        {msg.is_global ? 'Global Frequency' : 'Direct Line'}
+                      </span>
+                      <span className="text-[7px] font-mono opacity-40">
+                        {new Date(msg.created_at).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-medium leading-relaxed opacity-80 break-words">
+                      <span className="font-black text-primary pr-1">
+                        {msg.sender?.full_name || 'Subject'}:
+                      </span>
+                      {msg.text}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Incoming Incident Reports */}
           <div className="p-6 rounded-[32px] bg-primary/5 border border-primary/10 space-y-4">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
               <AlertTriangle className="w-3 h-3" />
@@ -332,7 +388,7 @@ export function ChatModerationList({ onOpenChat }) {
                     <p className="text-[10px] font-medium leading-relaxed italic opacity-80 underline underline-offset-4 decoration-primary/20">
                       &quot;{report.reason}&quot;
                     </p>
-                    <div className="flex items-center gap-2 pt-1 border-t border-border/20 pt-2">
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/20 mt-2">
                       <div className="flex flex-col flex-1">
                         <span className="text-[7px] uppercase font-bold opacity-40">
                           Reporter
@@ -357,6 +413,7 @@ export function ChatModerationList({ onOpenChat }) {
             </div>
           </div>
 
+          {/* Modulation Metrics */}
           <div className="p-6 rounded-[32px] bg-card/40 border border-border/40 space-y-4">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
               <History className="w-3 h-3" />

@@ -64,12 +64,6 @@ export default function RootLayout({ children }) {
           httpEquiv="Content-Security-Policy"
           content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://adservice.google.com https://www.googletagservices.com https://js.puter.com https://*.google.com https://*.gstatic.com https://vercel.live https://*.vercel.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://tagmanager.google.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.puter.com wss://api.puter.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.google-analytics.com https://ep1.adtrafficquality.google https://*.vercel.com https://*.vercel.live; frame-src 'self' https://*.google.com https://*.doubleclick.net https://*.googlesyndication.com https://vercel.live; object-src 'none'; upgrade-insecure-requests;"
         />
-        {/* Standard script tag used instead of next/script to avoid data-nscript attribute which violates AdSense head tag policies */}
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
-          crossOrigin="anonymous"
-        ></script>
         <link
           rel="preconnect"
           href="https://media.hazwoper-osha.com"
@@ -93,6 +87,13 @@ export default function RootLayout({ children }) {
         className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
+        <Script
+          id="adsbygoogle-init"
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <Script
           id="organization-json-ld"
           type="application/ld+json"

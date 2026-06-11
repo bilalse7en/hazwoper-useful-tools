@@ -37,6 +37,8 @@ import { toast } from 'sonner';
 import { convertImage } from '@/lib/image-converter';
 import { toolInfo } from '@/lib/seo';
 import { PuterAgent } from '@/components/admin/puter-agent';
+import { AdminChatMonitor } from '@/components/admin/AdminChatMonitor';
+import { ChatModerationList } from '@/components/admin/ChatModerationList';
 
 const formatFileType = (type) => {
   if (!type) return 'FILE';
@@ -838,7 +840,9 @@ function AdminDashboard() {
                       ? 'Optimization Engine'
                       : activeView === 'media-library'
                         ? 'Media Assets'
-                        : 'User Registry'}
+                        : activeView === 'puter-agent'
+                          ? 'Neural Autopilot'
+                          : 'User Registry'}
             </h1>
             <p className="text-muted-foreground mt-1 font-medium text-sm">
               {activeView === 'dashboard'
@@ -851,7 +855,9 @@ function AdminDashboard() {
                       ? 'Resource lifecycle management and neural cache purging.'
                       : activeView === 'media-library'
                         ? 'Professional high-fidelity asset management.'
-                        : 'Global user identity and permission synchronization.'}
+                        : activeView === 'puter-agent'
+                          ? 'Neural AI cluster for autonomous content strategy.'
+                          : 'Global user identity and permission synchronization.'}
             </p>
           </div>
           {activeView === 'blogs' && (
@@ -1254,6 +1260,23 @@ function AdminDashboard() {
                 a[1].name.localeCompare(b[1].name)
               )}
               searchKey="slug"
+            />
+          </div>
+        ) : activeView === 'chat-monitor' ? (
+          <div className="animate-in-fade">
+            <ChatModerationList
+              onOpenChat={(id) => {
+                router.push(`/chat?receiver=${id}`);
+              }}
+            />
+          </div>
+        ) : activeView === 'permissions' ? (
+          <div className="animate-in-fade">
+            <AdminChatMonitor
+              adminUser={user}
+              onOpenChat={(id) => {
+                router.push(`/chat?receiver=${id}`);
+              }}
             />
           </div>
         ) : (

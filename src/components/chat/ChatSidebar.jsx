@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MessageSquare, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,9 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
   const { unreadCounts, markAsRead } = useChat();
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Persistent contact registry: never lose contacts when messages are cleared
+  const contactRegistryRef = useRef(new Map());
 
   useEffect(() => {
     if (!currentUser) return;
@@ -24,31 +27,56 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
             '*, sender:profiles!sender_id(*), receiver:profiles!receiver_id(*)'
           )
           .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+          .eq('is_global', false)
           .order('created_at', { ascending: false })
           .limit(200);
 
         if (error) throw error;
 
-        const contactMap = new Map();
-
+        // Merge into persistent registry (never remove existing contacts)
         recentMessages?.forEach((msg) => {
           const isSent = msg.sender_id === currentUser.id;
           const contactId = isSent ? msg.receiver_id : msg.sender_id;
           const profile = isSent ? msg.receiver : msg.sender;
 
-          if (contactId && profile && !contactMap.has(contactId)) {
-            contactMap.set(contactId, {
-              ...profile,
-              last_message: msg.text,
-              last_interaction: msg.created_at,
-            });
+          if (contactId && profile) {
+            const existing = contactRegistryRef.current.get(contactId);
+            if (
+              !existing ||
+              new Date(msg.created_at) > new Date(existing.last_interaction)
+            ) {
+              contactRegistryRef.current.set(contactId, {
+                ...profile,
+                last_message: msg.text,
+                last_interaction: msg.created_at,
+              });
+            }
           }
         });
 
-        const sortedContacts = Array.from(contactMap.values());
-        // Already sorted by the query and map logic (insertion order of first seen interaction)
-        // but let's be explicit
-        sortedContacts.sort(
+        // Also try to fetch from user_channels table for persistent contacts
+        try {
+          const { data: channels } = await supabase
+            .from('user_channels')
+            .select('partner_id, partner:profiles!partner_id(*)')
+            .eq('user_id', currentUser.id);
+
+          channels?.forEach((ch) => {
+            if (ch.partner && !contactRegistryRef.current.has(ch.partner_id)) {
+              contactRegistryRef.current.set(ch.partner_id, {
+                ...ch.partner,
+                last_message: null,
+                last_interaction: ch.partner.created_at,
+              });
+            }
+          });
+        } catch {
+          // user_channels table may not exist yet, that's fine
+        }
+
+        const sortedContacts = Array.from(
+          contactRegistryRef.current.values()
+        ).sort(
           (a, b) => new Date(b.last_interaction) - new Date(a.last_interaction)
         );
 
@@ -62,13 +90,30 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
 
     fetchContacts();
 
-    // Listen for events that would change the contact list (new messages)
+    // Listen for new messages (to add new contacts) but NOT for deletes (to preserve contacts)
     const channel = supabase
       .channel(`sidebar-sync-${currentUser.id}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
-        () => fetchContacts()
+        (payload) => {
+          // Only refresh if this message involves the current user
+          if (
+            payload.new.sender_id === currentUser.id ||
+            payload.new.receiver_id === currentUser.id
+          ) {
+            fetchContacts();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'messages' },
+        () => {
+          // On delete: update last_message displays but KEEP contacts
+          // Just re-fetch to update the "last message" preview
+          fetchContacts();
+        }
       )
       .subscribe();
 

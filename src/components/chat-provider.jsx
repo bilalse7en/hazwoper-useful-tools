@@ -160,6 +160,55 @@ export function ChatProvider({ children }) {
     markAsRead,
     setActiveChat: setActiveSenderId,
     refreshUnread: fetchAllUnread,
+    clearAllMessages: async (isGlobalOnly = true, partnerId = null) => {
+      if (!user) return { success: false, error: 'Unauthorized' };
+
+      // Requirement: Global purge is ADMIN ONLY
+      if (isGlobalOnly && user.role !== 'admin') {
+        return {
+          success: false,
+          error: 'Administrative clearance required for global purge.',
+        };
+      }
+
+      try {
+        let query = supabase.from('messages').delete();
+
+        if (isGlobalOnly) {
+          // Admin clearing global
+          query = query.eq('is_global', true);
+        } else if (partnerId) {
+          // User clearing a specific private thread
+          query = query
+            .eq('is_global', false)
+            .or(
+              `and(sender_id.eq.${user.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user.id})`
+            );
+        } else if (user.role === 'admin') {
+          // Admin doing a mass wipe (all global and all private)
+          query = query.neq('id', '00000000-0000-0000-0000-000000000000');
+        } else {
+          // Non-admin trying mass wipe: Not allowed
+          return { success: false, error: 'Unauthorized mass purge attempt.' };
+        }
+
+        const { error } = await query;
+        if (error) throw error;
+
+        toast.success('Chat signal purged', {
+          description: isGlobalOnly
+            ? 'Global frequency cleared.'
+            : partnerId
+              ? 'Private thread wiped.'
+              : 'All communication channels wiped.',
+        });
+        return { success: true };
+      } catch (err) {
+        console.error('Purge error:', err);
+        toast.error('Purge failed');
+        return { success: false, error: err.message };
+      }
+    },
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

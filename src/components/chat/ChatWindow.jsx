@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth-provider';
 import { useChat } from '@/components/chat-provider';
@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
   AlertTriangle,
   Ban,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +42,7 @@ export function ChatWindow({
   onNavigateToPrivate,
 }) {
   const { user } = useAuth();
-  const { markAsRead, setActiveChat } = useChat();
+  const { markAsRead, setActiveChat, clearAllMessages } = useChat();
   const [messages, setMessages] = useState([]);
 
   // Track active chat in provider to prevent notification flicker
@@ -106,44 +107,63 @@ export function ChatWindow({
 
     fetchData();
 
-    // Subscribe to new messages and read status updates
+    // Subscribe to new messages, updates, AND deletes
     const channel = supabase
       .channel(`chat-${isGlobal ? 'global' : receiverId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'messages',
           filter: isGlobal ? 'is_global=eq.true' : undefined,
         },
         async (payload) => {
-          if (payload.eventType === 'INSERT') {
-            // If direct chat, filter manually
-            if (!isGlobal) {
-              const isRelevant =
-                (payload.new.sender_id === user.id &&
-                  payload.new.receiver_id === receiverId) ||
-                (payload.new.sender_id === receiverId &&
-                  payload.new.receiver_id === user.id);
-              if (!isRelevant) return;
-            }
-
-            // Fetch sender info for the new message
-            const { data: sender } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', payload.new.sender_id)
-              .single();
-
-            setMessages((prev) => [...prev, { ...payload.new, sender }]);
-          } else if (payload.eventType === 'UPDATE') {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === payload.new.id ? { ...msg, ...payload.new } : msg
-              )
-            );
+          if (!isGlobal) {
+            const isRelevant =
+              (payload.new.sender_id === user.id &&
+                payload.new.receiver_id === receiverId) ||
+              (payload.new.sender_id === receiverId &&
+                payload.new.receiver_id === user.id);
+            if (!isRelevant) return;
           }
+          const { data: sender } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', payload.new.sender_id)
+            .single();
+          setMessages((prev) => [...prev, { ...payload.new, sender }]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: isGlobal ? 'is_global=eq.true' : undefined,
+        },
+        (payload) => {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === payload.new.id ? { ...msg, ...payload.new } : msg
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: isGlobal ? 'is_global=eq.true' : undefined,
+        },
+        (payload) => {
+          // Real-time removal when messages are deleted
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== payload.old.id)
+          );
         }
       )
       .subscribe();
@@ -171,6 +191,36 @@ export function ChatWindow({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // 24-hour countdown helper
+  // Force re-render every minute to update countdowns
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 24-hour countdown helper - uses stored currentTime, not Date.now() during render
+  const getTimeRemaining = useCallback(
+    (createdAt) => {
+      const created = new Date(createdAt).getTime();
+      const expires = created + 24 * 60 * 60 * 1000;
+      const remaining = expires - currentTime;
+      if (remaining <= 0) return 'Expired';
+      const hours = Math.floor(remaining / (1000 * 60 * 60));
+      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+      if (hours > 0) return `${hours}h ${minutes}m`;
+      return `${minutes}m`;
+    },
+    [currentTime]
+  );
+
+  // Client-side auto-filter expired messages
+  const activeMessages = messages.filter((msg) => {
+    const created = new Date(msg.created_at).getTime();
+    const expires = created + 24 * 60 * 60 * 1000;
+    return currentTime < expires;
+  });
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -331,10 +381,34 @@ export function ChatWindow({
                 <Ban className="w-4 h-4" />
                 SEVER CONNECTION
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (
+                    confirm(
+                      'Clear all messages in this private thread? The contact will remain in your Authorized Channels.'
+                    )
+                  ) {
+                    clearAllMessages(false, receiverId);
+                  }
+                }}
+                className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10"
+              >
+                <Trash2 className="w-4 h-4" />
+                CLEAR CHAT
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       )}
+
+      {/* 24-Hour Data Lifecycle Banner */}
+      <div className="px-6 py-2 bg-amber-500/5 border-b border-amber-500/10 flex items-center justify-center gap-2 shrink-0">
+        <Clock className="w-3 h-3 text-amber-500" />
+        <span className="text-[8px] font-black uppercase tracking-[0.15em] text-amber-500/80">
+          Messages auto-purge after 24 hours • {activeMessages.length} active
+          signal{activeMessages.length !== 1 ? 's' : ''}
+        </span>
+      </div>
 
       {/* Messages */}
       <div
@@ -345,7 +419,7 @@ export function ChatWindow({
           <div className="h-full flex items-center justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-primary opacity-20" />
           </div>
-        ) : messages.length === 0 ? (
+        ) : activeMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center opacity-20 space-y-2">
             <MessageSquare className="w-8 h-8" />
             <p className="text-[9px] font-black uppercase tracking-widest">
@@ -353,7 +427,7 @@ export function ChatWindow({
             </p>
           </div>
         ) : (
-          messages.map((msg, i) => {
+          activeMessages.map((msg, i) => {
             const isMine = msg.sender_id === user?.id;
             const isAdmin = msg.sender?.role === 'admin';
 
@@ -424,6 +498,10 @@ export function ChatWindow({
                       minute: '2-digit',
                       hour12: false,
                     }).format(new Date(msg.created_at))}
+                  </span>
+                  <span className="text-[7px] font-mono text-amber-500/60 flex items-center gap-0.5">
+                    <Clock className="w-2 h-2" />
+                    {getTimeRemaining(msg.created_at)}
                   </span>
                   {isAdmin && (
                     <ShieldCheck className="w-2.5 h-2.5 text-primary" />
