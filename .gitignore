@@ -80,4 +80,5 @@ results*.txt
 old_docx_processor*.js
 *.json.orig
 *.bak
+*.sql
 
