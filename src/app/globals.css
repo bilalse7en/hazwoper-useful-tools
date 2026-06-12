@@ -169,8 +169,20 @@
 }
 
 .nebula .glass-toast {
-  border-color: rgba(56, 189, 248, 0.5) !important;
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.2) !important;
+  background: rgba(10, 17, 40, 0.98) !important;
+  border-color: rgba(56, 189, 248, 0.8) !important;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(56, 189, 248, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.nebula .glass-toast [data-description] {
+  color: rgba(240, 249, 255, 0.8) !important;
+}
+
+.nebula .glass-toast [data-close-button] {
+  color: #38bdf8 !important;
 }
 
 /* Ensure no light backgrounds leak into nebula */
@@ -190,6 +202,40 @@
 .nebula .border-gray-200,
 .nebula .border-border {
   border-color: rgba(56, 189, 248, 0.2) !important;
+}
+
+/* Theme Preview Overrides - Bypass global Nebula mode overrides */
+.theme-preview-light,
+.nebula .theme-preview-light {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+
+.theme-preview-light div,
+.nebula .theme-preview-light div,
+.theme-preview-light span,
+.nebula .theme-preview-light span {
+  color: #0f172a !important;
+}
+
+/* Ensure the description/subtitle stays visible but slightly muted */
+.theme-preview-light .opacity-60,
+.nebula .theme-preview-light .opacity-60 {
+  color: #475569 !important;
+  opacity: 0.8 !important;
+}
+
+.theme-preview-dark,
+.nebula .theme-preview-dark {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.theme-preview-dark div,
+.nebula .theme-preview-dark div {
+  color: #ffffff !important;
 }
 
 /* Special font for Cosmic Nebula headings only */
@@ -739,3 +785,89 @@ ul,
 ol {
   padding-left: 1rem !important;
 }
+
+/* ==========================================
+   PREMIUM ALERTS & NOTIFICATIONS
+   ========================================== */
+
+/* Premium SweetAlert2 Customizations */
+.premium-swal-popup {
+  border: 1px solid rgba(var(--primary-rgb), 0.1) !important;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(var(--primary-rgb), 0.05) !important;
+}
+
+.premium-btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.premium-btn:after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: all 0.6s ease;
+  pointer-events: none;
+}
+
+.premium-btn:hover:after {
+  left: 100%;
+  top: 100%;
+}
+
+.premium-btn-primary {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.premium-btn-destructive {
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+/* Premium Toast Styling */
+.premium-toast-popup {
+  padding: 0.75rem 1rem !important;
+  overflow: visible !important;
+}
+
+.premium-toast-popup .swal2-title {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 0.875rem !important;
+}
+
+/* Sonner Toast Refinements */
+.glass-toast {
+  background: var(--card-glass-bg) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
+  border-radius: 1.25rem !important;
+  padding: 1rem !important;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.15),
+    inset 0 1px 1px rgba(var(--glass-shadow-highlight), 0.1) !important;
+}
+
+.nebula .glass-toast {
+  background: rgba(10, 17, 40, 0.9) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(56, 189, 248, 0.2) !important;
+}
+

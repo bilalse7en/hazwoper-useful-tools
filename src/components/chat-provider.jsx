@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './auth-provider';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 
 const ChatContext = createContext();
 
@@ -100,7 +100,7 @@ export function ChatProvider({ children }) {
 
         if (error) {
           console.error('Supabase Update Error:', error);
-          toast.error('Sync Error: Failed to mark messages as read.');
+          showToast('Sync Error: Failed to mark as read.', 'error');
           throw error;
         }
 
@@ -195,17 +195,14 @@ export function ChatProvider({ children }) {
         const { error } = await query;
         if (error) throw error;
 
-        toast.success('Chat signal purged', {
-          description: isGlobalOnly
-            ? 'Global frequency cleared.'
-            : partnerId
-              ? 'Private thread wiped.'
-              : 'All communication channels wiped.',
-        });
+        showSuccess(
+          'Chat signal purged',
+          isGlobalOnly ? 'Global frequency cleared.' : 'Channel wiped.'
+        );
         return { success: true };
       } catch (err) {
         console.error('Purge error:', err);
-        toast.error('Purge failed');
+        showToast('Purge failed', 'error');
         return { success: false, error: err.message };
       }
     },

@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { showConfirm, showToast, showSuccess } from '@/lib/swal';
 import { reportUser, blockUser } from '@/lib/moderation';
 
 export function ChatWindow({
@@ -227,10 +227,7 @@ export function ChatWindow({
     if (!newMessage.trim() || !user) return;
 
     if (user.is_frozen) {
-      toast.error('Signal Blocked', {
-        description:
-          'Your communication protocols have been suspended by central administration. Revocation required.',
-      });
+      showToast('Signal Blocked', 'error');
       return;
     }
 
@@ -257,9 +254,10 @@ export function ChatWindow({
       setNewMessage('');
     } catch (err) {
       console.error('Signal Transmission Failure:', err.message || err);
-      toast.error(
+      showToast(
         'Signal transmission failed: ' +
-          (err.message || 'Unknown protocol error')
+          (err.message || 'Unknown protocol error'),
+        'error'
       );
     }
   };
@@ -289,10 +287,7 @@ export function ChatWindow({
         .single();
 
       if (!thread) {
-        toast.error('Clearance Required', {
-          description:
-            'Direct communication with administrators requires PRO protocol authorization or an administrative invite.',
-        });
+        showToast('Clearance Required', 'error');
         return;
       }
     } else {
@@ -308,10 +303,7 @@ export function ChatWindow({
         .single();
 
       if (!existingThread) {
-        toast.error('PRO Required', {
-          description:
-            'Initiating private lines with subscribers requires professional-grade authorization.',
-        });
+        showToast('PRO Required', 'error');
         return;
       }
     }
@@ -397,9 +389,10 @@ export function ChatWindow({
                             ...prev,
                             is_frozen: false,
                           }));
-                          toast.success('Identity Restored', {
-                            description: 'Full signal clearance granted.',
-                          });
+                          showSuccess(
+                            'Identity Restored',
+                            'Full signal clearance granted.'
+                          );
                         }
                       }}
                       className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-emerald-500 hover:bg-emerald-500/10 focus:bg-emerald-500/10"
@@ -419,9 +412,7 @@ export function ChatWindow({
                             ...prev,
                             is_frozen: true,
                           }));
-                          toast.error('Identity Frozen', {
-                            description: 'Messenger protocols suspended.',
-                          });
+                          showToast('Identity Frozen', 'error');
                         }
                       }}
                       className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-red-500 hover:bg-red-500/10 focus:bg-red-500/10"
@@ -435,12 +426,14 @@ export function ChatWindow({
 
               <div className="h-px bg-border/40 my-1 mx-2" />
               <DropdownMenuItem
-                onClick={() => {
-                  if (
-                    confirm(
-                      'Clear all messages in this private thread? The contact will remain in your Authorized Channels.'
-                    )
-                  ) {
+                onClick={async () => {
+                  const result = await showConfirm({
+                    title: 'Purge Recent Chat?',
+                    text: 'Clear all messages in this private thread? The contact will remain in your Authorized Channels.',
+                    icon: 'warning',
+                    confirmButtonText: 'Yes, Purge it',
+                  });
+                  if (result.isConfirmed) {
                     clearAllMessages(false, receiverId);
                   }
                 }}
@@ -455,9 +448,9 @@ export function ChatWindow({
       )}
 
       {/* 24-Hour Data Lifecycle Banner */}
-      <div className="px-6 py-2 bg-amber-500/5 border-b border-amber-500/10 flex items-center justify-center gap-2 shrink-0">
-        <Clock className="w-3 h-3 text-amber-500" />
-        <span className="text-[8px] font-black uppercase tracking-[0.15em] text-amber-500/80">
+      <div className="px-6 py-2 bg-amber-500/10 dark:bg-amber-500/5 border-b border-amber-500/20 dark:border-amber-500/10 flex items-center justify-center gap-2 shrink-0">
+        <Clock className="w-3 h-3 text-amber-600 dark:text-amber-500/80" />
+        <span className="text-[8px] font-black uppercase tracking-[0.15em] text-amber-700 dark:text-amber-500/80">
           Messages auto-purge after 24 hours • {activeMessages.length} active
           signal{activeMessages.length !== 1 ? 's' : ''}
         </span>
@@ -559,27 +552,25 @@ export function ChatWindow({
                   />
                 </div>
 
-                <div className="flex items-center gap-2 opacity-30 px-1">
-                  <span className="text-[7px] font-black uppercase tracking-widest">
+                <div className="flex items-center gap-2 px-1 opacity-60 dark:opacity-30">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-foreground/70 dark:text-foreground">
                     {new Intl.DateTimeFormat('en-US', {
                       hour: '2-digit',
                       minute: '2-digit',
                       hour12: false,
                     }).format(new Date(msg.created_at))}
                   </span>
-                  <span className="text-[7px] font-mono text-amber-500/60 flex items-center gap-0.5">
-                    <Clock className="w-2 h-2" />
+                  <span className="text-[9px] font-mono text-amber-600 dark:text-amber-500/60 flex items-center gap-0.5">
+                    <Clock className="w-2.5 h-2.5" />
                     {getTimeRemaining(msg.created_at)}
                   </span>
-                  {isAdmin && (
-                    <ShieldCheck className="w-2.5 h-2.5 text-primary" />
-                  )}
+                  {isAdmin && <ShieldCheck className="w-3 h-3 text-primary" />}
                   {isMine && !isGlobal && (
                     <div className="flex items-center">
                       {msg.is_read ? (
-                        <CheckCheck className="w-3 h-3 text-primary animate-in zoom-in" />
+                        <CheckCheck className="w-3.5 h-3.5 text-primary animate-in zoom-in" />
                       ) : (
-                        <Check className="w-3 h-3 text-muted-foreground" />
+                        <Check className="w-3.5 h-3.5 text-muted-foreground/60" />
                       )}
                     </div>
                   )}

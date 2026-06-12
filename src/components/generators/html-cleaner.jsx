@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { useAuthAction } from '@/lib/use-auth-action';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -104,7 +104,7 @@ export function HTMLCleaner() {
 
   const handleClean = useCallback(() => {
     if (!html.trim()) {
-      toast.error('Please enter some HTML first');
+      showToast('Please enter some HTML first', 'error');
       return;
     }
 
@@ -120,7 +120,7 @@ export function HTMLCleaner() {
 
       setHtml(cleaned);
       setReductionRate(reduction);
-      toast.success(`HTML cleaned! Reduced by ${reduction}%`);
+      showSuccess('HTML Cleaned', `Total reduction: ${reduction}%`);
 
       // Auto-save the cleaned state
       (async () => {
@@ -134,7 +134,7 @@ export function HTMLCleaner() {
         );
       })();
     } catch (error) {
-      toast.error('Error cleaning HTML: ' + error.message);
+      showToast('Error cleaning HTML', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -144,13 +144,13 @@ export function HTMLCleaner() {
     if (historyIndex >= 0) {
       setHtml(history[historyIndex]);
       setHistoryIndex((prev) => prev - 1);
-      toast.info('Undo successful');
+      showSuccess('Undo successful');
     }
   };
 
   const handleCopy = async () => {
     if (!html.trim()) {
-      toast.error('Nothing to copy');
+      showToast('Nothing to copy', 'error');
       return;
     }
     performAction(
@@ -168,14 +168,14 @@ export function HTMLCleaner() {
     }
     setHtml('');
     setReductionRate(0);
-    toast.info('Editor cleared');
+    showSuccess('Editor cleared');
   };
 
   const handleRestore = (state) => {
     if (!state) return;
     setHtml(state.html || '');
     if (state.options) setOptions(state.options);
-    toast.success('HTML session synchronized');
+    showSuccess('HTML session synchronized');
   };
 
   const toggleOption = (key) => {

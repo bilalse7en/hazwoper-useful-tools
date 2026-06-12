@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { toast } from 'sonner';
+import { showSuccess } from '@/lib/swal';
 
 /**
  * Records a media transaction in the Supabase media_hub.
@@ -43,10 +43,10 @@ export async function recordMediaUpload({
               error.message
             );
           } else {
-            toast.success('Identity session synchronized', {
-              description: 'Artifact tracked in neural hub.',
-              duration: 2000,
-            });
+            showSuccess(
+              'Identity session synchronized',
+              'Artifact tracked in neural hub.'
+            );
           }
         });
     });

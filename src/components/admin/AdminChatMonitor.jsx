@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +46,7 @@ export function AdminChatMonitor({ onOpenChat, adminUser }) {
       setUsers(data || []);
     } catch (err) {
       console.error('Fetch users error:', err);
-      toast.error('System synchronization failure');
+      showToast('System synchronization failure', 'error');
     } finally {
       setLoading(false);
     }
@@ -92,12 +92,12 @@ export function AdminChatMonitor({ onOpenChat, adminUser }) {
         .eq('id', user.id);
 
       if (error) throw error;
-      toast.success(
+      showSuccess(
         block ? 'User sequence terminated' : 'User sequence restored'
       );
     } catch (err) {
       console.error('Block error:', err);
-      toast.error('Security override failed');
+      showToast('Security override failed', 'error');
     }
   };
 

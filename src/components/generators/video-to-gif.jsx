@@ -25,7 +25,7 @@ import { formatFileSize } from '@/lib/image-converter';
 import { ProgressButton } from '@/components/progress-button';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import Image from 'next/image';
 
 export function VideoToGif() {
@@ -74,7 +74,7 @@ export function VideoToGif() {
         setFfmpegLoaded(true);
       } catch (err) {
         console.error('Failed to load FFmpeg:', err);
-        toast.error('Failed to load engine. Please refresh.');
+        showToast('Failed to load engine. Please refresh.', 'error');
       }
     };
 
@@ -89,8 +89,9 @@ export function VideoToGif() {
         window.URL.revokeObjectURL(video.src);
         setVideoDuration(video.duration);
         if (video.duration > 10.5) {
-          toast.warning(
-            'Videos over 10 seconds may result in very large GIF files. Recommended: < 10s.'
+          showToast(
+            'Videos over 10 seconds may result in very large GIF files. Recommended: < 10s.',
+            'warning'
           );
         }
       };
@@ -100,7 +101,7 @@ export function VideoToGif() {
       setConvertedFile(null);
       setProgress(0);
     } else {
-      toast.error('Please select a valid video file');
+      showToast('Please select a valid video file', 'error');
     }
   }, []);
 
@@ -176,10 +177,10 @@ export function VideoToGif() {
         reductionPercent: 0, // Not really reduction
       });
 
-      toast.success('GIF generated successfully!');
+      showSuccess('GIF generated successfully!');
     } catch (error) {
       console.error('Conversion error:', error);
-      toast.error('Error creating GIF. Try a shorter video.');
+      showToast('Error creating GIF. Try a shorter video.', 'error');
     } finally {
       setIsConverting(false);
     }

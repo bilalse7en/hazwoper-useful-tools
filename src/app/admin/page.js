@@ -33,12 +33,12 @@ import { cn } from '@/lib/utils';
 import { InitialLoadingShell } from '@/components/initial-loading-shell';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getTimeRemaining, formatSize } from '@/lib/tool-history';
-import { toast } from 'sonner';
 import { convertImage } from '@/lib/image-converter';
 import { toolInfo } from '@/lib/seo';
 import { PuterAgent } from '@/components/admin/puter-agent';
 import { AdminChatMonitor } from '@/components/admin/AdminChatMonitor';
 import { ChatModerationList } from '@/components/admin/ChatModerationList';
+import { showAlert, showConfirm, showToast, showSuccess } from '@/lib/swal';
 
 const formatFileType = (type) => {
   if (!type) return 'FILE';
@@ -605,12 +605,12 @@ function AdminDashboard() {
     if (!file) return;
 
     if (!currentUserId) {
-      toast.error('Identity not verified. Please refresh.');
+      showToast('Identity not verified. Please refresh.', 'error');
       return;
     }
 
     setIsUploading(true);
-    const toastId = toast.loading('Synchronizing asset...');
+    showToast('Synchronizing asset...', 'info');
 
     try {
       let fileToUpload = file;
@@ -619,9 +619,9 @@ function AdminDashboard() {
       if (file.type.includes('gif')) {
         const sizeInMb = file.size / (1024 * 1024);
         if (sizeInMb > 2) {
-          toast.error(
+          showToast(
             'GIF too large. Maximum size is 2MB to ensure performance.',
-            { id: toastId }
+            'error'
           );
           setIsUploading(false);
           return;
@@ -630,7 +630,7 @@ function AdminDashboard() {
 
       // Optimize non-GIF images to WEBP only
       if (file.type.startsWith('image/') && !file.type.includes('gif')) {
-        toast.loading('Optimizing to WebP format...', { id: toastId });
+        showToast('Optimizing to WebP format...', 'info');
         const conversion = await convertImage(file, 'webp', {
           quality: 80,
           width: 1920,
@@ -666,25 +666,24 @@ function AdminDashboard() {
 
       if (dbError) throw dbError;
 
-      toast.success('Asset integrated.', {
-        id: toastId,
-        description: 'Global registry synchronized.',
-      });
+      showSuccess('Asset integrated.', 'Global registry synchronized.');
       fetchLibraryData();
     } catch (err) {
       console.error('Upload failure:', JSON.stringify(err, null, 2) || err);
-      toast.error('Upload failed.', {
-        id: toastId,
-        description:
-          err.message || 'Check database connection or bucket existence.',
-      });
+      showToast('Upload failed', 'error');
     } finally {
       setIsUploading(false);
     }
   }
 
   async function deleteAsset(id, filePath) {
-    if (!confirm('Permanent deletion requested. Proceed?')) return;
+    const result = await showConfirm({
+      title: 'Purge Asset?',
+      text: 'Permanent deletion requested. Proceed?',
+      icon: 'warning',
+      confirmButtonText: 'Yes, Purge it',
+    });
+    if (!result.isConfirmed) return;
     try {
       const { error: dbError } = await supabase
         .from('media_hub')
@@ -695,9 +694,9 @@ function AdminDashboard() {
       // Extract path from URL if possible, or just delete from DB
       // For now we just refresh DB view
       fetchLibraryData();
-      toast.success('Asset purged.');
+      showSuccess('Asset purged.');
     } catch (err) {
-      toast.error('Purge failed.');
+      showToast('Purge failed', 'error');
     }
   }
 
@@ -723,9 +722,7 @@ function AdminDashboard() {
           console.error(
             'Database Table Missing: Please run the provided SQL query in Supabase to create the "tool_settings" table.'
           );
-          toast.error('Database setup required', {
-            description: 'Run SQL query in Supabase dashboard.',
-          });
+          showToast('Database setup required', 'error');
         }
         throw error;
       }
@@ -748,18 +745,24 @@ function AdminDashboard() {
       });
       if (error) throw error;
       setToolSettings((prev) => ({ ...prev, [toolId]: isFree }));
-      toast.success('Tool Access Updated', {
-        description: `${toolId} is now ${isFree ? 'FREE' : 'PAID'}.`,
-      });
+      showSuccess(
+        'Tool Access Updated',
+        `${toolId} is now ${isFree ? 'FREE' : 'PAID'}.`
+      );
     } catch (err) {
       console.error('Error updating tool access:', err);
-      toast.error('Failed to update tool access');
+      showToast('Failed to update tool access', 'error');
     }
   }
 
   async function deleteBlog(id) {
-    if (!confirm('Are you sure you want to delete this editorial sequence?'))
-      return;
+    const result = await showConfirm({
+      title: 'Delete Sequence?',
+      text: 'Are you sure you want to delete this editorial sequence?',
+      icon: 'warning',
+      confirmButtonText: 'Yes, Delete it',
+    });
+    if (!result.isConfirmed) return;
     try {
       const { error } = await supabase.from('blogs').delete().eq('id', id);
       if (error) throw error;
@@ -797,9 +800,7 @@ function AdminDashboard() {
       });
     } catch (err) {
       console.error('Error updating role:', err);
-      toast.error('Escalation Failed', {
-        description: 'Neural synchronization error. Check RLS permissions.',
-      });
+      showToast('Escalation Failed', 'error');
     }
   }
 
@@ -812,14 +813,13 @@ function AdminDashboard() {
 
       if (error) throw error;
       await fetchUsers(true);
-      toast.success('Access Logic Updated', {
-        description: `Generator suite permissions ${hasAccess ? 'authorized' : 'revoked'}.`,
-      });
+      showSuccess(
+        'Access Logic Updated',
+        `Generator suite permissions ${hasAccess ? 'authorized' : 'revoked'}.`
+      );
     } catch (err) {
       console.error('Error updating generator access:', err);
-      toast.error('Initialization Failed', {
-        description: 'Access policy synchronization failed.',
-      });
+      showToast('Initialization Failed', 'error');
     }
   }
 
@@ -1081,20 +1081,16 @@ function AdminDashboard() {
                   <Button
                     className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20"
                     onClick={async () => {
-                      const id = toast.loading('Purging cache...');
+                      showToast('Purging cache...', 'info');
                       try {
                         const res = await fetch('/api/admin/clear-cache', {
                           method: 'POST',
                         });
                         const data = await res.json();
-                        if (data.success)
-                          toast.success('Purged', {
-                            id,
-                            description: data.message,
-                          });
+                        if (data.success) showSuccess('Purged', data.message);
                         else throw new Error(data.message);
                       } catch (err) {
-                        toast.error('Failed', { id, description: err.message });
+                        showToast('Failed to purge cache', 'error');
                       }
                     }}
                   >
@@ -1105,7 +1101,7 @@ function AdminDashboard() {
                     className="w-full h-14 rounded-2xl border-border hover:bg-primary/5 font-black uppercase tracking-widest text-xs"
                     onClick={() => {
                       localStorage.clear();
-                      toast.success('Wiped');
+                      showSuccess('Wiped');
                     }}
                   >
                     Clear Local Memory

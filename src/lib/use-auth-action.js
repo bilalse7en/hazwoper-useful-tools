@@ -1,6 +1,6 @@
 'use client';
 
-import { toast } from 'sonner';
+import { showToast, showSuccess, showConfirm } from '@/lib/swal';
 import { triggerLogin } from '@/lib/auth';
 import { useEffect, useState } from 'react';
 
@@ -17,33 +17,38 @@ export function useAuthAction() {
     }
   }, []);
 
-  const performAction = (action, meta = {}) => {
+  const performAction = async (action, meta = {}) => {
     if (!user) {
-      toast.error('Identity Verification Required', {
-        description: `Please Sign In or Create an Account to synchronize assets and perform ${meta.name || 'this action'}.`,
-        action: {
-          label: 'Authenticate',
-          onClick: () => triggerLogin(),
-        },
+      const result = await showConfirm({
+        title: 'Identity Verification Required',
+        text: `Please Sign In or Create an Account to synchronize assets and perform ${meta.name || 'this action'}.`,
+        icon: 'lock',
+        confirmButtonText: 'Authenticate Now',
+        cancelButtonText: 'Later',
       });
-      triggerLogin();
+
+      if (result.isConfirmed) {
+        triggerLogin();
+      }
       return false;
     }
 
     const { type, name } = meta;
 
     // Execute the action
-    action();
+    await action();
 
     // Show professional success toast
     if (type === 'copy') {
-      toast.success('Identity Sequence Copied', {
-        description: `Content from "${name || 'Tool'}" has been synchronized to your clipboard.`,
-      });
+      showSuccess(
+        'Identity Sequence Copied',
+        `Content from "${name || 'Tool'}" has been synchronized to your clipboard.`
+      );
     } else if (type === 'download') {
-      toast.success('Assets Dispatched', {
-        description: `Files for "${name || 'Tool'}" have been successfully downloaded to your local storage.`,
-      });
+      showSuccess(
+        'Assets Dispatched',
+        `Files for "${name || 'Tool'}" have been successfully downloaded to your local storage.`
+      );
     }
 
     return true;

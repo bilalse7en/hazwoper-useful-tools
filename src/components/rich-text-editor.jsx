@@ -34,7 +34,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { showAlert, showConfirm, showToast, showSuccess } from '@/lib/swal';
 
 export function RichTextEditor({ content, onSave, title = 'Editor' }) {
   const editorRef = useRef(null);
@@ -230,8 +230,15 @@ export function RichTextEditor({ content, onSave, title = 'Editor' }) {
     return () => document.removeEventListener('mousedown', handleGlobalClick);
   }, [editorRef, setShowFloatingToolbar]);
 
-  const handleLink = () => {
-    const url = prompt('Enter URL:');
+  const handleLink = async () => {
+    const { value: url } = await showConfirm({
+      title: 'Insert Link',
+      input: 'url',
+      inputLabel: 'Enter destination URL',
+      inputPlaceholder: 'https://example.com',
+      showCancelButton: true,
+      confirmButtonText: 'Insert',
+    });
     if (url) {
       execCommand('createLink', url);
     }
@@ -240,9 +247,26 @@ export function RichTextEditor({ content, onSave, title = 'Editor' }) {
   const handleInsertUnorderedList = () => execCommand('insertUnorderedList');
   const handleInsertOrderedList = () => execCommand('insertOrderedList');
 
-  const handleInsertTable = () => {
-    const rows = prompt('Number of rows:', '3') || 3;
-    const cols = prompt('Number of columns:', '3') || 3;
+  const handleInsertTable = async () => {
+    const { value: rows } = await showConfirm({
+      title: 'Table Rows',
+      input: 'number',
+      inputLabel: 'How many rows?',
+      inputValue: 3,
+      confirmButtonText: 'Next',
+    });
+
+    if (!rows) return;
+
+    const { value: cols } = await showConfirm({
+      title: 'Table Columns',
+      input: 'number',
+      inputLabel: 'How many columns?',
+      inputValue: 3,
+      confirmButtonText: 'Insert Table',
+    });
+
+    if (!cols) return;
 
     let tableHtml =
       '<table class="table table-bordered table-container" style="display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap;">';
@@ -285,7 +309,11 @@ export function RichTextEditor({ content, onSave, title = 'Editor' }) {
       }
       saveToHistory();
     } else {
-      toast.error('Please click inside a table to apply this style.');
+      showAlert(
+        'Table Required',
+        'Please click inside a table to apply this style.',
+        'warning'
+      );
     }
   };
 
@@ -469,7 +497,7 @@ export function RichTextEditor({ content, onSave, title = 'Editor' }) {
         });
       }
 
-      toast.success('Professional Assets Saved');
+      showSuccess('Professional Assets Saved');
     }
   };
 

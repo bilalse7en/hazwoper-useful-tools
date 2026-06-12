@@ -36,7 +36,7 @@ import { PreviewDrawer } from '@/components/preview-drawer';
 import { ProgressButton } from '@/components/progress-button';
 import { HistoryList } from '@/components/history-list';
 import { useAuthAction } from '@/lib/use-auth-action';
-import { toast } from 'sonner';
+import { showToast } from '@/lib/swal';
 import { saveGeneratorState } from '@/lib/tool-history';
 
 export function CourseGenerator() {
@@ -95,9 +95,7 @@ export function CourseGenerator() {
   };
 
   const showNotification = (message, type = 'success') => {
-    if (type === 'error') toast.error(message);
-    else if (type === 'warning' || type === 'info') toast.info(message);
-    else toast.success(message);
+    showToast(message, type);
   };
 
   const handleFileChange = (e) => {
@@ -267,7 +265,7 @@ export function CourseGenerator() {
     setMediaUrl(state.mediaUrl || '');
     setRestoredFileName(state.fileName || '');
     if (state.activeView) setActiveView(state.activeView);
-    toast.success('Identity session synchronized');
+    showSuccess('Identity session synchronized');
   };
 
   return (

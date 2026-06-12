@@ -19,7 +19,7 @@ import Tesseract from 'tesseract.js';
 import { ProgressButton } from '@/components/progress-button';
 import { cn } from '@/lib/utils';
 import { useAuthAction } from '@/lib/use-auth-action';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { saveGeneratorState } from '@/lib/tool-history';
 
 export default function ImageToText() {
@@ -251,7 +251,7 @@ export default function ImageToText() {
         setExtractedText(text);
         setError('');
         setProgress(100);
-        toast.success('Intelligence Extracted Successfully');
+        showSuccess('Intelligence Extracted Successfully');
         persistState({ extractedText: text });
       }
     } catch (err) {

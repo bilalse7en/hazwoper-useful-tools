@@ -33,7 +33,7 @@ import { formatFileSize } from '@/lib/image-converter';
 import { ProgressButton } from '@/components/progress-button';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 
 const OUTPUT_FORMATS = [
   { value: 'mp4', label: 'MP4 (H.264)', mime: 'video/mp4', ext: 'mp4' },
@@ -103,7 +103,7 @@ export function VideoConverter() {
         setFfmpegLoaded(true);
       } catch (err) {
         console.error('Failed to load FFmpeg:', err);
-        toast.error('Failed to load video engine. Please refresh.');
+        showToast('Failed to load video engine. Please refresh.', 'error');
       }
     };
 
@@ -111,8 +111,8 @@ export function VideoConverter() {
   }, []);
 
   const showNotification = (message, type = 'success') => {
-    if (type === 'error') toast.error(message);
-    else toast.success(message);
+    if (type === 'error') showToast(message, 'error');
+    else showSuccess(message);
   };
 
   const handleFiles = useCallback((newFiles) => {

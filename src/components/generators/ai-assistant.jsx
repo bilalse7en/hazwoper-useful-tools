@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BRAND_CONFIG } from '@/lib/constants';

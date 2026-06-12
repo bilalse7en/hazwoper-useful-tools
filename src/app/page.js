@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { InitialLoadingShell } from '@/components/initial-loading-shell';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+import { showSuccess } from '@/lib/swal';
 
 // Dynamic imports with SSR enabled for SEO
 const ToolsLanding = dynamic(
@@ -72,9 +72,10 @@ export default function Home() {
       const hasJustLoggedIn = sessionStorage.getItem('just_logged_in');
 
       if (justLoggedIn && hasJustLoggedIn) {
-        toast.success('Identity Verified', {
-          description: `Welcome back, ${user.name || 'Architect'}. Professional suite fully synchronized.`,
-        });
+        showSuccess(
+          'Identity Verified',
+          `Welcome back, ${user.name || 'Architect'}. Suite synchronized.`
+        );
         sessionStorage.setItem('auth_toast_shown', 'true');
         sessionStorage.removeItem('just_logged_in');
       }

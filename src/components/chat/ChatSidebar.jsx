@@ -138,8 +138,8 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
   return (
     <div className="space-y-1">
       <div className="px-2 py-2 flex items-center gap-2 mb-1">
-        <MessageSquare className="w-3.5 h-3.5 text-primary opacity-60" />
-        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+        <MessageSquare className="w-3.5 h-3.5 text-primary opacity-60 dark:opacity-40" />
+        <span className="text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground/80 dark:text-muted-foreground/60">
           Authorized Channels
         </span>
       </div>
@@ -198,7 +198,7 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
                 )}
               </div>
               {contact.is_online && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" />
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background shadow-sm shadow-emerald-500/20" />
               )}
             </div>
 
@@ -225,12 +225,12 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
                     </div>
                   )}
               </div>
-              <div className="flex items-center gap-1 opacity-40">
-                <span className="text-[7px] font-black uppercase tracking-widest truncate shrink-0">
+              <div className="flex items-center gap-1 opacity-50 dark:opacity-40">
+                <span className="text-[7px] font-black uppercase tracking-widest truncate shrink-0 text-foreground/80 dark:text-foreground/40">
                   {contact.role === 'admin' ? 'Admin Node' : 'Subscriber'}
                 </span>
                 <span className="text-[7px] opacity-40 shrink-0">•</span>
-                <span className="text-[9px] font-medium truncate italic leading-none whitespace-nowrap">
+                <span className="text-[9px] font-medium truncate italic leading-none whitespace-nowrap text-foreground/70 dark:text-foreground/40">
                   {contact.last_message || 'Awaiting signal...'}
                 </span>
               </div>

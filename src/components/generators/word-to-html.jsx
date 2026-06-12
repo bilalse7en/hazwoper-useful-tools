@@ -30,7 +30,7 @@ import {
   AlignRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import mammoth from 'mammoth';
 import {
   Tooltip,
@@ -260,7 +260,7 @@ export function WordToHtml() {
       const result = await mammoth.convertToHtml({ arrayBuffer });
       setRawHtml(result.value);
       if (pasteAreaRef.current) pasteAreaRef.current.innerHTML = result.value;
-      toast.success('Word file ingested');
+      showSuccess('Word file ingested');
     }
   };
 
@@ -279,14 +279,14 @@ export function WordToHtml() {
       removeNbsp: true,
       fixLists: true,
     });
-    toast.success('All cleaners applied');
+    showSuccess('All cleaners applied');
   };
 
   const handleCopy = () => {
     performAction(
       async () => {
         await navigator.clipboard.writeText(cleanedHtml);
-        toast.success('HTML copied');
+        showSuccess('HTML copied');
         await saveToolHistory({
           toolType: 'word-to-html',
           fileName: 'Pasted Content',

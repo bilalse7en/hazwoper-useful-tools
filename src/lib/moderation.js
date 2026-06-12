@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 
 /**
  * Report a user for misbehavior.
@@ -12,19 +12,13 @@ export async function reportUser(reporter, target, reason) {
 
   // Rule: Untouchable Admins
   if (target.role === 'admin') {
-    toast.error('Protocol Violation', {
-      description:
-        'Administrative nodes cannot be reported via standard subscriber channels.',
-    });
+    showToast('Protocol Violation', 'error');
     return false;
   }
 
   // Rule: Admin immunity
   if (reporter.role === 'admin' && target.role === 'admin') {
-    toast.error('System Error', {
-      description:
-        'Dual administrative conflict detected. Use central council protocols.',
-    });
+    showToast('System Error', 'error');
     return false;
   }
 
@@ -38,14 +32,14 @@ export async function reportUser(reporter, target, reason) {
 
     if (error) throw error;
 
-    toast.success('Signal Flagged', {
-      description:
-        'Incident report has been encrypted and sent to central intelligence.',
-    });
+    showSuccess(
+      'Signal Flagged',
+      'Incident report encrypted and sent to intelligence.'
+    );
     return true;
   } catch (err) {
     console.error('Reporting error:', err);
-    toast.error('Transmission Failure');
+    showToast('Transmission Failure', 'error');
     return false;
   }
 }
@@ -57,9 +51,7 @@ export async function blockUser(blocker, target) {
   if (!blocker || !target) return;
 
   if (target.role === 'admin') {
-    toast.error('Access Denied', {
-      description: 'Subscribers cannot block administrative authorized nodes.',
-    });
+    showToast('Access Denied', 'error');
     return false;
   }
 
@@ -72,13 +64,14 @@ export async function blockUser(blocker, target) {
 
     if (error) throw error;
 
-    toast.success('Signal Terminated', {
-      description: 'Direct communication link with this node has been severed.',
-    });
+    showSuccess(
+      'Signal Terminated',
+      'Communication link with this node has been severed.'
+    );
     return true;
   } catch (err) {
     console.error('Blocking error:', err);
-    toast.error('Link Severance Failed');
+    showToast('Link Severance Failed', 'error');
     return false;
   }
 }

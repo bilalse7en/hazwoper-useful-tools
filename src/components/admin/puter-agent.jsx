@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toolInfo } from '@/lib/seo';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { cn } from '@/lib/utils';
 
 const TOOL_SUMMARY = Object.entries(toolInfo)
@@ -96,7 +96,7 @@ export function PuterAgent() {
   const generateSuggestions = async () => {
     if (!puterReady || isLoading) return;
     setIsLoading(true);
-    const toastId = toast.loading('Consulting Puter AI Engine...');
+    showToast('Consulting Puter AI Engine...', 'info');
 
     try {
       const response = await window.puter.ai.chat(
@@ -153,17 +153,20 @@ export function PuterAgent() {
       if (saveError) throw saveError;
 
       setSuggestions(savedData);
-      toast.success('Neural Strategy Synchronized and Saved.', { id: toastId });
+      showSuccess(
+        'Neural Strategy Synchronized.',
+        'Calculated and saved to registry.'
+      );
 
       if (autoPublish && savedData.length > 0) {
-        toast.info('Auto-Live sequence initiated...');
+        showToast('Auto-Live sequence initiated...', 'info');
         for (let i = 0; i < savedData.length; i++) {
           await publishBlog(savedData[i], i, true);
         }
       }
     } catch (err) {
       console.error(err);
-      toast.error('Neural cluster timeout.', { id: toastId });
+      showToast('Neural cluster timeout.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -177,17 +180,15 @@ export function PuterAgent() {
         .eq('id', id);
       if (error) throw error;
       setSuggestions((prev) => prev.filter((_, i) => i !== index));
-      toast.success('Strategy dismissed.');
+      showSuccess('Strategy dismissed');
     } catch (err) {
-      toast.error('Failed to dismiss strategy.');
+      showToast('Failed to dismiss strategy.', 'error');
     }
   };
 
   const publishBlog = async (blog, index, silent = false) => {
     setIsPublishing(index);
-    const toastId = silent
-      ? null
-      : toast.loading(`Deploying "${blog.title}"...`);
+    showToast(`Deploying "${blog.title}"...`, 'info');
 
     try {
       // 1. Move to main blogs table
@@ -207,11 +208,11 @@ export function PuterAgent() {
       // 2. Remove from suggestions (or update status)
       await supabase.from('blog_suggestions').delete().eq('id', blog.id);
 
-      toast.success('Sequence live on main feed.', { id: toastId });
+      showSuccess('Sequence live on main feed.');
       setSuggestions((prev) => prev.filter((_, i) => i !== index));
     } catch (err) {
       console.error(err);
-      toast.error('Deployment failed.', { id: toastId });
+      showToast('Deployment failed.', 'error');
     } finally {
       setIsPublishing(null);
     }

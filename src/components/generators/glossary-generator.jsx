@@ -29,7 +29,7 @@ import {
 } from '@/lib/docx-processor';
 import { PreviewDrawer } from '@/components/preview-drawer';
 import { ProgressButton } from '@/components/progress-button';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { saveGeneratorState } from '@/lib/tool-history';
 import { HistoryList } from '@/components/history-list';
 import { useAuthAction } from '@/lib/use-auth-action';
@@ -57,7 +57,7 @@ export function GlossaryGenerator() {
       setGlossaryData(null);
       setGlossaryCode('');
     } else {
-      toast.error('Invalid file type. Please upload a .docx file.');
+      showToast('Invalid file type. Please upload a .docx file.', 'error');
     }
   };
 
@@ -110,13 +110,13 @@ export function GlossaryGenerator() {
 
       setProgress(100);
       setProgressText('Complete!');
-      toast.success('Glossary generated successfully!');
+      showSuccess('Glossary generated successfully!');
 
       // Brief pause so user sees 100% before reset
       await new Promise((r) => setTimeout(r, 800));
     } catch (error) {
       console.error('Error processing file:', error);
-      toast.error('Error processing file: ' + error.message);
+      showToast('Error processing file', 'error');
     } finally {
       setIsProcessing(false);
       setProgress(0);
@@ -138,7 +138,7 @@ export function GlossaryGenerator() {
     setGlossaryData(state.glossaryData || null);
     setGlossaryCode(state.glossaryCode || '');
     setRestoredFileName(state.fileName || '');
-    toast.success('Glossary session synchronized');
+    showSuccess('Glossary session synchronized');
   };
 
   return (

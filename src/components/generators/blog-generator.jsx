@@ -48,7 +48,7 @@ import {
 import { PreviewDrawer } from '@/components/preview-drawer';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { useAuthAction } from '@/lib/use-auth-action';
-import { toast } from 'sonner';
+import { showToast, showAlert, showConfirm } from '@/lib/swal';
 import { saveGeneratorState } from '@/lib/tool-history';
 import { HistoryList } from '@/components/history-list';
 
@@ -148,9 +148,7 @@ export function BlogGenerator() {
   }, [showReview]);
 
   const showNotification = (message, type = 'success') => {
-    if (type === 'error') toast.error(message);
-    else if (type === 'warning' || type === 'info') toast.info(message);
-    else toast.success(message);
+    showToast(message, type);
   };
 
   // --- MEMOIZED DATA FOR EDITOR ---
@@ -454,8 +452,17 @@ export function BlogGenerator() {
   };
 
   // Reset everything
-  const handleReset = () => {
-    setShowResetConfirm(true);
+  const handleReset = async () => {
+    const result = await showConfirm({
+      title: 'Reset Everything?',
+      text: 'This will clear all content, settings, and generated code. This action cannot be undone.',
+      icon: 'warning',
+      confirmButtonText: 'Reset Everything',
+      confirmButtonColor: '#ef4444',
+    });
+    if (result.isConfirmed) {
+      confirmReset();
+    }
   };
 
   const confirmReset = () => {
@@ -535,7 +542,7 @@ export function BlogGenerator() {
     setRawStructure(state.rawStructure || []);
     setRestoredFileName(state.fileName || '');
     if (state.activeView) setActiveView(state.activeView);
-    toast.success('Blog session synchronized');
+    showSuccess('Blog session synchronized');
   };
 
   const handleEditorSave = (html, imageData) => {
@@ -552,8 +559,7 @@ export function BlogGenerator() {
     }
 
     showNotification(
-      "Content saved! Use 'Generate Blog' button to create final HTML.",
-      'success'
+      "Content saved! Use 'Generate Blog' button to create final HTML."
     );
   };
 
@@ -882,9 +888,7 @@ export function BlogGenerator() {
       showNotification('Perfect Word file generated!', 'success');
 
       // Auto-load for blog processing
-      const responseDoc = await fetch(url);
-      const blobDoc = await responseDoc.blob();
-      const fixedFile = new File([blobDoc], data.fileName, {
+      const fixedFile = new File([blob], data.fileName, {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       });
       setFile(fixedFile);
@@ -935,57 +939,6 @@ export function BlogGenerator() {
 
   return (
     <Fragment>
-      {/* Reset Confirmation Modal - Full Page Overlay */}
-      {showResetConfirm && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center"
-          style={{ zIndex: 9999 }}
-        >
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in duration-200">
-            {/* Logo */}
-            <div className="flex justify-center mb-4">
-              <Image
-                src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
-                alt="HAZWOPER useful tools"
-                width={64}
-                height={64}
-                className="h-16 w-auto"
-                unoptimized
-              />
-            </div>
-
-            {/* Title */}
-            <h3 className="text-xl font-bold text-center mb-2 text-gray-900 dark:text-white">
-              Reset Everything?
-            </h3>
-
-            {/* Message */}
-            <p className="text-center text-gray-600 dark:text-gray-300 mb-6">
-              This will clear all content, settings, and generated code. This
-              action cannot be undone.
-            </p>
-
-            {/* Buttons */}
-            <div className="flex gap-3">
-              <Button
-                onClick={() => setShowResetConfirm(false)}
-                variant="outline"
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={confirmReset}
-                variant="destructive"
-                className="flex-1 bg-red-600 hover:bg-red-700"
-              >
-                Reset Everything
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-6">
         <div className="flex justify-end">
           <Sheet>

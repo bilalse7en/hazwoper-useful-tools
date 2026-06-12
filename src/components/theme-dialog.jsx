@@ -68,25 +68,68 @@ export function ThemeDialog({ open, onOpenChange }) {
             const isActive = theme === t.id;
 
             return (
-              <Button
+              <div
                 key={t.id}
-                variant={isActive ? 'secondary' : 'outline'}
-                className="w-full justify-start gap-3 h-auto py-3"
                 onClick={() => handleThemeChange(t.id)}
+                className={cn(
+                  'w-full flex items-center justify-start gap-4 h-auto py-4 px-4 rounded-2xl transition-all duration-300 border-2 relative overflow-hidden group mb-3 last:mb-0 cursor-pointer',
+                  t.id === 'light' && 'theme-preview-light',
+                  t.id === 'dark' && 'theme-preview-dark',
+                  t.id === 'nebula' &&
+                    'bg-[#02081e] text-white border-sky-900/50',
+                  isActive
+                    ? 'border-primary ring-2 ring-primary/20 scale-[1.02] cursor-default shadow-md'
+                    : 'hover:scale-[1.01] hover:shadow-lg active:scale-95'
+                )}
+                style={{
+                  backgroundColor:
+                    t.id === 'light'
+                      ? '#ffffff'
+                      : t.id === 'dark'
+                        ? '#0f172a'
+                        : '#02081e',
+                  color: t.id === 'light' ? '#0f172a' : '#ffffff',
+                }}
               >
+                {/* Visual Flavor Backgrounds for Nebula */}
+                {t.id === 'nebula' && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-sky-500/5 to-transparent pointer-events-none" />
+                )}
+
                 <div
-                  className={`rounded-full p-2 ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                  className={cn(
+                    'rounded-xl p-2.5 transition-all duration-300 z-10',
+                    !isActive && 'group-hover:opacity-80'
+                  )}
+                  style={{
+                    backgroundColor: t.id === 'light' ? '#f1f5f9' : '#1e293b',
+                    color: t.id === 'light' ? '#0f172a' : '#ffffff',
+                  }}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-5 w-5" style={{ color: 'inherit' }} />
                 </div>
-                <div className="flex-1 text-left">
-                  <div className="font-medium">{t.name}</div>
-                  <div className="text-xs text-muted-foreground">
+
+                <div className="flex-1 text-left z-10">
+                  <div
+                    className="font-bold text-sm tracking-tight"
+                    style={{ color: 'inherit' }}
+                  >
+                    {t.name}
+                  </div>
+                  <div
+                    className="text-[10px] font-medium uppercase tracking-[0.15em] opacity-60"
+                    style={{ color: 'inherit' }}
+                  >
                     {t.description}
                   </div>
                 </div>
-                {isActive && <Check className="h-5 w-5 text-primary" />}
-              </Button>
+
+                {isActive && (
+                  <div className="bg-primary p-1.5 rounded-full z-10 shadow-lg animate-in zoom-in shrink-0">
+                    <Check className="h-3.5 w-3.5 text-primary-foreground" />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

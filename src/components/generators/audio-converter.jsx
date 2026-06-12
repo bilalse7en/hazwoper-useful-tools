@@ -32,7 +32,7 @@ import { formatFileSize } from '@/lib/image-converter';
 import { ProgressButton } from '@/components/progress-button';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 
 const OUTPUT_FORMATS = [
   { value: 'mp3', label: 'MP3 (Universal)', mime: 'audio/mpeg', ext: 'mp3' },
@@ -96,7 +96,7 @@ export function AudioConverter() {
         setFfmpegLoaded(true);
       } catch (err) {
         console.error('Failed to load FFmpeg:', err);
-        toast.error('Failed to load audio engine. Please refresh.');
+        showToast('Failed to load audio engine. Please refresh.', 'error');
       }
     };
 
@@ -115,9 +115,9 @@ export function AudioConverter() {
 
     if (validFiles.length > 0) {
       setFiles((prev) => [...prev, ...validFiles].slice(0, 20));
-      toast.success(`Added ${validFiles.length} file(s)`);
+      showSuccess(`Added ${validFiles.length} file(s)`);
     } else {
-      toast.error('Please select valid audio files');
+      showToast('Please select valid audio files', 'error');
     }
   }, []);
 
@@ -216,7 +216,7 @@ export function AudioConverter() {
     setConvertedFiles(results);
     setIsConverting(false);
     setCurrentFile('');
-    toast.success('Batch processing complete');
+    showSuccess('Batch processing complete');
 
     // Save to history
     for (const res of results.filter((r) => r.success)) {

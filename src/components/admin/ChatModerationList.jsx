@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { DataTable } from '@/components/ui/data-table';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
@@ -111,18 +111,16 @@ export function ChatModerationList({ onOpenChat }) {
         .eq('id', user.id);
 
       if (error) throw error;
-      toast.success(
+      showSuccess(
         freeze
           ? `Identity ${user.full_name} Frozen`
           : `Identity ${user.full_name} Restored`,
-        {
-          description: freeze
-            ? 'Messenger protocols suspended.'
-            : 'Full signal clearance granted.',
-        }
+        freeze
+          ? 'Messenger protocols suspended.'
+          : 'Full signal clearance granted.'
       );
     } catch (err) {
-      toast.error('Protocol Override Failed');
+      showToast('Protocol Override Failed', 'error');
     }
   };
 
@@ -165,8 +163,8 @@ export function ChatModerationList({ onOpenChat }) {
           className={cn(
             'uppercase text-[8px] font-black tracking-widest px-2 py-0.5',
             info.getValue() === 'admin'
-              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-              : 'bg-muted text-muted-foreground border-border/40'
+              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 dark:border-emerald-500/30'
+              : 'bg-muted text-muted-foreground border-border/40 dark:border-border/10'
           )}
         >
           {info.getValue()}
@@ -183,8 +181,8 @@ export function ChatModerationList({ onOpenChat }) {
             className={cn(
               'uppercase text-[8px] font-black tracking-widest px-2 py-0.5 animate-pulse',
               isFrozen
-                ? 'bg-red-500/10 text-red-500 border-red-500/20'
-                : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                ? 'bg-red-500/10 text-red-600 dark:text-red-500 border-red-500/20 dark:border-red-500/30'
+                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-500/20 dark:border-emerald-500/30'
             )}
           >
             {isFrozen ? 'FROZEN' : 'ACTIVE'}
@@ -296,10 +294,13 @@ export function ChatModerationList({ onOpenChat }) {
             variant="outline"
             size="icon"
             onClick={fetchUsers}
-            className="h-10 w-10 rounded-xl bg-card border-border/40 hover:bg-primary/5"
+            className="h-10 w-10 rounded-xl bg-card border-border/40 dark:border-border/20 hover:bg-primary/5"
           >
             <RefreshCw
-              className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
+              className={cn(
+                'h-3.5 w-3.5 opacity-70 dark:opacity-100',
+                loading && 'animate-spin'
+              )}
             />
           </Button>
         </div>
@@ -341,11 +342,15 @@ export function ChatModerationList({ onOpenChat }) {
                       <span className="text-[8px] font-black text-primary uppercase tracking-widest">
                         {msg.is_global ? 'Global Frequency' : 'Direct Line'}
                       </span>
-                      <span className="text-[7px] font-mono opacity-40">
-                        {new Date(msg.created_at).toLocaleTimeString()}
+                      <span className="text-[9px] font-mono opacity-60 dark:opacity-40 text-foreground/80 dark:text-foreground">
+                        {new Intl.DateTimeFormat('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        }).format(new Date(msg.created_at))}
                       </span>
                     </div>
-                    <p className="text-[10px] font-medium leading-relaxed opacity-80 break-words">
+                    <p className="text-[10px] font-medium leading-relaxed opacity-90 dark:opacity-80 break-words text-foreground/90 dark:text-foreground">
                       <span className="font-black text-primary pr-1">
                         {msg.sender?.full_name || 'Subject'}:
                       </span>
@@ -356,9 +361,9 @@ export function ChatModerationList({ onOpenChat }) {
               )}
             </div>
           </div>
-
+          ...
           {/* Incoming Incident Reports */}
-          <div className="p-6 rounded-[32px] bg-primary/5 border border-primary/10 space-y-4">
+          <div className="p-6 rounded-[32px] bg-primary/5 border border-primary/10 dark:border-primary/5 space-y-4">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
               <AlertTriangle className="w-3 h-3" />
               Incoming Incident Reports
@@ -375,31 +380,35 @@ export function ChatModerationList({ onOpenChat }) {
                 reports.map((report) => (
                   <div
                     key={report.id}
-                    className="p-3 rounded-2xl bg-card/40 border border-border/40 space-y-2 group hover:border-primary/20 transition-colors"
+                    className="p-3 rounded-2xl bg-card/40 border border-border/40 dark:border-border/20 space-y-2 group hover:border-primary/20 transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest">
+                      <span className="text-[8px] font-black text-rose-600 dark:text-rose-500 uppercase tracking-widest">
                         Misconduct Signal
                       </span>
-                      <span className="text-[7px] font-mono opacity-40">
-                        {new Date(report.created_at).toLocaleTimeString()}
+                      <span className="text-[9px] font-mono opacity-60 dark:opacity-40">
+                        {new Intl.DateTimeFormat('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        }).format(new Date(report.created_at))}
                       </span>
                     </div>
-                    <p className="text-[10px] font-medium leading-relaxed italic opacity-80 underline underline-offset-4 decoration-primary/20">
+                    <p className="text-[10px] font-medium leading-relaxed italic opacity-90 dark:opacity-80 underline underline-offset-4 decoration-primary/20">
                       &quot;{report.reason}&quot;
                     </p>
                     <div className="flex items-center gap-2 pt-2 border-t border-border/20 mt-2">
                       <div className="flex flex-col flex-1">
-                        <span className="text-[7px] uppercase font-bold opacity-40">
+                        <span className="text-[7px] uppercase font-bold opacity-50">
                           Reporter
                         </span>
                         <span className="text-[9px] font-bold truncate">
                           {report.reporter?.full_name || 'Subject'}
                         </span>
                       </div>
-                      <UserX className="w-3 h-3 opacity-20" />
+                      <UserX className="w-3 h-3 opacity-30" />
                       <div className="flex flex-col flex-1 text-right">
-                        <span className="text-[7px] uppercase font-bold opacity-40">
+                        <span className="text-[7px] uppercase font-bold opacity-50">
                           Target
                         </span>
                         <span className="text-[9px] font-bold text-primary truncate">
@@ -412,27 +421,26 @@ export function ChatModerationList({ onOpenChat }) {
               )}
             </div>
           </div>
-
           {/* Modulation Metrics */}
-          <div className="p-6 rounded-[32px] bg-card/40 border border-border/40 space-y-4">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+          <div className="p-6 rounded-[32px] bg-card/40 border border-border/40 dark:border-border/20 space-y-4">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80 dark:text-muted-foreground flex items-center gap-2">
               <History className="w-3 h-3" />
               Modulation Metrics
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-muted/40 border border-border/20">
-                <span className="block text-[8px] font-black opacity-40 uppercase mb-1">
+              <div className="p-4 rounded-2xl bg-muted/40 border border-border/20 dark:border-border/10">
+                <span className="block text-[8px] font-black opacity-50 uppercase mb-1">
                   Total Identity
                 </span>
                 <span className="text-xl font-black italic">
                   {users.length}
                 </span>
               </div>
-              <div className="p-4 rounded-2xl bg-red-500/[0.03] border border-red-500/10">
-                <span className="block text-[8px] font-black text-red-500 uppercase mb-1">
+              <div className="p-4 rounded-2xl bg-red-500/[0.03] border border-red-500/10 dark:border-red-500/5">
+                <span className="block text-[8px] font-black text-red-600 dark:text-red-500 uppercase mb-1">
                   Frozen Link
                 </span>
-                <span className="text-xl font-black text-red-500 italic">
+                <span className="text-xl font-black text-red-600 dark:text-red-500 italic">
                   {users.filter((u) => u.is_frozen).length}
                 </span>
               </div>

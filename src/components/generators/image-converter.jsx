@@ -36,7 +36,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ProgressButton } from '@/components/progress-button';
 import { useAuthAction } from '@/lib/use-auth-action';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { saveToolHistory } from '@/lib/tool-history';
 import { ToolHistoryPanel } from '@/components/tool-history-panel';
 
@@ -61,8 +61,8 @@ export function ImageConverter() {
   const formats = getSupportedFormats();
 
   const showNotification = (message, type = 'success') => {
-    if (type === 'error') toast.error(message);
-    else toast.success(message);
+    if (type === 'error') showToast(message, 'error');
+    else showSuccess(message);
   };
 
   const handleFiles = useCallback((newFiles) => {

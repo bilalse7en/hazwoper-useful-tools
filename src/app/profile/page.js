@@ -23,10 +23,10 @@ import {
   Camera,
   LayoutDashboard,
 } from 'lucide-react';
+import { showToast, showSuccess, showAlert } from '@/lib/swal';
 import { InitialLoadingShell } from '@/components/initial-loading-shell';
 import { AvatarCropper } from '@/components/avatar-cropper';
 import { recordMediaUpload } from '@/lib/media-hub';
-import { toast } from 'sonner';
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
@@ -156,15 +156,13 @@ export default function ProfilePage() {
         expiresAt: null, // Avatars should be permanent
       });
 
-      toast.success('Identity visual updated.', {
-        description: 'Avatar synchronized across all neural endpoints.',
-      });
+      showSuccess(
+        'Identity visual updated',
+        'Avatar synchronized across all endpoints.'
+      );
     } catch (err) {
       console.error('Error uploading avatar:', err);
-      toast.error('Identity update failed.', {
-        description:
-          "Ensure 'profiles' or 'media' bucket exists in Supabase storage.",
-      });
+      showToast('Identity update failed', 'error');
     } finally {
       setUpdating(false);
     }
@@ -244,14 +242,12 @@ export default function ProfilePage() {
         result.user?.user_metadata?.full_name ||
           `${firstName} ${lastName}`.trim()
       );
-      toast.success('Sequence synchronized.', {
-        description: 'Profile registry updated.',
-      });
+      showSuccess('Sequence synchronized', 'Profile registry updated.');
     } catch (err) {
       if (err.suggestions) {
         setSuggestions(err.suggestions);
       }
-      alert(err.message);
+      showAlert('Identity Error', err.message, 'error');
     } finally {
       setUpdating(false);
     }

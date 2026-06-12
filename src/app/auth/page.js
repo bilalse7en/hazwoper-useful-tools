@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { BrandLogo } from '@/components/brand-logo';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { cn } from '@/lib/utils';
 
 function AuthComponent() {
@@ -47,7 +47,7 @@ function AuthComponent() {
       });
       if (error) throw error;
     } catch (error) {
-      toast.error('Auth Failure', { description: error.message });
+      showToast(error.message, 'error');
       setIsLoading(false);
     }
   };
@@ -67,10 +67,10 @@ function AuthComponent() {
           },
         });
         if (error) throw error;
-        toast.success('Identity Created', {
-          description:
-            'Check your email for the confirmation link to activate your profile.',
-        });
+        showSuccess(
+          'Identity Created',
+          'Check your email for the confirmation link.'
+        );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -79,12 +79,13 @@ function AuthComponent() {
         if (error) throw error;
         sessionStorage.setItem('just_logged_in', 'true');
         router.push('/');
-        toast.success('Welcome Back', {
-          description: 'Identity verified. Personal workspace synchronized.',
-        });
+        showSuccess(
+          'Welcome Back',
+          'Identity verified. Workspace synchronized.'
+        );
       }
     } catch (error) {
-      toast.error('Process Halted', { description: error.message });
+      showToast(error.message, 'error');
     } finally {
       setIsLoading(false);
     }

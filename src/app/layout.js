@@ -4,8 +4,8 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { BackgroundSpace } from '@/components/background-space';
 import { GdprConsent } from '@/components/gdpr-consent';
 import { DelayedScriptLoader } from '@/components/delayed-script-loader';
-import { Toaster } from 'sonner';
 import './globals.css';
+import 'animate.css/animate.min.css';
 
 import { GlobalHeader } from '@/components/global-header';
 import { Footer } from '@/components/footer';
@@ -156,13 +156,6 @@ export default function RootLayout({ children }) {
               <EnvironmentalSetup />
               <FloatingChatbot />
               <BlockedOverlay />
-              <Toaster
-                position="top-right"
-                toastOptions={{
-                  className:
-                    'glass-toast !rounded-2xl !border-border !bg-card/90 !backdrop-blur-2xl !text-foreground !shadow-[0_20px_50px_rgba(0,0,0,0.3)] !p-4 !font-orbitron font-bold',
-                }}
-              />
             </ChatProvider>
           </AuthProvider>
         </ThemeProvider>

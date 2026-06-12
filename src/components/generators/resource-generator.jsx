@@ -26,7 +26,7 @@ import { processResourceFile } from '@/lib/excel-processor';
 import { PreviewDrawer } from '@/components/preview-drawer';
 import { ProgressButton } from '@/components/progress-button';
 
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { saveGeneratorState } from '@/lib/tool-history';
 import { HistoryList } from '@/components/history-list';
 import { useAuthAction } from '@/lib/use-auth-action';
@@ -67,9 +67,7 @@ export function ResourceGenerator() {
   };
 
   const showNotification = (message, type = 'success') => {
-    if (type === 'error') toast.error(message);
-    else if (type === 'warning' || type === 'info') toast.info(message);
-    else toast.success(message);
+    showToast(message, type);
   };
 
   const handleFileChange = (e) => {
@@ -154,7 +152,7 @@ export function ResourceGenerator() {
     setResourceCode(state.resourceCode || '');
     setGlossaryLink(state.glossaryLink || '');
     setRestoredFileName(state.fileName || '');
-    toast.success('Resource session synchronized');
+    showSuccess('Resource session synchronized');
   };
 
   return (

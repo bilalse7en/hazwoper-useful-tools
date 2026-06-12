@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { showConfirm } from '@/lib/swal';
 
 export default function ChatPage() {
   return (
@@ -88,15 +89,15 @@ function ChatContent() {
             {/* Direct Telemetry Badges */}
             <div className="hidden md:flex items-center gap-4 border-r border-border/30 pr-6 mr-2">
               <div className="flex flex-col items-end">
-                <span className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50">
+                <span className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/80 dark:text-muted-foreground/50">
                   Latency
                 </span>
-                <span className="text-[10px] font-black text-emerald-500">
+                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-500">
                   24MS
                 </span>
               </div>
               <div className="flex flex-col items-end">
-                <span className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/50">
+                <span className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/80 dark:text-muted-foreground/50">
                   Encryption
                 </span>
                 <span className="text-[10px] font-black text-primary">
@@ -115,12 +116,15 @@ function ChatContent() {
                         <Button
                           variant="destructive"
                           size="icon"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                'ARE YOU SURE? This will permanently PURGE ALL GLOBAL messages for everyone.'
-                              )
-                            ) {
+                          onClick={async () => {
+                            const result = await showConfirm({
+                              title: 'PURGE GLOBAL HUB?',
+                              text: 'ARE YOU SURE? This will permanently PURGE ALL GLOBAL messages for everyone.',
+                              icon: 'warning',
+                              confirmButtonText: 'Yes, Purge Everything',
+                              confirmButtonColor: '#ef4444',
+                            });
+                            if (result.isConfirmed) {
                               clearAllMessages(true);
                             }
                           }}
@@ -147,12 +151,15 @@ function ChatContent() {
                         <Button
                           variant="destructive"
                           size="icon"
-                          onClick={() => {
-                            if (
-                              confirm(
-                                'CLERANCE PROTOCOL: This will wipe your entire private thread with this partner. Proceed?'
-                              )
-                            ) {
+                          onClick={async () => {
+                            const result = await showConfirm({
+                              title: 'Wipe History?',
+                              text: 'CLERANCE PROTOCOL: This will wipe your entire private thread with this partner. Proceed?',
+                              icon: 'warning',
+                              confirmButtonText: 'Yes, Wipe History',
+                              confirmButtonColor: '#ef4444',
+                            });
+                            if (result.isConfirmed) {
                               clearAllMessages(false, activePrivateId);
                             }
                           }}
@@ -176,12 +183,15 @@ function ChatContent() {
                           <Button
                             variant="destructive"
                             size="icon"
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  'MASS PURGE PROTOCOL: This will wipe ALL messages across ALL channels for EVERY user. Proceed?'
-                                )
-                              ) {
+                            onClick={async () => {
+                              const result = await showConfirm({
+                                title: 'MASS SYSTEM PURGE?',
+                                text: 'MASS PURGE PROTOCOL: This will wipe ALL messages across ALL channels for EVERY user. Proceed?',
+                                icon: 'error',
+                                confirmButtonText: 'YES, PURGE SYSTEM',
+                                confirmButtonColor: '#ef4444',
+                              });
+                              if (result.isConfirmed) {
                                 clearAllMessages(false);
                               }
                             }}

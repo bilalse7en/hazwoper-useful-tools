@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { showToast, showSuccess } from '@/lib/swal';
 import { cn } from '@/lib/utils';
 import { recordMediaUpload } from '@/lib/media-hub';
 import { convertImage } from '@/lib/image-converter';
@@ -73,7 +73,7 @@ export default function AdminBlogEditPage() {
           setOriginalImageUrl(data.image_url);
         }
       } catch (err) {
-        toast.error('Failed to retrieve editorial data.');
+        showToast('Failed to retrieve editorial data.', 'error');
         console.error(err);
       } finally {
         setLoading(false);
@@ -188,9 +188,9 @@ export default function AdminBlogEditPage() {
         expiresAt: null,
       });
 
-      toast.success('Media asset uploaded to neural storage.');
+      showSuccess('Media asset uploaded to neural storage.');
     } catch (err) {
-      toast.error(err.message || 'Media upload failed.');
+      showToast(err.message || 'Media upload failed.', 'error');
       console.error(
         'Upload Error Details:',
         err.message,
@@ -207,22 +207,18 @@ export default function AdminBlogEditPage() {
 
   const executeAIGeneration = async () => {
     if (!aiInput.title) {
-      toast.error('Neural prompt is required for synthesis.');
+      showToast('Neural prompt is required for synthesis.', 'error');
       return;
     }
 
     if (!puterReady || !window.puter) {
-      toast.error('Puter AI Engine not initialized. Please refresh.');
+      showToast('Puter AI Engine not initialized. Please refresh.', 'error');
       return;
     }
 
     setIsAIModalOpen(false);
     setGenerating(true);
-    const toastId = 'ai-gen';
-    toast.loading(
-      `Synthesizing ${aiInput.wordCount} word professional editorial...`,
-      { id: toastId }
-    );
+    showToast(`Synthesizing editorial...`, 'info');
 
     try {
       const systemPrompt = `You are an elite HAZWOPER and Industrial Safety technical writer. 
@@ -290,11 +286,9 @@ export default function AdminBlogEditPage() {
         slug: titleToSlug(data.title || aiInput.title),
       }));
 
-      toast.success('Sequence Synchronized (Acoustic Recovery Active).', {
-        id: toastId,
-      });
+      showSuccess('Sequence Synchronized (Recovery Active).');
     } catch (err) {
-      toast.error('AI Synthesis failed. Check connectivity.', { id: toastId });
+      showToast('AI Synthesis failed. Check connectivity.', 'error');
       console.error(err);
     } finally {
       setGenerating(false);
@@ -302,15 +296,12 @@ export default function AdminBlogEditPage() {
   };
   const generateAIImage = async () => {
     if (!formData.title) {
-      toast.error('Please provide a title to guide the neural artist.');
+      showToast('Please provide a title to guide the neural artist.', 'error');
       return;
     }
 
     setImageGenerating(true);
-    const toastId = 'img-gen';
-    toast.loading('Consulting Puter AI for the perfect prompt...', {
-      id: toastId,
-    });
+    showToast('Consulting Puter AI for the perfect prompt...', 'info');
 
     try {
       // 1. Ask Puter for an optimized image prompt
@@ -335,12 +326,7 @@ export default function AdminBlogEditPage() {
         }
       }
 
-      toast.loading(
-        'Neural artist is drawing and persisting your hero image...',
-        {
-          id: toastId,
-        }
-      );
+      showToast('Neural artist is drawing your hero image...', 'info');
 
       // 2. Generate the URL (Pollinations - Improved Endpoint)
       const encodedPrompt = encodeURIComponent(finalizedPrompt);
@@ -430,14 +416,14 @@ export default function AdminBlogEditPage() {
         expiresAt: null,
       });
 
-      toast.success(
-        `Asset Optimized (${optimized.reduction}% reduction) & Persisted.`,
-        { id: toastId }
+      showSuccess(
+        `Asset Optimized (${optimized.reduction}% reduction) & Persisted.`
       );
     } catch (err) {
-      toast.error(err.message || 'Neural drawing or persistence failed.', {
-        id: toastId,
-      });
+      showToast(
+        err.message || 'Neural drawing or persistence failed.',
+        'error'
+      );
       console.error('Neural Error:', err);
     } finally {
       setImageGenerating(false);
@@ -485,21 +471,21 @@ export default function AdminBlogEditPage() {
       if (isNew) {
         const { error } = await supabase.from('blogs').insert([finalData]);
         if (error) throw error;
-        toast.success('Editorial sequence initialized successfully.');
+        showSuccess('Editorial sequence initialized successfully.');
       } else {
         const { error } = await supabase
           .from('blogs')
           .update(finalData)
           .eq('id', id);
         if (error) throw error;
-        toast.success('Editorial sequence synchronized.');
+        showSuccess('Editorial sequence synchronized.');
       }
 
       console.log('Sync Successful, returning to registry.');
       router.push('/admin?view=blogs');
       router.refresh(); // Ensure the dashboard picks up the new data
     } catch (err) {
-      toast.error(err.message || 'Database synchronization failed.');
+      showToast(err.message || 'Database synchronization failed.', 'error');
       console.error(
         'Supabase Error Details:',
         err.message,
@@ -596,7 +582,7 @@ export default function AdminBlogEditPage() {
                   onClick={() => {
                     const sanitized = markdownToHtml(formData.content);
                     setFormData((prev) => ({ ...prev, content: sanitized }));
-                    toast.success('Sequence Sanitized to Professional HTML');
+                    showSuccess('Sequence Sanitized to Professional HTML');
                   }}
                   className="rounded-full bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest gap-2"
                 >
