@@ -53,57 +53,9 @@ export function FloatingChatbot() {
 
   const scrollRef = useRef(null);
 
-  const suppressionRunning = useRef(false);
-
-  // Load Puter.js SDK with robust console suppression
+  // Load Puter.js SDK
   useEffect(() => {
     if (typeof window !== 'undefined' && !window.puter) {
-      const originalLog = console.log;
-      const originalError = console.error;
-      const originalWarn = console.warn;
-
-      const suppressPuterNoise = () => {
-        if (suppressionRunning.current) return;
-        suppressionRunning.current = true;
-
-        console.log = (...args) => {
-          if (
-            args[0] &&
-            typeof args[0] === 'string' &&
-            args[0].includes('puter.com')
-          )
-            return;
-          originalLog.apply(console, args);
-        };
-        console.error = (...args) => {
-          if (
-            args[0] &&
-            typeof args[0] === 'string' &&
-            args[0].includes('puter.com')
-          )
-            return;
-          if (
-            args[0] &&
-            typeof args[0].message === 'string' &&
-            args[0].message.includes('puter.com')
-          )
-            return;
-          // Guard against recursive calls
-          originalError.apply(console, args);
-        };
-        console.warn = (...args) => {
-          if (
-            args[0] &&
-            typeof args[0] === 'string' &&
-            args[0].includes('puter.com')
-          )
-            return;
-          originalWarn.apply(console, args);
-        };
-      };
-
-      suppressPuterNoise();
-
       const script = document.createElement('script');
       script.src = 'https://js.puter.com/v2/';
       script.async = true;
@@ -112,19 +64,6 @@ export function FloatingChatbot() {
           window.puter.quiet = true;
         }
         setPuterReady(true);
-        // Restoration after 5s
-        setTimeout(() => {
-          console.log = originalLog;
-          console.error = originalError;
-          console.warn = originalWarn;
-          suppressionRunning.current = false;
-        }, 5000);
-      };
-      script.onerror = () => {
-        console.log = originalLog;
-        console.error = originalError;
-        console.warn = originalWarn;
-        suppressionRunning.current = false;
       };
       document.head.appendChild(script);
     } else if (window.puter) {
