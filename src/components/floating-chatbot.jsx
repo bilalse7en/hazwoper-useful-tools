@@ -53,15 +53,19 @@ export function FloatingChatbot() {
 
   const scrollRef = useRef(null);
 
-  // Load Puter.js SDK
+  const suppressionRunning = useRef(false);
+
+  // Load Puter.js SDK with robust console suppression
   useEffect(() => {
     if (typeof window !== 'undefined' && !window.puter) {
-      // Suppress Puter's console noise
       const originalLog = console.log;
       const originalError = console.error;
       const originalWarn = console.warn;
 
       const suppressPuterNoise = () => {
+        if (suppressionRunning.current) return;
+        suppressionRunning.current = true;
+
         console.log = (...args) => {
           if (
             args[0] &&
@@ -84,6 +88,7 @@ export function FloatingChatbot() {
             args[0].message.includes('puter.com')
           )
             return;
+          // Guard against recursive calls
           originalError.apply(console, args);
         };
         console.warn = (...args) => {
@@ -107,17 +112,19 @@ export function FloatingChatbot() {
           window.puter.quiet = true;
         }
         setPuterReady(true);
-        // Keep suppressed for a bit to catch post-load noise
+        // Restoration after 5s
         setTimeout(() => {
           console.log = originalLog;
           console.error = originalError;
           console.warn = originalWarn;
+          suppressionRunning.current = false;
         }, 5000);
       };
       script.onerror = () => {
         console.log = originalLog;
         console.error = originalError;
         console.warn = originalWarn;
+        suppressionRunning.current = false;
       };
       document.head.appendChild(script);
     } else if (window.puter) {
