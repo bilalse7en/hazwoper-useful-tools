@@ -82,18 +82,16 @@ export default function RootLayout({ children }) {
         <link rel="dns-prefetch" href="https://media.hazwoper-osha.com" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
+          crossOrigin="anonymous"
+        ></script>
       </head>
       <body
         className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
-        <Script
-          id="adsbygoogle-init"
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
         <Script
           id="organization-json-ld"
           type="application/ld+json"

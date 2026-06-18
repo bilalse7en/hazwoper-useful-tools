@@ -30,6 +30,7 @@ import {
   FileType,
   Activity,
   MessageCircle,
+  Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,6 +56,7 @@ const navGroups = [
       { id: 'glossary', label: 'Glossary', icon: BookOpen },
       { id: 'resources', label: 'Resources', icon: FileSpreadsheet },
       { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
+      { id: 'lesson-quiz-builder', label: 'Lesson Quiz', icon: Target },
     ],
   },
   {
@@ -93,7 +95,7 @@ const adminNavGroups = [
       { id: 'media', label: 'Media Monitor', icon: ImageIcon },
       { id: 'chat-monitor', label: 'Signal Monitor', icon: Activity },
       { id: 'blogs', label: 'Editorial', icon: PenTool },
-      { id: 'puter-agent', label: 'AI Autopilot', icon: Bot },
+      { id: 'se7en-bot', label: 'AI Autopilot', icon: Bot },
       { id: 'tools', label: 'Tool Config', icon: Wrench },
       { id: 'performance', label: 'Optimization', icon: Zap },
     ],

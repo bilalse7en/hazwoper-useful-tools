@@ -24,7 +24,7 @@ const TOOL_SUMMARY = Object.entries(toolInfo)
   .map(([slug, info]) => `- ${info.name}: ${info.description}`)
   .join('\n');
 
-const SYSTEM_PROMPT = `You are the Puter AI "Autopilot Ultimate" for "HAZWOPER Useful Tools".
+const SYSTEM_PROMPT = `You are the Se7eN Bot "Autopilot Ultimate" for "HAZWOPER Useful Tools".
 Your mission is to generate an exhaustive, world-class blog post of exactly 5000 words.
 This content must be the absolute authority on the topic provided.
 
@@ -96,7 +96,7 @@ export function PuterAgent() {
   const generateSuggestions = async () => {
     if (!puterReady || isLoading) return;
     setIsLoading(true);
-    showToast('Consulting Puter AI Engine...', 'info');
+    showToast('Consulting Se7eN Bot Engine...', 'info');
 
     try {
       const response = await window.puter.ai.chat(
@@ -231,8 +231,8 @@ export function PuterAgent() {
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
                 <Bot className="w-6 h-6" />
               </div>
-              <h3 className="text-2xl font-black tracking-tight">
-                Puter AI Autopilot
+              <h3 className="text-2xl font-black tracking-tight italic text-primary uppercase">
+                Se7eN Bot Autopilot
               </h3>
             </div>
             <p className="text-sm text-muted-foreground font-medium leading-relaxed">
@@ -357,7 +357,7 @@ export function PuterAgent() {
                     No Active Strategy
                   </p>
                   <p className="text-xs font-medium">
-                    Trigger the Puter AI agent to generate the weekly strategy.
+                    Trigger the Se7eN Bot agent to generate the weekly strategy.
                   </p>
                 </div>
               </div>

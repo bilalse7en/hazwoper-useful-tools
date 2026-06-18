@@ -140,6 +140,16 @@ export const toolMetadata = {
     canonical: '/tools/word-to-html',
     ogImage: '/og-word-to-html.png',
   },
+  'lesson-quiz-builder': {
+    title:
+      'Lesson Quiz Builder - Extract Quiz from Training Material | Content Suite',
+    description:
+      'Professional lesson quiz generator for safety training. Automatically extract questions, options, and correct answers from DOCX files using neural mapping. Optimized for industrial LMS integration.',
+    keywords:
+      'quiz generator, lesson quiz builder, training quiz extractor, docx to quiz, automated quiz creator, safety training assessment, industrial education tools, OSHA compliance quiz',
+    canonical: '/tools/lesson-quiz-builder',
+    ogImage: '/og-lesson-quiz-builder.png',
+  },
   privacy: {
     title: 'Privacy Policy | Content Suite',
     description:
@@ -182,6 +192,7 @@ export const toolIdToSlug = {
   'audio-converter': 'audio-converter',
   'video-to-gif': 'video-to-gif',
   'word-to-html': 'word-to-html',
+  'lesson-quiz-builder': 'lesson-quiz-builder',
 };
 
 // Reverse mapping
@@ -206,6 +217,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Upload your training DOCX file, select the modules you want to extract, and click generate. You can then copy the clean HTML or export it directly.',
+    useCases: [
+      {
+        title: 'Safety Training Migration',
+        description:
+          'Quickly migrate legacy safety manuals into modern web-based training platforms while preserving hierarchy.',
+      },
+      {
+        title: 'Industrial Onboarding',
+        description:
+          'Convert technical equipment manuals into structured onboarding checklists and syllabus modules.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Does it support nested lists and complex tables?',
+        answer:
+          'Yes, our neural engine is specifically tuned to recognize and preserve the complex structural hierarchies found in industrial technical documentation.',
+      },
+      {
+        question: 'Can I export to specific LMS formats?',
+        answer:
+          'The tool provides clean, semantic HTML5 which is the universal standard for modern Learning Management Systems like Adobe Learning Manager or Docebo.',
+      },
+    ],
   },
   'blog-generator': {
     name: 'Blog Generator',
@@ -222,6 +257,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Paste your source text or upload a document, choose your target audience tone, and let the AI structure your blog post for maximum engagement.',
+    useCases: [
+      {
+        title: 'Industrial News Aggregation',
+        description:
+          'Summarize complex regulatory updates into readable blog posts for your technical staff and industry peers.',
+      },
+      {
+        title: 'Course Marketing',
+        description:
+          'Convert module internal descriptions into public-facing blog content to drive course registrations.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Does it support different writing styles?',
+        answer:
+          'Yes, you can choose between technical, educational, or corporate tones to match your specific organizational voice.',
+      },
+      {
+        question: 'Is the content SEO optimized?',
+        answer:
+          'Absolutely. The engine generates proper heading hierarchies and meta descriptions to ensure maximum visibility.',
+      },
+    ],
   },
   'glossary-generator': {
     name: 'Glossary Generator',
@@ -238,6 +297,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Provide your training manual or technical document. The tool will identify key terms. Review the results and export as a clean, styled glossary.',
+    useCases: [
+      {
+        title: 'Technical Manual Standardization',
+        description:
+          'Extract consistent terminology from complex engineering manuals to ensure all staff use the same technical language.',
+      },
+      {
+        title: 'New Hire Orientation',
+        description:
+          'Generate quick-reference term sheets for trainees to help them master specialized industrial vocabulary.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Can I manually edit the extracted definitions?',
+        answer:
+          'Yes, the generator provides a verification interface where you can refine and polish definitions before final export.',
+      },
+      {
+        question: 'How does it pick which terms to define?',
+        answer:
+          'The engine uses NLP to identify high-frequency technical nouns and specialized acronyms within your source document.',
+      },
+    ],
   },
   'resource-generator': {
     name: 'Resource Generator',
@@ -254,6 +337,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Input your source document. The tool will scan for references and external resources, providing a categorized list ready for your resource page.',
+    useCases: [
+      {
+        title: 'Appendix Generation',
+        description:
+          'Automatically compile the "Further Reading" or "References" section for safety training manuals.',
+      },
+      {
+        title: 'Hyperlink Validation',
+        description:
+          'Extract and audit all external links from your training PDFs to ensure they are current and functional.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Does it recognize all types of links?',
+        answer:
+          'It identifies standard web links, document cross-references, and even specialized bibliography markers.',
+      },
+      {
+        question: 'Can I export to a clean HTML format?',
+        answer:
+          'Yes, the output is formatted as a semantic HTML list, ready to be dropped into any CMS or resource page.',
+      },
+    ],
   },
   'html-cleaner': {
     name: 'HTML Cleaner',
@@ -270,6 +377,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Paste your messy HTML into the editor. Choose your cleaning preferences (remove styles, remove comments, etc.) and get instant clean code.',
+    useCases: [
+      {
+        title: 'LMS Content Migration',
+        description:
+          'Sanitize bloated HTML from legacy course exports before importing into a modern high-performance LMS.',
+      },
+      {
+        title: 'Email Template Optimization',
+        description:
+          'Clean up dirty HTML code to ensure better rendering and deliverability of technical safety alerts.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Will it mess up my document structure?',
+        answer:
+          'No. The cleaner is designed to strip presentation layers (CSS) while carefully preserving semantic hierarchy (H1, P, UL).',
+      },
+      {
+        question: 'Does it remove Microsoft Word specific junk?',
+        answer:
+          'Specifically. It targets the "Mso" tags, extra spans, and inline XML that Microsoft Word auto-injects into exports.',
+      },
+    ],
   },
   'image-converter': {
     name: 'Image Converter',
@@ -286,6 +417,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Drag and drop your images into the zone. Select your desired output format and quality. Download your optimized images individually or as a ZIP.',
+    useCases: [
+      {
+        title: 'Mobile App Optimization',
+        description:
+          'Convert high-res equipment photos into lightweight WebP assets for faster loading in mobile field apps.',
+      },
+      {
+        title: 'Digital PDF Compression',
+        description:
+          'Batch convert PNG screenshots into optimized JPGs to reduce the final file size of technical documentation PDFs.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Is there a limit on file size?',
+        answer:
+          'We support files up to 25MB for browser processing, ensuring smooth performance without straining your system.',
+      },
+      {
+        question: 'Are my images uploaded to any server?',
+        answer:
+          'Never. All conversion happens 100% locally in your browser memory using specialized processing workers.',
+      },
+    ],
   },
   'video-compressor': {
     name: 'Video Compressor',
@@ -302,6 +457,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Upload your video file. Choose your compression settings based on your needs. Click compress and wait for the browser to process your file.',
+    useCases: [
+      {
+        title: 'Safety Training Streaming',
+        description:
+          'Compress 4K safety demonstration videos for smooth streaming on low-bandwidth site networks.',
+      },
+      {
+        title: 'Internal Knowledge Base',
+        description:
+          'Maximize storage efficiency on internal servers by compressing weekly safety briefing recordings.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Will I lose significant video quality?',
+        answer:
+          'The engine uses intelligent CRF (Constant Rate Factor) encoding to find the "sweet spot" between file size and visual clarity.',
+      },
+      {
+        question: 'How long does compression take?',
+        answer:
+          'Processing time depends on your CPU and video length; typically, a 5-minute HD clip finishes in under 2 minutes.',
+      },
+    ],
   },
   'ai-assistant': {
     name: 'AI Assistant',
@@ -318,6 +497,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Type your query or paste the content you need help with. The AI will provide tailored suggestions and improvements instantly.',
+    useCases: [
+      {
+        title: 'Technical Summarization',
+        description:
+          'Condense long regulatory documents into executive summaries for rapid internal distribution.',
+      },
+      {
+        title: 'Content Refinement',
+        description:
+          'Improve the clarity and impact of safety warnings and procedural instructions for industrial manuals.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Which model does the AI use?',
+        answer:
+          'The assistant is powered by high-performance neural clusters optimized for technical and scientific linguistics.',
+      },
+      {
+        question: 'Can it help with technical writing?',
+        answer:
+          'Yes, it can suggest improvements for passive voice, technical terminology, and semantic structure.',
+      },
+    ],
   },
   'image-to-text': {
     name: 'Image to Text OCR',
@@ -334,6 +537,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Upload or paste an image containing text. The OCR engine will process it and display the extracted text for you to edit and copy.',
+    useCases: [
+      {
+        title: 'Legacy Archive Digitization',
+        description:
+          'Convert scanned paper safety logs and handwritten incident reports into searchable digital databases.',
+      },
+      {
+        title: 'Diagram Label Extraction',
+        description:
+          'Extract technical labels and data from engineering diagrams and flowcharts for documentation updates.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Does it support multiple languages?',
+        answer:
+          'Yes, the OCR engine is trained to recognize technical characters in over 50 global languages.',
+      },
+      {
+        question: 'Can it read messy handwriting?',
+        answer:
+          'It has specialized neural layers for handwriting recognition, though results vary based on image clarity.',
+      },
+    ],
   },
   'document-extractor': {
     name: 'Document Extractor',
@@ -350,6 +577,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Submit your DOCX document. Use the extraction dashboard to filter for specific elements like tables or images, and export them as needed.',
+    useCases: [
+      {
+        title: 'Content Audit',
+        description:
+          'Bulk extract all table data from 100+ safety manuals to verify compliance metrics across a fleet.',
+      },
+      {
+        title: 'Media Asset Harvesting',
+        description:
+          'Gather all embedded images and diagrams from technical manuals for use in new digital training modules.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Can I extract images separately?',
+        answer:
+          'Yes, the extraction interface allows you to toggle between text, tables, and media assets during the intake process.',
+      },
+      {
+        question: 'Does it handle legacy Word formats?',
+        answer:
+          'It is optimized for modern DOCX but has fallback mapping for older document structures.',
+      },
+    ],
   },
   'video-converter': {
     name: 'Video Converter',
@@ -366,6 +617,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Drag and drop your video files into the converter. Choose your desired output format and quality level. Click convert and download your re-encoded videos instantly from your browser.',
+    useCases: [
+      {
+        title: 'Cross-Platform Compatibility',
+        description:
+          'Convert proprietary industrial video formats into universal MP4 files for playback on any device.',
+      },
+      {
+        title: 'Social Safety Campaigns',
+        description:
+          'Convert long safety demonstrations into short, high-quality GIFs for internal social feeds.',
+      },
+    ],
+    faq: [
+      {
+        question: 'What is the maximum resolution supported?',
+        answer:
+          'We support scaling and conversion up to 4K resolution, depending on your local hardware acceleration.',
+      },
+      {
+        question: 'Does it support HEVC/H.265?',
+        answer:
+          'Yes, our browser engine includes modern codec support for high-efficiency video encoding.',
+      },
+    ],
   },
   'audio-converter': {
     name: 'Audio Converter',
@@ -382,6 +657,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Upload your audio files. Select the target format (like MP3 or WAV) and choose a bitrate preset. Click Convert to process your files and download the results immediately.',
+    useCases: [
+      {
+        title: 'Podcast Distribution',
+        description:
+          'Convert high-fidelity safety interview recordings into optimized MP3s for company-wide distribution.',
+      },
+      {
+        title: 'Audio Alert Integration',
+        description:
+          'Convert WAV recordings of safety alerts into compact OGG files for use in web-based control dashboards.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Can I adjust the audio quality?',
+        answer:
+          'Yes, you can choose from various bitrate presets ranging from 64kbps up to 320kbps for crystal-clear audio.',
+      },
+      {
+        question: 'Does it support batch conversion?',
+        answer:
+          'Absolutely. You can drop multiple audio files at once and they will be processed in a high-priority queue.',
+      },
+    ],
   },
   'video-to-gif': {
     name: 'Video to GIF',
@@ -398,6 +697,30 @@ export const toolInfo = {
     ],
     howToUse:
       'Select a short video clip (recommend under 10 seconds). Configure your output dimensions and framerate. The tool will generate a high-quality animated GIF instantly for your training manual.',
+    useCases: [
+      {
+        title: 'SOP Visual Aids',
+        description:
+          'Create looping visual demonstrations of repetitive industrial tasks for technical Standard Operating Procedures.',
+      },
+      {
+        title: 'Email Newsletter Engagement',
+        description:
+          'Embed lightweight safety clip highlights in internal email communications for higher engagement.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Why just 10 seconds?',
+        answer:
+          'GIFs over 10 seconds become extremely large; we optimize for short, high-fidelity loops that maintain web performance.',
+      },
+      {
+        question: 'Can I control the dimensions?',
+        answer:
+          'Yes, you can scale the output to fit your specific documentation layout (e.g., sidebars or full-width sections).',
+      },
+    ],
   },
   'word-to-html': {
     name: 'Word to HTML',
@@ -414,6 +737,73 @@ export const toolInfo = {
     ],
     howToUse:
       'Paste your content directly from a Word document or upload a .docx file. Use the cleaning filters on the right to toggle specific removals. Copy the sanitized, lightweight HTML ready for your CMS.',
+    useCases: [
+      {
+        title: 'Corporate Wiki Migration',
+        description:
+          'Migrate thousands of Word-based technical articles into a clean, searchable internal wiki ecosystem.',
+      },
+      {
+        title: 'Clean Web Publishing',
+        description:
+          'Sanitize marketing copy written in Word before publishing to ensure no layout-breaking code is imported.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Does it strip all formatting?',
+        answer:
+          'It strips non-standard styling while maintaining core semantics like bold, italics, lists, and headings.',
+      },
+      {
+        question: 'Can I remove specific attributes like "style"?',
+        answer:
+          'Yes, the cleaning panel allows you to toggle the removal of inline styles, classes, and IDs individually.',
+      },
+    ],
+  },
+  'lesson-quiz-builder': {
+    name: 'Lesson Quiz Builder',
+    icon: '🎯',
+    description: 'Generate lesson quizzes from documents',
+    category: 'Content Creation',
+    detailedDescription:
+      'The Lesson Quiz Builder is a specialized extraction unit engineered for safety training developers and industrial educators. It utilizes advanced mapping protocols to scan your DOCX documents for "Lesson Quiz" sections, automatically identifying questions, distractor options, and correct answer markers. By automating the high-friction task of manual quiz transcription, it ensures that your assessments maintain 100% fidelity to the source material while being ready for instant deployment to your digital ecosystem.',
+    benefits: [
+      'Automatic detection of specialized Lesson Quiz nomenclature',
+      'Neural mapping of questions to their respective options (A-D)',
+      'High-precision identification of correct answer markers',
+      'Removal of legacy formatting for clean web-ready output',
+      'Reduced transcription errors in high-stakes compliance testing',
+      'Direct copy-to-clipboard functionality for rapid deployment',
+    ],
+    howToUse:
+      '1. Prepare your training DOCX ensuring the quiz section is clearly marked. 2. Upload the document to the Lesson Quiz Builder terminal. 3. The engine will parse the content and display the identified questions. 4. Review the correct answer highlights and click "Generate HTML" to receive your clean, styled assessment code.',
+    useCases: [
+      {
+        title: 'Compliance Certification',
+        description:
+          'Quickly generate regulatory compliance quizzes for annual safety certifications and industrial permits.',
+      },
+      {
+        title: 'Knowledge Verification',
+        description:
+          'Automate the creation of post-module knowledge checks for complex technical training courses.',
+      },
+    ],
+    faq: [
+      {
+        question:
+          'Which markers does the engine recognize for correct answers?',
+        answer:
+          'The engine is tuned to identify bold text, highlighted backgrounds, or bracketed indicators as correct answer markers within the source DOCX.',
+      },
+      {
+        question: 'Can it handle multiple-choice and true/false questions?',
+        answer:
+          'Absolutely. The mapping logic is robust enough to categorize various question types commonly used in industrial education.',
+      },
+    ],
   },
 };
 

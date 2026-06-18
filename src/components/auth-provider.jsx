@@ -179,7 +179,7 @@ export function AuthProvider({ children }) {
     return () => {
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [user]);
 
   // Dedicated real-time listener for user profile changes
   useEffect(() => {

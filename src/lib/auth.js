@@ -24,6 +24,7 @@ export const NAV_ITEMS = [
   { id: 'audio-converter', label: 'Audio Converter', icon: 'Music' },
   { id: 'video-to-gif', label: 'Video to GIF', icon: 'Video' },
   { id: 'word-to-html', label: 'Word to HTML', icon: 'FileType' },
+  { id: 'lesson-quiz-builder', label: 'Lesson Quiz Builder', icon: 'Target' },
   { id: 'ai-assistant', label: 'AI UNIVERSE', icon: 'BrainCircuit' },
 ];
 
@@ -137,6 +138,7 @@ export function hasAccess(user, featureId, toolSettings = null) {
       'resource-generator',
       'document-extractor',
       'ai-assistant',
+      'lesson-quiz-builder',
     ].includes(featureId) ||
     [
       'course',
@@ -149,6 +151,7 @@ export function hasAccess(user, featureId, toolSettings = null) {
       'resource-generator',
       'document-extractor',
       'ai-assistant',
+      'lesson-quiz-builder',
     ].includes(slug);
 
   if (isGenerator) {

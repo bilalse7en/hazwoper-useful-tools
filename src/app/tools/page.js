@@ -20,6 +20,7 @@ import {
   Wand2,
   ShieldCheck,
   Zap,
+  Target,
 } from 'lucide-react';
 
 const iconMap = {
@@ -37,6 +38,7 @@ const iconMap = {
   'audio-converter': Zap,
   'video-to-gif': Video,
   'word-to-html': FileText,
+  'lesson-quiz-builder': Target,
 };
 
 export default function ToolsDirectoryPage() {

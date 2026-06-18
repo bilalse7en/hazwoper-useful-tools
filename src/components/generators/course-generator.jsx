@@ -636,7 +636,7 @@ export function CourseGenerator() {
         data={activeView === 'faq' ? courseData?.faqData : null}
       />
 
-      {/* Notification system replaced by Sonner */}
+      {/* Notification system standardized to SweetAlert2 utility */}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Globe,
   Cpu,
+  Award,
 } from 'lucide-react';
 import { AdSenseAd } from '@/components/adsense-ad';
 
@@ -157,6 +158,46 @@ export default function ToolDetailsPage({ params: paramsProp }) {
                       </div>
                     </li>
                   </ul>
+                </div>
+              </div>
+            </section>
+
+            {/* New: Technical Commitment Section */}
+            <section className="bg-card/40 border border-border rounded-[40px] p-10 md:p-16 space-y-10">
+              <div className="grid md:grid-cols-3 gap-12">
+                <div className="md:col-span-2 space-y-6">
+                  <h3 className="text-2xl font-black">
+                    Our Commitment to <br />
+                    Professional Excellence
+                  </h3>
+                  <div className="prose prose-sm prose-invert max-w-none text-muted-foreground font-medium leading-relaxed">
+                    <p>
+                      At Content Suite, we understand that technical
+                      documentation is the backbone of safety and compliance.
+                      That&apos;s why the {toolInfo[toolSlug]?.name} is built to
+                      the highest standards of digital precision. Our engineers
+                      continuously refine our extraction and conversion
+                      algorithms to adapt to the ever-evolving landscape of
+                      industrial documentation structures.
+                    </p>
+                    <p>
+                      Whether you are an individual instructor or a large-scale
+                      training facility, our goal is to provide you with the
+                      most reliable, secure, and efficient tools possible. By
+                      automating the repetitive aspects of content migration, we
+                      empower you to focus on what matters most: delivering
+                      high-quality, life-saving information to your trainees.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-primary/5 rounded-3xl border border-primary/20 p-8 flex flex-col justify-center items-center text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Award className="w-8 h-8 text-primary" />
+                  </div>
+                  <h4 className="font-black">Quality First</h4>
+                  <p className="text-[10px] text-muted-foreground font-bold tracking-wider uppercase">
+                    Industrial Grade <br /> Reliability
+                  </p>
                 </div>
               </div>
             </section>

@@ -10,7 +10,6 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
-  MessageCircle,
   Cpu,
   Zap,
   ShieldCheck,
@@ -23,17 +22,26 @@ const TOOL_SUMMARY = Object.entries(toolInfo)
   .map(([slug, info]) => `- ${info.name}: ${info.description}`)
   .join('\n');
 
-const SYSTEM_PROMPT = `You are the Official Floating Assistant for "HAZWOPER Useful Tools". 
-Your mission is to provide quick, helpful guidance about our ecosystem.
+const SYSTEM_PROMPT = `You are the Official Floating Assistant for "HAZWOPER Useful Tools", a specialized platform for safety professionals and industrial trainers.
 
-Available Tools:
+Your mission is to provide expert guidance about our ecosystem, which includes high-performance documentation tools and a neural chat system.
+
+TECHNICAL KNOWLEDGE BASE:
+1. Core Platform: We provide tools for lesson planning, quiz building, risk assessment, and technical document extraction.
+2. Generator Architecture: Our "Next-Gen Generator" uses client-side WASM for security and privacy.
+3. Content Suite: An integrated environment for safety directors, environmental consultants, and corporate compliance officers.
+
+DETAILED TOOL SCHEMA:
 ${TOOL_SUMMARY}
 
-Rules:
-1. Be concise and professional.
-2. Recommend tools for specific user needs.
-3. Keep the conversation helpful.
-4. If asked about technical details, mention the "/details" page for each tool.`;
+USER ASSISTANCE PROTOCOLS:
+1. Be concise, authoritative, and professional.
+2. For document extraction (DOCX/PDF), emphasize that processing happens locally for data integrity.
+3. If a user asks "how to use X", explain the tool's specific industrial application (e.g., "Use the Quiz Builder to generate compliant training assessments directly from your SOPs").
+4. If asked about technical settings, mention that "Performance Mode" in the theme settings manages visual complexity.
+5. If a user asks about the "Chat" or "Neural Link", explain that it's a secure, encrypted messaging hub with 24-hour message lifecycle.
+6. Always recommend the "/details" page for granular technical specifications and FAQs of each tool.
+7. If asked about the developer or foundation, mention "Bilal Se7eN" focus on architectural integrity.`;
 
 export function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -189,7 +197,7 @@ export function FloatingChatbot() {
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 h-14 w-14 rounded-2xl bg-primary text-primary-foreground shadow-2xl shadow-primary/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-[9999] group border-2 border-white/10"
       >
-        <MessageCircle className="h-7 w-7 group-hover:rotate-12 transition-transform" />
+        <Bot className="h-7 w-7 group-hover:rotate-12 transition-transform" />
         <span className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-background animate-pulse" />
       </button>
     );
@@ -205,12 +213,18 @@ export function FloatingChatbot() {
       {/* Header */}
       <div className="h-16 px-6 flex items-center justify-between border-b border-white/5 bg-white/5 shrink-0 select-none">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-primary/20 flex items-center justify-center border border-primary/20">
-            <Bot className="h-5 w-5 text-primary" />
+          <div className="h-9 w-9 rounded-xl bg-primary/20 flex items-center justify-center border border-primary/20 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/puter-bot.png"
+              alt="Se7eN"
+              loading="lazy"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
-            <h3 className="text-[11px] font-black uppercase tracking-widest">
-              Neural Bot
+            <h3 className="text-[11px] font-black uppercase tracking-widest text-primary italic">
+              Se7eN Bot
             </h3>
             <div className="flex items-center gap-1.5">
               <div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />

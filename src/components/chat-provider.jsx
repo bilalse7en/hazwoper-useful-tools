@@ -79,6 +79,9 @@ export function ChatProvider({ children }) {
     async (senderId) => {
       if (!user || !senderId) return;
 
+      // GUARD: If it's the virtual bot subject, do not attempt DB sync
+      if (senderId === 'se7en-bot' || senderId === 'puter-ai') return;
+
       // 1. Optimistic Update
       setSessionReadIds((prev) => new Set(prev).add(senderId));
 
@@ -99,7 +102,14 @@ export function ChatProvider({ children }) {
           .eq('receiver_id', user.id);
 
         if (error) {
-          console.error('Supabase Update Error:', error);
+          console.error(
+            'Supabase Update Error for senderId:',
+            senderId,
+            'user.id:',
+            user.id,
+            'Full Error:',
+            JSON.stringify(error, null, 2)
+          );
           showToast('Sync Error: Failed to mark as read.', 'error');
           throw error;
         }
@@ -163,11 +173,11 @@ export function ChatProvider({ children }) {
     clearAllMessages: async (isGlobalOnly = true, partnerId = null) => {
       if (!user) return { success: false, error: 'Unauthorized' };
 
-      // Requirement: Global purge is ADMIN ONLY
+      // Requirement: Global delete is ADMIN ONLY
       if (isGlobalOnly && user.role !== 'admin') {
         return {
           success: false,
-          error: 'Administrative clearance required for global purge.',
+          error: 'Administrative clearance required for global delete.',
         };
       }
 
@@ -185,24 +195,34 @@ export function ChatProvider({ children }) {
               `and(sender_id.eq.${user.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user.id})`
             );
         } else if (user.role === 'admin') {
-          // Admin doing a mass wipe (all global and all private)
+          // Admin doing a mass delete (all global and all private)
           query = query.neq('id', '00000000-0000-0000-0000-000000000000');
         } else {
-          // Non-admin trying mass wipe: Not allowed
-          return { success: false, error: 'Unauthorized mass purge attempt.' };
+          // Non-admin trying mass delete: Not allowed
+          return { success: false, error: 'Unauthorized mass delete attempt.' };
         }
 
         const { error } = await query;
         if (error) throw error;
 
         showSuccess(
-          'Chat signal purged',
+          'Chat signal deleted',
           isGlobalOnly ? 'Global frequency cleared.' : 'Channel wiped.'
         );
+
+        // Instant UI Response: Notify all open ChatWindow instances to clear their local state
+        if (isGlobalOnly) {
+          window.dispatchEvent(new CustomEvent('deleteGlobalChat'));
+        } else if (partnerId) {
+          window.dispatchEvent(
+            new CustomEvent('deleteChatThread', { detail: { partnerId } })
+          );
+        }
+
         return { success: true };
       } catch (err) {
-        console.error('Purge error:', err);
-        showToast('Purge failed', 'error');
+        console.error('Delete error:', err);
+        showToast('Delete failed', 'error');
         return { success: false, error: err.message };
       }
     },

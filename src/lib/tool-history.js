@@ -66,20 +66,52 @@ export async function saveGeneratorState(
 
   // We save generator states as tool_history entries with result_url = 'GENERATOR_STATE'
   // and content in metadata
+  // For generators, we update by user and tool type to avoid row bloat
   const { data, error } = await supabase
     .from('tool_history')
-    .insert({
-      user_id: user.id,
-      tool_type: toolType,
-      file_name: fileName || stateData.fileName || 'Generator Session',
-      result_url: 'GENERATOR_STATE',
-      metadata: stateData,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    })
+    .upsert(
+      {
+        user_id: user.id,
+        tool_type: toolType,
+        file_name: fileName || stateData.fileName || 'Generator Session',
+        result_url: 'GENERATOR_STATE',
+        metadata: stateData,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        onConflict: 'user_id,tool_type,result_url',
+        ignoreDuplicates: false,
+      }
+    )
     .select()
     .maybeSingle();
 
   if (error) {
+    // FALLBACK: If upsert fails due to missing unique constraint, try simple insert
+    if (error.code === '42P10' || error.message.includes('constraint')) {
+      const { data: insertData, error: insertError } = await supabase
+        .from('tool_history')
+        .insert({
+          user_id: user.id,
+          tool_type: toolType,
+          file_name: fileName || stateData.fileName || 'Generator Session',
+          result_url: 'GENERATOR_STATE',
+          metadata: stateData,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        })
+        .select()
+        .maybeSingle();
+
+      if (insertError) {
+        console.error(
+          '[ToolHistory] Generator save fallback error:',
+          insertError
+        );
+        return null;
+      }
+      return insertData;
+    }
+
     console.error('[ToolHistory] State save error:', error);
     return null;
   }

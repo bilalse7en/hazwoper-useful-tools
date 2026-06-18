@@ -35,7 +35,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { getTimeRemaining, formatSize } from '@/lib/tool-history';
 import { convertImage } from '@/lib/image-converter';
 import { toolInfo } from '@/lib/seo';
-import { PuterAgent } from '@/components/admin/puter-agent';
+import { PuterAgent as Se7eNBot } from '@/components/admin/puter-agent';
 import { AdminChatMonitor } from '@/components/admin/AdminChatMonitor';
 import { ChatModerationList } from '@/components/admin/ChatModerationList';
 import { showAlert, showConfirm, showToast, showSuccess } from '@/lib/swal';
@@ -1055,8 +1055,8 @@ function AdminDashboard() {
               searchKey="title"
             />
           </div>
-        ) : activeView === 'puter-agent' ? (
-          <PuterAgent />
+        ) : activeView === 'se7en-bot' ? (
+          <Se7eNBot />
         ) : activeView === 'performance' ? (
           <div className="space-y-8 animate-in-fade">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

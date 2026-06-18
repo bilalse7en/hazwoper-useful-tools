@@ -139,6 +139,102 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      {/* New: Technical Infrastructure Section */}
+      <section className="py-32 bg-card relative overflow-hidden">
+        <div className="container mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-20 items-center">
+            <div className="order-2 lg:order-1">
+              <div className="p-10 rounded-[50px] bg-muted/30 border border-border space-y-8">
+                <h3 className="text-2xl font-black">Technical Ecosystem</h3>
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1">
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    </div>
+                    <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                      <span className="text-foreground font-black">
+                        Decentralized Processing:{' '}
+                      </span>
+                      By leveraging WebAssembly (WASM), we shift heavy
+                      extraction tasks to the client side, ensuring data
+                      residency and privacy.
+                    </p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1">
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    </div>
+                    <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                      <span className="text-foreground font-black">
+                        Semantic Mapping:{' '}
+                      </span>
+                      Our neural layers are trained on over 50,000 industrial
+                      safety documents to recognize specialized nomenclature and
+                      formatting patterns.
+                    </p>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1">
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    </div>
+                    <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                      <span className="text-foreground font-black">
+                        LMS Integration:{' '}
+                      </span>
+                      Every output is verified against common LMS styling
+                      requirements to ensure seamless migration into platforms
+                      like Canvas, Moodle, and Blackboard.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2 space-y-8">
+              <Badge className="bg-primary text-primary-foreground font-black uppercase tracking-widest text-[10px] px-4 py-1">
+                Foundations
+              </Badge>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                Architectural <br />
+                <span className="text-primary">Integrity.</span>
+              </h2>
+              <p className="text-xl text-muted-foreground font-medium leading-relaxed">
+                We didn&apos;t just build a set of tools; we built a
+                professional engineering environment. Our platform is designed
+                to handle the rigors of industrial data management while
+                providing the simplicity of a modern web application.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* New: Global Impact Section */}
+      <section className="py-32 border-t border-border bg-primary/5">
+        <div className="container mx-auto px-6 text-center max-w-4xl space-y-12">
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight">
+            Our Commitment to the <br />
+            <span className="text-primary">Safety Community</span>
+          </h2>
+          <div className="grid md:grid-cols-2 gap-12 text-left pt-12">
+            <p className="text-muted-foreground font-medium leading-relaxed">
+              As we look toward the future of industrial education, Content
+              Suite remains committed to providing accessible, high-performance
+              tools for those on the front lines of safety training. We believe
+              that high-quality documentation should be an asset, not a burden,
+              for organizations striving to maintain compliance and protect
+              their workforce.
+            </p>
+            <p className="text-muted-foreground font-medium leading-relaxed">
+              Our roadmap includes expanded support for multi-lingual
+              extraction, advanced AI-aided content refinement, and deeper
+              integrations with global safety standards. Join the thousands of
+              professionals who have already streamlined their documentation
+              lifecycle with our ecosystem.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

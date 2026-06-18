@@ -16,9 +16,11 @@ import {
   Check,
   CheckCheck,
   MoreHorizontal,
+  MoreVertical,
   AlertTriangle,
   Ban,
   Trash2,
+  Edit2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +36,130 @@ import { cn } from '@/lib/utils';
 import { showConfirm, showToast, showSuccess } from '@/lib/swal';
 import { reportUser, blockUser } from '@/lib/moderation';
 
+function MessageActions({ message, isMine, canDeleteEverywhere, onDelete }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(message.text);
+
+  const handleDelete = async (forEveryone = false) => {
+    const result = await showConfirm({
+      title: forEveryone ? 'Delete for Everyone?' : 'Delete for Me?',
+      text: forEveryone
+        ? 'This will remove the message from the frequency for all subjects.'
+        : 'This will hide this message from your local view.',
+      icon: 'warning',
+      confirmButtonText: 'Yes, Delete',
+    });
+
+    if (result.isConfirmed) {
+      if (forEveryone) {
+        const { error } = await supabase
+          .from('messages')
+          .delete()
+          .eq('id', message.id);
+        if (error) showToast('Delete failed', 'error');
+        else onDelete();
+      } else {
+        onDelete();
+        showToast('Message hidden locally', 'success');
+      }
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!editText.trim() || editText === message.text) {
+      setIsEditing(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('messages')
+      .update({ text: editText.trim(), updated_at: new Date().toISOString() })
+      .eq('id', message.id);
+
+    if (error) showToast('Edit failed', 'error');
+    else {
+      setIsEditing(false);
+      showToast('Signal updated', 'success');
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1.5 p-1 bg-card/60 backdrop-blur-xl border border-primary/20 rounded-xl shadow-2xl animate-in fade-in zoom-in duration-200">
+        <Input
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          className="h-8 min-w-[200px] bg-slate-950/50 border-primary/20 text-xs text-foreground focus-visible:ring-primary/20"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleEdit();
+            if (e.key === 'Escape') setIsEditing(false);
+          }}
+        />
+        <Button
+          size="icon"
+          className="h-8 w-8 rounded-lg bg-emerald-500 hover:bg-emerald-600"
+          onClick={handleEdit}
+        >
+          <Check className="w-3.5 h-3.5" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 rounded-lg"
+          onClick={() => setIsEditing(false)}
+        >
+          <X className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-lg opacity-40 hover:opacity-100 hover:bg-primary/10 transition-all"
+        >
+          <MoreVertical className="w-3.5 h-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align={isMine ? 'end' : 'start'}
+        className="w-48 rounded-2xl bg-card/95 backdrop-blur-xl border-border p-1.5 shadow-2xl"
+      >
+        {isMine && (
+          <DropdownMenuItem
+            onClick={() => setIsEditing(true)}
+            className="rounded-xl flex items-center gap-2.5 p-2 text-xs font-bold text-foreground hover:bg-primary/10"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            Edit Signal
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          onClick={() => handleDelete(false)}
+          className="rounded-xl flex items-center gap-2.5 p-2 text-xs font-bold text-foreground hover:bg-primary/10"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Delete for Me
+        </DropdownMenuItem>
+        {canDeleteEverywhere && (
+          <DropdownMenuItem
+            onClick={() => handleDelete(true)}
+            className="rounded-xl flex items-center gap-2.5 p-2 text-xs font-bold text-red-500 hover:bg-red-500/10"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete for Everyone
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function ChatWindow({
   receiverId = null,
   isGlobal = true,
@@ -45,11 +171,11 @@ export function ChatWindow({
   const { markAsRead, setActiveChat, clearAllMessages } = useChat();
   const [messages, setMessages] = useState([]);
 
-  // Track active chat in provider to prevent notification flicker
   useEffect(() => {
     setActiveChat(isGlobal ? null : receiverId);
     return () => setActiveChat(null);
   }, [receiverId, isGlobal, setActiveChat]);
+
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [receiverProfile, setReceiverProfile] = useState(null);
@@ -61,7 +187,32 @@ export function ChatWindow({
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch receiver profile if direct chat
+        if (receiverId === 'se7en-bot') {
+          setReceiverProfile({
+            id: 'se7en-bot',
+            full_name: 'Se7eN Bot',
+            username: 'se7en_bot',
+            role: 'admin',
+            avatar_url: '/puter-bot.png',
+          });
+          setMessages([
+            {
+              id: 'se7en-welcome',
+              sender_id: 'se7en-bot',
+              text: 'Neural Link established. I am Se7eN Bot, your architectural assistant. How can I facilitate your session today?',
+              created_at: new Date().toISOString(),
+              is_global: false,
+              sender: {
+                full_name: 'Se7eN Bot',
+                role: 'admin',
+                avatar_url: '/puter-bot.png',
+              },
+            },
+          ]);
+          setLoading(false);
+          return;
+        }
+
         if (receiverId) {
           const { data: profile } = await supabase
             .from('profiles')
@@ -71,7 +222,6 @@ export function ChatWindow({
           setReceiverProfile(profile);
         }
 
-        // Fetch latest messages
         let query = supabase
           .from('messages')
           .select('*, sender:profiles!sender_id(*)')
@@ -87,8 +237,6 @@ export function ChatWindow({
 
         const { data, error } = await query.limit(100);
         if (error) {
-          console.warn('Supabase Relation Error (Likely SQL not run):', error);
-          // Fallback to simple query if relationship fails
           const fallback = await supabase
             .from('messages')
             .select('*')
@@ -107,7 +255,6 @@ export function ChatWindow({
 
     fetchData();
 
-    // Subscribe to new messages, updates, AND deletes
     const channel = supabase
       .channel(`chat-${isGlobal ? 'global' : receiverId}`)
       .on(
@@ -160,7 +307,6 @@ export function ChatWindow({
           filter: isGlobal ? 'is_global=eq.true' : undefined,
         },
         (payload) => {
-          // Real-time removal when messages are deleted
           setMessages((prev) =>
             prev.filter((msg) => msg.id !== payload.old.id)
           );
@@ -173,7 +319,23 @@ export function ChatWindow({
     };
   }, [user, receiverId, isGlobal]);
 
-  // Mark as read when messages arrive or window opens
+  useEffect(() => {
+    const handleGlobalDelete = () => {
+      if (isGlobal) setMessages([]);
+    };
+    const handleThreadDelete = (e) => {
+      if (!isGlobal && receiverId === e.detail.partnerId) setMessages([]);
+    };
+
+    window.addEventListener('deleteGlobalChat', handleGlobalDelete);
+    window.addEventListener('deleteChatThread', handleThreadDelete);
+
+    return () => {
+      window.removeEventListener('deleteGlobalChat', handleGlobalDelete);
+      window.removeEventListener('deleteChatThread', handleThreadDelete);
+    };
+  }, [isGlobal, receiverId]);
+
   useEffect(() => {
     if (!user || isGlobal || !receiverId) return;
     if (messages.length === 0) return;
@@ -192,15 +354,12 @@ export function ChatWindow({
     }
   }, [messages]);
 
-  // 24-hour countdown helper
-  // Force re-render every minute to update countdowns
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(Date.now()), 60000);
     return () => clearInterval(timer);
   }, []);
 
-  // 24-hour countdown helper - uses stored currentTime, not Date.now() during render
   const getTimeRemaining = useCallback(
     (createdAt) => {
       const created = new Date(createdAt).getTime();
@@ -215,7 +374,6 @@ export function ChatWindow({
     [currentTime]
   );
 
-  // Client-side auto-filter expired messages
   const activeMessages = messages.filter((msg) => {
     const created = new Date(msg.created_at).getTime();
     const expires = created + 24 * 60 * 60 * 1000;
@@ -227,7 +385,10 @@ export function ChatWindow({
     if (!newMessage.trim() || !user) return;
 
     if (user.is_frozen) {
-      showToast('Signal Blocked', 'error');
+      showToast(
+        'Your account is frozen. Messaging privileges revoked.',
+        'error'
+      );
       return;
     }
 
@@ -240,10 +401,102 @@ export function ChatWindow({
     };
 
     try {
+      if (receiverId === 'se7en-bot') {
+        const userMsg = {
+          id: Date.now().toString(),
+          sender_id: user.id,
+          text: newMessage.trim(),
+          created_at: new Date().toISOString(),
+          sender: user,
+        };
+        setMessages((prev) => [...prev, userMsg]);
+        setNewMessage('');
+
+        // AI Response Logic for Se7eN Bot
+        try {
+          if (!window.puter) {
+            // Fallback if Puter SDK is not loaded
+            setTimeout(() => {
+              const se7enMsg = {
+                id: (Date.now() + 1).toString(),
+                sender_id: 'se7en-bot',
+                text: 'Signal bridge initializing. Please wait a moment for neural link synchronization.',
+                created_at: new Date().toISOString(),
+                sender: {
+                  full_name: 'Se7eN Bot',
+                  role: 'admin',
+                  avatar_url: '/puter-bot.png',
+                },
+              };
+              setMessages((prev) => [...prev, se7enMsg]);
+            }, 1000);
+            return;
+          }
+
+          // Use similar logic as floating-chatbot.jsx
+          const SYSTEM_PROMPT = `You are the Official Architectural Assistant "Se7eN Bot" for "HAZWOPER Useful Tools".
+MISSION: Provide expert guidance about our high-performance documentation tools and messaging fabric.
+TONE: Authoritative, professional, concise, slightly futuristic/technical.
+PLATFORM KNOWLEDGE:
+- Web Content: Extract Overview/Syllabus/FAQs from DOCX.
+- Lesson Quiz Builder: Extract questions/options from DOCX with neural mapping.
+- Blog Generator: Technical SEO content from documents.
+- Document Extractor: Bulk table/image harvesting from DOCX.
+- Media Tools: Browser-side video/audio conversion and compression (100% private).
+- Neural Chat: Secure 24h lifecycle messaging hub.
+DEVELOPER: Bilal Se7eN.
+Always emphasize architectural integrity and data privacy. Processing for generators/media happens locally (WASM).`;
+
+          const context = messages.slice(-6).map((m) => ({
+            role: m.sender_id === 'se7en-bot' ? 'assistant' : 'user',
+            content: m.text,
+          }));
+
+          const response = await window.puter.ai.chat(userMsg.text, {
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...context],
+          });
+
+          const responseText =
+            typeof response === 'string'
+              ? response
+              : response?.message?.content ||
+                response?.toString() ||
+                'Neural cluster timeout';
+
+          const se7enMsg = {
+            id: (Date.now() + 1).toString(),
+            sender_id: 'se7en-bot',
+            text: responseText.trim(),
+            created_at: new Date().toISOString(),
+            sender: {
+              full_name: 'Se7eN Bot',
+              role: 'admin',
+              avatar_url: '/puter-bot.png',
+            },
+          };
+          setMessages((prev) => [...prev, se7enMsg]);
+        } catch (aiErr) {
+          console.error('Se7eN Bot AI Error:', aiErr);
+          const se7enMsg = {
+            id: (Date.now() + 1).toString(),
+            sender_id: 'se7en-bot',
+            text: 'I have analyzed your signal. The architectural parameters are within optimal range for the Se7eN ecosystem. How else may I assist?',
+            created_at: new Date().toISOString(),
+            sender: {
+              full_name: 'Se7eN Bot',
+              role: 'admin',
+              avatar_url: '/puter-bot.png',
+            },
+          };
+          setMessages((prev) => [...prev, se7enMsg]);
+        }
+        return;
+      }
+
       const { error } = await supabase.from('messages').insert(messageData);
       if (error) throw error;
 
-      // AUTO-ACCESS GRANT: If admin messages a user directly, ensure user is not blocked
       if (user.role === 'admin' && !isGlobal && receiverId) {
         await supabase
           .from('profiles')
@@ -269,15 +522,12 @@ export function ChatWindow({
     const { has_generator_access } = user;
     const isPro = has_generator_access || user.role === 'admin';
 
-    // Rule: Pro users and Admins have full clearance to initiate contact.
     if (isPro) {
       onNavigateToPrivate(targetUser.id);
       return;
     }
 
-    // Rule: For non-Pro users, restrict initiation.
     if (targetUser.role === 'admin') {
-      // Check for existing administrative invite (any previous message from this admin)
       const { data: thread } = await supabase
         .from('messages')
         .select('id')
@@ -291,8 +541,6 @@ export function ChatWindow({
         return;
       }
     } else {
-      // Non-Pro to Non-Pro: Restricted initiation.
-      // But if there's an existing thread (someone messaged them), allow it.
       const { data: existingThread } = await supabase
         .from('messages')
         .select('id')
@@ -318,17 +566,34 @@ export function ChatWindow({
         className
       )}
     >
-      {/* User-to-User Moderation Header (Only for Private) */}
       {!isGlobal && receiverProfile && (
         <div className="bg-card/20 backdrop-blur-xl border-b border-border/10 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xs shadow-inner">
-              {(receiverProfile.full_name ||
-                receiverProfile.username ||
-                'U')[0].toUpperCase()}
+            <div className="relative">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center text-primary font-black text-xs shadow-inner">
+                {receiverProfile.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={receiverProfile.avatar_url}
+                    alt=""
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerText =
+                        (receiverProfile?.full_name || 'U')[0].toUpperCase();
+                    }}
+                  />
+                ) : (
+                  (receiverProfile?.full_name || 'U')[0].toUpperCase()
+                )}
+              </div>
+              {receiverProfile.is_online && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-background shadow-sm shadow-emerald-500/20" />
+              )}
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-black tracking-tight">
+              <span className="text-xs font-black tracking-tight uppercase">
                 {receiverProfile.full_name || receiverProfile.username}
               </span>
               <span className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/60">
@@ -428,10 +693,10 @@ export function ChatWindow({
               <DropdownMenuItem
                 onClick={async () => {
                   const result = await showConfirm({
-                    title: 'Purge Recent Chat?',
+                    title: 'Delete Recent Chat?',
                     text: 'Clear all messages in this private thread? The contact will remain in your Authorized Channels.',
                     icon: 'warning',
-                    confirmButtonText: 'Yes, Purge it',
+                    confirmButtonText: 'Yes, Delete it',
                   });
                   if (result.isConfirmed) {
                     clearAllMessages(false, receiverId);
@@ -440,23 +705,21 @@ export function ChatWindow({
                 className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10"
               >
                 <Trash2 className="w-4 h-4" />
-                PURGE RECENT CHAT
+                DELETE RECENT CHAT
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       )}
 
-      {/* 24-Hour Data Lifecycle Banner */}
       <div className="px-6 py-2 bg-amber-500/10 dark:bg-amber-500/5 border-b border-amber-500/20 dark:border-amber-500/10 flex items-center justify-center gap-2 shrink-0">
         <Clock className="w-3 h-3 text-amber-600 dark:text-amber-500/80" />
         <span className="text-[8px] font-black uppercase tracking-[0.15em] text-amber-700 dark:text-amber-500/80">
-          Messages auto-purge after 24 hours • {activeMessages.length} active
+          Messages auto-delete after 24 hours • {activeMessages.length} active
           signal{activeMessages.length !== 1 ? 's' : ''}
         </span>
       </div>
 
-      {/* Messages */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar"
@@ -473,15 +736,16 @@ export function ChatWindow({
             </p>
           </div>
         ) : (
-          activeMessages.map((msg, i) => {
+          activeMessages.map((msg) => {
             const isMine = msg.sender_id === user?.id;
             const isAdmin = msg.sender?.role === 'admin';
+            const canDeleteEverywhere = isMine || user?.role === 'admin';
 
             return (
               <div
                 key={msg.id}
                 className={cn(
-                  'flex flex-col max-w-[85%] space-y-1.5',
+                  'flex flex-col max-w-[85%] space-y-1.5 group/msg',
                   isMine ? 'ml-auto items-end' : 'mr-auto items-start'
                 )}
               >
@@ -497,6 +761,7 @@ export function ChatWindow({
                           <img
                             src={msg.sender.avatar_url}
                             alt=""
+                            loading="lazy"
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               e.target.style.display = 'none';
@@ -509,7 +774,7 @@ export function ChatWindow({
                         )}
                       </div>
                       {msg.sender?.is_online && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-background shadow-sm shadow-emerald-500/50" />
+                        <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-background shadow-sm shadow-emerald-500/20" />
                       )}
                     </div>
                     <div className="flex flex-col">
@@ -521,35 +786,53 @@ export function ChatWindow({
                           <ShieldCheck className="w-2 h-2 text-primary" />
                         )}
                       </span>
-                      <span className="text-[6px] font-bold uppercase tracking-tighter opacity-30">
-                        {msg.sender?.is_online
-                          ? 'Signal Active'
-                          : 'Link Offline'}
-                      </span>
                     </div>
                   </div>
                 )}
 
-                <div
-                  className={cn(
-                    'px-4 py-2.5 rounded-2xl text-[13px] font-medium transition-all group relative',
-                    isMine
-                      ? 'bg-primary text-primary-foreground rounded-tr-none shadow-md shadow-primary/10'
-                      : isAdmin
-                        ? 'bg-primary/5 border border-primary/20 text-foreground rounded-tl-none'
-                        : 'bg-muted/40 border border-border/40 text-foreground rounded-tl-none'
+                <div className="flex items-center gap-2 w-full group/row">
+                  {isMine && (
+                    <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                      <MessageActions
+                        message={msg}
+                        isMine={isMine}
+                        canDeleteEverywhere={canDeleteEverywhere}
+                        onDelete={() => {
+                          setMessages((prev) =>
+                            prev.filter((m) => m.id !== msg.id)
+                          );
+                        }}
+                      />
+                    </div>
                   )}
-                >
-                  {msg.text}
-                  {/* Subtle highlight bar */}
+
                   <div
                     className={cn(
-                      'absolute top-0 bottom-0 w-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity',
+                      'px-4 py-2.5 rounded-2xl text-[13px] font-medium transition-all group relative break-words',
                       isMine
-                        ? 'right-full mr-2 bg-primary/40'
-                        : 'left-full ml-2 bg-primary/40'
+                        ? 'bg-primary text-primary-foreground rounded-tr-none shadow-md shadow-primary/10'
+                        : isAdmin
+                          ? 'bg-primary/5 border border-primary/20 text-foreground rounded-tl-none'
+                          : 'bg-muted/40 border border-border/40 text-foreground rounded-tl-none'
                     )}
-                  />
+                  >
+                    {msg.text}
+                  </div>
+
+                  {!isMine && (
+                    <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                      <MessageActions
+                        message={msg}
+                        isMine={isMine}
+                        canDeleteEverywhere={canDeleteEverywhere}
+                        onDelete={() => {
+                          setMessages((prev) =>
+                            prev.filter((m) => m.id !== msg.id)
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 px-1 opacity-60 dark:opacity-30">
@@ -560,20 +843,12 @@ export function ChatWindow({
                       hour12: false,
                     }).format(new Date(msg.created_at))}
                   </span>
-                  <span className="text-[9px] font-mono text-amber-600 dark:text-amber-500/60 flex items-center gap-0.5">
-                    <Clock className="w-2.5 h-2.5" />
-                    {getTimeRemaining(msg.created_at)}
+                  <span className="text-[9px] font-black text-primary/40">
+                    •
                   </span>
-                  {isAdmin && <ShieldCheck className="w-3 h-3 text-primary" />}
-                  {isMine && !isGlobal && (
-                    <div className="flex items-center">
-                      {msg.is_read ? (
-                        <CheckCheck className="w-3.5 h-3.5 text-primary animate-in zoom-in" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5 text-muted-foreground/60" />
-                      )}
-                    </div>
-                  )}
+                  <span className="text-[9px] font-black uppercase tracking-widest text-primary/60">
+                    TTL: {getTimeRemaining(msg.created_at)}
+                  </span>
                 </div>
               </div>
             );
@@ -581,25 +856,27 @@ export function ChatWindow({
         )}
       </div>
 
-      {/* Sleek Input */}
-      <div className="p-6 shrink-0">
-        <form onSubmit={sendMessage} className="relative group">
+      <div className="p-6 bg-card/10 border-t border-border/10 shrink-0">
+        <form onSubmit={sendMessage} className="relative flex items-center">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Initialize signal..."
-            className="h-12 pl-5 pr-14 bg-card/40 border-border/40 rounded-2xl text-xs focus-visible:ring-primary/20 transition-all group-hover:border-primary/20"
+            placeholder={
+              user?.is_frozen
+                ? 'SIGNAL BLOCKED'
+                : `Transmit message to ${isGlobal ? 'Global Hub' : receiverProfile?.full_name || 'Partner'}...`
+            }
+            disabled={user?.is_frozen}
+            className="h-14 pl-6 pr-16 bg-slate-950/50 border-border/40 text-sm font-medium focus-visible:ring-primary/20 rounded-2xl shadow-inner italic"
           />
-          <div className="absolute right-1.5 top-1.5">
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!newMessage.trim()}
-              className="h-9 w-9 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-            >
-              <Send className="w-3.5 h-3.5" />
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!newMessage.trim() || user?.is_frozen}
+            className="absolute right-2 h-10 w-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
         </form>
       </div>
     </div>

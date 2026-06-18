@@ -2,7 +2,25 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { MessageSquare, ShieldCheck } from 'lucide-react';
+import {
+  MessageSquare,
+  ShieldCheck,
+  MoreHorizontal,
+  Ban,
+  AlertTriangle,
+  Trash2,
+  Bot,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { showConfirm, showToast } from '@/lib/swal';
+import { blockUser, reportUser } from '@/lib/moderation';
 import { cn } from '@/lib/utils';
 import { useChat } from '@/components/chat-provider';
 
@@ -144,6 +162,54 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
         </span>
       </div>
 
+      {/* Se7eN Bot - Fixed Top Channel */}
+      <div
+        onClick={() => onSelectContact('se7en-bot')}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelectContact('se7en-bot');
+          }
+        }}
+        className={cn(
+          'w-full p-2 flex items-center gap-3 rounded-xl border transition-all duration-300 relative group overflow-hidden cursor-pointer',
+          activeContactId === 'se7en-bot'
+            ? 'bg-primary/10 border-primary/30 shadow-sm'
+            : 'bg-primary/5 border-primary/10 hover:bg-primary/10 hover:border-primary/20'
+        )}
+      >
+        <div className="relative shrink-0">
+          <div
+            className={cn(
+              'w-8 h-8 rounded-lg flex items-center justify-center border font-black text-[10px] bg-primary/20 border-primary/30 text-primary overflow-hidden'
+            )}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/puter-bot.png"
+              alt="Se7eN"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background shadow-sm shadow-emerald-500/20" />
+        </div>
+        <div className="flex-1 text-left overflow-hidden">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[11px] font-black tracking-tight truncate text-primary uppercase italic">
+              SE7EN BOT
+            </span>
+            <ShieldCheck className="w-2.5 h-2.5 text-primary shrink-0" />
+          </div>
+          <div className="flex items-center gap-1 opacity-60">
+            <span className="text-[7px] font-black uppercase tracking-widest truncate shrink-0">
+              Neural Assistant
+            </span>
+          </div>
+        </div>
+      </div>
+
       {contacts.length === 0 ? (
         <div className="p-6 text-center border border-dashed border-border/20 rounded-2xl opacity-30">
           <p className="text-[9px] font-black uppercase tracking-widest leading-relaxed">
@@ -152,14 +218,23 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
         </div>
       ) : (
         contacts.map((contact) => (
-          <button
+          <div
             key={contact.id}
             onClick={() => {
               onSelectContact(contact.id);
               markAsRead(contact.id);
             }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelectContact(contact.id);
+                markAsRead(contact.id);
+              }
+            }}
             className={cn(
-              'w-full p-2 flex items-center gap-3 rounded-xl border transition-all duration-300 relative group overflow-hidden',
+              'w-full p-2 flex items-center gap-3 rounded-xl border transition-all duration-300 relative group overflow-hidden cursor-pointer',
               activeContactId === contact.id
                 ? 'bg-primary/5 border-primary/20 shadow-sm'
                 : 'bg-transparent border-transparent hover:bg-primary/[0.03] hover:border-border/40'
@@ -235,7 +310,81 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
                 </span>
               </div>
             </div>
-          </button>
+
+            {/* Management Menu (3 dots) */}
+            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity pr-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg hover:bg-primary/10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="w-3.5 h-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-48 rounded-2xl bg-card/95 backdrop-blur-xl border-border p-2"
+                >
+                  <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest opacity-40 px-3">
+                    Channel Control
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      reportUser(
+                        currentUser,
+                        contact,
+                        'System flagged from sidebar'
+                      );
+                    }}
+                    className="rounded-xl flex items-center gap-3 p-2.5 text-xs font-bold text-amber-500 hover:bg-amber-500/10 focus:bg-amber-500/10"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Report User
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      blockUser(currentUser, contact);
+                    }}
+                    className="rounded-xl flex items-center gap-3 p-2.5 text-xs font-bold text-red-500 hover:bg-red-500/10 focus:bg-red-500/10"
+                  >
+                    <Ban className="w-3.5 h-3.5" />
+                    Block Contact
+                  </DropdownMenuItem>
+                  <div className="h-px bg-border/40 my-1 mx-2" />
+                  <DropdownMenuItem
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const result = await showConfirm({
+                        title: 'Delete History?',
+                        text: 'This will erase your visual archive with this subscriber.',
+                        icon: 'warning',
+                        confirmButtonText: 'Yes, Delete',
+                      });
+                      if (result.isConfirmed) {
+                        // Mark as read first to clear notifications
+                        markAsRead(contact.id);
+                        // Then trigger a specialized event for the provider to handle thread deletion
+                        window.dispatchEvent(
+                          new CustomEvent('deleteChatThread', {
+                            detail: { partnerId: contact.id },
+                          })
+                        );
+                      }
+                    }}
+                    className="rounded-xl flex items-center gap-3 p-2.5 text-xs font-bold text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete Chat
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
         ))
       )}
     </div>

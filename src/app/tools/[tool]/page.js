@@ -77,6 +77,10 @@ const WordToHtml = nextDynamic(
   () => import('@/components/generators').then((m) => m.WordToHtml),
   { ssr: false }
 );
+const LessonQuizBuilder = nextDynamic(
+  () => import('@/components/generators').then((m) => m.LessonQuizBuilder),
+  { ssr: false }
+);
 
 // Map slugs to components
 const toolComponents = {
@@ -94,6 +98,7 @@ const toolComponents = {
   'audio-converter': AudioConverter,
   'video-to-gif': VideoToGif,
   'word-to-html': WordToHtml,
+  'lesson-quiz-builder': LessonQuizBuilder,
 };
 
 export default function ToolPage() {

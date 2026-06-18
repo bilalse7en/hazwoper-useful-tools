@@ -12,3 +12,4 @@ export { WordToHtml } from './word-to-html';
 export { AIAssistant } from './ai-assistant';
 export { default as DocumentExtractor } from './document-extractor';
 export { default as ImageToText } from './image-to-text';
+export { default as LessonQuizBuilder } from './lesson-quiz-builder';

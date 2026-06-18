@@ -2016,3 +2016,161 @@ export function generateGlossaryCode(glossaryData) {
 
   return glossaryHtml;
 }
+
+// ==========================================
+// LESSON QUIZ GENERATOR LOGIC
+// ==========================================
+
+export async function processQuizFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const result = await mammoth.convertToHtml({
+          arrayBuffer: event.target.result,
+        });
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = result.value;
+        const elementsArray = Array.from(tempDiv.children);
+        const quizData = extractLessonQuiz(elementsArray);
+        resolve(quizData);
+      } catch (error) {
+        console.error('Conversion error:', error);
+        reject(error);
+      }
+    };
+    reader.onerror = () => reject(new Error('Error reading file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function extractLessonQuiz(elementsArray) {
+  let quizStart = -1;
+  elementsArray.forEach((element, i) => {
+    const text = element.textContent.trim().toLowerCase();
+    if (
+      (text === 'lesson quiz' || text.includes('lesson quiz')) &&
+      element.tagName.match(/^H[1-6]$/i) &&
+      quizStart === -1
+    ) {
+      quizStart = i;
+    }
+  });
+
+  if (quizStart === -1) {
+    // Try p tags if no heading found
+    elementsArray.forEach((element, i) => {
+      const text = element.textContent.trim().toLowerCase();
+      if (text === 'lesson quiz' && quizStart === -1) {
+        quizStart = i;
+      }
+    });
+  }
+
+  if (quizStart === -1) return [];
+
+  const questions = [];
+  let currentQuestion = null;
+
+  for (let i = quizStart + 1; i < elementsArray.length; i++) {
+    const element = elementsArray[i];
+    const text = element.textContent.trim();
+    const tagName = element.tagName;
+    const lowerText = text.toLowerCase();
+
+    // Check for next major section (Heading 1-2) if it doesn't look like a question
+    if (
+      tagName.match(/^H[1-2]$/i) &&
+      !lowerText.startsWith('question') &&
+      !lowerText.includes('lesson quiz')
+    ) {
+      break;
+    }
+
+    // New Question starts with "Question X"
+    if (
+      lowerText.startsWith('question') &&
+      (tagName.match(/^H[1-6]$/i) || tagName === 'P')
+    ) {
+      if (currentQuestion && currentQuestion.question) {
+        questions.push(currentQuestion);
+      }
+      currentQuestion = {
+        id: `q-${questions.length + 1}`,
+        number: text,
+        question: '',
+        options: [],
+        correctAnswer: '',
+      };
+      continue;
+    }
+
+    if (currentQuestion) {
+      // Find correct answer indicator like "(B)" or "(A)" etc.
+      const answerMatch = text.match(/\(([A-D])\)$/i);
+      if (answerMatch) {
+        currentQuestion.correctAnswer = answerMatch[1].toUpperCase();
+        currentQuestion.question = text.replace(/\(([A-D])\)$/i, '').trim();
+      } else if (
+        !currentQuestion.question &&
+        tagName === 'P' &&
+        text.length > 5
+      ) {
+        currentQuestion.question = text;
+      } else if (tagName === 'OL' || tagName === 'UL') {
+        const items = Array.from(element.querySelectorAll('li'));
+        items.forEach((li, index) => {
+          const optText = li.textContent.trim();
+          const optLetter = String.fromCharCode(65 + index); // A, B, C...
+          currentQuestion.options.push({
+            letter: optLetter,
+            text: optText.replace(/^[A-D][\.\)]\s*/i, '').trim(),
+          });
+        });
+      } else if (text.match(/^[A-D][\.\)]\s/)) {
+        const optMatch = text.match(/^([A-D])[\.\)]\s*(.*)/i);
+        if (optMatch) {
+          currentQuestion.options.push({
+            letter: optMatch[1].toUpperCase(),
+            text: optMatch[2].trim(),
+          });
+        }
+      }
+    }
+  }
+
+  if (currentQuestion && currentQuestion.question) {
+    questions.push(currentQuestion);
+  }
+
+  return questions;
+}
+
+export function generateLessonQuizCode(questions) {
+  if (!questions || questions.length === 0) return '';
+
+  let quizHtml = '<div class="lesson-quiz-container">\n';
+
+  questions.forEach((q, index) => {
+    quizHtml += `  <div class="quiz-question-item mb-5">\n`;
+    quizHtml += `    <h3 class="question-title font-bold text-lg mb-2">${q.question}</h3>\n`;
+    quizHtml += `    <ul class="quiz-options-list list-none p-0">\n`;
+
+    q.options.forEach((opt) => {
+      const isCorrect = opt.letter === q.correctAnswer;
+      const correctClass = isCorrect
+        ? 'correct-option bg-yellow-100 font-bold'
+        : '';
+      quizHtml += `      <li class="quiz-option py-2 px-3 border border-gray-200 rounded mb-1 ${correctClass}">\n`;
+      quizHtml += `        ${opt.text}\n`;
+      quizHtml += `      </li>\n`;
+    });
+
+    quizHtml += `    </ul>\n`;
+    quizHtml += `  </div>\n`;
+  });
+
+  quizHtml += '</div>';
+
+  return ensureProfessionalLinks(quizHtml);
+}

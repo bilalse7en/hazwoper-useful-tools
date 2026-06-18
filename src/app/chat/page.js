@@ -118,10 +118,10 @@ function ChatContent() {
                           size="icon"
                           onClick={async () => {
                             const result = await showConfirm({
-                              title: 'PURGE GLOBAL HUB?',
-                              text: 'ARE YOU SURE? This will permanently PURGE ALL GLOBAL messages for everyone.',
+                              title: 'DELETE GLOBAL MESSAGES?',
+                              text: 'This will permanently remove all global messages for everyone.',
                               icon: 'warning',
-                              confirmButtonText: 'Yes, Purge Everything',
+                              confirmButtonText: 'Yes, Delete Everything',
                               confirmButtonColor: '#ef4444',
                             });
                             if (result.isConfirmed) {
@@ -137,7 +137,7 @@ function ChatContent() {
                         side="bottom"
                         className="bg-rose-500 text-white font-black uppercase text-[9px] tracking-widest border-none"
                       >
-                        Purge Global Hub
+                        Delete Global Messages
                       </TooltipContent>
                     </Tooltip>
                   </div>
@@ -153,10 +153,10 @@ function ChatContent() {
                           size="icon"
                           onClick={async () => {
                             const result = await showConfirm({
-                              title: 'Wipe History?',
-                              text: 'CLERANCE PROTOCOL: This will wipe your entire private thread with this partner. Proceed?',
+                              title: 'Delete Chat History?',
+                              text: 'This will erase your entire private conversation with this partner. Proceed?',
                               icon: 'warning',
-                              confirmButtonText: 'Yes, Wipe History',
+                              confirmButtonText: 'Yes, Delete History',
                               confirmButtonColor: '#ef4444',
                             });
                             if (result.isConfirmed) {
@@ -172,7 +172,7 @@ function ChatContent() {
                         side="bottom"
                         className="bg-rose-500 text-white font-black uppercase text-[9px] tracking-widest border-none"
                       >
-                        Purge All Signals (Wipe History)
+                        Delete Chat History
                       </TooltipContent>
                     </Tooltip>
 
@@ -185,10 +185,10 @@ function ChatContent() {
                             size="icon"
                             onClick={async () => {
                               const result = await showConfirm({
-                                title: 'MASS SYSTEM PURGE?',
-                                text: 'MASS PURGE PROTOCOL: This will wipe ALL messages across ALL channels for EVERY user. Proceed?',
+                                title: 'WIPE SYSTEM DATABASE?',
+                                text: 'This will delete ALL messages across ALL channels for EVERY user. High risk action.',
                                 icon: 'error',
-                                confirmButtonText: 'YES, PURGE SYSTEM',
+                                confirmButtonText: 'YES, DELETE EVERYTHING',
                                 confirmButtonColor: '#ef4444',
                               });
                               if (result.isConfirmed) {
@@ -204,7 +204,7 @@ function ChatContent() {
                           side="bottom"
                           className="bg-orange-600 text-white font-black uppercase text-[9px] tracking-widest border-none"
                         >
-                          SYSTEM MASS PURGE
+                          DELETE ALL SYSTEM DATA
                         </TooltipContent>
                       </Tooltip>
                     )}
