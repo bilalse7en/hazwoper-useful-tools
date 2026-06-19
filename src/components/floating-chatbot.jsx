@@ -74,9 +74,10 @@ export function FloatingChatbot() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollContainer = scrollRef.current;
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
-  }, [messages]);
+  }, [messages?.length]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading || !puterReady) return;

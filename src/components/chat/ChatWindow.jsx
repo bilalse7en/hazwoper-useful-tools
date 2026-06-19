@@ -195,20 +195,27 @@ export function ChatWindow({
             role: 'admin',
             avatar_url: '/puter-bot.png',
           });
-          setMessages([
-            {
-              id: 'se7en-welcome',
-              sender_id: 'se7en-bot',
-              text: 'Neural Link established. I am Se7eN Bot, your architectural assistant. How can I facilitate your session today?',
-              created_at: new Date().toISOString(),
-              is_global: false,
-              sender: {
-                full_name: 'Se7eN Bot',
-                role: 'admin',
-                avatar_url: '/puter-bot.png',
+
+          // Persistent local storage for Se7eN Bot thread
+          const savedBotChat = localStorage.getItem(`bot_chat_${user.id}`);
+          if (savedBotChat) {
+            setMessages(JSON.parse(savedBotChat));
+          } else {
+            setMessages([
+              {
+                id: 'se7en-welcome',
+                sender_id: 'se7en-bot',
+                text: 'Neural Link established. I am Se7eN Bot, your architectural assistant. How can I facilitate your session today?',
+                created_at: new Date().toISOString(),
+                is_global: false,
+                sender: {
+                  full_name: 'Se7eN Bot',
+                  role: 'admin',
+                  avatar_url: '/puter-bot.png',
+                },
               },
-            },
-          ]);
+            ]);
+          }
           setLoading(false);
           return;
         }
@@ -319,6 +326,13 @@ export function ChatWindow({
     };
   }, [user, receiverId, isGlobal]);
 
+  // Persist Bot Chat when messages change
+  useEffect(() => {
+    if (receiverId === 'se7en-bot' && user?.id && messages.length > 0) {
+      localStorage.setItem(`bot_chat_${user.id}`, JSON.stringify(messages));
+    }
+  }, [messages, receiverId, user?.id]);
+
   useEffect(() => {
     const handleGlobalDelete = () => {
       if (isGlobal) setMessages([]);
@@ -336,6 +350,9 @@ export function ChatWindow({
     };
   }, [isGlobal, receiverId]);
 
+  // Track last unread check to prevent redundant calls
+  const lastProcessedUnreadRef = useRef(null);
+
   useEffect(() => {
     if (!user || isGlobal || !receiverId) return;
     if (messages.length === 0) return;
@@ -343,16 +360,21 @@ export function ChatWindow({
     const hasUnread = messages.some(
       (msg) => msg.sender_id === receiverId && !msg.is_read
     );
-    if (hasUnread) {
+    
+    const unreadKey = `${receiverId}-${messages.length}-${messages[messages.length-1]?.id}`;
+
+    if (hasUnread && lastProcessedUnreadRef.current !== unreadKey) {
+      lastProcessedUnreadRef.current = unreadKey;
       markAsRead(receiverId);
     }
-  }, [user, receiverId, isGlobal, messages, markAsRead]);
+  }, [user?.id, receiverId, isGlobal, messages, markAsRead]);
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollContainer = scrollRef.current;
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
-  }, [messages]);
+  }, [messages?.length]); // Only scroll when message count changes
 
   const [currentTime, setCurrentTime] = useState(() => Date.now());
   useEffect(() => {
@@ -745,10 +767,16 @@ Always emphasize architectural integrity and data privacy. Processing for genera
               <div
                 key={msg.id}
                 className={cn(
-                  'flex flex-col max-w-[85%] space-y-1.5 group/msg',
-                  isMine ? 'ml-auto items-end' : 'mr-auto items-start'
+                  'flex flex-col w-full space-y-1.5 group/msg',
+                  isMine ? 'items-end' : 'items-start'
                 )}
               >
+                <div
+                  className={cn(
+                    'flex flex-col max-w-[85%] space-y-1.5',
+                    isMine ? 'items-end' : 'items-start'
+                  )}
+                >
                 {!isMine && isGlobal && (
                   <div
                     className="flex items-center gap-2 mb-0.5 cursor-pointer group/sender"
@@ -851,9 +879,10 @@ Always emphasize architectural integrity and data privacy. Processing for genera
                   </span>
                 </div>
               </div>
-            );
-          })
-        )}
+            </div>
+          );
+        })
+      )}
       </div>
 
       <div className="p-6 bg-card/10 border-t border-border/10 shrink-0">

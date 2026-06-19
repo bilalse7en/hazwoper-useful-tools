@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './auth-provider';
@@ -26,21 +27,19 @@ export function ChatProvider({ children }) {
     if (!user) return;
 
     try {
-      // 1. Fetch breakdown by sender for Sidebar
       const { data: messages } = await supabase
         .from('messages')
         .select('sender_id')
         .eq('receiver_id', user.id)
         .or('is_read.eq.false,is_read.is.null');
 
-      // We need to access sessionReadIds without having it in dependencies
-      // Using functional updates for everything to ensure consistency
-      setSessionReadIds((currentSessionIds) => {
-        const counts = {};
-        let totalToSet = 0;
+      const counts = {};
+      let totalToSet = 0;
 
+      // We use a functional update for sessionReadIds and handle other state updates separately
+      // but in a coordinated way to avoid loops.
+      setSessionReadIds((currentSessionIds) => {
         messages?.forEach((m) => {
-          // If sender is currently active OR was recently marked as read, ignore their unread count
           if (
             m.sender_id === activeSenderId ||
             currentSessionIds.has(m.sender_id)
@@ -52,84 +51,72 @@ export function ChatProvider({ children }) {
           }
         });
 
-        setUnreadCounts(counts);
-
-        setTotalUnread(totalToSet);
-
-        // Clean up sessionReadIds: if DB now objectively shows 0 unread for a contact,
-        // we can stop tracking them in the session set.
-        const next = new Set(currentSessionIds);
+        // Clean up sessionReadIds
+        const nextSet = new Set(currentSessionIds);
         let changed = false;
         currentSessionIds.forEach((id) => {
           const actualUnread =
             messages?.filter((m) => m.sender_id === id).length || 0;
           if (actualUnread === 0) {
-            next.delete(id);
+            nextSet.delete(id);
             changed = true;
           }
         });
-        return changed ? next : currentSessionIds;
+        return changed ? nextSet : currentSessionIds;
       });
+
+      setUnreadCounts(counts);
+      setTotalUnread(totalToSet);
     } catch (err) {
-      console.error('Chat Notification Sync Sync Error:', err);
+      console.error('Chat Notification Sync Error:', err);
     }
-  }, [user, activeSenderId]);
+  }, [user?.id, activeSenderId]);
 
   const markAsRead = useCallback(
     async (senderId) => {
       if (!user || !senderId) return;
-
-      // GUARD: If it's the virtual bot subject, do not attempt DB sync
       if (senderId === 'se7en-bot' || senderId === 'puter-ai') return;
 
       // 1. Optimistic Update
-      setSessionReadIds((prev) => new Set(prev).add(senderId));
+      setSessionReadIds((prev) => {
+        if (prev.has(senderId)) return prev;
+        const next = new Set(prev);
+        next.add(senderId);
+        return next;
+      });
 
       setUnreadCounts((prev) => {
         const currentCount = prev[senderId] || 0;
         if (currentCount > 0) {
           setTotalUnread((total) => Math.max(0, total - currentCount));
         }
+        if (currentCount === 0 && prev[senderId] === 0) return prev;
         return { ...prev, [senderId]: 0 };
       });
 
       try {
-        // 2. Database Update - Simplified and more aggressive to ensure persistence
         const { error } = await supabase
           .from('messages')
           .update({ is_read: true })
           .eq('sender_id', senderId)
           .eq('receiver_id', user.id);
 
-        if (error) {
-          console.error(
-            'Supabase Update Error for senderId:',
-            senderId,
-            'user.id:',
-            user.id,
-            'Full Error:',
-            JSON.stringify(error, null, 2)
-          );
-          showToast('Sync Error: Failed to mark as read.', 'error');
-          throw error;
-        }
+        if (error) throw error;
 
-        // 3. Re-verify after a delay
-        setTimeout(fetchAllUnread, 1000);
+        // Re-verify after a short delay
+        setTimeout(() => fetchAllUnread(), 1000);
       } catch (err) {
         console.error('Failed to mark as read:', err);
       }
     },
-    [user, fetchAllUnread]
+    [user?.id, fetchAllUnread]
   );
 
+  // Initial Fetch & Real-time Subscription
   useEffect(() => {
     if (!user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUnreadCounts({});
-
       setTotalUnread(0);
-
       setSessionReadIds(new Set());
       return;
     }
@@ -147,9 +134,7 @@ export function ChatProvider({ children }) {
           filter: `receiver_id=eq.${user.id}`,
         },
         (payload) => {
-          if (payload.eventType === 'UPDATE' && payload.new.is_read) {
-            return;
-          }
+          if (payload.eventType === 'UPDATE' && payload.new.is_read) return;
           fetchAllUnread();
         }
       )
@@ -162,15 +147,10 @@ export function ChatProvider({ children }) {
       window.removeEventListener('messagesMarkedAsRead', handleReadEvent);
       supabase.removeChannel(channel);
     };
-  }, [user, fetchAllUnread, markAsRead]);
+  }, [user?.id, fetchAllUnread, markAsRead]);
 
-  const value = {
-    unreadCounts,
-    totalUnread,
-    markAsRead,
-    setActiveChat: setActiveSenderId,
-    refreshUnread: fetchAllUnread,
-    clearAllMessages: async (isGlobalOnly = true, partnerId = null) => {
+  const clearAllMessages = useCallback(
+    async (isGlobalOnly = true, partnerId = null) => {
       if (!user) return { success: false, error: 'Unauthorized' };
 
       // Requirement: Global delete is ADMIN ONLY
@@ -226,7 +206,27 @@ export function ChatProvider({ children }) {
         return { success: false, error: err.message };
       }
     },
-  };
+    [user]
+  );
+
+  const value = useMemo(
+    () => ({
+      unreadCounts,
+      totalUnread,
+      markAsRead,
+      setActiveChat: setActiveSenderId,
+      refreshUnread: fetchAllUnread,
+      clearAllMessages,
+    }),
+    [
+      unreadCounts,
+      totalUnread,
+      markAsRead,
+      setActiveSenderId,
+      fetchAllUnread,
+      clearAllMessages,
+    ]
+  );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }

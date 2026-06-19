@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
 const AuthContext = createContext({
@@ -15,6 +15,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [toolSettings, setToolSettings] = useState({});
   const [loading, setLoading] = useState(true);
+
+  // Use a ref to track the current user ID for cleanup in auth state changes
+  // This avoids putting `user` in the useEffect dependency array
+  const userIdRef = useRef(null);
+  useEffect(() => {
+    userIdRef.current = user?.id || null;
+  }, [user]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -83,6 +90,7 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Main initialization effect — runs ONCE on mount
   useEffect(() => {
     // Initial sync from localStorage for immediate UI response
     const stored = localStorage.getItem('user');
@@ -163,11 +171,13 @@ export function AuthProvider({ children }) {
           }
         });
       } else {
-        if (user?.id) {
+        // Use the ref to get the current user ID without adding `user` to deps
+        const currentUserId = userIdRef.current;
+        if (currentUserId) {
           await supabase
             .from('profiles')
             .update({ is_online: false })
-            .eq('id', user.id);
+            .eq('id', currentUserId);
         }
         setUser(null);
         localStorage.removeItem('user');
@@ -179,7 +189,8 @@ export function AuthProvider({ children }) {
     return () => {
       subscription?.unsubscribe();
     };
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Dedicated real-time listener for user profile changes
   useEffect(() => {
