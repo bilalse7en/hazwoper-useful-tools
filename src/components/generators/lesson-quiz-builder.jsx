@@ -3,21 +3,17 @@
 import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   FileText,
   Upload,
   Code,
-  Eye,
   Copy,
   CheckCircle2,
-  AlertCircle,
   History,
   Target,
   Trophy,
+  Sparkles,
 } from 'lucide-react';
 import {
   Sheet,
@@ -27,7 +23,6 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { processQuizFile, generateLessonQuizCode } from '@/lib/docx-processor';
-import { PreviewDrawer } from '@/components/preview-drawer';
 import { ProgressButton } from '@/components/progress-button';
 import { HistoryList } from '@/components/history-list';
 import { useAuthAction } from '@/lib/use-auth-action';
@@ -42,11 +37,10 @@ export default function LessonQuizBuilder() {
   const [progressText, setProgressText] = useState('');
   const [questions, setQuestions] = useState([]);
   const [generatedCode, setGeneratedCode] = useState('');
-  const [copiedItems, setCopiedItems] = useState(new Set());
+  const [copiedTracker, setCopiedTracker] = useState({});
   const { performAction } = useAuthAction();
 
   const fileInputRef = useRef(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Auto-save helper
   const persistState = async (updates = {}) => {
@@ -68,7 +62,7 @@ export default function LessonQuizBuilder() {
       setFile(e.target.files[0]);
       setQuestions([]);
       setGeneratedCode('');
-      setCopiedItems(new Set());
+      setCopiedTracker({});
       showToast(`Selected: ${e.target.files[0].name}`, 'info');
     }
   };
@@ -95,6 +89,7 @@ export default function LessonQuizBuilder() {
 
       const code = generateLessonQuizCode(data);
       setGeneratedCode(code);
+      setCopiedTracker({});
 
       showSuccess(
         'Quiz Extracted',
@@ -112,11 +107,45 @@ export default function LessonQuizBuilder() {
     }
   };
 
-  const copyQuestion = (q) => {
+  const copyOnlyQuestion = (q, idx) => {
+    performAction(
+      () => {
+        navigator.clipboard.writeText(`${q.question}`);
+        setCopiedTracker((prev) => ({
+          ...prev,
+          [q.id]: {
+            ...prev[q.id],
+            question: true,
+          },
+        }));
+        showSuccess('Copied', 'Question text copied.');
+      },
+      { type: 'copy', name: `Question Only ${q.number}` }
+    );
+  };
+
+  const copyOption = (q, letter, text) => {
+    performAction(
+      () => {
+        navigator.clipboard.writeText(`${text}`);
+        setCopiedTracker((prev) => ({
+          ...prev,
+          [q.id]: {
+            ...prev[q.id],
+            [letter]: true,
+          },
+        }));
+        showSuccess('Copied', `Option text copied.`);
+      },
+      { type: 'copy', name: `Option ${letter}` }
+    );
+  };
+
+  const copyFullBlock = (q, idx) => {
     const optionsText = q.options
       .map(
         (opt) =>
-          `${opt.text}${opt.letter === q.correctAnswer ? ' (CORRECT)' : ''}`
+          `${opt.letter}. ${opt.text}${opt.letter === q.correctAnswer ? ' (CORRECT)' : ''}`
       )
       .join('\n');
     const fullText = `${q.question}\n\n${optionsText}`;
@@ -124,32 +153,19 @@ export default function LessonQuizBuilder() {
     performAction(
       () => {
         navigator.clipboard.writeText(fullText);
-        const newCopied = new Set(copiedItems);
-        newCopied.add(q.id);
-        setCopiedItems(newCopied);
-        showSuccess('Copied', 'Quiz data copied to clipboard.');
+        setCopiedTracker((prev) => ({
+          ...prev,
+          [q.id]: {
+            question: true,
+            A: true,
+            B: true,
+            C: true,
+            D: true,
+          },
+        }));
+        showSuccess('Success', `Full quiz item ${idx + 1} copied.`);
       },
       { type: 'copy', name: `Quiz Block ${q.number}` }
-    );
-  };
-
-  const copyOnlyQuestion = (q) => {
-    performAction(
-      () => {
-        navigator.clipboard.writeText(`${q.question}`);
-        showSuccess('Copied', 'Question text copied.');
-      },
-      { type: 'copy', name: `Question Only ${q.number}` }
-    );
-  };
-
-  const copyOption = (letter, text) => {
-    performAction(
-      () => {
-        navigator.clipboard.writeText(`${text}`);
-        showSuccess('Copied', `Option text copied.`);
-      },
-      { type: 'copy', name: `Option ${letter}` }
     );
   };
 
@@ -167,7 +183,7 @@ export default function LessonQuizBuilder() {
     if (!state) return;
     setQuestions(state.questions || []);
     setGeneratedCode(state.generatedCode || '');
-    setCopiedItems(new Set());
+    setCopiedTracker({});
     showSuccess('Neural Sync', 'Session data restored successfully.');
   };
 
@@ -308,27 +324,17 @@ export default function LessonQuizBuilder() {
             <CardHeader className="p-6 bg-card border-b border-border/50 flex flex-row items-center justify-between">
               <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
                 <Code className="h-4 w-4 text-primary" />
-                Protocol Output
+                QUIZ WORKBENCH
               </CardTitle>
               {questions.length > 0 && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 rounded-lg text-[9px] font-black uppercase tracking-widest gap-2 bg-primary/5 hover:bg-primary/10 transition-all"
-                    onClick={() => setPreviewOpen(true)}
-                  >
-                    <Eye className="h-3.5 w-3.5" /> Preview
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-8 px-4 rounded-lg text-[9px] font-black uppercase tracking-widest gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all"
-                    onClick={copyAllCode}
-                  >
-                    <Copy className="h-3.5 w-3.5" /> Copy All HTML
-                  </Button>
-                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-8 px-4 rounded-lg text-[9px] font-black uppercase tracking-widest gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all animate-in fade-in duration-300"
+                  onClick={copyAllCode}
+                >
+                  <Copy className="h-3.5 w-3.5" /> Copy All HTML
+                </Button>
               )}
             </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
@@ -343,100 +349,189 @@ export default function LessonQuizBuilder() {
                   </p>
                 </div>
               ) : (
-                <ScrollArea className="flex-1 p-6">
-                  <div className="space-y-6">
-                    {questions.map((q, idx) => (
-                      <div
-                        key={q.id}
-                        className={cn(
-                          'group relative p-5 rounded-2xl border transition-all duration-300',
-                          copiedItems.has(q.id)
-                            ? 'bg-emerald-500/5 border-emerald-500/30'
-                            : 'bg-card border-border/50 hover:border-primary/30'
-                        )}
-                      >
-                        <div className="flex justify-between items-start gap-4 mb-4">
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">
-                              Question {idx + 1}
-                            </span>
-                            <div className="flex items-start gap-2">
-                              <h4 className="text-sm font-bold text-foreground leading-snug">
-                                {q.question}
-                              </h4>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 rounded-md hover:bg-primary/10 flex-shrink-0"
-                                onClick={() => copyOnlyQuestion(q)}
-                                title="Copy Question Text"
-                              >
-                                <Copy className="h-3 w-3 opacity-60" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="p-5 border-b border-border/30 bg-muted/5">
+                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent border border-emerald-500/10">
+                      <div className="h-8 w-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                        <Sparkles className="h-4 w-4 text-emerald-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-[10px] font-black text-foreground uppercase tracking-widest">
+                          QUIZ WORKBENCH
+                        </h4>
+                        <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">
+                          Refine and copy items.{' '}
+                          <span className="text-emerald-500 dark:text-emerald-400">
+                            Green
+                          </span>{' '}
+                          indicates fully copied to clipboard.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-                        <div className="grid gap-2">
-                          {q.options.map((opt) => (
-                            <div
-                              key={opt.letter}
-                              className={cn(
-                                'flex items-center gap-3 p-3 rounded-xl border text-xs transition-all relative group/opt',
-                                opt.letter === q.correctAnswer
-                                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-900 dark:text-amber-100 font-bold shadow-sm shadow-amber-500/5 ring-1 ring-amber-500/20'
-                                  : 'bg-muted/30 border-border/40 text-muted-foreground'
-                              )}
-                            >
-                              <div
-                                className={cn(
-                                  'h-5 w-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0',
-                                  opt.letter === q.correctAnswer
-                                    ? 'bg-amber-500 text-white'
-                                    : 'bg-muted text-foreground/40 border border-border'
-                                )}
-                              >
-                                {opt.letter}
+                  <ScrollArea className="flex-1 p-6">
+                    <div className="space-y-6">
+                      {questions.map((q, idx) => {
+                        const isQuestionCopied =
+                          !!copiedTracker[q.id]?.question;
+                        const isAllOptionsCopied = q.options.every(
+                          (opt) => !!copiedTracker[q.id]?.[opt.letter]
+                        );
+                        const isFullyCopied =
+                          isQuestionCopied && isAllOptionsCopied;
+
+                        return (
+                          <div
+                            key={q.id}
+                            className={cn(
+                              'group relative p-4 rounded-2xl border transition-all duration-300 space-y-3',
+                              isFullyCopied
+                                ? 'bg-emerald-500/[0.02] border-emerald-500/50 dark:border-emerald-500/30 shadow-md shadow-emerald-500/[0.02]'
+                                : 'bg-card border-border/50 hover:border-primary/20'
+                            )}
+                          >
+                            {/* Card Top Details Header */}
+                            <div className="flex items-center justify-between border-b border-border/30 pb-2.5">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={cn(
+                                    'h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all duration-300',
+                                    isFullyCopied
+                                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                                      : 'bg-muted text-foreground/50 border border-border'
+                                  )}
+                                >
+                                  {idx + 1}
+                                </div>
+                                <span className="text-[9px] font-black text-muted-foreground/80 uppercase tracking-widest">
+                                  QUESTION BLOCK
+                                </span>
                               </div>
-                              <span className="flex-1">{opt.text}</span>
 
-                              <div className="flex items-center gap-2">
-                                {opt.letter === q.correctAnswer && (
-                                  <span className="text-[8px] font-black uppercase tracking-widest text-amber-600/80 mr-1">
-                                    Correct Answer
+                              <div>
+                                {isFullyCopied && (
+                                  <span className="text-emerald-500 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest animate-in fade-in duration-300">
+                                    ✓ QUESTION {idx + 1} AND ITS 4 OPTIONS
+                                    COPIED
                                   </span>
                                 )}
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-6 w-6 rounded-md hover:bg-primary/20 flex"
-                                  onClick={() =>
-                                    copyOption(opt.letter, opt.text)
-                                  }
-                                  title={`Copy Option Text`}
-                                >
-                                  <Copy className="h-3 w-3 opacity-60" />
-                                </Button>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+
+                            {/* Question Container Block */}
+                            <div className="bg-muted/10 border border-border/20 p-3 rounded-xl flex justify-between items-start gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="mb-0.5">
+                                  <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest">
+                                    QUESTION
+                                  </span>
+                                </div>
+                                <p className="text-xs text-foreground font-semibold leading-relaxed">
+                                  {q.question}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  'h-7 w-7 rounded-lg transition-all shrink-0 mt-0.5',
+                                  isQuestionCopied
+                                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                    : 'hover:bg-muted text-muted-foreground/60 hover:text-foreground'
+                                )}
+                                onClick={() => copyOnlyQuestion(q, idx)}
+                                title={isQuestionCopied ? 'Copied' : 'Copy'}
+                              >
+                                {isQuestionCopied ? (
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+
+                            {/* Options Container Block */}
+                            <div className="grid gap-2">
+                              {q.options.map((opt) => {
+                                const isOptCopied =
+                                  !!copiedTracker[q.id]?.[opt.letter];
+                                const isCorrect =
+                                  opt.letter === q.correctAnswer;
+
+                                return (
+                                  <div
+                                    key={opt.letter}
+                                    className={cn(
+                                      'flex items-center justify-between gap-4 p-2 rounded-xl border text-xs transition-all relative',
+                                      isCorrect
+                                        ? 'bg-amber-500/[0.02] border-amber-500/25'
+                                        : 'bg-muted/5 border-border/30'
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                      <div
+                                        className={cn(
+                                          'h-5 w-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 transition-colors',
+                                          isCorrect
+                                            ? 'bg-amber-500 text-white'
+                                            : 'bg-muted text-foreground/45 border border-border'
+                                        )}
+                                      >
+                                        {opt.letter}
+                                      </div>
+                                      <p
+                                        className={cn(
+                                          'text-xs flex-1 leading-normal',
+                                          isCorrect
+                                            ? 'font-bold text-foreground'
+                                            : 'text-muted-foreground font-medium'
+                                        )}
+                                      >
+                                        {opt.text}
+                                      </p>
+                                      {isCorrect && (
+                                        <span className="text-[7.5px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded shrink-0">
+                                          CORRECT
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className={cn(
+                                        'h-7 w-7 rounded-lg transition-all shrink-0',
+                                        isOptCopied
+                                          ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                          : 'hover:bg-muted text-muted-foreground/60 hover:text-foreground'
+                                      )}
+                                      onClick={() =>
+                                        copyOption(q, opt.letter, opt.text)
+                                      }
+                                      title={isOptCopied ? 'Copied' : 'Copy'}
+                                    >
+                                      {isOptCopied ? (
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                      ) : (
+                                        <Copy className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-
-      <PreviewDrawer
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-        title="Lesson Quiz Preview"
-        content={generatedCode}
-      />
     </div>
   );
 }
