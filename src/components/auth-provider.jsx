@@ -127,7 +127,16 @@ export function AuthProvider({ children }) {
           setToolSettings(settingsMap);
         }
       } catch (err) {
-        console.error('Error fetching tool settings in provider:', err);
+        if (
+          err?.message === 'Invalid API key' ||
+          err?.message?.includes('API key')
+        ) {
+          console.warn(
+            'Supabase connection: Running with placeholder or invalid API key. local configuration fallback active.'
+          );
+        } else {
+          console.error('Error fetching tool settings in provider:', err);
+        }
       }
 
       const {
