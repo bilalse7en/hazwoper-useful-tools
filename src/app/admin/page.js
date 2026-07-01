@@ -26,6 +26,7 @@ import {
   Upload,
   Trash2,
   ArrowRight,
+  Copy,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -376,15 +377,29 @@ function AdminDashboard() {
       header: 'Actions',
       cell: (info) => {
         const item = info.row.original;
+        const linkUrl = item.download_url || item.preview_url;
         return (
           <div className="flex justify-end gap-2">
+            {linkUrl && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-xl bg-card border-border hover:bg-primary/10 hover:text-primary transition-all shadow-sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(linkUrl);
+                  showSuccess('Link Copied', 'Asset URL copied to clipboard.');
+                }}
+                title="Copy Link"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            )}
             <Button
               variant="outline"
               size="icon"
               className="h-9 w-9 rounded-xl bg-card border-border hover:bg-primary/10 hover:text-primary transition-all shadow-sm"
-              onClick={() =>
-                window.open(item.download_url || item.preview_url, '_blank')
-              }
+              onClick={() => window.open(linkUrl, '_blank')}
+              title="Open in New Tab"
             >
               <ArrowRight className="w-4 h-4" />
             </Button>
@@ -393,6 +408,7 @@ function AdminDashboard() {
               size="icon"
               className="h-9 w-9 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border-none transition-all shadow-sm"
               onClick={() => deleteAsset(item.id)}
+              title="Delete Asset"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
@@ -795,9 +811,10 @@ function AdminDashboard() {
 
       if (error) throw error;
       await fetchUsers(true);
-      toast.success('Identity Reconfigured', {
-        description: `Role escalated to ${newRole.toUpperCase()} for target subject.`,
-      });
+      showSuccess(
+        'Identity Reconfigured',
+        `Role escalated to ${newRole.toUpperCase()} for target subject.`
+      );
     } catch (err) {
       console.error('Error updating role:', err);
       showToast('Escalation Failed', 'error');
@@ -1269,7 +1286,7 @@ function AdminDashboard() {
         ) : activeView === 'permissions' ? (
           <div className="animate-in-fade">
             <AdminChatMonitor
-              adminUser={user}
+              adminUser={{ id: currentUserId }}
               onOpenChat={(id) => {
                 router.push(`/chat?receiver=${id}`);
               }}
