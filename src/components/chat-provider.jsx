@@ -70,7 +70,7 @@ export function ChatProvider({ children }) {
     } catch (err) {
       console.error('Chat Notification Sync Error:', err);
     }
-  }, [user?.id, activeSenderId]);
+  }, [user, activeSenderId]);
 
   const markAsRead = useCallback(
     async (senderId) => {
@@ -109,12 +109,13 @@ export function ChatProvider({ children }) {
         console.error('Failed to mark as read:', err);
       }
     },
-    [user?.id, fetchAllUnread]
+    [user, fetchAllUnread]
   );
 
   // Initial Fetch & Real-time Subscription
   useEffect(() => {
     if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUnreadCounts({});
       setTotalUnread(0);
       setSessionReadIds(new Set());
@@ -147,7 +148,7 @@ export function ChatProvider({ children }) {
       window.removeEventListener('messagesMarkedAsRead', handleReadEvent);
       supabase.removeChannel(channel);
     };
-  }, [user?.id, fetchAllUnread, markAsRead]);
+  }, [user, fetchAllUnread, markAsRead]);
 
   const clearAllMessages = useCallback(
     async (isGlobalOnly = true, partnerId = null) => {

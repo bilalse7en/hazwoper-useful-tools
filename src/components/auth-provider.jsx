@@ -189,7 +189,6 @@ export function AuthProvider({ children }) {
     return () => {
       subscription?.unsubscribe();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Dedicated real-time listener for user profile changes

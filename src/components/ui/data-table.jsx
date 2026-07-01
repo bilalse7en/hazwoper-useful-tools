@@ -24,6 +24,7 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 export function DataTable({ columns, data, searchKey }) {
   const [columnFilters, setColumnFilters] = React.useState([]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

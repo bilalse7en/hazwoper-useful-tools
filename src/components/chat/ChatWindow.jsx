@@ -360,14 +360,14 @@ export function ChatWindow({
     const hasUnread = messages.some(
       (msg) => msg.sender_id === receiverId && !msg.is_read
     );
-    
-    const unreadKey = `${receiverId}-${messages.length}-${messages[messages.length-1]?.id}`;
+
+    const unreadKey = `${receiverId}-${messages.length}-${messages[messages.length - 1]?.id}`;
 
     if (hasUnread && lastProcessedUnreadRef.current !== unreadKey) {
       lastProcessedUnreadRef.current = unreadKey;
       markAsRead(receiverId);
     }
-  }, [user?.id, receiverId, isGlobal, messages, markAsRead]);
+  }, [user, receiverId, isGlobal, messages, markAsRead]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -777,112 +777,112 @@ Always emphasize architectural integrity and data privacy. Processing for genera
                     isMine ? 'items-end' : 'items-start'
                   )}
                 >
-                {!isMine && isGlobal && (
-                  <div
-                    className="flex items-center gap-2 mb-0.5 cursor-pointer group/sender"
-                    onClick={() => handleProfileClick(msg.sender)}
-                  >
-                    <div className="relative w-5 h-5">
-                      <div className="w-full h-full rounded-lg bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center text-[10px] font-black">
-                        {msg.sender?.avatar_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={msg.sender.avatar_url}
-                            alt=""
-                            loading="lazy"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.parentElement.innerText = (msg.sender
-                                ?.full_name || 'U')[0].toUpperCase();
-                            }}
-                          />
-                        ) : (
-                          (msg.sender?.full_name || 'U')[0].toUpperCase()
+                  {!isMine && isGlobal && (
+                    <div
+                      className="flex items-center gap-2 mb-0.5 cursor-pointer group/sender"
+                      onClick={() => handleProfileClick(msg.sender)}
+                    >
+                      <div className="relative w-5 h-5">
+                        <div className="w-full h-full rounded-lg bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center text-[10px] font-black">
+                          {msg.sender?.avatar_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={msg.sender.avatar_url}
+                              alt=""
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerText = (msg.sender
+                                  ?.full_name || 'U')[0].toUpperCase();
+                              }}
+                            />
+                          ) : (
+                            (msg.sender?.full_name || 'U')[0].toUpperCase()
+                          )}
+                        </div>
+                        {msg.sender?.is_online && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-background shadow-sm shadow-emerald-500/20" />
                         )}
                       </div>
-                      {msg.sender?.is_online && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 border border-background shadow-sm shadow-emerald-500/20" />
-                      )}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[8px] font-black uppercase text-primary/40 tracking-widest group-hover/sender:text-primary transition-colors flex items-center gap-1.5">
-                        {msg.sender?.full_name ||
-                          msg.sender?.username ||
-                          'Subject'}
-                        {msg.sender?.role === 'admin' && (
-                          <ShieldCheck className="w-2 h-2 text-primary" />
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 w-full group/row">
-                  {isMine && (
-                    <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity">
-                      <MessageActions
-                        message={msg}
-                        isMine={isMine}
-                        canDeleteEverywhere={canDeleteEverywhere}
-                        onDelete={() => {
-                          setMessages((prev) =>
-                            prev.filter((m) => m.id !== msg.id)
-                          );
-                        }}
-                      />
+                      <div className="flex flex-col">
+                        <span className="text-[8px] font-black uppercase text-primary/40 tracking-widest group-hover/sender:text-primary transition-colors flex items-center gap-1.5">
+                          {msg.sender?.full_name ||
+                            msg.sender?.username ||
+                            'Subject'}
+                          {msg.sender?.role === 'admin' && (
+                            <ShieldCheck className="w-2 h-2 text-primary" />
+                          )}
+                        </span>
+                      </div>
                     </div>
                   )}
 
-                  <div
-                    className={cn(
-                      'px-4 py-2.5 rounded-2xl text-[13px] font-medium transition-all group relative break-words',
-                      isMine
-                        ? 'bg-primary text-primary-foreground rounded-tr-none shadow-md shadow-primary/10'
-                        : isAdmin
-                          ? 'bg-primary/5 border border-primary/20 text-foreground rounded-tl-none'
-                          : 'bg-muted/40 border border-border/40 text-foreground rounded-tl-none'
+                  <div className="flex items-center gap-2 w-full group/row">
+                    {isMine && (
+                      <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                        <MessageActions
+                          message={msg}
+                          isMine={isMine}
+                          canDeleteEverywhere={canDeleteEverywhere}
+                          onDelete={() => {
+                            setMessages((prev) =>
+                              prev.filter((m) => m.id !== msg.id)
+                            );
+                          }}
+                        />
+                      </div>
                     )}
-                  >
-                    {msg.text}
+
+                    <div
+                      className={cn(
+                        'px-4 py-2.5 rounded-2xl text-[13px] font-medium transition-all group relative break-words',
+                        isMine
+                          ? 'bg-primary text-primary-foreground rounded-tr-none shadow-md shadow-primary/10'
+                          : isAdmin
+                            ? 'bg-primary/5 border border-primary/20 text-foreground rounded-tl-none'
+                            : 'bg-muted/40 border border-border/40 text-foreground rounded-tl-none'
+                      )}
+                    >
+                      {msg.text}
+                    </div>
+
+                    {!isMine && (
+                      <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                        <MessageActions
+                          message={msg}
+                          isMine={isMine}
+                          canDeleteEverywhere={canDeleteEverywhere}
+                          onDelete={() => {
+                            setMessages((prev) =>
+                              prev.filter((m) => m.id !== msg.id)
+                            );
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  {!isMine && (
-                    <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity">
-                      <MessageActions
-                        message={msg}
-                        isMine={isMine}
-                        canDeleteEverywhere={canDeleteEverywhere}
-                        onDelete={() => {
-                          setMessages((prev) =>
-                            prev.filter((m) => m.id !== msg.id)
-                          );
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 px-1 opacity-60 dark:opacity-30">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-foreground/70 dark:text-foreground">
-                    {new Intl.DateTimeFormat('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false,
-                    }).format(new Date(msg.created_at))}
-                  </span>
-                  <span className="text-[9px] font-black text-primary/40">
-                    •
-                  </span>
-                  <span className="text-[9px] font-black uppercase tracking-widest text-primary/60">
-                    TTL: {getTimeRemaining(msg.created_at)}
-                  </span>
+                  <div className="flex items-center gap-2 px-1 opacity-60 dark:opacity-30">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-foreground/70 dark:text-foreground">
+                      {new Intl.DateTimeFormat('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                      }).format(new Date(msg.created_at))}
+                    </span>
+                    <span className="text-[9px] font-black text-primary/40">
+                      •
+                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-primary/60">
+                      TTL: {getTimeRemaining(msg.created_at)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })
-      )}
+            );
+          })
+        )}
       </div>
 
       <div className="p-6 bg-card/10 border-t border-border/10 shrink-0">
