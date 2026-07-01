@@ -162,6 +162,18 @@ export function ChatProvider({ children }) {
         };
       }
 
+      if (partnerId === 'se7en-bot' || partnerId === 'puter-ai') {
+        localStorage.removeItem(`bot_chat_${user.id}`);
+        if (partnerId === 'puter-ai') {
+          localStorage.removeItem(`puter_chat_${user.id}`);
+        }
+        showSuccess('Chat signal cleared', 'Neural Bot thread reset.');
+        window.dispatchEvent(
+          new CustomEvent('deleteChatThread', { detail: { partnerId } })
+        );
+        return { success: true };
+      }
+
       try {
         let query = supabase.from('messages').delete();
 

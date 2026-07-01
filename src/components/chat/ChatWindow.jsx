@@ -338,7 +338,26 @@ export function ChatWindow({
       if (isGlobal) setMessages([]);
     };
     const handleThreadDelete = (e) => {
-      if (!isGlobal && receiverId === e.detail.partnerId) setMessages([]);
+      if (!isGlobal && receiverId === e.detail.partnerId) {
+        if (receiverId === 'se7en-bot') {
+          setMessages([
+            {
+              id: 'se7en-welcome',
+              sender_id: 'se7en-bot',
+              text: 'Neural Link established. I am Se7eN Bot, your architectural assistant. How can I facilitate your session today?',
+              created_at: new Date().toISOString(),
+              is_global: false,
+              sender: {
+                full_name: 'Se7eN Bot',
+                role: 'admin',
+                avatar_url: '/puter-bot.png',
+              },
+            },
+          ]);
+        } else {
+          setMessages([]);
+        }
+      }
     };
 
     window.addEventListener('deleteGlobalChat', handleGlobalDelete);
@@ -715,10 +734,10 @@ Always emphasize architectural integrity and data privacy. Processing for genera
               <DropdownMenuItem
                 onClick={async () => {
                   const result = await showConfirm({
-                    title: 'Delete Recent Chat?',
+                    title: 'Clear Recent Chat?',
                     text: 'Clear all messages in this private thread? The contact will remain in your Authorized Channels.',
                     icon: 'warning',
-                    confirmButtonText: 'Yes, Delete it',
+                    confirmButtonText: 'Yes, Clear it',
                   });
                   if (result.isConfirmed) {
                     clearAllMessages(false, receiverId);
@@ -727,7 +746,7 @@ Always emphasize architectural integrity and data privacy. Processing for genera
                 className="rounded-xl flex items-center gap-3 p-3 text-xs font-bold text-rose-500 hover:bg-rose-500/10 focus:bg-rose-500/10"
               >
                 <Trash2 className="w-4 h-4" />
-                DELETE RECENT CHAT
+                CLEAR RECENT CHAT
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
