@@ -543,6 +543,21 @@ function AdminDashboard() {
           fetchBlogData();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        (payload) => {
+          if (payload.event === 'UPDATE') {
+            setUsers((prev) =>
+              prev.map((u) => (u.id === payload.new.id ? payload.new : u))
+            );
+          } else if (payload.event === 'INSERT') {
+            setUsers((prev) => [...prev, payload.new]);
+          } else if (payload.event === 'DELETE') {
+            setUsers((prev) => prev.filter((u) => u.id !== payload.old.id));
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -803,6 +818,9 @@ function AdminDashboard() {
 
   async function toggleAdmin(userId, isAdmin) {
     const newRole = isAdmin ? 'admin' : 'user';
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+    );
     try {
       const { error } = await supabase
         .from('profiles')
@@ -810,7 +828,6 @@ function AdminDashboard() {
         .eq('id', userId);
 
       if (error) throw error;
-      await fetchUsers(true);
       showSuccess(
         'Identity Reconfigured',
         `Role escalated to ${newRole.toUpperCase()} for target subject.`
@@ -818,10 +835,16 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Error updating role:', err);
       showToast('Escalation Failed', 'error');
+      await fetchUsers(true); // Rollback to actual db state on error
     }
   }
 
   async function toggleGeneratorAccess(userId, hasAccess) {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, has_generator_access: hasAccess } : u
+      )
+    );
     try {
       const { error } = await supabase
         .from('profiles')
@@ -829,7 +852,6 @@ function AdminDashboard() {
         .eq('id', userId);
 
       if (error) throw error;
-      await fetchUsers(true);
       showSuccess(
         'Access Logic Updated',
         `Generator suite permissions ${hasAccess ? 'authorized' : 'revoked'}.`
@@ -837,6 +859,7 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Error updating generator access:', err);
       showToast('Initialization Failed', 'error');
+      await fetchUsers(true); // Rollback to actual db state on error
     }
   }
 

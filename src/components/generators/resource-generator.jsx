@@ -124,13 +124,18 @@ export function ResourceGenerator() {
   };
 
   const downloadDemoFile = () => {
-    const link = document.createElement('a');
-    link.href =
-      'https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765354092/Resource_Sample_File.xlsx';
-    link.download = 'Resource_Sample_File.xlsx';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    performAction(
+      () => {
+        const link = document.createElement('a');
+        link.href =
+          'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1782908167835-resources_sample.xlsx';
+        link.download = 'resources_sample.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      },
+      { type: 'download', name: 'Demo Resources File' }
+    );
   };
 
   const openPreview = () => {
@@ -199,19 +204,20 @@ export function ResourceGenerator() {
               </CardTitle>
             </CardHeader>
             <CardContent className="card-body space-y-4">
-              <div className="space-y-1">
+              <div className="space-y-2 border-b border-border pb-4 mb-4">
                 <p className="text-sm text-muted-foreground">
-                  Upload an Excel file (.xlsx) with columns for Module, Title,
-                  PDFs, and Links.
+                  Download our demo file to check the required structure. Create
+                  your resources file following the same format, then upload for
+                  easy website content code generation.
                 </p>
                 <Button
-                  variant="link"
+                  variant="outline"
                   size="sm"
                   onClick={downloadDemoFile}
-                  className="h-auto p-0 text-primary hover:text-primary/80 font-bold mb-2"
+                  className="btn"
                 >
-                  <Upload className="mr-1 h-3 w-3" />
-                  Download Demo File
+                  <Upload className="mr-2 h-4 w-4" />
+                  Download Demo Resources File
                 </Button>
               </div>
 

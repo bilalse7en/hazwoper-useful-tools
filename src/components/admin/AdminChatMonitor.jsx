@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { showToast, showSuccess } from '@/lib/swal';
+import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,26 +80,86 @@ export function AdminChatMonitor({ onOpenChat, adminUser }) {
     };
   }, []);
 
-  const toggleBlock = async (user, block) => {
+  const handleGeneratorAccessChange = async (userId, hasAccess) => {
+    // Optimistic state transition
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId ? { ...u, has_generator_access: hasAccess } : u
+      )
+    );
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ has_generator_access: hasAccess })
+        .eq('id', userId);
+
+      if (error) throw error;
+      showSuccess(
+        'Access Logic Updated',
+        `Generator suite permissions ${hasAccess ? 'authorized' : 'revoked'}.`
+      );
+    } catch (err) {
+      console.error('Error updating generator access:', err);
+      showToast('Initialization Failed', 'error');
+      fetchUsers(); // Rollback
+    }
+  };
+
+  const handleAdminRoleChange = async (userId, isAdmin) => {
+    const newRole = isAdmin ? 'admin' : 'user';
+    // Optimistic state transition
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+    );
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+      if (error) throw error;
+      showSuccess(
+        'Identity Reconfigured',
+        `Role escalated to ${newRole.toUpperCase()} for target subject.`
+      );
+    } catch (err) {
+      console.error('Error updating role:', err);
+      showToast('Escalation Failed', 'error');
+      fetchUsers(); // Rollback
+    }
+  };
+
+  const handleAccessGrantedChange = async (targetUser, isGranted) => {
+    // Optimistic state transition
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === targetUser.id ? { ...u, access_granted: isGranted } : u
+      )
+    );
     try {
       const { error } = await supabase
         .from('profiles')
         .update({
-          access_granted: !block,
-          blocked_by_admin_name: block
-            ? adminUser?.name || adminUser?.email
+          access_granted: isGranted,
+          blocked_by_admin_name: !isGranted
+            ? adminUser?.name || adminUser?.email || 'Admin'
             : null,
         })
-        .eq('id', user.id);
+        .eq('id', targetUser.id);
 
       if (error) throw error;
       showSuccess(
-        block ? 'User sequence terminated' : 'User sequence restored'
+        isGranted ? 'User sequence restored' : 'User sequence terminated'
       );
     } catch (err) {
-      console.error('Block error:', err);
+      console.error('Access status change error:', err);
       showToast('Security override failed', 'error');
+      fetchUsers(); // Rollback
     }
+  };
+
+  const toggleBlock = async (user, block) => {
+    await handleAccessGrantedChange(user, !block);
   };
 
   const filteredUsers = users.filter(
@@ -135,7 +196,7 @@ export function AdminChatMonitor({ onOpenChat, adminUser }) {
           <Card
             key={user.id}
             className={cn(
-              'p-5 rounded-[32px] border-border bg-card/40 backdrop-blur-xl hover:bg-card/60 transition-all group relative overflow-hidden',
+              'p-5 rounded-[32px] border-border bg-card/40 backdrop-blur-xl hover:bg-card/60 transition-all group relative overflow-hidden flex flex-col justify-between min-h-[300px]',
               !user.access_granted && 'border-red-500/20 bg-red-500/[0.02]'
             )}
           >
@@ -212,7 +273,88 @@ export function AdminChatMonitor({ onOpenChat, adminUser }) {
               </DropdownMenu>
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-4">
+            {/* Permission Switch Toggles Panel */}
+            <div className="mt-4 pt-4 border-t border-border/40 space-y-3 relative z-10">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  Generator Suite
+                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'text-[9px] font-black uppercase tracking-tighter',
+                      user.has_generator_access || user.role === 'admin'
+                        ? 'text-primary'
+                        : 'text-muted-foreground opacity-40'
+                    )}
+                  >
+                    {user.role === 'admin'
+                      ? 'Fixed Admin'
+                      : user.has_generator_access
+                        ? 'Authorized'
+                        : 'Locked'}
+                  </span>
+                  <Switch
+                    checked={user.has_generator_access || user.role === 'admin'}
+                    disabled={user.role === 'admin'}
+                    onCheckedChange={(checked) =>
+                      handleGeneratorAccessChange(user.id, checked)
+                    }
+                    className="scale-75 data-[state=checked]:bg-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  Escalation (Role)
+                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'text-[9px] font-black uppercase tracking-tighter',
+                      user.role === 'admin'
+                        ? 'text-emerald-500'
+                        : 'text-muted-foreground opacity-40'
+                    )}
+                  >
+                    {user.role === 'admin' ? 'Admin' : 'Standard'}
+                  </span>
+                  <Switch
+                    checked={user.role === 'admin'}
+                    onCheckedChange={(checked) =>
+                      handleAdminRoleChange(user.id, checked)
+                    }
+                    className="scale-75 data-[state=checked]:bg-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  Login Clearance
+                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      'text-[9px] font-black uppercase tracking-tighter',
+                      user.access_granted ? 'text-primary' : 'text-red-500'
+                    )}
+                  >
+                    {user.access_granted ? 'Allowed' : 'Blocked'}
+                  </span>
+                  <Switch
+                    checked={user.access_granted}
+                    onCheckedChange={(checked) =>
+                      handleAccessGrantedChange(user, checked)
+                    }
+                    className="scale-75 data-[state=checked]:bg-primary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-between border-t border-border/40 pt-4 relative z-10">
               <div className="flex items-center gap-2">
                 <div
                   className={cn(

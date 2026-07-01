@@ -44,6 +44,21 @@ export function GlossaryGenerator() {
   const [restoredFileName, setRestoredFileName] = useState('');
   const { performAction } = useAuthAction();
 
+  const downloadDemoFile = () => {
+    performAction(
+      () => {
+        const link = document.createElement('a');
+        link.href =
+          'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1782908129092-glossary_sample.docx';
+        link.download = 'glossary_sample.docx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      },
+      { type: 'download', name: 'Demo Glossary File' }
+    );
+  };
+
   const fileInputRef = useRef(null);
 
   // Preview Drawer State
@@ -184,11 +199,21 @@ export function GlossaryGenerator() {
               </CardTitle>
             </CardHeader>
             <CardContent className="card-body space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2 border-b border-border pb-4 mb-4">
                 <p className="text-sm text-muted-foreground">
-                  Upload a Word document containing glossary terms and
-                  definitions to generate sanitized website HTML.
+                  Download our demo file to check the required structure. Create
+                  your glossary file following the same format, then upload for
+                  easy website content code generation.
                 </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadDemoFile}
+                  className="btn"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Download Demo Glossary File
+                </Button>
               </div>
 
               <div className="space-y-4">

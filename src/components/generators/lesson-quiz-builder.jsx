@@ -40,6 +40,21 @@ export default function LessonQuizBuilder() {
   const [copiedTracker, setCopiedTracker] = useState({});
   const { performAction } = useAuthAction();
 
+  const downloadDemoFile = () => {
+    performAction(
+      () => {
+        const link = document.createElement('a');
+        link.href =
+          'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1782908200666-lesson_quiz_sample.docx';
+        link.download = 'lesson_quiz_sample.docx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      },
+      { type: 'download', name: 'Demo Lesson Quiz File' }
+    );
+  };
+
   const fileInputRef = useRef(null);
 
   // Auto-save helper
@@ -242,6 +257,23 @@ export default function LessonQuizBuilder() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
+              <div className="space-y-2 border-b border-border pb-4 mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Download our demo file to check the required structure. Create
+                  your lesson quiz file following the same format, then upload
+                  for easy copy and paste on your LMS.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadDemoFile}
+                  className="btn"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Download Demo Lesson Quiz File
+                </Button>
+              </div>
+
               <div
                 className="group relative border-2 border-dashed border-border/50 rounded-2xl p-10 text-center hover:border-primary/50 transition-all cursor-pointer bg-muted/5"
                 onClick={() => fileInputRef.current?.click()}

@@ -228,8 +228,8 @@ export function CourseGenerator() {
       () => {
         const link = document.createElement('a');
         link.href =
-          'https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765354187/demo-file-of-website-content-for-3-section.docx';
-        link.download = 'demo-file-of-website-content-for-3-section.docx';
+          'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1782908044936-website_content_sample.docx';
+        link.download = 'website_content_sample.docx';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

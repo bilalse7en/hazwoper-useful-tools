@@ -505,13 +505,18 @@ export function BlogGenerator() {
   };
 
   const downloadDemoFile = () => {
-    const link = document.createElement('a');
-    link.href =
-      'https://media.hazwoper-osha.com/wp-content/uploads/2025/12/1765354092/Blog_Sample_File.docx';
-    link.download = 'Blog_Sample_File.docx';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    performAction(
+      () => {
+        const link = document.createElement('a');
+        link.href =
+          'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1782908022889-blog_sample.docx';
+        link.download = 'blog_sample.docx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      },
+      { type: 'download', name: 'Demo Blog File' }
+    );
   };
 
   const openPreview = (content, title) => {
@@ -988,6 +993,23 @@ export function BlogGenerator() {
               <CardContent className="card-body space-y-4">
                 {!showReview ? (
                   <>
+                    <div className="space-y-2 border-b border-border pb-4 mb-4">
+                      <p className="text-sm text-muted-foreground">
+                        Download our demo file to check the required structure.
+                        Create your blog file following the same format, then
+                        upload for easy blog code generation.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadDemoFile}
+                        className="btn"
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Download Demo Blog File
+                      </Button>
+                    </div>
+
                     <div className="space-y-2">
                       <div
                         className="file-upload-area p-3 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg text-center cursor-pointer hover:bg-purple-100/50 dark:hover:bg-purple-900/20 transition-colors"
