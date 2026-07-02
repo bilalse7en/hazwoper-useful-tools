@@ -32,7 +32,8 @@ import { cn } from '@/lib/utils';
 import { formatFileSize } from '@/lib/image-converter';
 import { ProgressButton } from '@/components/progress-button';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
+import { loadFFmpegCore } from '@/lib/ffmpeg-loader';
 import { showToast, showSuccess } from '@/lib/swal';
 
 const OUTPUT_FORMATS = [
@@ -89,17 +90,7 @@ export function VideoConverter() {
       });
 
       try {
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-        await ffmpeg.load({
-          coreURL: await toBlobURL(
-            `${baseURL}/ffmpeg-core.js`,
-            'text/javascript'
-          ),
-          wasmURL: await toBlobURL(
-            `${baseURL}/ffmpeg-core.wasm`,
-            'application/wasm'
-          ),
-        });
+        await loadFFmpegCore(ffmpeg);
         setFfmpegLoaded(true);
       } catch (err) {
         console.error('Failed to load FFmpeg:', err);

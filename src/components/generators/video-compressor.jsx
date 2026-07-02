@@ -29,12 +29,14 @@ import {
   Flame,
   Server,
   Monitor as BrowserIcon,
+  Scissors,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatFileSize } from '@/lib/image-converter';
 import { ProgressButton } from '@/components/progress-button';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
+import { loadFFmpegCore } from '@/lib/ffmpeg-loader';
 
 // --- Constants ---
 const RESOLUTIONS = [
@@ -126,6 +128,11 @@ export function VideoCompressor() {
   const ffmpegRef = useRef(null);
   const [historyRefresh, setHistoryRefresh] = useState(0);
 
+  // Video Trimming Settings
+  const [trimEnabled, setTrimEnabled] = useState(false);
+  const [startTime, setStartTime] = useState(0);
+  const [endTime, setEndTime] = useState(10);
+
   const isDevMode = process.env.NODE_ENV === 'development';
 
   // Load FFmpeg on component mount
@@ -147,17 +154,7 @@ export function VideoCompressor() {
       });
 
       try {
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-        await ffmpeg.load({
-          coreURL: await toBlobURL(
-            `${baseURL}/ffmpeg-core.js`,
-            'text/javascript'
-          ),
-          wasmURL: await toBlobURL(
-            `${baseURL}/ffmpeg-core.wasm`,
-            'application/wasm'
-          ),
-        });
+        await loadFFmpegCore(ffmpeg);
         setFfmpegLoaded(true);
       } catch (err) {
         console.error('Failed to load FFmpeg:', err);
@@ -188,6 +185,10 @@ export function VideoCompressor() {
         width: video.videoWidth,
         height: video.videoHeight,
       });
+
+      setStartTime(0);
+      setEndTime(durationSec);
+      setTrimEnabled(false);
 
       const originalMB = file.size / (1024 * 1024);
       const suggestedMB = Math.max(1, Math.round(originalMB * 0.15 * 10) / 10);
@@ -357,6 +358,9 @@ export function VideoCompressor() {
       setProgressMessage('Preparing encoder...');
 
       const args = [
+        ...(trimEnabled
+          ? ['-ss', String(startTime), '-to', String(endTime)]
+          : []),
         '-i',
         'input.mp4',
         '-c:v',
@@ -378,13 +382,17 @@ export function VideoCompressor() {
         args.push('-ac', '2');
       }
 
-      if (useTargetSize && targetSizeMB && activeFile.durationSec > 0) {
+      const activeDuration = trimEnabled
+        ? endTime - startTime
+        : activeFile.durationSec;
+
+      if (useTargetSize && targetSizeMB && activeDuration > 0) {
         const audioBitrateKbps =
           preset.audioBitrate === 'Original'
             ? 128
             : parseInt(preset.audioBitrate);
         const totalBitrateKbps =
-          (parseFloat(targetSizeMB) * 8192) / activeFile.durationSec;
+          (parseFloat(targetSizeMB) * 8192) / activeDuration;
         const videoBitrateKbps = Math.max(
           totalBitrateKbps - audioBitrateKbps,
           100
@@ -498,6 +506,9 @@ export function VideoCompressor() {
     setResult(null);
     setProgress(0);
     setUseTargetSize(false);
+    setTrimEnabled(false);
+    setStartTime(0);
+    setEndTime(10);
   };
 
   // --- RENDER: EMPTY STATE ---
@@ -974,6 +985,77 @@ export function VideoCompressor() {
                   <span className="text-sm font-black text-orange-500 uppercase tracking-wider">
                     MB
                   </span>
+                </div>
+              )}
+            </div>
+
+            {/* Video Trimming Editor */}
+            <div className="space-y-4 p-4 rounded-xl bg-orange-500/5 border border-orange-500/20 backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Scissors className="w-4 h-4 text-orange-500" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mr-auto leading-none">
+                    Video Trimming Editor
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTrimEnabled(!trimEnabled)}
+                  disabled={isProcessing || !!result}
+                  className={cn(
+                    'text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded transition-all leading-none focus:outline-none',
+                    trimEnabled
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-background/40 text-muted-foreground border border-border/50 hover:bg-background/60 shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08)]'
+                  )}
+                >
+                  {trimEnabled ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+
+              {trimEnabled && (
+                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-1.5">
+                    <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">
+                      Start (sec)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={endTime}
+                      step={0.5}
+                      value={startTime}
+                      disabled={isProcessing || !!result}
+                      onChange={(e) =>
+                        setStartTime(
+                          Math.max(0, parseFloat(e.target.value) || 0)
+                        )
+                      }
+                      className="w-full bg-background/50 border border-border/50 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-foreground outline-none focus:border-orange-500/50 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">
+                      End (sec)
+                    </label>
+                    <input
+                      type="number"
+                      min={startTime}
+                      max={activeFile?.durationSec || 9999}
+                      step={0.5}
+                      value={endTime}
+                      disabled={isProcessing || !!result}
+                      onChange={(e) =>
+                        setEndTime(
+                          Math.min(
+                            activeFile?.durationSec || 9999,
+                            Math.max(startTime, parseFloat(e.target.value) || 0)
+                          )
+                        )
+                      }
+                      className="w-full bg-background/50 border border-border/50 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-foreground outline-none focus:border-orange-500/50 transition-colors"
+                    />
+                  </div>
                 </div>
               )}
             </div>

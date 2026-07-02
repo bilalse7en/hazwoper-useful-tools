@@ -7,6 +7,7 @@ export { ImageConverter } from './image-converter';
 export { VideoCompressor } from './video-compressor';
 export { VideoConverter } from './video-converter';
 export { AudioConverter } from './audio-converter';
+export { AudioEditor } from './audio-editor';
 export { VideoToGif } from './video-to-gif';
 export { WordToHtml } from './word-to-html';
 export { AIAssistant } from './ai-assistant';

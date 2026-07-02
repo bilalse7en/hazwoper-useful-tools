@@ -69,6 +69,10 @@ const AudioConverter = nextDynamic(
   () => import('@/components/generators').then((m) => m.AudioConverter),
   { ssr: false }
 );
+const AudioEditor = nextDynamic(
+  () => import('@/components/generators').then((m) => m.AudioEditor),
+  { ssr: false }
+);
 const VideoToGif = nextDynamic(
   () => import('@/components/generators').then((m) => m.VideoToGif),
   { ssr: false }
@@ -96,6 +100,7 @@ const toolComponents = {
   'document-extractor': DocumentExtractor,
   'video-converter': VideoConverter,
   'audio-converter': AudioConverter,
+  'audio-editor': AudioEditor,
   'video-to-gif': VideoToGif,
   'word-to-html': WordToHtml,
   'lesson-quiz-builder': LessonQuizBuilder,

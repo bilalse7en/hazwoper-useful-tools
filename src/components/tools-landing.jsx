@@ -23,6 +23,7 @@ import {
   Repeat,
   Music,
   FileType,
+  AudioWaveform,
 } from 'lucide-react';
 import { toolIdToSlug, toolInfo } from '@/lib/seo';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,7 @@ const iconMap = {
   'document-extractor': FileText,
   'video-converter': Repeat,
   'audio-converter': Music,
+  'audio-editor': AudioWaveform,
   'video-to-gif': Video,
   'word-to-html': FileType,
 };
@@ -58,6 +60,7 @@ const FREE_TOOL_IDS = [
   'document-extractor',
   'video-converter',
   'audio-converter',
+  'audio-editor',
   'video-to-gif',
   'word-to-html',
 ];
@@ -102,6 +105,7 @@ export function ToolsLanding({ user }) {
       'document-extractor',
       'video-converter',
       'audio-converter',
+      'audio-editor',
       'video-to-gif',
       'word-to-html',
     ];

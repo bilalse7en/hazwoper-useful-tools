@@ -31,6 +31,7 @@ import {
   Activity,
   MessageCircle,
   Target,
+  AudioWaveform,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,6 +71,7 @@ const navGroups = [
       { id: 'video-compressor', label: 'Video Compressor', icon: Video },
       { id: 'video-converter', label: 'Video Converter', icon: Repeat },
       { id: 'audio-converter', label: 'Audio Converter', icon: Music },
+      { id: 'audio-editor', label: 'Audio Editor', icon: AudioWaveform },
       { id: 'video-to-gif', label: 'Video to GIF', icon: Video },
       { id: 'word-to-html', label: 'Word to HTML', icon: FileType },
       { id: 'ai-assistant', label: 'AI UNIVERSE', icon: BrainCircuit },

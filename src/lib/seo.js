@@ -120,6 +120,16 @@ export const toolMetadata = {
     canonical: '/tools/audio-converter',
     ogImage: '/og-audio-converter.png',
   },
+  'audio-editor': {
+    title:
+      'Audio Editor - Edit, Trim & Apply Audio Filters Online | Content Suite',
+    description:
+      'Free browser-based audio editor. Visualize audio waveform, crop, trim, fade in/out, reverse, adjust speed and volume gain with complete privacy.',
+    keywords:
+      'audio editor, online audio editor, trim audio, cut mp3, wave editor, fade in audio, pitch speed editor, free audio tool',
+    canonical: '/tools/audio-editor',
+    ogImage: '/og-audio-editor.png',
+  },
   'video-to-gif': {
     title:
       'Video to GIF Converter - Create GIFs Under 10 Seconds | Content Suite',
@@ -190,6 +200,7 @@ export const toolIdToSlug = {
   'document-extractor': 'document-extractor',
   'video-converter': 'video-converter',
   'audio-converter': 'audio-converter',
+  'audio-editor': 'audio-editor',
   'video-to-gif': 'video-to-gif',
   'word-to-html': 'word-to-html',
   'lesson-quiz-builder': 'lesson-quiz-builder',
@@ -679,6 +690,45 @@ export const toolInfo = {
         question: 'Does it support batch conversion?',
         answer:
           'Absolutely. You can drop multiple audio files at once and they will be processed in a high-priority queue.',
+      },
+    ],
+  },
+  'audio-editor': {
+    name: 'Audio Editor',
+    icon: '🎛️',
+    description: 'Edit, trim & apply filters to audio',
+    category: 'Media Tools',
+    detailedDescription:
+      'A professional browser-based audio waveform editor inspired by Audiomass. Load any audio file to visualize its waveform, select regions with your cursor, trim, amplify volume, change playback speed, add fade in/out effects, and reverse audio. All processing is powered by FFmpeg WebAssembly for high-fidelity output without any server uploads.',
+    benefits: [
+      'Interactive visual waveform workspace with drag-to-select',
+      'Lossless trimming and selection-based cropping',
+      'Speed, gain, fade, and reverse audio processors',
+      'Export to MP3 or WAV with full undo history',
+    ],
+    howToUse:
+      'Upload an audio file to see its waveform. Drag on the canvas to select a region. Use the sidebar controls to adjust volume, speed, fades, or reverse. Click Trim to crop or Apply Filters to process. Download your edited audio.',
+    useCases: [
+      {
+        title: 'Safety Training Voiceovers',
+        description:
+          'Trim silence, amplify low speaker volumes, and add smooth fades to training narration clips.',
+      },
+      {
+        title: 'Industrial Alert Isolation',
+        description:
+          'Isolate warning alarms or machine sounds from long field recordings for training simulators.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Are my audio files uploaded to a server?',
+        answer:
+          'No. All processing happens locally in your browser via WebAssembly. Your media never leaves your device.',
+      },
+      {
+        question: 'What export formats are supported?',
+        answer: 'You can export edited audio as MP3 or WAV (lossless) format.',
       },
     ],
   },
