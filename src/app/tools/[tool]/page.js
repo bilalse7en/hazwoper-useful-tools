@@ -45,10 +45,6 @@ const ImageConverter = nextDynamic(
   () => import('@/components/generators').then((m) => m.ImageConverter),
   { ssr: false }
 );
-const VideoCompressor = nextDynamic(
-  () => import('@/components/generators').then((m) => m.VideoCompressor),
-  { ssr: false }
-);
 const AIAssistant = nextDynamic(
   () => import('@/components/generators').then((m) => m.AIAssistant),
   { ssr: false }
@@ -61,20 +57,12 @@ const DocumentExtractor = nextDynamic(
   () => import('@/components/generators').then((m) => m.DocumentExtractor),
   { ssr: false }
 );
-const VideoConverter = nextDynamic(
-  () => import('@/components/generators').then((m) => m.VideoConverter),
+const AudioHub = nextDynamic(
+  () => import('@/components/generators').then((m) => m.AudioHub),
   { ssr: false }
 );
-const AudioConverter = nextDynamic(
-  () => import('@/components/generators').then((m) => m.AudioConverter),
-  { ssr: false }
-);
-const AudioEditor = nextDynamic(
-  () => import('@/components/generators').then((m) => m.AudioEditor),
-  { ssr: false }
-);
-const VideoToGif = nextDynamic(
-  () => import('@/components/generators').then((m) => m.VideoToGif),
+const VideoHub = nextDynamic(
+  () => import('@/components/generators').then((m) => m.VideoHub),
   { ssr: false }
 );
 const WordToHtml = nextDynamic(
@@ -94,14 +82,14 @@ const toolComponents = {
   'resource-generator': ResourceGenerator,
   'html-cleaner': HTMLCleaner,
   'image-converter': ImageConverter,
-  'video-compressor': VideoCompressor,
+  'video-compressor': VideoHub,
   'ai-assistant': AIAssistant,
   'image-to-text': ImageToText,
   'document-extractor': DocumentExtractor,
-  'video-converter': VideoConverter,
-  'audio-converter': AudioConverter,
-  'audio-editor': AudioEditor,
-  'video-to-gif': VideoToGif,
+  'video-converter': VideoHub,
+  'audio-converter': AudioHub,
+  'audio-editor': AudioHub,
+  'video-to-gif': VideoHub,
   'word-to-html': WordToHtml,
   'lesson-quiz-builder': LessonQuizBuilder,
 };
@@ -161,7 +149,23 @@ export default function ToolPage() {
               Technical Documentation
             </Link>
           </div>
-          <ToolComponent />
+          {ToolComponent === AudioHub ? (
+            <AudioHub
+              initialMode={toolSlug === 'audio-editor' ? 'editor' : 'converter'}
+            />
+          ) : ToolComponent === VideoHub ? (
+            <VideoHub
+              initialMode={
+                toolSlug === 'video-converter'
+                  ? 'converter'
+                  : toolSlug === 'video-to-gif'
+                    ? 'gif'
+                    : 'compressor'
+              }
+            />
+          ) : (
+            <ToolComponent />
+          )}
         </div>
       </div>
     </ToolAccessGuard>

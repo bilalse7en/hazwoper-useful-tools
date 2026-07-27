@@ -250,6 +250,8 @@ export function WelcomeScroll({ onComplete }) {
                   alt="Content Suite"
                   width={144}
                   height={144}
+                  priority={true}
+                  loading="eager"
                   className="relative w-28 h-28 md:w-36 md:h-36 object-contain rounded-3xl"
                   unoptimized
                 />
@@ -381,6 +383,8 @@ export function WelcomeScroll({ onComplete }) {
                   alt="Content Suite"
                   width={192}
                   height={192}
+                  priority={true}
+                  loading="eager"
                   className="relative w-36 h-36 md:w-48 md:h-48 mx-auto object-contain rounded-3xl"
                   unoptimized
                 />

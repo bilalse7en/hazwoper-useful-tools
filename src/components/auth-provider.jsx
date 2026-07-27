@@ -126,74 +126,118 @@ export function AuthProvider({ children }) {
           }, {});
           setToolSettings(settingsMap);
         }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          await fetchProfile(session.user);
+        } else {
+          setUser(null);
+          localStorage.removeItem('user');
+        }
       } catch (err) {
         if (
+          err?.status === 401 ||
+          err?.message === 'Unauthorized' ||
+          err?.message?.includes('Unauthorized')
+        ) {
+          console.warn(
+            '[Session Shield] Auth session unavailable (guest mode).'
+          );
+        } else if (
           err?.message === 'Invalid API key' ||
           err?.message?.includes('API key')
         ) {
           console.warn(
-            'Supabase connection: Running with placeholder or invalid API key. local configuration fallback active.'
+            'Supabase connection: Running with placeholder or invalid API key. Local configuration fallback active.'
           );
         } else {
-          console.error('Error fetching tool settings in provider:', err);
+          console.warn(
+            '[Session Shield] Auth initialization error:',
+            err?.message || err
+          );
         }
-      }
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        await fetchProfile(session.user);
-      } else {
         setUser(null);
         localStorage.removeItem('user');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    initAuth();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session?.user?.id);
-
-      if (session?.user) {
-        await fetchProfile(session.user);
-
-        // Mark as online
-        await supabase
-          .from('profiles')
-          .update({ is_online: true })
-          .eq('id', session.user.id);
-
-        // Set up presence channel
-        const presenceChannel = supabase.channel('online-users');
-        presenceChannel.subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            await presenceChannel.track({
-              user_id: session.user.id,
-              online_at: new Date().toISOString(),
-            });
-          }
-        });
-      } else {
-        // Use the ref to get the current user ID without adding `user` to deps
-        const currentUserId = userIdRef.current;
-        if (currentUserId) {
-          await supabase
-            .from('profiles')
-            .update({ is_online: false })
-            .eq('id', currentUserId);
-        }
-        setUser(null);
-        localStorage.removeItem('user');
-        sessionStorage.removeItem('auth_toast_shown');
-      }
+    initAuth().catch((err) => {
+      console.warn(
+        '[Session Shield] Uncaught auth initialization error:',
+        err?.message || err
+      );
       setLoading(false);
     });
+
+    // Listen for auth changes
+    let subscription;
+    try {
+      const {
+        data: { subscription: sub },
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
+        try {
+          console.log('Auth state change:', event, session?.user?.id);
+
+          if (session?.user) {
+            await fetchProfile(session.user);
+
+            // Mark as online
+            await supabase
+              .from('profiles')
+              .update({ is_online: true })
+              .eq('id', session.user.id);
+
+            // Set up presence channel
+            const presenceChannel = supabase.channel('online-users');
+            presenceChannel.subscribe(async (status) => {
+              if (status === 'SUBSCRIBED') {
+                try {
+                  await presenceChannel.track({
+                    user_id: session.user.id,
+                    online_at: new Date().toISOString(),
+                  });
+                } catch (trackErr) {
+                  console.warn(
+                    '[Session Shield] Presence track error:',
+                    trackErr?.message || trackErr
+                  );
+                }
+              }
+            });
+          } else {
+            // Use the ref to get the current user ID without adding `user` to deps
+            const currentUserId = userIdRef.current;
+            if (currentUserId) {
+              await supabase
+                .from('profiles')
+                .update({ is_online: false })
+                .eq('id', currentUserId);
+            }
+            setUser(null);
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('auth_toast_shown');
+          }
+          setLoading(false);
+        } catch (cbErr) {
+          console.warn(
+            '[Session Shield] Auth state change handler error:',
+            cbErr?.message || cbErr
+          );
+          setLoading(false);
+        }
+      });
+      subscription = sub;
+    } catch (subErr) {
+      console.warn(
+        '[Session Shield] Auth subscription setup error:',
+        subErr?.message || subErr
+      );
+    }
 
     return () => {
       subscription?.unsubscribe();

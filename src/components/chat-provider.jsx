@@ -68,7 +68,10 @@ export function ChatProvider({ children }) {
       setUnreadCounts(counts);
       setTotalUnread(totalToSet);
     } catch (err) {
-      console.error('Chat Notification Sync Error:', err);
+      console.warn(
+        '[Chat Shield] Notification sync skipped:',
+        err?.message || err
+      );
     }
   }, [user, activeSenderId]);
 
@@ -106,7 +109,10 @@ export function ChatProvider({ children }) {
         // Re-verify after a short delay
         setTimeout(() => fetchAllUnread(), 1000);
       } catch (err) {
-        console.error('Failed to mark as read:', err);
+        console.warn(
+          '[Chat Shield] Mark as read skipped:',
+          err?.message || err
+        );
       }
     },
     [user, fetchAllUnread]
@@ -214,7 +220,7 @@ export function ChatProvider({ children }) {
 
         return { success: true };
       } catch (err) {
-        console.error('Delete error:', err);
+        console.warn('[Chat Shield] Delete error:', err?.message || err);
         showToast('Delete failed', 'error');
         return { success: false, error: err.message };
       }

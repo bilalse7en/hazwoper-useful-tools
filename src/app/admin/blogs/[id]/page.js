@@ -238,7 +238,7 @@ export default function AdminBlogEditPage() {
       }`;
 
       const response = await window.puter.ai.chat(`Topic: "${aiInput.title}"`, {
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [{ role: 'system', content: systemPrompt }],
       });
 
@@ -314,7 +314,7 @@ export default function AdminBlogEditPage() {
             Context: Industrial safety, HAZWOPER, professional workspace. 
             Rules: No text in image, 8k resolution, cinematic lighting. 
             Output only the 1-sentence prompt itself.`,
-            { model: 'gpt-4o' }
+            { model: 'gpt-4o-mini' }
           );
           const aiPrompt =
             typeof puterResponse === 'string'
