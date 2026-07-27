@@ -13,7 +13,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'staging-media.hazwoper-osha.com',
+        hostname: 'gyglsbmpxopaoeljoofp.supabase.co',
       },
     ],
   },

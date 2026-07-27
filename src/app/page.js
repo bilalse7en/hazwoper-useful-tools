@@ -7,46 +7,16 @@ import { InitialLoadingShell } from '@/components/initial-loading-shell';
 import { supabase } from '@/lib/supabase';
 import { showSuccess } from '@/lib/swal';
 
-// Dynamic imports with SSR enabled for SEO
-const ToolsLanding = dynamic(
-  () => import('@/components/tools-landing').then((mod) => mod.ToolsLanding),
-  {
-    loading: () => <InitialLoadingShell isReady={false} />,
-  }
-);
-
-const BlogSection = dynamic(
-  () => import('@/components/blog-section').then((mod) => mod.BlogSection),
-  {
-    loading: () => <InitialLoadingShell isReady={false} />,
-  }
-);
+import { ToolsLanding } from '@/components/tools-landing';
+import { BlogSection } from '@/components/blog-section';
+import { ProfessionalOverview } from '@/components/professional-overview';
+import { IndustryInsights } from '@/components/industry-insights';
 
 const WelcomeScroll = dynamic(
   () => import('@/components/welcome-scroll').then((mod) => mod.WelcomeScroll),
   {
     loading: () => <InitialLoadingShell isReady={false} />,
     ssr: false, // Keep welcome scroll client-only as it's purely interactive
-  }
-);
-
-const ProfessionalOverview = dynamic(
-  () =>
-    import('@/components/professional-overview').then(
-      (mod) => mod.ProfessionalOverview
-    ),
-  {
-    loading: () => <div className="h-96" />,
-  }
-);
-
-const IndustryInsights = dynamic(
-  () =>
-    import('@/components/industry-insights').then(
-      (mod) => mod.IndustryInsights
-    ),
-  {
-    loading: () => <div className="h-96" />,
   }
 );
 
@@ -116,7 +86,6 @@ export default function Home() {
         }}
       />
 
-      <InitialLoadingShell isReady={!isChecking} />
       {showWelcome && <WelcomeScroll onComplete={handleWelcomeComplete} />}
       <ToolsLanding user={user} />
       <IndustryInsights />

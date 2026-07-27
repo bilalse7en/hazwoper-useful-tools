@@ -246,7 +246,7 @@ export function WelcomeScroll({ onComplete }) {
               <div className="flex justify-center relative">
                 <div className="absolute -inset-6 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 blur-2xl rounded-full animate-pulse" />
                 <Image
-                  src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
+                  src="https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif"
                   alt="Content Suite"
                   width={144}
                   height={144}
@@ -258,9 +258,15 @@ export function WelcomeScroll({ onComplete }) {
               </div>
 
               {/* typed heading */}
-              <h1 className="text-4xl md:text-6xl font-black bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent leading-tight">
-                {typedText}
-                <span className="inline-block w-0.5 h-10 bg-purple-400 ml-1 animate-pulse align-middle" />
+              <h1 className="text-4xl md:text-6xl font-black leading-tight relative min-h-[3rem] md:min-h-[4.5rem]">
+                {/* Invisible text layer to reserve height off-screen or transparently to prevent layout shifts */}
+                <span className="invisible select-none pointer-events-none block">
+                  {welcomeText}
+                </span>
+                <span className="absolute inset-0 bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent flex items-center justify-center">
+                  {typedText}
+                  <span className="inline-block w-0.5 h-10 bg-purple-400 ml-1 animate-pulse align-middle" />
+                </span>
               </h1>
 
               {/* subtitle */}
@@ -379,7 +385,7 @@ export function WelcomeScroll({ onComplete }) {
               <div className="relative inline-block">
                 <div className="absolute -inset-10 bg-gradient-to-r from-purple-500/25 via-pink-500/25 to-purple-500/25 blur-[80px] rounded-full animate-pulse" />
                 <Image
-                  src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
+                  src="https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif"
                   alt="Content Suite"
                   width={192}
                   height={192}

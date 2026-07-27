@@ -679,7 +679,7 @@ export function VideoCompressor() {
 
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Image
-                      src="https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif"
+                      src="https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif"
                       alt="Processing"
                       width={64}
                       height={64}

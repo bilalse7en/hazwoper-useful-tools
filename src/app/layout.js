@@ -47,9 +47,6 @@ export const metadata = {
   keywords:
     'course generator, content generator, DOCX to HTML, blog generator, glossary generator',
   authors: [{ name: 'Content Suite' }],
-  icons: {
-    icon: 'https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif',
-  },
   other: {
     'google-adsense-account': 'ca-pub-9874465109252768',
   },
@@ -66,12 +63,12 @@ export default function RootLayout({ children }) {
         />
         <link
           rel="preconnect"
-          href="https://media.hazwoper-osha.com"
+          href="https://gyglsbmpxopaoeljoofp.supabase.co"
           crossOrigin="anonymous"
         />
         <link
           rel="preconnect"
-          href="https://fonts.googleapis.com"
+          href="https://js.puter.com"
           crossOrigin="anonymous"
         />
         <link
@@ -79,8 +76,11 @@ export default function RootLayout({ children }) {
           href="https://pagead2.googlesyndication.com"
           crossOrigin="anonymous"
         />
-        <link rel="dns-prefetch" href="https://media.hazwoper-osha.com" />
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link
+          rel="dns-prefetch"
+          href="https://gyglsbmpxopaoeljoofp.supabase.co"
+        />
+        <link rel="dns-prefetch" href="https://js.puter.com" />
         <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
         <script
           async
@@ -102,7 +102,7 @@ export default function RootLayout({ children }) {
               '@type': 'Organization',
               name: 'Content Suite',
               url: 'https://hazwoper-useful-tools.vercel.app',
-              logo: 'https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif',
+              logo: 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
               description:
                 'Professional content generation platform for safety and technical documentation.',
               contactPoint: {

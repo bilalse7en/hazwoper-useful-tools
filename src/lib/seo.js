@@ -867,7 +867,7 @@ export const organizationSchema = {
   name: 'Content Suite',
   description: 'Professional content generation and media processing tools',
   url: 'https://hazwoper-useful-tools.vercel.app',
-  logo: 'https://staging-media.hazwoper-osha.com/wp-content/uploads/2026/05/1779695072/Hi.gif',
+  logo: 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
   sameAs: [],
 };
 
