@@ -2,8 +2,13 @@
 User-agent: *
 Allow: /
 
-# Block admin/API routes if any
+# Block thin, gated, admin, and system routes to optimize crawl budget
 Disallow: /api/
+Disallow: /admin/
+Disallow: /profile/
+Disallow: /chat/
+Disallow: /auth/
 
 # Sitemap location
 Sitemap: https://hazwoper-useful-tools.vercel.app/sitemap.xml
+
