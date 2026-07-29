@@ -181,8 +181,6 @@ export function AuthProvider({ children }) {
         data: { subscription: sub },
       } = supabase.auth.onAuthStateChange(async (event, session) => {
         try {
-          console.log('Auth state change:', event, session?.user?.id);
-
           if (session?.user) {
             await fetchProfile(session.user);
 
@@ -259,7 +257,7 @@ export function AuthProvider({ children }) {
           filter: `id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Real-time profile update:', payload.new);
+          // Real-time profile sync
           // Pure functional update to avoid stale closure issues
           setUser((prev) => {
             const updated = { ...prev, ...payload.new };

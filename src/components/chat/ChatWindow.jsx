@@ -177,24 +177,23 @@ export function ChatWindow({
   } = useChat();
   const [messages, setMessages] = useState([]);
 
+  const hasMarkedGlobalRef = useRef(false);
+
   useEffect(() => {
     setActiveChat(isGlobal ? null : receiverId);
-    if (isGlobal) {
+    if (isGlobal && !hasMarkedGlobalRef.current) {
+      hasMarkedGlobalRef.current = true;
       markGlobalAsRead();
     }
     return () => {
       setActiveChat(null);
       if (isGlobal) {
         markGlobalChatClosed();
+        hasMarkedGlobalRef.current = false;
       }
     };
-  }, [
-    receiverId,
-    isGlobal,
-    setActiveChat,
-    markGlobalAsRead,
-    markGlobalChatClosed,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [receiverId, isGlobal]);
 
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
