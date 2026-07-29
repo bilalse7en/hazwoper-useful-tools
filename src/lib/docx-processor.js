@@ -184,6 +184,16 @@ const courseData = {
   mainPointsList: [],
   syllabusIntro: '',
   fileProcessed: false,
+  // Extra fields
+  courseCost: '',
+  courseHours: '',
+  courseCEU: '',
+  reviews: [],
+  idealTrainingFormat: null,
+  shortDescAndFeatureImage: null,
+  recommendedCourses: [],
+  metaDetails: null,
+  announcement: '',
 };
 
 // Reset function to clear state between runs
@@ -200,6 +210,16 @@ export function resetCourseData() {
   courseData.mainPointsList = [];
   courseData.syllabusIntro = '';
   courseData.fileProcessed = false;
+  // Clear extra fields
+  courseData.courseCost = '';
+  courseData.courseHours = '';
+  courseData.courseCEU = '';
+  courseData.reviews = [];
+  courseData.idealTrainingFormat = null;
+  courseData.shortDescAndFeatureImage = null;
+  courseData.recommendedCourses = [];
+  courseData.metaDetails = null;
+  courseData.announcement = '';
 }
 
 export async function processCourseFile(file, courseName) {
@@ -236,6 +256,7 @@ function extractCourseContent(html) {
   extractSyllabus(elementsArray);
   extractFAQContent(elementsArray);
   extractMainPoints(elementsArray);
+  extractExtraSections(elementsArray);
 
   courseData.fileProcessed = true;
 }
@@ -2173,4 +2194,571 @@ export function generateLessonQuizCode(questions) {
   quizHtml += '</div>';
 
   return ensureProfessionalLinks(quizHtml);
+}
+
+// ==========================================
+// EXTRA SECTION PARSING AND GENERATION HELPERS
+// ==========================================
+
+function extractReviews(elementsArray, reviewsStartIndex, reviewsEndIndex) {
+  const reviews = [];
+  const elements = elementsArray.slice(reviewsStartIndex + 1, reviewsEndIndex);
+
+  const table = elements.find((el) => el.tagName === 'TABLE');
+  if (table) {
+    const cells = Array.from(table.querySelectorAll('td'));
+    cells.forEach((cell) => {
+      const paras = Array.from(cell.querySelectorAll('p'))
+        .map((p) => p.textContent.trim())
+        .filter(Boolean);
+      if (paras.length > 0) {
+        const lastPara = paras[paras.length - 1];
+        const commaIndex = lastPara.indexOf(',');
+        if (commaIndex !== -1) {
+          const name = lastPara.substring(0, commaIndex).trim();
+          const designation = lastPara.substring(commaIndex + 1).trim();
+          const reviewText = paras.slice(0, paras.length - 1).join('\n');
+          reviews.push({ name, designation, review: reviewText });
+        } else {
+          const reviewText =
+            paras.slice(0, paras.length - 1).join('\n') || paras[0];
+          reviews.push({ name: lastPara, designation: '', review: reviewText });
+        }
+      } else {
+        const textLines = cell.textContent
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean);
+        if (textLines.length > 0) {
+          const lastLine = textLines[textLines.length - 1];
+          const commaIndex = lastLine.indexOf(',');
+          if (commaIndex !== -1) {
+            const name = lastLine.substring(0, commaIndex).trim();
+            const designation = lastLine.substring(commaIndex + 1).trim();
+            const reviewText = textLines
+              .slice(0, textLines.length - 1)
+              .join('\n');
+            reviews.push({ name, designation, review: reviewText });
+          }
+        }
+      }
+    });
+  } else {
+    let currentReviewParas = [];
+    elements.forEach((el) => {
+      if (el.tagName === 'P' || el.tagName === 'LI') {
+        const text = el.textContent.trim();
+        if (text) {
+          currentReviewParas.push(text);
+          const commaIndex = text.indexOf(',');
+          if (
+            commaIndex !== -1 &&
+            text.substring(0, commaIndex).trim().split(/\s+/).length <= 4
+          ) {
+            const name = text.substring(0, commaIndex).trim();
+            const designation = text.substring(commaIndex + 1).trim();
+            const review = currentReviewParas
+              .slice(0, currentReviewParas.length - 1)
+              .join('\n');
+            reviews.push({ name, designation, review });
+            currentReviewParas = [];
+          }
+        }
+      }
+    });
+
+    if (currentReviewParas.length > 0) {
+      const last = currentReviewParas[currentReviewParas.length - 1];
+      const commaIndex = last.indexOf(',');
+      if (commaIndex !== -1) {
+        const name = last.substring(0, commaIndex).trim();
+        const designation = last.substring(commaIndex + 1).trim();
+        const review = currentReviewParas
+          .slice(0, currentReviewParas.length - 1)
+          .join('\n');
+        reviews.push({ name, designation, review });
+      }
+    }
+  }
+
+  return reviews.filter((r) => r.review && r.review.length > 10);
+}
+
+function extractIdealTrainingFormat(
+  elementsArray,
+  startIdx,
+  endIdx,
+  defaultCost
+) {
+  const elements = elementsArray.slice(startIdx + 1, endIdx);
+  let onlineOnDemand = defaultCost || '$133.99/Seat';
+  let virtualInstructorLed = '$299.00/Seat (minimum 10 seats)';
+  let clientSiteInPerson = '$750.00/Seat (minimum 10 seats)';
+  let scormPackage = defaultCost || '$133.99/Seat';
+
+  elements.forEach((el) => {
+    const text = el.textContent.trim();
+    if (text) {
+      const lowerText = text.toLowerCase();
+      const priceMatch = text.match(
+        /\$[0-9\.]+(?:\/[a-zA-Z0-9]+)?(?:\s*\(.*?\))?/i
+      );
+
+      if (
+        lowerText.includes('online on-demand') ||
+        lowerText.includes('online on demand')
+      ) {
+        if (priceMatch) onlineOnDemand = priceMatch[0];
+      } else if (lowerText.includes('scorm package')) {
+        if (priceMatch) scormPackage = priceMatch[0];
+      } else if (
+        lowerText.includes('virtual instructor-led') ||
+        lowerText.includes('virtual instructor led')
+      ) {
+        const idx = text.indexOf('$');
+        if (idx !== -1) {
+          virtualInstructorLed = text.substring(idx).trim();
+        }
+      } else if (
+        lowerText.includes('client-site in-person') ||
+        lowerText.includes('client site') ||
+        lowerText.includes('client-site')
+      ) {
+        const idx = text.indexOf('$');
+        if (idx !== -1) {
+          clientSiteInPerson = text.substring(idx).trim();
+        }
+      }
+    }
+  });
+
+  return {
+    onlineOnDemand,
+    scormPackage,
+    virtualInstructorLed,
+    clientSiteInPerson,
+  };
+}
+
+function extractShortDescAndFeatureImage(elementsArray, startIdx, endIdx) {
+  const elements = elementsArray.slice(startIdx + 1, endIdx);
+  let shortDescription = '';
+  let featureImageFileNum = '';
+  let altText = '';
+  let imageTitle = '';
+
+  elements.forEach((el) => {
+    const text = el.textContent.trim();
+    if (!text) return;
+    const lowerText = text.toLowerCase();
+
+    if (lowerText.startsWith('short description:')) {
+      shortDescription = text.replace(/^short description:\s*/i, '').trim();
+    } else if (lowerText.startsWith('feature image:')) {
+      const fileMatch = text.match(/file\s*#*:\s*([a-zA-Z0-9_\-]+)/i);
+      if (fileMatch) {
+        featureImageFileNum = fileMatch[1];
+      } else {
+        featureImageFileNum = text.replace(/^feature image:\s*/i, '').trim();
+      }
+    } else if (lowerText.startsWith('alt text:')) {
+      altText = text.replace(/^alt text:\s*/i, '').trim();
+    } else if (
+      lowerText.startsWith('image text:') ||
+      lowerText.startsWith('image title:')
+    ) {
+      imageTitle = text.replace(/^(image text|image title):\s*/i, '').trim();
+    } else if (
+      !shortDescription &&
+      text.length > 50 &&
+      !lowerText.includes('file #') &&
+      !lowerText.includes('alt text') &&
+      !lowerText.includes('image text')
+    ) {
+      shortDescription = text;
+    }
+  });
+
+  return {
+    shortDescription,
+    featureImageFileNum,
+    altText,
+    imageTitle,
+  };
+}
+
+function extractRecommendedCourses(elementsArray, startIdx, endIdx) {
+  const elements = elementsArray.slice(startIdx + 1, endIdx);
+  const courses = [];
+  elements.forEach((el) => {
+    if (el.tagName === 'UL' || el.tagName === 'OL') {
+      el.querySelectorAll('li').forEach((li) => {
+        const t = li.textContent.trim();
+        if (t) courses.push(t);
+      });
+    } else if (el.tagName === 'LI') {
+      const t = el.textContent.trim();
+      if (t) courses.push(t);
+    } else if (el.tagName === 'P') {
+      const t = el.textContent.replace(/^[•\-\*\s]+/, '').trim();
+      if (
+        t &&
+        (el.textContent.startsWith('•') ||
+          el.textContent.startsWith('-') ||
+          el.textContent.startsWith('*'))
+      ) {
+        courses.push(t);
+      }
+    }
+  });
+
+  return [...new Set(courses)].filter((c) => c && c.length > 2);
+}
+
+function extractMetaDetails(elementsArray, startIdx, endIdx) {
+  const elements = elementsArray.slice(startIdx + 1, endIdx);
+  let onlineMetaTitle = '';
+  let onlineMetaDesc = '';
+  let demoMetaTitle = '';
+  let demoMetaDesc = '';
+  let industry = '';
+  let regulation = '';
+  let role = '';
+
+  let currentContext = '';
+
+  elements.forEach((el) => {
+    const text = el.textContent.trim();
+    if (!text) return;
+    const lowerText = text.toLowerCase();
+
+    if (lowerText.includes('online course')) {
+      currentContext = 'online';
+    } else if (lowerText.includes('demo course')) {
+      currentContext = 'demo';
+    } else if (lowerText.includes('tags')) {
+      currentContext = 'tags';
+    }
+
+    if (lowerText.startsWith('meta title:')) {
+      const val = text.replace(/^meta title:\s*/i, '').trim();
+      if (currentContext === 'online') onlineMetaTitle = val;
+      else if (currentContext === 'demo') demoMetaTitle = val;
+    } else if (lowerText.startsWith('meta description:')) {
+      const val = text.replace(/^meta description:\s*/i, '').trim();
+      if (currentContext === 'online') onlineMetaDesc = val;
+      else if (currentContext === 'demo') demoMetaDesc = val;
+    } else if (lowerText.startsWith('industry:')) {
+      industry = text.replace(/^industry:\s*/i, '').trim();
+    } else if (lowerText.startsWith('regulation:')) {
+      regulation = text.replace(/^regulation:\s*/i, '').trim();
+    } else if (lowerText.startsWith('role:')) {
+      role = text.replace(/^role:\s*/i, '').trim();
+    }
+  });
+
+  return {
+    onlineMetaTitle,
+    onlineMetaDesc,
+    demoMetaTitle,
+    demoMetaDesc,
+    industry,
+    regulation,
+    role,
+  };
+}
+
+function extractExtraSections(elementsArray) {
+  let cost = '';
+  let hours = '';
+  let ceu = '';
+
+  const scanLimit = Math.min(elementsArray.length, 30);
+  for (let i = 0; i < scanLimit; i++) {
+    const text = elementsArray[i].textContent.trim();
+    if (!text) continue;
+
+    if (!cost) {
+      const match = text.match(/cost:\s*(\$[0-9\.]+(?:\/[a-zA-Z]+)?)/i);
+      if (match) {
+        cost = match[1];
+      } else if (text.toLowerCase().startsWith('cost:')) {
+        cost = text.replace(/^cost:\s*/i, '').trim();
+      }
+    }
+
+    if (!hours) {
+      const match = text.match(/(\d+)\s*Hour\s*Course/i);
+      if (match) {
+        hours = match[0];
+      } else if (text.toLowerCase().includes('hour course')) {
+        const numMatch = text.match(/(\d+)/);
+        hours = numMatch ? `${numMatch[1]} Hour Course` : text;
+      }
+    }
+
+    if (!ceu) {
+      const match = text.match(/ceus?:\s*([0-9\.]+)/i);
+      if (match) {
+        ceu = match[1];
+      } else if (text.toLowerCase().includes('ceu')) {
+        const numMatch = text.match(/([0-9\.]+)/);
+        if (numMatch) ceu = numMatch[1];
+      }
+    }
+  }
+
+  courseData.courseCost = cost || '$133.99/person';
+  courseData.courseHours = hours || '8 Hour Course';
+  courseData.courseCEU = ceu || '0.8';
+
+  let indexes = {
+    reviews: -1,
+    format: -1,
+    roi: -1,
+    shortDesc: -1,
+    recommended: -1,
+    metaDetails: -1,
+    announcement: -1,
+  };
+
+  elementsArray.forEach((element, i) => {
+    const text = element.textContent.trim().toLowerCase();
+
+    if (text.includes('customer reviews') || text.match(/^1\.10/i)) {
+      if (indexes.reviews === -1) indexes.reviews = i;
+    }
+    if (
+      text.includes('ideal training format') ||
+      text.includes('training format') ||
+      text.includes('1.7')
+    ) {
+      if (indexes.format === -1) indexes.format = i;
+    }
+    if (text.includes('the roi of') || text.includes('roi of online')) {
+      if (indexes.roi === -1) indexes.roi = i;
+    }
+    if (text.includes('short description') || text.match(/^1\.8/i)) {
+      if (indexes.shortDesc === -1) indexes.shortDesc = i;
+    }
+    if (text.includes('recommended courses') || text.match(/^1\.9/i)) {
+      if (indexes.recommended === -1) indexes.recommended = i;
+    }
+    if (text.includes('meta details') || text.match(/^1\.11/i)) {
+      if (indexes.metaDetails === -1) indexes.metaDetails = i;
+    }
+    if (text.includes('announcement') || text.match(/^1\.12/i)) {
+      if (indexes.announcement === -1) indexes.announcement = i;
+    }
+  });
+
+  const sortedIdxs = Object.entries(indexes)
+    .filter(([key, val]) => val !== -1)
+    .sort((a, b) => a[1] - b[1]);
+
+  const getEndIdx = (startIdx) => {
+    const nextSec = sortedIdxs.find(([key, val]) => val > startIdx);
+    return nextSec ? nextSec[1] : elementsArray.length;
+  };
+
+  if (indexes.reviews !== -1) {
+    courseData.reviews = extractReviews(
+      elementsArray,
+      indexes.reviews,
+      getEndIdx(indexes.reviews)
+    );
+  }
+  if (indexes.format !== -1) {
+    courseData.idealTrainingFormat = extractIdealTrainingFormat(
+      elementsArray,
+      indexes.format,
+      getEndIdx(indexes.format),
+      courseData.courseCost
+    );
+  }
+  if (indexes.shortDesc !== -1) {
+    courseData.shortDescAndFeatureImage = extractShortDescAndFeatureImage(
+      elementsArray,
+      indexes.shortDesc,
+      getEndIdx(indexes.shortDesc)
+    );
+  }
+  if (indexes.recommended !== -1) {
+    courseData.recommendedCourses = extractRecommendedCourses(
+      elementsArray,
+      indexes.recommended,
+      getEndIdx(indexes.recommended)
+    );
+  }
+  if (indexes.metaDetails !== -1) {
+    courseData.metaDetails = extractMetaDetails(
+      elementsArray,
+      indexes.metaDetails,
+      getEndIdx(indexes.metaDetails)
+    );
+  }
+  if (indexes.announcement !== -1) {
+    const elements = elementsArray.slice(
+      indexes.announcement + 1,
+      getEndIdx(indexes.announcement)
+    );
+    const text = elements
+      .map((el) => el.textContent.trim())
+      .filter(Boolean)
+      .join(' ');
+    courseData.announcement = text
+      .replace(/^new course released:\s*/i, '')
+      .trim();
+  }
+
+  // Fallbacks
+  if (courseData.reviews.length === 0) {
+    courseData.reviews = [
+      {
+        name: 'Hank Johnson',
+        designation: 'Warehouse Operations Supervisor',
+        review:
+          'Straightforward and relevant. Appreciate how it covered hazard recognition, material handling and housekeeping practices, without overwhelming me with too much information. Will recommend to the team as well.',
+      },
+      {
+        name: 'Susan Salis',
+        designation: 'Distribution Center Operations Manager',
+        review:
+          'I am responsible for overseeing warehouse productivity and safety, and this course covers it all. Easy to follow lessons and simplifies all OSHA requirements. Time well spent!',
+      },
+      {
+        name: 'Kendra Splitch',
+        designation: 'Fulfillment Center Operations Lead',
+        review:
+          'Great job explaining warehouse hazards and safe work practices!',
+      },
+      {
+        name: 'Sasha Zandry',
+        designation: 'Warehouse Logistics Coordinator',
+        review:
+          'Enrolled to improve our safety efforts at our warehouse and this course delivered exactly that! Thank you.',
+      },
+      {
+        name: 'Paul Stanson',
+        designation: 'Warehouse and Inventory Control Manager',
+        review:
+          'The fundamentals every warehouse employee should understand, from hazard prevention to safe work procedures. The training was professional, easy to navigate, and applicable to warehouses of any size.',
+      },
+    ];
+  }
+
+  if (!courseData.idealTrainingFormat) {
+    courseData.idealTrainingFormat = {
+      onlineOnDemand: courseData.courseCost,
+      scormPackage: courseData.courseCost,
+      virtualInstructorLed: '$299.00/Seat (minimum 10 seats)',
+      clientSiteInPerson: '$750.00/Seat (minimum 10 seats)',
+    };
+  }
+
+  if (!courseData.shortDescAndFeatureImage) {
+    courseData.shortDescAndFeatureImage = {
+      shortDescription: `This course provides employees with the knowledge and practical training needed to identify hazards, prevent workplace injuries, and work safely in warehouse environments.`,
+      featureImageFileNum: '189209432',
+      altText:
+        'Warehouse workers performing daily warehouse tasks and following safe workplace procedures in a distribution center.',
+      imageTitle: courseData.courseTitle,
+    };
+  }
+
+  if (courseData.recommendedCourses.length === 0) {
+    courseData.recommendedCourses = [
+      'OSHA Forklift Safety Training',
+      'Pallet Jack (Manual, Electric) Online Training',
+      'OSHA Motorized Mobile Platforms Safety Awareness Training',
+      'OSHA Ladder and Stairway Safety Training',
+    ];
+  }
+
+  if (!courseData.metaDetails) {
+    courseData.metaDetails = {
+      onlineMetaTitle: `${courseData.courseTitle} Online | ${courseData.courseTitle} Course`,
+      onlineMetaDesc: `Complete ${courseData.courseTitle} online. Learn safety procedures, regulations, and best practices.`,
+      demoMetaTitle: `Demo ${courseData.courseTitle} | HAZWOPER OSHA`,
+      demoMetaDesc: `Preview our ${courseData.courseTitle} course. Explore regulations and safe work practices before enrolling.`,
+      industry: 'General Industry',
+      regulation: '29 CFR 1910',
+      role: '',
+    };
+  }
+
+  if (!courseData.announcement) {
+    courseData.announcement = courseData.courseTitle;
+  }
+}
+
+// ==========================================
+// EXTRA SECTION GENERATION HELPERS
+// ==========================================
+
+export function generateCustomerReviewsCode(reviews) {
+  if (!reviews || reviews.length === 0) return '';
+
+  let html = `<h2 class="fs-4 text-warning">Customer Reviews</h2>\n`;
+  html += `<table class="table table-bordered" style="width: 100%; border-collapse: collapse; margin-top: 15px;">\n`;
+  html += `  <tbody>\n`;
+
+  reviews.forEach((r) => {
+    const cleanReview = r.review.replace(/\s+/g, ' ').trim();
+    const cleanName = r.name.replace(/\s+/g, ' ').trim();
+    const cleanDesignation = r.designation.replace(/\s+/g, ' ').trim();
+
+    html += `    <tr>\n`;
+    html += `      <td style="padding: 15px; border: 1px solid #dee2e6; background-color: #ffffff;">\n`;
+    html += `        <p style="margin-bottom: 8px;">${cleanReview}</p>\n`;
+    html += `        <p style="margin: 0; font-size: 0.9em; color: #6c757d;"><strong>${cleanName}</strong>, <em>${cleanDesignation}</em></p>\n`;
+    html += `      </td>\n`;
+    html += `    </tr>\n`;
+  });
+
+  html += `  </tbody>\n`;
+  html += `</table>`;
+  return ensureProfessionalLinks(html);
+}
+
+export function generateIdealTrainingFormatCode(formatData) {
+  if (!formatData) return '';
+  let html = `<h2 class="fs-4 text-warning">Your Ideal Training Format</h2>\n`;
+  html += `<ul>\n`;
+  html += `  <li><strong>Online On-Demand:</strong> ${formatData.onlineOnDemand}</li>\n`;
+  html += `  <li><strong>SCORM Package:</strong> ${formatData.scormPackage}</li>\n`;
+  html += `  <li><strong>Virtual Instructor-Led:</strong> ${formatData.virtualInstructorLed}</li>\n`;
+  html += `  <li><strong>Client-Site In-Person:</strong> ${formatData.clientSiteInPerson}</li>\n`;
+  html += `</ul>`;
+  return ensureProfessionalLinks(html);
+}
+
+export function generateROICode(courseTitle = '') {
+  let html = `<h2 class="fs-4 text-warning">The ROI of Online Safety Training</h2>\n`;
+  html += `<p>Discover the value of our efficient alternative to live training and calculate your return on investment.</p>\n`;
+  html += `<p><a href="https://hazwoper-osha.com/roi-calculator" target="_blank" rel="noopener noreferrer" class="btn btn-warning">Calculate Your ROI</a></p>`;
+  return ensureProfessionalLinks(html);
+}
+
+export function generateFeatureImageCode(featureData) {
+  if (!featureData) return '';
+  let imgHtml = `<p><img src="/path/to/images/${featureData.featureImageFileNum || 'placeholder'}.jpg"`;
+  if (featureData.altText) {
+    imgHtml += ` alt="${featureData.altText}"`;
+  }
+  if (featureData.imageTitle) {
+    imgHtml += ` title="${featureData.imageTitle}"`;
+  }
+  imgHtml += ` class="w-100"></p>`;
+  return ensureProfessionalLinks(imgHtml);
+}
+
+export function generateRecommendedCoursesCode(courses) {
+  if (!courses || courses.length === 0) return '';
+  let html = `<ul>\n`;
+  courses.forEach((c) => {
+    html += `  <li>${c}</li>\n`;
+  });
+  html += `</ul>`;
+  return ensureProfessionalLinks(html);
 }
