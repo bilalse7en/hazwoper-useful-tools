@@ -5,6 +5,7 @@ export { ResourceGenerator } from './resource-generator';
 export { HTMLCleaner } from './html-cleaner';
 export { ImageConverter } from './image-converter';
 export { AudioHub } from './audio-hub';
+export { AudioEditor } from './audio-editor';
 export { VideoHub } from './video-hub';
 export { WordToHtml } from './word-to-html';
 export { AIAssistant } from './ai-assistant';

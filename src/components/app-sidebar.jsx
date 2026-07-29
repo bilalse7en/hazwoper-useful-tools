@@ -66,13 +66,37 @@ const navGroups = [
     icon: Wrench,
     items: [
       { id: 'html-cleaner', label: 'HTML Cleaner', icon: Code },
-      { id: 'image-converter', label: 'Image Converter', icon: ImageIcon },
-      { id: 'image-to-text', label: 'Image to Text', icon: ScanText },
-      { id: 'video-compressor', label: 'Video Compressor', icon: Video },
-      { id: 'video-converter', label: 'Video Converter', icon: Repeat },
-      { id: 'audio-converter', label: 'Audio Converter', icon: Music },
-      { id: 'audio-editor', label: 'Audio Editor', icon: AudioWaveform },
-      { id: 'video-to-gif', label: 'Video to GIF', icon: Video },
+      {
+        id: 'image-suite',
+        label: 'Image',
+        icon: ImageIcon,
+        isParent: true,
+        subItems: [
+          { id: 'image-converter', label: 'Image Converter', icon: ImageIcon },
+          { id: 'image-to-text', label: 'Image to Text', icon: ScanText },
+        ],
+      },
+      {
+        id: 'video-suite',
+        label: 'Video',
+        icon: Video,
+        isParent: true,
+        subItems: [
+          { id: 'video-compressor', label: 'Video Compressor', icon: Video },
+          { id: 'video-converter', label: 'Video Converter', icon: Repeat },
+          { id: 'video-to-gif', label: 'Video to GIF', icon: Video },
+        ],
+      },
+      {
+        id: 'audio-suite',
+        label: 'Audio',
+        icon: Music,
+        isParent: true,
+        subItems: [
+          { id: 'audio-converter', label: 'Audio Converter', icon: Music },
+          { id: 'audio-editor', label: 'Audio Editor', icon: AudioWaveform },
+        ],
+      },
       { id: 'word-to-html', label: 'Word to HTML', icon: FileType },
       { id: 'ai-assistant', label: 'AI UNIVERSE', icon: BrainCircuit },
       {
@@ -121,6 +145,8 @@ export function AppSidebar({
     'tools',
     'admin-hub',
   ]);
+  const [hoveredParent, setHoveredParent] = useState(null);
+  const [hoverCoords, setHoverCoords] = useState({ top: 0, left: 0 });
 
   const currentNavGroups = adminMode ? adminNavGroups : navGroups;
 
@@ -135,11 +161,23 @@ export function AppSidebar({
   const filteredGroups = currentNavGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter(
-        (item) =>
-          (adminMode || hasAccess(user, item.id, toolSettings)) &&
-          item.label.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
+      items: group.items
+        .map((item) => {
+          if (item.isParent && item.subItems) {
+            const filteredSubs = item.subItems.filter(
+              (sub) =>
+                (adminMode || hasAccess(user, sub.id, toolSettings)) &&
+                sub.label.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            if (filteredSubs.length === 0) return null;
+            return { ...item, subItems: filteredSubs };
+          }
+          return (adminMode || hasAccess(user, item.id, toolSettings)) &&
+            item.label.toLowerCase().includes(searchQuery.toLowerCase())
+            ? item
+            : null;
+        })
+        .filter(Boolean),
     }))
     .filter((group) => group.items.length > 0);
 
@@ -212,6 +250,106 @@ export function AppSidebar({
                 {(isExpanded || collapsed || searchQuery) &&
                   group.items.map((item) => {
                     const Icon = item.icon;
+
+                    // Parent item with hover dropdown
+                    if (item.isParent && item.subItems) {
+                      const isAnySubActive = item.subItems.some(
+                        (sub) => activeTab === sub.id
+                      );
+                      const isHovered = hoveredParent === item.id;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="relative"
+                          onMouseEnter={(e) => {
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            setHoveredParent(item.id);
+                            setHoverCoords({ top: rect.top, left: rect.right });
+                          }}
+                          onMouseLeave={() => {
+                            setHoveredParent(null);
+                          }}
+                        >
+                          <Button
+                            variant="ghost"
+                            className={cn(
+                              'w-full justify-start gap-3 transition-all duration-200 relative overflow-hidden group cursor-pointer',
+                              collapsed && 'justify-center px-2',
+                              isAnySubActive &&
+                                'bg-primary/10 text-primary font-semibold shadow-sm',
+                              !isAnySubActive &&
+                                'hover:bg-accent/50 hover:translate-x-1'
+                            )}
+                          >
+                            {isAnySubActive && (
+                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full"></div>
+                            )}
+                            <Icon
+                              className={cn(
+                                'h-5 w-5 shrink-0 transition-all duration-200',
+                                isAnySubActive && 'scale-110',
+                                !isAnySubActive && 'group-hover:scale-110'
+                              )}
+                            />
+                            {!collapsed && (
+                              <>
+                                <span className="truncate">{item.label}</span>
+                                <ChevronRight className="ml-auto h-3 w-3 text-muted-foreground" />
+                              </>
+                            )}
+                            {isAnySubActive && !collapsed && (
+                              <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                            )}
+                          </Button>
+
+                          {/* Hover Dropdown */}
+                          {isHovered && (
+                            <div
+                              className="fixed z-50 bg-popover border border-border rounded-lg shadow-xl py-1 min-w-[180px] animate-in fade-in-0 skew-y-0 duration-150"
+                              style={{
+                                top: `${hoverCoords.top}px`,
+                                left: `${hoverCoords.left + 2}px`,
+                              }}
+                            >
+                              <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/50">
+                                {item.label} Tools
+                              </div>
+                              {item.subItems.map((sub) => {
+                                const SubIcon = sub.icon;
+                                const isSubActive = activeTab === sub.id;
+                                return (
+                                  <button
+                                    key={sub.id}
+                                    onClick={() => {
+                                      onTabChange(sub.id);
+                                      setHoveredParent(null);
+                                    }}
+                                    className={cn(
+                                      'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors cursor-pointer',
+                                      isSubActive
+                                        ? 'bg-primary/10 text-primary font-semibold'
+                                        : 'hover:bg-accent/60 text-foreground'
+                                    )}
+                                  >
+                                    <SubIcon className="h-4 w-4 shrink-0" />
+                                    <span className="truncate text-xs">
+                                      {sub.label}
+                                    </span>
+                                    {isSubActive && (
+                                      <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary"></div>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Regular item (non-parent)
                     const isActive = activeTab === item.id;
 
                     const button = (
