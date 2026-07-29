@@ -168,18 +168,163 @@ export function ChatWindow({
   onNavigateToPrivate,
 }) {
   const { user } = useAuth();
-  const { markAsRead, setActiveChat, clearAllMessages } = useChat();
+  const {
+    markAsRead,
+    setActiveChat,
+    clearAllMessages,
+    markGlobalAsRead,
+    markGlobalChatClosed,
+  } = useChat();
   const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     setActiveChat(isGlobal ? null : receiverId);
-    return () => setActiveChat(null);
-  }, [receiverId, isGlobal, setActiveChat]);
+    if (isGlobal) {
+      markGlobalAsRead();
+    }
+    return () => {
+      setActiveChat(null);
+      if (isGlobal) {
+        markGlobalChatClosed();
+      }
+    };
+  }, [
+    receiverId,
+    isGlobal,
+    setActiveChat,
+    markGlobalAsRead,
+    markGlobalChatClosed,
+  ]);
 
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [receiverProfile, setReceiverProfile] = useState(null);
   const scrollRef = useRef(null);
+
+  // Autocomplete Mentions state
+  const [allProfiles, setAllProfiles] = useState([]);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(-1);
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(0);
+
+  useEffect(() => {
+    const fetchAllProfiles = async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, role');
+        setAllProfiles(data || []);
+      } catch (err) {
+        console.error('Failed to fetch profiles for mentions:', err);
+      }
+    };
+    fetchAllProfiles();
+  }, []);
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setNewMessage(val);
+
+    const selectionStart = e.target.selectionStart;
+    setCursorPosition(selectionStart);
+
+    const textBeforeCursor = val.slice(0, selectionStart);
+    const lastAtPos = textBeforeCursor.lastIndexOf('@');
+
+    if (
+      lastAtPos !== -1 &&
+      (lastAtPos === 0 || textBeforeCursor[lastAtPos - 1] === ' ')
+    ) {
+      const q = textBeforeCursor.slice(lastAtPos + 1);
+      if (!q.includes(' ')) {
+        setMentionQuery(q);
+        setShowMentionDropdown(true);
+        setMentionIndex(0);
+        return;
+      }
+    }
+    setShowMentionDropdown(false);
+  };
+
+  const handleInputKeyDown = (e) => {
+    if (showMentionDropdown && filteredMentionUsers.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev + 1) % filteredMentionUsers.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(
+          (prev) =>
+            (prev - 1 + filteredMentionUsers.length) %
+            filteredMentionUsers.length
+        );
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        insertMention(filteredMentionUsers[mentionIndex]);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowMentionDropdown(false);
+      }
+    }
+  };
+
+  const insertMention = (targetUser) => {
+    const username =
+      targetUser.username ||
+      targetUser.full_name?.toLowerCase().replace(/\s+/g, '_') ||
+      'user';
+    const tag = `@${username} `;
+    const textBeforeCursor = newMessage.slice(0, cursorPosition);
+    const lastAtPos = textBeforeCursor.lastIndexOf('@');
+
+    if (lastAtPos !== -1) {
+      const updatedMessage =
+        newMessage.slice(0, lastAtPos) + tag + newMessage.slice(cursorPosition);
+      setNewMessage(updatedMessage);
+      setShowMentionDropdown(false);
+
+      setTimeout(() => {
+        const inputElem = document.getElementById('chat-message-input');
+        if (inputElem) {
+          inputElem.focus();
+          const nextCursor = lastAtPos + tag.length;
+          inputElem.setSelectionRange(nextCursor, nextCursor);
+        }
+      }, 0);
+    }
+  };
+
+  const filteredMentionUsers = allProfiles.filter((p) => {
+    const term = mentionQuery.toLowerCase();
+    const username = (p.username || '').toLowerCase();
+    const name = (p.full_name || '').toLowerCase();
+    return username.includes(term) || name.includes(term);
+  });
+
+  const renderMessageText = (text, isMine) => {
+    if (!text) return '';
+    const parts = text.split(/(\s+)/);
+    return parts.map((part, index) => {
+      if (part.startsWith('@') && part.length > 1) {
+        // Strip punctuation trailing user tag
+        const cleanPart = part.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '');
+        const tagText = cleanPart.slice(1);
+        return (
+          <span
+            key={index}
+            className={cn(
+              'px-1 py-0.5 rounded bg-primary/20 text-primary font-black text-[10px] tracking-wide inline-block shadow-sm align-middle',
+              isMine && 'bg-white/20 text-white border border-white/10'
+            )}
+          >
+            @{tagText}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -863,7 +1008,7 @@ Always emphasize architectural integrity and data privacy. Processing for genera
                             : 'bg-muted/40 border border-border/40 text-foreground rounded-tl-none'
                       )}
                     >
-                      {msg.text}
+                      {renderMessageText(msg.text, isMine)}
                     </div>
 
                     {!isMine && (
@@ -904,11 +1049,45 @@ Always emphasize architectural integrity and data privacy. Processing for genera
         )}
       </div>
 
-      <div className="p-6 bg-card/10 border-t border-border/10 shrink-0">
+      <div className="p-6 bg-card/10 border-t border-border/10 shrink-0 relative">
+        {showMentionDropdown && filteredMentionUsers.length > 0 && (
+          <div className="absolute bottom-full left-6 mb-2 w-64 max-h-48 overflow-y-auto bg-card/95 backdrop-blur-xl border border-border p-2 rounded-2xl shadow-xl z-50 animate-in slide-in-from-bottom-2 duration-200">
+            <div className="px-3 py-1.5 text-[8.5px] font-black uppercase tracking-widest text-muted-foreground/60 border-b border-border/20 mb-1">
+              Select Node to Tag
+            </div>
+            {filteredMentionUsers.map((p, idx) => {
+              const uTag =
+                p.username ||
+                p.full_name?.toLowerCase().replace(/\s+/g, '_') ||
+                'user';
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => insertMention(p)}
+                  className={cn(
+                    'flex items-center gap-2 p-2 rounded-xl text-xs font-bold cursor-pointer transition-colors',
+                    idx === mentionIndex
+                      ? 'bg-primary/10 text-primary'
+                      : 'hover:bg-primary/5 text-foreground/80'
+                  )}
+                >
+                  <div className="w-5 h-5 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center font-black text-[9px] text-primary">
+                    {(p.full_name || p.username || 'U')[0].toUpperCase()}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="truncate">@{uTag}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
         <form onSubmit={sendMessage} className="relative flex items-center">
           <Input
+            id="chat-message-input"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
             placeholder={
               user?.is_frozen
                 ? 'SIGNAL BLOCKED'
@@ -919,7 +1098,6 @@ Always emphasize architectural integrity and data privacy. Processing for genera
           />
           <Button
             type="submit"
-            size="icon"
             disabled={!newMessage.trim() || user?.is_frozen}
             className="absolute right-2 h-10 w-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95"
           >

@@ -18,7 +18,9 @@ export function ChatProvider({ children }) {
   const { user } = useAuth();
   const [unreadCounts, setUnreadCounts] = useState({}); // { partnerId: count }
   const [totalUnread, setTotalUnread] = useState(0);
+  const [globalUnread, setGlobalUnread] = useState(0);
   const [activeSenderId, setActiveSenderId] = useState(null);
+  const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
 
   // Track which contacts we've marked as read in this session to prevent flicker
   const [sessionReadIds, setSessionReadIds] = useState(new Set());
@@ -27,19 +29,19 @@ export function ChatProvider({ children }) {
     if (!user) return;
 
     try {
-      const { data: messages } = await supabase
+      // --- Private message unread counts ---
+      const { data: privateMessages } = await supabase
         .from('messages')
         .select('sender_id')
         .eq('receiver_id', user.id)
-        .or('is_read.eq.false,is_read.is.null');
+        .eq('is_global', false)
+        .eq('is_read', false);
 
       const counts = {};
-      let totalToSet = 0;
+      let privateTotal = 0;
 
-      // We use a functional update for sessionReadIds and handle other state updates separately
-      // but in a coordinated way to avoid loops.
       setSessionReadIds((currentSessionIds) => {
-        messages?.forEach((m) => {
+        (privateMessages || []).forEach((m) => {
           if (
             m.sender_id === activeSenderId ||
             currentSessionIds.has(m.sender_id)
@@ -47,16 +49,17 @@ export function ChatProvider({ children }) {
             counts[m.sender_id] = 0;
           } else {
             counts[m.sender_id] = (counts[m.sender_id] || 0) + 1;
-            totalToSet++;
+            privateTotal++;
           }
         });
 
-        // Clean up sessionReadIds
+        // Clean up sessionReadIds for contacts with no unread
         const nextSet = new Set(currentSessionIds);
         let changed = false;
         currentSessionIds.forEach((id) => {
-          const actualUnread =
-            messages?.filter((m) => m.sender_id === id).length || 0;
+          const actualUnread = (privateMessages || []).filter(
+            (m) => m.sender_id === id
+          ).length;
           if (actualUnread === 0) {
             nextSet.delete(id);
             changed = true;
@@ -66,14 +69,46 @@ export function ChatProvider({ children }) {
       });
 
       setUnreadCounts(counts);
-      setTotalUnread(totalToSet);
+
+      // --- Global message unread count ---
+      // Use last_read_global_at from profiles, or count all global if not set
+      let globalCount = 0;
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('last_read_global_at')
+          .eq('id', user.id)
+          .single();
+
+        const lastRead = profile?.last_read_global_at;
+
+        let globalQuery = supabase
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_global', true)
+          .neq('sender_id', user.id);
+
+        if (lastRead) {
+          globalQuery = globalQuery.gt('created_at', lastRead);
+        }
+
+        const { count, error: gErr } = await globalQuery;
+        if (!gErr) {
+          globalCount = isGlobalChatOpen ? 0 : count || 0;
+        }
+      } catch {
+        // last_read_global_at column may not exist yet
+      }
+
+      setGlobalUnread(globalCount);
+      setTotalUnread(privateTotal + globalCount);
     } catch (err) {
       console.warn(
         '[Chat Shield] Notification sync skipped:',
         err?.message || err
       );
     }
-  }, [user, activeSenderId]);
+  }, [user, activeSenderId, isGlobalChatOpen]);
 
   const markAsRead = useCallback(
     async (senderId) => {
@@ -228,11 +263,35 @@ export function ChatProvider({ children }) {
     [user]
   );
 
+  // Mark global chat as read when user opens global chat
+  const markGlobalAsRead = useCallback(async () => {
+    if (!user) return;
+    setIsGlobalChatOpen(true);
+    setGlobalUnread(0);
+    try {
+      await supabase
+        .from('profiles')
+        .update({ last_read_global_at: new Date().toISOString() })
+        .eq('id', user.id);
+    } catch {
+      // Column may not exist yet
+    }
+    setTimeout(() => fetchAllUnread(), 500);
+  }, [user, fetchAllUnread]);
+
+  // Track when global chat is closed
+  const markGlobalChatClosed = useCallback(() => {
+    setIsGlobalChatOpen(false);
+  }, []);
+
   const value = useMemo(
     () => ({
       unreadCounts,
       totalUnread,
+      globalUnread,
       markAsRead,
+      markGlobalAsRead,
+      markGlobalChatClosed,
       setActiveChat: setActiveSenderId,
       refreshUnread: fetchAllUnread,
       clearAllMessages,
@@ -240,7 +299,10 @@ export function ChatProvider({ children }) {
     [
       unreadCounts,
       totalUnread,
+      globalUnread,
       markAsRead,
+      markGlobalAsRead,
+      markGlobalChatClosed,
       setActiveSenderId,
       fetchAllUnread,
       clearAllMessages,

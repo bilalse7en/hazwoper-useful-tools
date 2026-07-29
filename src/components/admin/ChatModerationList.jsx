@@ -12,14 +12,16 @@ import {
   AlertTriangle,
   UserX,
   History,
-  Activity,
   MoreHorizontal,
+  Trash2,
+  CheckCircle,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { showToast, showSuccess } from '@/lib/swal';
+import { showToast, showSuccess, showConfirm } from '@/lib/swal';
 import { DataTable } from '@/components/ui/data-table';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
@@ -53,7 +55,7 @@ export function ChatModerationList({ onOpenChat }) {
       const { data: reportData } = await supabase
         .from('user_interactions')
         .select(
-          '*, reporter:profiles!reporter_id(full_name, email), target:profiles!target_id(full_name, email)'
+          '*, reporter:profiles!reporter_id(id, full_name, email), target:profiles!target_id(id, full_name, email)'
         )
         .eq('type', 'report')
         .order('created_at', { ascending: false })
@@ -121,6 +123,50 @@ export function ChatModerationList({ onOpenChat }) {
       );
     } catch (err) {
       showToast('Protocol Override Failed', 'error');
+    }
+  };
+
+  const handleDeleteUser = async (userToDelete) => {
+    if (!userToDelete) return;
+    const result = await showConfirm({
+      title: 'REMOVE REPORTED PERSON?',
+      text: `Are you sure you want to permanently delete profile and chat access for ${userToDelete.full_name || 'this user'}?`,
+      icon: 'warning',
+      confirmButtonText: 'Yes, Remove User',
+      confirmButtonColor: '#ef4444',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userToDelete.id);
+
+        if (error) throw error;
+        showSuccess(
+          'User Removed',
+          'The subject and all associated access have been deleted.'
+        );
+        fetchUsers();
+      } catch (err) {
+        showToast('Failed to remove reported person.', 'error');
+      }
+    }
+  };
+
+  const handleDismissReport = async (reportId) => {
+    try {
+      const { error } = await supabase
+        .from('user_interactions')
+        .delete()
+        .eq('id', reportId);
+
+      if (error) throw error;
+      showSuccess('Report Dismissed', 'Incident record cleared from logs.');
+      fetchUsers();
+    } catch (err) {
+      showToast('Could not dismiss report.', 'error');
     }
   };
 
@@ -415,6 +461,27 @@ export function ChatModerationList({ onOpenChat }) {
                           {report.target?.full_name || 'Node'}
                         </span>
                       </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t border-border/20 mt-1">
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => handleDismissReport(report.id)}
+                        className="flex-1 h-7 rounded-lg hover:bg-emerald-500/10 text-emerald-500 font-black text-[9px] gap-1 uppercase"
+                      >
+                        <CheckCircle className="w-3 h-3" />
+                        Dismiss
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => handleDeleteUser(report.target)}
+                        className="flex-1 h-7 rounded-lg hover:bg-rose-500/10 text-rose-500 font-black text-[9px] gap-1 uppercase"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Remove User
+                      </Button>
                     </div>
                   </div>
                 ))

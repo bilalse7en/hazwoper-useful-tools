@@ -133,6 +133,19 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
           fetchContacts();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        (payload) => {
+          setContacts((currentContacts) =>
+            currentContacts.map((contact) =>
+              contact.id === payload.new.id
+                ? { ...contact, ...payload.new }
+                : contact
+            )
+          );
+        }
+      )
       .subscribe();
 
     return () => {
