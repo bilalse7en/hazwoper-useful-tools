@@ -67,7 +67,7 @@ export async function authenticate(username, password) {
       return data.user;
     }
   } catch (error) {
-    console.error('Login failed', error);
+    console.error('Login failed:', error?.message || String(error));
   }
   return null;
 }
