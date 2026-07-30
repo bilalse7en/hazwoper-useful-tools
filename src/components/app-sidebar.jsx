@@ -300,7 +300,7 @@ export function AppSidebar({
                               </>
                             )}
                             {isAnySubActive && !collapsed && (
-                              <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                              <div className="absolute animate-pulse bg-primary h-2 ml-auto right- rounded-full w-2"></div>
                             )}
                           </Button>
 
@@ -385,7 +385,7 @@ export function AppSidebar({
                           <span className="truncate">{item.label}</span>
                         )}
                         {isActive && !collapsed && (
-                          <div className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                          <div className="absolute animate-pulse bg-primary h-2 ml-auto right- rounded-full w-2"></div>
                         )}
                       </Button>
                     );
