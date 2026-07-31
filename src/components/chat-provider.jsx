@@ -35,18 +35,40 @@ export function ChatProvider({ children }) {
 
   // Fetch online users from database & Realtime presence
   const fetchOnlineUsers = useCallback(async () => {
+    const currentUser = userRef.current;
     try {
+      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from('profiles')
         .select(
           'id, username, full_name, role, avatar_url, is_online, last_seen_at'
         )
-        .eq('is_online', true)
+        .or(`is_online.eq.true,last_seen_at.gt.${fiveMinsAgo}`)
         .order('full_name', { ascending: true });
 
+      const userMap = new Map();
+
+      // Populate database online users
       if (!error && data) {
-        setOnlineUsers(data);
+        data.forEach((u) => userMap.set(u.id, { ...u, is_online: true }));
       }
+
+      // Guarantee current logged-in user is ALWAYS included in online users list
+      if (currentUser?.id) {
+        const existing = userMap.get(currentUser.id);
+        userMap.set(currentUser.id, {
+          id: currentUser.id,
+          username: currentUser.username || currentUser.name || 'You',
+          full_name: currentUser.full_name || currentUser.name || 'You',
+          role: currentUser.role || 'user',
+          avatar_url: currentUser.avatar_url || currentUser.avatar || null,
+          is_online: true,
+          last_seen_at: new Date().toISOString(),
+          ...existing,
+        });
+      }
+
+      setOnlineUsers(Array.from(userMap.values()));
     } catch (err) {
       console.warn('[Online Users] Fetch error:', err?.message);
     }
@@ -54,7 +76,9 @@ export function ChatProvider({ children }) {
 
   useEffect(() => {
     userRef.current = user;
-  }, [user]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchOnlineUsers();
+  }, [user, fetchOnlineUsers]);
 
   useEffect(() => {
     activeSenderRef.current = activeSenderId;
