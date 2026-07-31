@@ -52,19 +52,25 @@ export function YouTubeDownloader() {
     }
 
     setLoading(true);
+    let title = 'YouTube Video Content';
+    let author = 'YouTube Creator';
+
     try {
-      // Fetch oEmbed data for title, author, thumbnail
-      const oembedRes = await fetch(
-        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
-      );
+      try {
+        const oembedRes = await fetch(
+          `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+        );
 
-      let title = 'YouTube Video Content';
-      let author = 'YouTube Creator';
-
-      if (oembedRes.ok) {
-        const oembed = await oembedRes.json();
-        title = oembed.title || title;
-        author = oembed.author_name || author;
+        if (oembedRes.ok) {
+          const oembed = await oembedRes.json();
+          title = oembed.title || title;
+          author = oembed.author_name || author;
+        }
+      } catch (corsErr) {
+        console.warn(
+          '[YouTube Downloader] oEmbed notice (using fallback metadata):',
+          corsErr?.message || corsErr
+        );
       }
 
       setVideoData({
@@ -77,32 +83,58 @@ export function YouTubeDownloader() {
         thumbnailHq: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
         videoFormats: [
           {
-            quality: '1080p Full HD',
-            resolution: '1920x1080',
+            quality: '4K 2160p Ultra HD',
+            resolution: '3840x2160',
+            fps: '60fps',
             format: 'MP4',
-            size: '~45 MB',
-            bitrate: 'High',
+            size: '~180 MB',
+            bitrate: 'Ultra High',
+            badge: '4K HDR',
           },
           {
-            quality: '720p HD',
-            resolution: '1280x720',
+            quality: '2K 1440p QHD',
+            resolution: '2560x1440',
+            fps: '60fps',
             format: 'MP4',
-            size: '~24 MB',
+            size: '~95 MB',
+            bitrate: 'Very High',
+            badge: '2K',
+          },
+          {
+            quality: '1080p60 Full HD',
+            resolution: '1920x1080',
+            fps: '60fps',
+            format: 'MP4',
+            size: '~48 MB',
+            bitrate: 'High',
+            badge: '1080p',
+          },
+          {
+            quality: '720p60 HD',
+            resolution: '1280x720',
+            fps: '60fps',
+            format: 'MP4',
+            size: '~26 MB',
             bitrate: 'Medium',
+            badge: '720p',
           },
           {
             quality: '480p SD',
             resolution: '854x480',
+            fps: '30fps',
             format: 'MP4',
             size: '~14 MB',
             bitrate: 'Standard',
+            badge: 'SD',
           },
           {
-            quality: '360p Mobile',
+            quality: '360p Compact',
             resolution: '640x360',
+            fps: '30fps',
             format: 'MP4',
             size: '~8 MB',
-            bitrate: 'Compact',
+            bitrate: 'Low Data',
+            badge: 'Mobile',
           },
         ],
         audioFormats: [
@@ -326,16 +358,28 @@ export function YouTubeDownloader() {
                     className="p-4 rounded-2xl border-border/60 hover:border-red-500/40 transition-all flex items-center justify-between"
                   >
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs font-black">
-                          {fmt.format}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge
+                          variant="outline"
+                          className="text-xs font-black bg-red-500/10 text-red-500 border-red-500/30"
+                        >
+                          {fmt.badge || fmt.format}
                         </Badge>
                         <span className="text-sm font-bold text-foreground">
                           {fmt.quality}
                         </span>
+                        {fmt.fps && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] font-black uppercase px-2 py-0.5"
+                          >
+                            {fmt.fps}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-[10px] text-muted-foreground font-medium">
-                        Res: {fmt.resolution} • Est: {fmt.size}
+                        Res: {fmt.resolution} • Size: {fmt.size} • Bitrate:{' '}
+                        {fmt.bitrate}
                       </p>
                     </div>
 
