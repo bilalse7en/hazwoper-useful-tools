@@ -112,13 +112,10 @@ export function AuthProvider({ children }) {
           .from('tool_settings')
           .select('id, is_free');
         if (error) {
-          if (error.code === '42P01') {
-            console.warn(
-              'Tool settings table not found. Defaulting to hardcoded values.'
-            );
-          } else {
-            throw error;
-          }
+          console.warn(
+            'Tool settings query notice (fallback active):',
+            error?.message || error
+          );
         } else if (settings) {
           const settingsMap = settings.reduce((acc, curr) => {
             acc[curr.id] = curr.is_free;
