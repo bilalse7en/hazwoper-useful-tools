@@ -12,3 +12,6 @@ export { AIAssistant } from './ai-assistant';
 export { default as DocumentExtractor } from './document-extractor';
 export { default as ImageToText } from './image-to-text';
 export { default as LessonQuizBuilder } from './lesson-quiz-builder';
+export { YouTubeDownloader } from './youtube-downloader';
+export { WatermarkRemover } from './watermark-remover';
+export { BgRemover } from './bg-remover';

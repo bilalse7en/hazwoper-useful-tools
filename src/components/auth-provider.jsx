@@ -174,7 +174,7 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth state changes
     let subscription;
     try {
       const {
@@ -183,32 +183,7 @@ export function AuthProvider({ children }) {
         try {
           if (session?.user) {
             await fetchProfile(session.user);
-
-            // Mark as online
-            await supabase
-              .from('profiles')
-              .update({ is_online: true })
-              .eq('id', session.user.id);
-
-            // Set up presence channel
-            const presenceChannel = supabase.channel('online-users');
-            presenceChannel.subscribe(async (status) => {
-              if (status === 'SUBSCRIBED') {
-                try {
-                  await presenceChannel.track({
-                    user_id: session.user.id,
-                    online_at: new Date().toISOString(),
-                  });
-                } catch (trackErr) {
-                  console.warn(
-                    '[Session Shield] Presence track error:',
-                    trackErr?.message || trackErr
-                  );
-                }
-              }
-            });
           } else {
-            // Use the ref to get the current user ID without adding `user` to deps
             const currentUserId = userIdRef.current;
             if (currentUserId) {
               await supabase
@@ -241,6 +216,89 @@ export function AuthProvider({ children }) {
       subscription?.unsubscribe();
     };
   }, []);
+
+  // Dedicated presence & heartbeat effect for active user
+  useEffect(() => {
+    let heartbeatInterval;
+    let presenceChannel;
+
+    if (user?.id) {
+      const updateOnlineStatus = async (online = true) => {
+        try {
+          await supabase
+            .from('profiles')
+            .update({
+              is_online: online,
+              last_seen_at: new Date().toISOString(),
+            })
+            .eq('id', user.id);
+        } catch (err) {
+          console.warn('[Presence] Status update skipped:', err?.message);
+        }
+      };
+
+      // Mark online immediately
+      updateOnlineStatus(true);
+
+      // Heartbeat every 30 seconds to keep last_seen_at fresh
+      heartbeatInterval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          updateOnlineStatus(true);
+        }
+      }, 30000);
+
+      // Track tab visibility changes & unload
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          updateOnlineStatus(false);
+        } else {
+          updateOnlineStatus(true);
+        }
+      };
+
+      const handleBeforeUnload = () => {
+        const data = JSON.stringify({
+          is_online: false,
+          last_seen_at: new Date().toISOString(),
+        });
+        navigator.sendBeacon?.(`/api/profile?userId=${user.id}`, data);
+        updateOnlineStatus(false);
+      };
+
+      window.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('beforeunload', handleBeforeUnload);
+
+      // Set up global Supabase presence channel
+      presenceChannel = supabase.channel('online-users-global', {
+        config: { presence: { key: user.id } },
+      });
+
+      presenceChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            id: user.id,
+            username: user.username || user.full_name || 'User',
+            full_name: user.full_name || user.username || 'User',
+            avatar_url: user.avatar_url || user.avatar || null,
+            role: user.role || 'user',
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+      return () => {
+        clearInterval(heartbeatInterval);
+        window.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        if (presenceChannel) {
+          presenceChannel.untrack();
+          supabase.removeChannel(presenceChannel);
+        }
+        updateOnlineStatus(false);
+      };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Dedicated real-time listener for user profile changes
   useEffect(() => {

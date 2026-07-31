@@ -160,6 +160,121 @@ function MessageActions({ message, isMine, canDeleteEverywhere, onDelete }) {
   );
 }
 
+function OnlineUsersDropdown({
+  onlineUsers = [],
+  onSelectUser,
+  currentUserId,
+}) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredUsers = onlineUsers.filter((u) => {
+    const name = (u.full_name || u.username || '').toLowerCase();
+    return name.includes(searchTerm.toLowerCase());
+  });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 px-3 rounded-full bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-500 font-black text-[10px] tracking-wider uppercase gap-2 shadow-sm transition-all cursor-pointer"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          {onlineUsers.length} Online{' '}
+          {onlineUsers.length === 1 ? 'User' : 'Users'}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-72 rounded-2xl bg-card/95 backdrop-blur-2xl border border-border/60 p-3 shadow-2xl space-y-2 z-[9999]"
+      >
+        <div className="flex items-center justify-between px-1 pb-1 border-b border-border/40">
+          <span className="text-[10px] font-black uppercase tracking-widest text-foreground flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5 text-emerald-500" />
+            Active Website Users
+          </span>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">
+            {onlineUsers.length} Live
+          </span>
+        </div>
+
+        <div className="relative">
+          <Input
+            placeholder="Search online users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="h-7 text-xs bg-muted/40 border-border/30 rounded-lg pl-2 pr-2"
+          />
+        </div>
+
+        <div className="max-h-60 overflow-y-auto space-y-1 custom-scrollbar pr-1">
+          {filteredUsers.length === 0 ? (
+            <div className="p-4 text-center text-xs text-muted-foreground font-medium">
+              No online users found
+            </div>
+          ) : (
+            filteredUsers.map((u) => {
+              const isSelf = u.id === currentUserId;
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => !isSelf && onSelectUser(u)}
+                  className={cn(
+                    'flex items-center justify-between p-2 rounded-xl border border-transparent transition-all',
+                    isSelf
+                      ? 'opacity-60 cursor-default bg-muted/20'
+                      : 'hover:bg-primary/10 hover:border-primary/20 cursor-pointer'
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="relative shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center text-primary font-black text-xs">
+                        {u.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={u.avatar_url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          (u.full_name || u.username || 'U')[0].toUpperCase()
+                        )}
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-background shadow-sm" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold truncate text-foreground leading-tight">
+                        {u.full_name || u.username} {isSelf && '(You)'}
+                      </span>
+                      <span className="text-[8px] font-black uppercase tracking-wider text-muted-foreground/60">
+                        {u.role || 'User'} Node
+                      </span>
+                    </div>
+                  </div>
+
+                  {!isSelf && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 rounded-lg hover:bg-primary/20 text-primary shrink-0"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function ChatWindow({
   receiverId = null,
   isGlobal = true,
@@ -174,6 +289,7 @@ export function ChatWindow({
     clearAllMessages,
     markGlobalAsRead,
     markGlobalChatClosed,
+    onlineUsers = [],
   } = useChat();
   const [messages, setMessages] = useState([]);
 
@@ -618,19 +734,19 @@ export function ChatWindow({
             return;
           }
 
-          // Use similar logic as floating-chatbot.jsx
-          const SYSTEM_PROMPT = `You are the Official Architectural Assistant "Se7eN Bot" for "HAZWOPER Useful Tools".
-MISSION: Provide expert guidance about our high-performance documentation tools and messaging fabric.
-TONE: Authoritative, professional, concise, slightly futuristic/technical.
+          const SYSTEM_PROMPT = `You are Se7eN Bot, the Master AI Architectural Assistant for "HAZWOPER Useful Tools" (Content Suite), designed by Bilal Se7eN.
+MISSION: Provide expert, authoritative, professional guidance on safety training documentation, local-first media tools, and neural communication networks.
+TONE: Authoritative, highly technical, professional, concise, slightly futuristic.
 PLATFORM KNOWLEDGE:
-- Web Content: Extract Overview/Syllabus/FAQs from DOCX.
-- Lesson Quiz Builder: Extract questions/options from DOCX with neural mapping.
-- Blog Generator: Technical SEO content from documents.
-- Document Extractor: Bulk table/image harvesting from DOCX.
-- Media Tools: Browser-side video/audio conversion and compression (100% private).
-- Neural Chat: Secure 24h lifecycle messaging hub.
+- YouTube Downloader: Extract MP4 video (1080p, 720p) & MP3 audio (320kbps) without watermark 100% free.
+- Watermark & BG Remover: Interactive canvas brush inpainting to erase watermarks & automated transparent PNG background removal.
+- Lesson Quiz Builder: Extract questions/options/keys from DOCX with neural mapping.
+- Document Extractor: Bulk table/image harvesting from DOCX/PDF.
+- Web Content & Blog Generators: Extract syllabus, FAQs, glossaries, and SEO posts from DOCX.
+- Media Processing: Client-side video/audio conversion and compression (100% private WASM).
+- Neural Chat Hub: Real-time global & private chat with live site-wide online users presence dropdown.
 DEVELOPER: Bilal Se7eN.
-Always emphasize architectural integrity and data privacy. Processing for generators/media happens locally (WASM).`;
+Always emphasize data privacy (100% client-side local browser WASM processing) and architectural integrity.`;
 
           const context = messages.slice(-6).map((m) => ({
             role: m.sender_id === 'se7en-bot' ? 'assistant' : 'user',
@@ -751,6 +867,30 @@ Always emphasize architectural integrity and data privacy. Processing for genera
         className
       )}
     >
+      {isGlobal && (
+        <div className="bg-card/20 backdrop-blur-xl border-b border-border/10 px-6 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 overflow-hidden flex items-center justify-center text-emerald-500 shadow-inner">
+              <Globe className="w-4 h-4 text-emerald-500 animate-pulse" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-black tracking-tight uppercase flex items-center gap-2">
+                Global Neural Frequency
+              </span>
+              <span className="text-[7px] font-black uppercase tracking-widest text-muted-foreground/60">
+                Public System Broadcast Node
+              </span>
+            </div>
+          </div>
+
+          <OnlineUsersDropdown
+            onlineUsers={onlineUsers}
+            onSelectUser={handleProfileClick}
+            currentUserId={user?.id}
+          />
+        </div>
+      )}
+
       {!isGlobal && receiverProfile && (
         <div className="bg-card/20 backdrop-blur-xl border-b border-border/10 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">

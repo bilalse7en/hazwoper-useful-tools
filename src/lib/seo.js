@@ -160,6 +160,36 @@ export const toolMetadata = {
     canonical: '/tools/lesson-quiz-builder',
     ogImage: '/og-lesson-quiz-builder.png',
   },
+  'youtube-downloader': {
+    title:
+      'YouTube Video & Audio Downloader - Free MP4 & MP3 Extractor | Content Suite',
+    description:
+      'Download high-quality YouTube videos (1080p, 720p, 480p MP4) and extract clear audio (320kbps MP3) without watermarks. Fast, free, browser-based media conversion.',
+    keywords:
+      'youtube downloader, youtube to mp3, youtube video downloader, download youtube without watermark, free youtube converter, mp4 video downloader, youtube audio extractor',
+    canonical: '/tools/youtube-downloader',
+    ogImage: '/og-youtube-downloader.png',
+  },
+  'watermark-remover': {
+    title:
+      'AI Watermark & Object Remover - Free Online Watermark Eraser | Content Suite',
+    description:
+      'Remove watermarks, logos, dates, stamps, and objects from images online 100% free. AI content-aware inpainting with background removal capabilities.',
+    keywords:
+      'watermark remover, remove watermark from photo, ai watermark eraser, remove logo from image, free online watermark remover, object remover, remove bg free',
+    canonical: '/tools/watermark-remover',
+    ogImage: '/og-watermark-remover.png',
+  },
+  'bg-remover': {
+    title:
+      'AI Background Remover - Remove Image Background Online Free | Content Suite',
+    description:
+      'Extract subjects and create transparent PNG backgrounds instantly. Free browser-based AI background removal tool for photos and product images.',
+    keywords:
+      'background remover, remove bg online, free transparent background, ai bg eraser, photo background remover, png background maker',
+    canonical: '/tools/bg-remover',
+    ogImage: '/og-bg-remover.png',
+  },
   privacy: {
     title: 'Privacy Policy | Content Suite',
     description:
@@ -204,6 +234,9 @@ export const toolIdToSlug = {
   'video-to-gif': 'video-to-gif',
   'word-to-html': 'word-to-html',
   'lesson-quiz-builder': 'lesson-quiz-builder',
+  'youtube-downloader': 'youtube-downloader',
+  'watermark-remover': 'watermark-remover',
+  'bg-remover': 'bg-remover',
 };
 
 // Reverse mapping
@@ -852,6 +885,119 @@ export const toolInfo = {
         question: 'Can it handle multiple-choice and true/false questions?',
         answer:
           'Absolutely. The mapping logic is robust enough to categorize various question types commonly used in industrial education.',
+      },
+    ],
+  },
+  'youtube-downloader': {
+    name: 'YouTube Video & Audio Downloader',
+    icon: '▶️',
+    description: 'Download YouTube MP4 video and MP3 audio without watermark',
+    category: 'Media Processing',
+    detailedDescription:
+      'High-performance YouTube video and audio extractor. Convert YouTube links into crystal clear 1080p, 720p MP4 videos or 320kbps MP3 audio files with zero watermarks and 100% free browser-side speed.',
+    benefits: [
+      'Extract MP4 video up to 1080p Full HD resolution',
+      'Download high-fidelity 320kbps MP3 audio tracks',
+      'No watermarks, advertisements, or software installation',
+      'Instant video info, thumbnail, and title parsing',
+      '100% free and unlimited conversions',
+    ],
+    howToUse:
+      'Paste your YouTube link (e.g. youtube.com/watch?v=... or youtu.be/...) into the input box, click Fetch Video, then select your desired Video or Audio format to download.',
+    useCases: [
+      {
+        title: 'Offline Safety Presentations',
+        description:
+          'Download industrial safety demonstration videos for offline training field sessions.',
+      },
+      {
+        title: 'Audio Training Extraction',
+        description:
+          'Convert instructional YouTube video lectures into MP3 podcasts for mobile review.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Are there any watermarks added to downloaded files?',
+        answer:
+          'No! All downloads are 100% clean and free of watermarks or modifications.',
+      },
+      {
+        question: 'Is it completely free to use?',
+        answer:
+          'Yes, our YouTube downloader is 100% free without download caps or subscription requirements.',
+      },
+    ],
+  },
+  'watermark-remover': {
+    name: 'AI Watermark & Object Remover',
+    icon: '🪄',
+    description:
+      'Erase watermarks, logos, dates, and unwanted text from photos',
+    category: 'Media Processing',
+    detailedDescription:
+      'Intelligent AI-powered watermark and object removal tool. Paint over watermarks, timestamps, logos, or unwanted objects on your images and erase them seamlessly using content-aware inpainting.',
+    benefits: [
+      'Interactive brush tool to highlight watermarks easily',
+      'Smart content-aware inpainting for seamless background reconstruction',
+      'Erase logos, dates, text overlays, and photo stamps',
+      'Full resolution download without quality loss',
+      'Client-side canvas processing for complete data privacy',
+    ],
+    howToUse:
+      'Upload your image, adjust the brush size slider, paint over the watermark or logo you want to remove, and click "Erase Watermark" to download your clean image.',
+    useCases: [
+      {
+        title: 'Document & Photo Cleaning',
+        description:
+          'Clean sample images, watermarked stock graphics, and stamped technical diagrams for compliance presentations.',
+      },
+      {
+        title: 'Product Image Touchups',
+        description:
+          'Remove unwanted date stamps or copyright watermarks from industrial equipment photos.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Does the tool blur or damage the original image?',
+        answer:
+          'No, our content-aware inpainting algorithm samples adjacent pixels to intelligently rebuild texture while preserving sharpness.',
+      },
+      {
+        question: 'Are my uploaded images kept private?',
+        answer:
+          'Yes, processing happens locally in your browser canvas so your images never leave your computer.',
+      },
+    ],
+  },
+  'bg-remover': {
+    name: 'AI Background Remover',
+    icon: '✂️',
+    description: 'Remove background from photos and create transparent PNGs',
+    category: 'Media Processing',
+    detailedDescription:
+      'Instant browser-based AI background remover. Automatically key out image backgrounds to generate clean transparent PNGs for web publishing and product cataloging.',
+    benefits: [
+      'Automated background removal for images',
+      'High-precision subject edge preservation',
+      'Instant transparent PNG export',
+      '100% free and private browser processing',
+    ],
+    howToUse:
+      'Upload your photo, click "Remove Background", and download your high-resolution transparent PNG file.',
+    useCases: [
+      {
+        title: 'Safety Equipment Catalogs',
+        description:
+          'Extract safety gear and PPE items onto clean transparent backgrounds for training manuals.',
+      },
+    ],
+    faq: [
+      {
+        question: 'What file format is saved?',
+        answer:
+          'Clean transparent background images are saved as high-quality PNG files.',
       },
     ],
   },

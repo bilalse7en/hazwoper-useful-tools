@@ -127,8 +127,38 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- );
 
 -- ═══════════════════════════════════════════════════════════════
--- 7. Verify: Quick sanity check
+-- 7. Seed tool_settings table for free tools configuration
 -- ═══════════════════════════════════════════════════════════════
--- Run this after setup to confirm everything is in place:
--- SELECT column_name, data_type FROM information_schema.columns
--- WHERE table_name = 'tool_history' ORDER BY ordinal_position;
+CREATE TABLE IF NOT EXISTS public.tool_settings (
+    id TEXT PRIMARY KEY,
+    is_free BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.tool_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read tool settings" ON public.tool_settings;
+CREATE POLICY "Anyone can read tool settings" ON public.tool_settings FOR SELECT USING (true);
+
+INSERT INTO public.tool_settings (id, is_free) VALUES
+  -- Free Tools
+  ('youtube-downloader', true),
+  ('watermark-remover', true),
+  ('bg-remover', true),
+  ('audio-editor', true),
+  ('html-cleaner', true),
+  ('image-converter', true),
+  ('video-compressor', true),
+  ('image-to-text', true),
+  ('word-to-html', true),
+  ('video-converter', true),
+  ('audio-converter', true),
+  ('video-to-gif', true),
+  -- Generators (paid/gated by default)
+  ('course', false),
+  ('blog', false),
+  ('glossary', false),
+  ('resources', false),
+  ('document-extractor', false),
+  ('lesson-quiz-builder', false),
+  ('ai-assistant', false)
+ON CONFLICT (id) DO UPDATE SET is_free = EXCLUDED.is_free;

@@ -73,6 +73,18 @@ const LessonQuizBuilder = nextDynamic(
   () => import('@/components/generators').then((m) => m.LessonQuizBuilder),
   { ssr: false }
 );
+const YouTubeDownloader = nextDynamic(
+  () => import('@/components/generators').then((m) => m.YouTubeDownloader),
+  { ssr: false }
+);
+const WatermarkRemover = nextDynamic(
+  () => import('@/components/generators').then((m) => m.WatermarkRemover),
+  { ssr: false }
+);
+const BgRemover = nextDynamic(
+  () => import('@/components/generators').then((m) => m.BgRemover),
+  { ssr: false }
+);
 
 // Map slugs to components
 const toolComponents = {
@@ -92,6 +104,9 @@ const toolComponents = {
   'video-to-gif': VideoHub,
   'word-to-html': WordToHtml,
   'lesson-quiz-builder': LessonQuizBuilder,
+  'youtube-downloader': YouTubeDownloader,
+  'watermark-remover': WatermarkRemover,
+  'bg-remover': BgRemover,
 };
 
 export default function ToolPage() {

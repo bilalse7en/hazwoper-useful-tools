@@ -32,6 +32,8 @@ import {
   MessageCircle,
   Target,
   AudioWaveform,
+  Youtube,
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -74,6 +76,8 @@ const navGroups = [
         subItems: [
           { id: 'image-converter', label: 'Image Converter', icon: ImageIcon },
           { id: 'image-to-text', label: 'Image to Text', icon: ScanText },
+          { id: 'watermark-remover', label: 'Watermark Remover', icon: Wand2 },
+          { id: 'bg-remover', label: 'Background Remover', icon: Wand2 },
         ],
       },
       {
@@ -82,6 +86,11 @@ const navGroups = [
         icon: Video,
         isParent: true,
         subItems: [
+          {
+            id: 'youtube-downloader',
+            label: 'YouTube Downloader',
+            icon: Youtube,
+          },
           { id: 'video-compressor', label: 'Video Compressor', icon: Video },
           { id: 'video-converter', label: 'Video Converter', icon: Repeat },
           { id: 'video-to-gif', label: 'Video to GIF', icon: Video },

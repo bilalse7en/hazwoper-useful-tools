@@ -23,6 +23,8 @@ export function ChatProvider({ children }) {
   const [activeSenderId, setActiveSenderId] = useState(null);
   const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
 
+  const [onlineUsers, setOnlineUsers] = useState([]);
+
   // Track which contacts we've marked as read in this session to prevent flicker
   const [sessionReadIds, setSessionReadIds] = useState(new Set());
 
@@ -30,6 +32,25 @@ export function ChatProvider({ children }) {
   const userRef = useRef(null);
   const activeSenderRef = useRef(null);
   const isGlobalOpenRef = useRef(false);
+
+  // Fetch online users from database & Realtime presence
+  const fetchOnlineUsers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(
+          'id, username, full_name, role, avatar_url, is_online, last_seen_at'
+        )
+        .eq('is_online', true)
+        .order('full_name', { ascending: true });
+
+      if (!error && data) {
+        setOnlineUsers(data);
+      }
+    } catch (err) {
+      console.warn('[Online Users] Fetch error:', err?.message);
+    }
+  }, []);
 
   useEffect(() => {
     userRef.current = user;
@@ -296,6 +317,56 @@ export function ChatProvider({ children }) {
     [user]
   );
 
+  // Subscribe to real-time profile online updates
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchOnlineUsers();
+
+    const profilesChannel = supabase
+      .channel('public-profiles-online-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => {
+          fetchOnlineUsers();
+        }
+      )
+      .subscribe();
+
+    const presenceChannel = supabase.channel('online-users-global');
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const presentUsers = Object.values(state)
+          .flat()
+          .map((u) => ({
+            id: u.id,
+            username: u.username,
+            full_name: u.full_name,
+            role: u.role,
+            avatar_url: u.avatar_url,
+            is_online: true,
+          }));
+        if (presentUsers.length > 0) {
+          setOnlineUsers((prev) => {
+            const map = new Map();
+            prev.forEach((p) => map.set(p.id, p));
+            presentUsers.forEach((pu) => {
+              if (pu.id)
+                map.set(pu.id, { ...map.get(pu.id), ...pu, is_online: true });
+            });
+            return Array.from(map.values());
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [fetchOnlineUsers]);
+
   // Mark global chat as read when user opens global chat
   const markGlobalAsRead = useCallback(async () => {
     const currentUser = userRef.current;
@@ -323,6 +394,8 @@ export function ChatProvider({ children }) {
       unreadCounts,
       totalUnread,
       globalUnread,
+      onlineUsers,
+      fetchOnlineUsers,
       markAsRead,
       markGlobalAsRead,
       markGlobalChatClosed,
@@ -334,6 +407,8 @@ export function ChatProvider({ children }) {
       unreadCounts,
       totalUnread,
       globalUnread,
+      onlineUsers,
+      fetchOnlineUsers,
       markAsRead,
       markGlobalAsRead,
       markGlobalChatClosed,

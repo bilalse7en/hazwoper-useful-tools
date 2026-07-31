@@ -39,6 +39,9 @@ const iconMap = {
   'video-to-gif': Video,
   'word-to-html': FileText,
   'lesson-quiz-builder': Target,
+  'youtube-downloader': Video,
+  'watermark-remover': Wand2,
+  'bg-remover': Wand2,
 };
 
 export default function ToolsDirectoryPage() {

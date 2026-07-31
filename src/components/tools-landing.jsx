@@ -49,6 +49,9 @@ const iconMap = {
   'audio-editor': AudioWaveform,
   'video-to-gif': Video,
   'word-to-html': FileType,
+  'youtube-downloader': Video,
+  'watermark-remover': Wand2,
+  'bg-remover': Wand2,
 };
 
 // Free tools that anyone can access (even without login)
@@ -63,6 +66,9 @@ const FREE_TOOL_IDS = [
   'audio-editor',
   'video-to-gif',
   'word-to-html',
+  'youtube-downloader',
+  'watermark-remover',
+  'bg-remover',
 ];
 
 // Generator tools that require login + generator access
@@ -108,6 +114,9 @@ export function ToolsLanding({ user }) {
       'audio-editor',
       'video-to-gif',
       'word-to-html',
+      'youtube-downloader',
+      'watermark-remover',
+      'bg-remover',
     ];
     return FREE_TOOL_SLUGS.includes(tool.slug);
   };

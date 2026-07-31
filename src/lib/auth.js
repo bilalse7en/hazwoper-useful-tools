@@ -25,6 +25,9 @@ export const NAV_ITEMS = [
   { id: 'video-to-gif', label: 'Video to GIF', icon: 'Video' },
   { id: 'word-to-html', label: 'Word to HTML', icon: 'FileType' },
   { id: 'lesson-quiz-builder', label: 'Lesson Quiz Builder', icon: 'Target' },
+  { id: 'youtube-downloader', label: 'YouTube Downloader', icon: 'Youtube' },
+  { id: 'watermark-remover', label: 'Watermark Remover', icon: 'Wand2' },
+  { id: 'bg-remover', label: 'AI Background Remover', icon: 'Wand2' },
   { id: 'ai-assistant', label: 'AI UNIVERSE', icon: 'BrainCircuit' },
 ];
 
@@ -118,6 +121,10 @@ export function hasAccess(user, featureId, toolSettings = null) {
     'video-converter',
     'audio-converter',
     'video-to-gif',
+    'audio-editor',
+    'youtube-downloader',
+    'watermark-remover',
+    'bg-remover',
     'chat',
   ];
 
