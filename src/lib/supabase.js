@@ -8,17 +8,40 @@ const supabaseAnonKey =
 
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
 
-// Intercept & guard all supabase.auth methods to prevent unhandled 401 promise rejections
+// Intercept & guard all supabase.auth and postgrest methods to prevent unhandled 401 promise rejections
 if (typeof window !== 'undefined' && supabase?.auth) {
-  // 1. Intercept global unhandledrejection event
+  // 1. Intercept global unhandledrejection event for 401 / Unauthorized
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
-    if (
+    const isUnauthorized =
       reason &&
       (reason.status === 401 ||
+        reason.status === '401' ||
         reason.message === 'Unauthorized' ||
-        String(reason.message || '').includes('Unauthorized') ||
-        reason.code === 'PGRST116')
+        reason.error === 'Unauthorized' ||
+        String(reason.message || '')
+          .toLowerCase()
+          .includes('unauthorized') ||
+        String(reason || '')
+          .toLowerCase()
+          .includes('unauthorized') ||
+        reason.code === 'PGRST116' ||
+        reason.code === '42501');
+
+    if (isUnauthorized) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  });
+
+  // Intercept global uncaught error events
+  window.addEventListener('error', (event) => {
+    if (
+      event?.error?.status === 401 ||
+      event?.error?.message === 'Unauthorized' ||
+      String(event?.message || '')
+        .toLowerCase()
+        .includes('unauthorized')
     ) {
       event.preventDefault();
       event.stopImmediatePropagation();
