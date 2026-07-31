@@ -204,6 +204,10 @@
   border-color: rgba(56, 189, 248, 0.2) !important;
 }
 
+.animate-bounce-3 {
+  animation: bounce 1s ease-in-out 3 !important;
+}
+
 /* Theme Preview Overrides - Bypass global Nebula mode overrides */
 .theme-preview-light,
 .nebula .theme-preview-light {

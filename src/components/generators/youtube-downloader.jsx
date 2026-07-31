@@ -299,8 +299,8 @@ export function YouTubeDownloader() {
           title = oembed.title || title;
           author = oembed.author_name || author;
         }
-      } catch (corsErr) {
-        console.warn('[Downloader] oEmbed notice:', corsErr?.message);
+      } catch (_ignored) {
+        // Silent fallback to standard thumbnail and creator metadata
       }
     } else {
       title = `${platform.name} Content - Watermark Free`;
@@ -675,7 +675,7 @@ export function YouTubeDownloader() {
               ) : (
                 <Button
                   onClick={() => handleSaveFile(selectedPreset)}
-                  className="h-14 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs tracking-widest gap-2 shadow-xl shadow-emerald-600/30 animate-bounce"
+                  className="h-14 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs tracking-widest gap-2 shadow-xl shadow-emerald-600/30 animate-bounce-3"
                 >
                   <Download className="w-5 h-5" />
                   Download {selectedPreset.badge} File Now (
