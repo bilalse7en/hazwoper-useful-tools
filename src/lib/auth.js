@@ -25,7 +25,11 @@ export const NAV_ITEMS = [
   { id: 'video-to-gif', label: 'Video to GIF', icon: 'Video' },
   { id: 'word-to-html', label: 'Word to HTML', icon: 'FileType' },
   { id: 'lesson-quiz-builder', label: 'Lesson Quiz Builder', icon: 'Target' },
-  { id: 'youtube-downloader', label: 'YouTube Downloader', icon: 'Youtube' },
+  {
+    id: 'youtube-downloader',
+    label: 'Universal Social Video Downloader',
+    icon: 'Globe',
+  },
   { id: 'watermark-remover', label: 'Watermark Remover', icon: 'Wand2' },
   { id: 'bg-remover', label: 'AI Background Remover', icon: 'Wand2' },
   { id: 'ai-assistant', label: 'AI UNIVERSE', icon: 'BrainCircuit' },

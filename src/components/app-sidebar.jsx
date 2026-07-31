@@ -34,6 +34,7 @@ import {
   AudioWaveform,
   Youtube,
   Wand2,
+  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -88,8 +89,8 @@ const navGroups = [
         subItems: [
           {
             id: 'youtube-downloader',
-            label: 'YouTube Downloader',
-            icon: Youtube,
+            label: 'Social Video Downloader',
+            icon: Globe,
           },
           { id: 'video-compressor', label: 'Video Compressor', icon: Video },
           { id: 'video-converter', label: 'Video Converter', icon: Repeat },

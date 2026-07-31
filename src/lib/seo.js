@@ -162,11 +162,11 @@ export const toolMetadata = {
   },
   'youtube-downloader': {
     title:
-      'YouTube Video & Audio Downloader - Free MP4 & MP3 Extractor | Content Suite',
+      'Universal Social Video Downloader - Download YouTube, TikTok, IG, FB & Twitter Videos | Content Suite',
     description:
-      'Download high-quality YouTube videos (1080p, 720p, 480p MP4) and extract clear audio (320kbps MP3) without watermarks. Fast, free, browser-based media conversion.',
+      'Download high-quality 4K, 1080p videos and 320kbps MP3 audio from YouTube, TikTok, Instagram Reels, Facebook, Twitter, Reddit, and Pinterest without watermarks. Fast, free, browser-based media downloader.',
     keywords:
-      'youtube downloader, youtube to mp3, youtube video downloader, download youtube without watermark, free youtube converter, mp4 video downloader, youtube audio extractor',
+      'universal video downloader, tiktok downloader no watermark, instagram reels downloader, youtube video downloader, facebook video downloader, twitter video downloader, mp4 video downloader, mp3 audio extractor',
     canonical: '/tools/youtube-downloader',
     ogImage: '/og-youtube-downloader.png',
   },
@@ -889,21 +889,22 @@ export const toolInfo = {
     ],
   },
   'youtube-downloader': {
-    name: 'YouTube Video & Audio Downloader',
-    icon: '▶️',
-    description: 'Download YouTube MP4 video and MP3 audio without watermark',
+    name: 'Universal Social Video Downloader',
+    icon: '🌐',
+    description:
+      'Download videos & MP3 audio from YouTube, TikTok, Instagram, FB & Twitter',
     category: 'Media Processing',
     detailedDescription:
-      'High-performance YouTube video and audio extractor. Convert YouTube links into crystal clear 1080p, 720p MP4 videos or 320kbps MP3 audio files with zero watermarks and 100% free browser-side speed.',
+      'High-performance universal social video and audio extractor. Download 4K, 1080p MP4 videos or 320kbps MP3 audio files from YouTube, TikTok, Instagram Reels, Facebook, Twitter, Reddit, and Pinterest with zero watermarks.',
     benefits: [
-      'Extract MP4 video up to 1080p Full HD resolution',
+      'Extract 4K, 2K, 1080p, 720p MP4 videos across all social platforms',
       'Download high-fidelity 320kbps MP3 audio tracks',
-      'No watermarks, advertisements, or software installation',
-      'Instant video info, thumbnail, and title parsing',
+      'Watermark-free downloads for TikTok, Instagram Reels, and Shorts',
+      'Instant video info, thumbnail, and creator metadata parsing',
       '100% free and unlimited conversions',
     ],
     howToUse:
-      'Paste your YouTube link (e.g. youtube.com/watch?v=... or youtu.be/...) into the input box, click Fetch Video, then select your desired Video or Audio format to download.',
+      'Paste your video link from YouTube, TikTok, Instagram, Facebook, Twitter, Reddit, or Pinterest into the search box, click Fetch Video, then select your preferred Video or Audio format to download.',
     useCases: [
       {
         title: 'Offline Safety Presentations',
