@@ -17,6 +17,9 @@ import {
   FileVideo,
   ShieldCheck,
   Globe,
+  Sliders,
+  HardDrive,
+  Zap,
 } from 'lucide-react';
 
 const SUPPORTED_PLATFORMS = [
@@ -57,16 +60,130 @@ const SUPPORTED_PLATFORMS = [
   },
 ];
 
+const ALL_QUALITY_PRESETS = [
+  {
+    id: '2160p',
+    label: '4K 2160p Ultra HD (60fps)',
+    resolution: '3840x2160',
+    fps: '60fps',
+    format: 'MP4',
+    sizeBytes: 180 * 1024 * 1024,
+    sizeText: '180.0 MB',
+    bitrate: 'Ultra High (25 Mbps)',
+    badge: '4K HDR',
+    savings: '0% (Max Quality)',
+    isAudio: false,
+  },
+  {
+    id: '1440p',
+    label: '2K 1440p Quad HD (60fps)',
+    resolution: '2560x1440',
+    fps: '60fps',
+    format: 'MP4',
+    sizeBytes: 95 * 1024 * 1024,
+    sizeText: '95.0 MB',
+    bitrate: 'Very High (14 Mbps)',
+    badge: '2K QHD',
+    savings: '47% Data Saved',
+    isAudio: false,
+  },
+  {
+    id: '1080p',
+    label: '1080p60 Full HD (60fps)',
+    resolution: '1920x1080',
+    fps: '60fps',
+    format: 'MP4',
+    sizeBytes: 48 * 1024 * 1024,
+    sizeText: '48.0 MB',
+    bitrate: 'High (8 Mbps)',
+    badge: '1080p',
+    savings: '73% Data Saved',
+    isAudio: false,
+  },
+  {
+    id: '720p',
+    label: '720p60 HD (60fps)',
+    resolution: '1280x720',
+    fps: '60fps',
+    format: 'MP4',
+    sizeBytes: 26 * 1024 * 1024,
+    sizeText: '26.0 MB',
+    bitrate: 'Medium (4.5 Mbps)',
+    badge: '720p',
+    savings: '85% Data Saved',
+    isAudio: false,
+  },
+  {
+    id: '480p',
+    label: '480p SD Standard (30fps)',
+    resolution: '854x480',
+    fps: '30fps',
+    format: 'MP4',
+    sizeBytes: 14 * 1024 * 1024,
+    sizeText: '14.0 MB',
+    bitrate: 'Standard (2.5 Mbps)',
+    badge: '480p SD',
+    savings: '92% Data Saved',
+    isAudio: false,
+  },
+  {
+    id: '360p',
+    label: '360p Low Data Mobile (30fps)',
+    resolution: '640x360',
+    fps: '30fps',
+    format: 'MP4',
+    sizeBytes: 8 * 1024 * 1024,
+    sizeText: '8.0 MB',
+    bitrate: 'Compact (1.0 Mbps)',
+    badge: 'Mobile',
+    savings: '95% Data Saved',
+    isAudio: false,
+  },
+  {
+    id: 'mp3_320',
+    label: '320 kbps High Fidelity Audio',
+    resolution: 'Audio Only',
+    fps: 'N/A',
+    format: 'MP3',
+    sizeBytes: 8.5 * 1024 * 1024,
+    sizeText: '8.5 MB',
+    bitrate: '320 kbps',
+    badge: 'MP3 HD',
+    savings: '95% Data Saved',
+    isAudio: true,
+  },
+  {
+    id: 'mp3_128',
+    label: '128 kbps Standard Audio',
+    resolution: 'Audio Only',
+    fps: 'N/A',
+    format: 'MP3',
+    sizeBytes: 3.4 * 1024 * 1024,
+    sizeText: '3.4 MB',
+    bitrate: '128 kbps',
+    badge: 'MP3',
+    savings: '98% Data Saved',
+    isAudio: true,
+  },
+];
+
 export function YouTubeDownloader() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [videoData, setVideoData] = useState(null);
 
+  // Selected quality preset for the dropdown
+  const [selectedQualityId, setSelectedQualityId] = useState('1080p');
+
   // Format specific downloading states
   const [downloadingFormat, setDownloadingFormat] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState({});
   const [readyFormats, setReadyFormats] = useState({});
+
+  const selectedPreset =
+    ALL_QUALITY_PRESETS.find((p) => p.id === selectedQualityId) ||
+    ALL_QUALITY_PRESETS[2];
 
   // Detect social media platform from input URL
   const detectPlatform = (inputUrl) => {
@@ -205,139 +322,58 @@ export function YouTubeDownloader() {
             ? `https://www.youtube.com/embed/${videoId}`
             : null,
         thumbnailMaxRes: thumbnail,
-        videoFormats: [
-          {
-            quality: '4K 2160p Ultra HD',
-            resolution: '3840x2160',
-            fps: '60fps',
-            format: 'MP4',
-            size: '~180 MB',
-            bitrate: 'Ultra High',
-            badge: '4K HDR',
-          },
-          {
-            quality: '2K 1440p QHD',
-            resolution: '2560x1440',
-            fps: '60fps',
-            format: 'MP4',
-            size: '~95 MB',
-            bitrate: 'Very High',
-            badge: '2K',
-          },
-          {
-            quality: '1080p60 Full HD',
-            resolution: '1920x1080',
-            fps: '60fps',
-            format: 'MP4',
-            size: '~48 MB',
-            bitrate: 'High',
-            badge: '1080p',
-          },
-          {
-            quality: '720p60 HD',
-            resolution: '1280x720',
-            fps: '60fps',
-            format: 'MP4',
-            size: '~26 MB',
-            bitrate: 'Medium',
-            badge: '720p',
-          },
-          {
-            quality: '480p SD',
-            resolution: '854x480',
-            fps: '30fps',
-            format: 'MP4',
-            size: '~14 MB',
-            bitrate: 'Standard',
-            badge: 'SD',
-          },
-          {
-            quality: '360p Compact',
-            resolution: '640x360',
-            fps: '30fps',
-            format: 'MP4',
-            size: '~8 MB',
-            bitrate: 'Low Data',
-            badge: 'Mobile',
-          },
-        ],
-        audioFormats: [
-          {
-            quality: '320 kbps HD Audio',
-            format: 'MP3',
-            sampleRate: '48.0 kHz',
-            size: '~8.5 MB',
-          },
-          {
-            quality: '256 kbps HQ Audio',
-            format: 'MP3',
-            sampleRate: '44.1 kHz',
-            size: '~6.8 MB',
-          },
-          {
-            quality: '128 kbps Standard',
-            format: 'MP3',
-            sampleRate: '44.1 kHz',
-            size: '~3.4 MB',
-          },
-          {
-            quality: 'Original AAC Audio',
-            format: 'M4A',
-            sampleRate: '48.0 kHz',
-            size: '~4.1 MB',
-          },
-        ],
+        presets: ALL_QUALITY_PRESETS,
       });
 
       setLoading(false);
       showSuccess(
         'Thumbnail & Formats Loaded!',
-        `100% complete. Select your format to download.`
+        `100% complete. Select your quality from the dropdown to download.`
       );
     }, 500);
   };
 
-  const handleStartProcessing = (qualityLabel) => {
+  const handleStartProcessing = (presetId) => {
     if (!videoData) return;
-    setDownloadingFormat(qualityLabel);
+    setDownloadingFormat(presetId);
 
     // Reset progress for this format
-    setDownloadProgress((prev) => ({ ...prev, [qualityLabel]: 10 }));
+    setDownloadProgress((prev) => ({ ...prev, [presetId]: 10 }));
 
     const interval = setInterval(() => {
       setDownloadProgress((prev) => {
-        const current = prev[qualityLabel] || 10;
+        const current = prev[presetId] || 10;
         if (current >= 95) {
           clearInterval(interval);
-          return { ...prev, [qualityLabel]: 95 };
+          return { ...prev, [presetId]: 95 };
         }
-        return { ...prev, [qualityLabel]: current + 20 };
+        return { ...prev, [presetId]: current + 20 };
       });
     }, 150);
 
     setTimeout(() => {
       clearInterval(interval);
-      setDownloadProgress((prev) => ({ ...prev, [qualityLabel]: 100 }));
-      setReadyFormats((prev) => ({ ...prev, [qualityLabel]: true }));
+      setDownloadProgress((prev) => ({ ...prev, [presetId]: 100 }));
+      setReadyFormats((prev) => ({ ...prev, [presetId]: true }));
       setDownloadingFormat(null);
       showSuccess(
-        'Ready to Save!',
+        'Quality Ready!',
         'Click Download File to save to your device.'
       );
     }, 1100);
   };
 
-  const handleSaveFile = (qualityLabel, isAudio = false) => {
+  const handleSaveFile = (preset) => {
     if (!videoData) return;
-    const fileExt = isAudio ? 'mp3' : 'mp4';
-    const dummyContent = `[Universal Media Stream: ${videoData.title} - ${qualityLabel}]`;
+    const fileExt = preset.isAudio ? 'mp3' : 'mp4';
+    const dummyContent = `[Universal Media Stream: ${videoData.title} - ${preset.label}]`;
     const blob = new Blob([dummyContent], {
-      type: isAudio ? 'audio/mp3' : 'video/mp4',
+      type: preset.isAudio ? 'audio/mp3' : 'video/mp4',
     });
     const downloadUrl = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = downloadUrl;
-    a.download = `${videoData.title.replace(/[^a-zA-Z0-9]/g, '_')}_${qualityLabel.replace(/\s+/g, '_')}.${fileExt}`;
+    a.download = `${videoData.title.replace(/[^a-zA-Z0-9]/g, '_')}_${preset.id}.${fileExt}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -367,7 +403,7 @@ export function YouTubeDownloader() {
             {' '}
             YouTube, TikTok, Instagram, Facebook, Twitter, Reddit, & Pinterest
           </span>{' '}
-          without watermarks.
+          with quality selection.
         </p>
 
         {/* Platform Badges Row */}
@@ -504,14 +540,152 @@ export function YouTubeDownloader() {
                   </div>
                   <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
                     <Check className="w-3.5 h-3.5" />
-                    Fast Direct Download
+                    Fast Direct Stream
                   </div>
                 </div>
               </div>
             </div>
           </Card>
 
-          {/* Download Tabs (Video vs Audio) */}
+          {/* Interactive Video Quality Dropdown & Size Calculator Card */}
+          <Card className="glass-panel border-border p-6 rounded-3xl space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-red-500" />
+                <h3 className="text-base font-black text-foreground uppercase tracking-wider">
+                  Select Video Quality
+                </h3>
+              </div>
+              <Badge
+                variant="secondary"
+                className="text-[10px] font-black uppercase bg-red-500/10 text-red-500"
+              >
+                Calculated Size Generator
+              </Badge>
+            </div>
+
+            {/* Quality Dropdown Select */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground block">
+                Choose Output Resolution / Format:
+              </label>
+              <select
+                value={selectedQualityId}
+                onChange={(e) => setSelectedQualityId(e.target.value)}
+                className="w-full h-14 px-4 rounded-2xl bg-muted/40 border border-border text-foreground font-bold text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40 cursor-pointer"
+              >
+                {ALL_QUALITY_PRESETS.map((preset) => (
+                  <option
+                    key={preset.id}
+                    value={preset.id}
+                    className="bg-card text-foreground py-2 font-medium"
+                  >
+                    {preset.label} — [{preset.sizeText}]{' '}
+                    {preset.savings !== '0% (Max Quality)'
+                      ? `(${preset.savings})`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Calculated Quality & File Size Specs Panel */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-muted/20 border border-border/50 text-center">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Target Resolution
+                </span>
+                <span className="text-xs font-black text-foreground">
+                  {selectedPreset.resolution}
+                </span>
+              </div>
+
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Framerate / Bitrate
+                </span>
+                <span className="text-xs font-black text-foreground">
+                  {selectedPreset.fps !== 'N/A'
+                    ? `${selectedPreset.fps} • ${selectedPreset.bitrate}`
+                    : selectedPreset.bitrate}
+                </span>
+              </div>
+
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Estimated File Size
+                </span>
+                <span className="text-xs font-black text-red-500 flex items-center justify-center gap-1">
+                  <HardDrive className="w-3.5 h-3.5" />
+                  {selectedPreset.sizeText}
+                </span>
+              </div>
+
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Data Efficiency
+                </span>
+                <span className="text-xs font-black text-emerald-500 flex items-center justify-center gap-1">
+                  <Zap className="w-3.5 h-3.5" />
+                  {selectedPreset.savings}
+                </span>
+              </div>
+            </div>
+
+            {/* Quality Action Button & Loader */}
+            <div className="space-y-3 pt-2">
+              {downloadingFormat === selectedPreset.id && (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span>Extracting {selectedPreset.label}...</span>
+                    <span className="text-red-500 font-black">
+                      {downloadProgress[selectedPreset.id] || 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/50">
+                    <div
+                      className="bg-red-500 h-full transition-all duration-150 rounded-full"
+                      style={{
+                        width: `${downloadProgress[selectedPreset.id] || 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {!readyFormats[selectedPreset.id] ? (
+                <Button
+                  onClick={() => handleStartProcessing(selectedPreset.id)}
+                  disabled={downloadingFormat === selectedPreset.id}
+                  className="h-14 w-full rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black uppercase text-xs tracking-widest gap-2 shadow-xl shadow-red-600/30"
+                >
+                  {downloadingFormat === selectedPreset.id ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing Stream (
+                      {downloadProgress[selectedPreset.id] || 0}%)
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Prepare {selectedPreset.label} ({selectedPreset.sizeText})
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => handleSaveFile(selectedPreset)}
+                  className="h-14 w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs tracking-widest gap-2 shadow-xl shadow-emerald-600/30 animate-bounce"
+                >
+                  <Download className="w-5 h-5" />
+                  Download {selectedPreset.badge} File Now (
+                  {selectedPreset.sizeText})
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Quick Grid View of All Formats */}
           <Tabs defaultValue="video" className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-14 p-1.5 bg-muted/40 rounded-2xl border border-border/50">
               <TabsTrigger
@@ -519,191 +693,101 @@ export function YouTubeDownloader() {
                 className="rounded-xl font-black text-xs uppercase tracking-wider gap-2 data-[state=active]:bg-card data-[state=active]:shadow-lg"
               >
                 <FileVideo className="w-4 h-4 text-red-500" />
-                Video Qualities (4K, 1080p, MP4)
+                All Video Resolutions Grid
               </TabsTrigger>
               <TabsTrigger
                 value="audio"
                 className="rounded-xl font-black text-xs uppercase tracking-wider gap-2 data-[state=active]:bg-card data-[state=active]:shadow-lg"
               >
                 <FileAudio className="w-4 h-4 text-emerald-500" />
-                Audio Extracts (320kbps MP3)
+                Audio Formats (MP3)
               </TabsTrigger>
             </TabsList>
 
-            {/* Video Tab Content */}
             <TabsContent value="video" className="mt-4 space-y-3">
               <div className="grid sm:grid-cols-2 gap-3">
-                {videoData.videoFormats.map((fmt) => {
-                  const isProcessing = downloadingFormat === fmt.quality;
-                  const currentProgress = downloadProgress[fmt.quality] || 0;
-                  const isReady = readyFormats[fmt.quality];
-
-                  return (
-                    <Card
-                      key={fmt.quality}
-                      className="p-4 rounded-2xl border-border/60 hover:border-red-500/40 transition-all flex flex-col justify-between gap-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge
-                            variant="outline"
-                            className="text-xs font-black bg-red-500/10 text-red-500 border-red-500/30"
-                          >
-                            {fmt.badge || fmt.format}
-                          </Badge>
-                          <span className="text-sm font-bold text-foreground">
-                            {fmt.quality}
-                          </span>
-                          {fmt.fps && (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] font-black uppercase px-2 py-0.5"
-                            >
-                              {fmt.fps}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground font-medium">
-                          Res: {fmt.resolution} • Size: {fmt.size} • Bitrate:{' '}
-                          {fmt.bitrate}
-                        </p>
+                {ALL_QUALITY_PRESETS.filter((p) => !p.isAudio).map((fmt) => (
+                  <Card
+                    key={fmt.id}
+                    onClick={() => setSelectedQualityId(fmt.id)}
+                    className={`p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                      selectedQualityId === fmt.id
+                        ? 'border-red-500 bg-red-500/5 ring-2 ring-red-500/20'
+                        : 'border-border/60 hover:border-red-500/40'
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge
+                          variant="outline"
+                          className="text-xs font-black bg-red-500/10 text-red-500 border-red-500/30"
+                        >
+                          {fmt.badge}
+                        </Badge>
+                        <span className="text-sm font-bold text-foreground">
+                          {fmt.label}
+                        </span>
                       </div>
+                      <p className="text-[10px] text-muted-foreground font-medium">
+                        Res: {fmt.resolution} • Size: {fmt.sizeText} (
+                        {fmt.savings})
+                      </p>
+                    </div>
 
-                      {/* Format Progress Loader */}
-                      {isProcessing && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[10px] font-bold">
-                            <span>Processing Stream...</span>
-                            <span className="text-red-500">
-                              {currentProgress}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className="bg-red-500 h-full transition-all duration-150 rounded-full"
-                              style={{ width: `${currentProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Dynamic Action Button */}
-                      {!isReady ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartProcessing(fmt.quality)}
-                          disabled={isProcessing}
-                          className="rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs gap-1.5 shadow-md shadow-red-600/20 w-full"
-                        >
-                          {isProcessing ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              Extracting {currentProgress}%
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3.5 h-3.5" />
-                              Prepare Download
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveFile(fmt.quality, false)}
-                          className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs gap-1.5 shadow-lg shadow-emerald-600/30 w-full animate-bounce"
-                        >
-                          <Download className="w-4 h-4" />
-                          Download File Now
-                        </Button>
-                      )}
-                    </Card>
-                  );
-                })}
+                    <Button
+                      size="sm"
+                      variant={
+                        selectedQualityId === fmt.id ? 'default' : 'outline'
+                      }
+                      className="rounded-xl font-bold text-xs"
+                    >
+                      {selectedQualityId === fmt.id ? 'Selected' : 'Select'}
+                    </Button>
+                  </Card>
+                ))}
               </div>
             </TabsContent>
 
-            {/* Audio Tab Content */}
             <TabsContent value="audio" className="mt-4 space-y-3">
               <div className="grid sm:grid-cols-2 gap-3">
-                {videoData.audioFormats.map((fmt) => {
-                  const isProcessing = downloadingFormat === fmt.quality;
-                  const currentProgress = downloadProgress[fmt.quality] || 0;
-                  const isReady = readyFormats[fmt.quality];
-
-                  return (
-                    <Card
-                      key={fmt.quality}
-                      className="p-4 rounded-2xl border-border/60 hover:border-emerald-500/40 transition-all flex flex-col justify-between gap-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className="text-xs font-black bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
-                          >
-                            {fmt.format}
-                          </Badge>
-                          <span className="text-sm font-bold text-foreground">
-                            {fmt.quality}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground font-medium">
-                          Sample Rate: {fmt.sampleRate} • Size: {fmt.size}
-                        </p>
+                {ALL_QUALITY_PRESETS.filter((p) => p.isAudio).map((fmt) => (
+                  <Card
+                    key={fmt.id}
+                    onClick={() => setSelectedQualityId(fmt.id)}
+                    className={`p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                      selectedQualityId === fmt.id
+                        ? 'border-emerald-500 bg-emerald-500/5 ring-2 ring-emerald-500/20'
+                        : 'border-border/60 hover:border-emerald-500/40'
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className="text-xs font-black bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                        >
+                          {fmt.format}
+                        </Badge>
+                        <span className="text-sm font-bold text-foreground">
+                          {fmt.label}
+                        </span>
                       </div>
+                      <p className="text-[10px] text-muted-foreground font-medium">
+                        Bitrate: {fmt.bitrate} • Size: {fmt.sizeText}
+                      </p>
+                    </div>
 
-                      {/* Format Progress Loader */}
-                      {isProcessing && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[10px] font-bold">
-                            <span>Extracting Audio...</span>
-                            <span className="text-emerald-500">
-                              {currentProgress}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                            <div
-                              className="bg-emerald-500 h-full transition-all duration-150 rounded-full"
-                              style={{ width: `${currentProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Dynamic Action Button */}
-                      {!isReady ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartProcessing(fmt.quality)}
-                          disabled={isProcessing}
-                          className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow-md shadow-emerald-600/20 w-full"
-                        >
-                          {isProcessing ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              Extracting {currentProgress}%
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-3.5 h-3.5" />
-                              Prepare MP3
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveFile(fmt.quality, true)}
-                          className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs gap-1.5 shadow-lg shadow-emerald-600/30 w-full animate-bounce"
-                        >
-                          <Download className="w-4 h-4" />
-                          Save MP3 File
-                        </Button>
-                      )}
-                    </Card>
-                  );
-                })}
+                    <Button
+                      size="sm"
+                      variant={
+                        selectedQualityId === fmt.id ? 'default' : 'outline'
+                      }
+                      className="rounded-xl font-bold text-xs"
+                    >
+                      {selectedQualityId === fmt.id ? 'Selected' : 'Select'}
+                    </Button>
+                  </Card>
+                ))}
               </div>
             </TabsContent>
           </Tabs>
