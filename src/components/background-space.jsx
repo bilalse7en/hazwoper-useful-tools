@@ -104,9 +104,9 @@ export function BackgroundSpace() {
 
       // Use background color based on theme for clearer clearing
       const colorMap = {
-        nebula: '#020617',
+        nebula: '#02081e',
         dark: '#020617',
-        light: '#ffffff',
+        light: '#f8fafc',
       };
       const bgColor = colorMap[theme] || '#020617';
       const starColor = theme === 'light' ? '#000000' : '#ffffff';
