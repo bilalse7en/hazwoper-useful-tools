@@ -139,9 +139,14 @@ export default function ImageToText() {
       if (!file) return;
 
       // Stop unpaid user from uploading when daily 3-image AI limit is reached
-      if (!hasUnlimitedAIAccess && getAIDailyCount() >= MAX_DAILY_AI_EXTRACTIONS) {
+      if (
+        !hasUnlimitedAIAccess &&
+        getAIDailyCount() >= MAX_DAILY_AI_EXTRACTIONS
+      ) {
         setShowPaywall(true);
-        setError('Daily 3-image AI limit reached (3/3). Please upgrade to AI Suite PRO.');
+        setError(
+          'Daily 3-image AI limit reached (3/3). Please upgrade to AI Suite PRO.'
+        );
         return;
       }
 
@@ -304,7 +309,10 @@ export default function ImageToText() {
       // Preprocess image for better OCR accuracy
       imageToProcess = await preprocessImage(previewUrl);
     } catch (prepErr) {
-      console.warn('[OCR] Preprocessing failed, using raw preview URL:', prepErr);
+      console.warn(
+        '[OCR] Preprocessing failed, using raw preview URL:',
+        prepErr
+      );
       imageToProcess = previewUrl;
     }
 
@@ -337,7 +345,9 @@ export default function ImageToText() {
       setProgress(100);
 
       if (data.provider) {
-        console.log(`[OCR] Standard mode: ${data.provider} in ${data.processingTime}ms`);
+        console.log(
+          `[OCR] Standard mode: ${data.provider} in ${data.processingTime}ms`
+        );
       }
 
       return data.text;
@@ -348,8 +358,6 @@ export default function ImageToText() {
       clearInterval(progressInterval);
     }
   };
-
-
 
   // Handle switching to AI mode with paywall check
   const handleAIModeSwitch = () => {
@@ -524,14 +532,20 @@ export default function ImageToText() {
                   Daily AI Limit Reached (3/3 Limit Finished)
                 </h3>
                 <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
-                  You have used your <strong>3 free daily AI extractions</strong>. Upgrade to <strong>AI Suite PRO for Rs. 1,500/month</strong> for unlimited extractions, or request Admin Panel authorization.
+                  You have used your{' '}
+                  <strong>3 free daily AI extractions</strong>. Upgrade to{' '}
+                  <strong>AI Suite PRO for Rs. 1,500/month</strong> for
+                  unlimited extractions, or request Admin Panel authorization.
                 </p>
                 <div className="space-y-3">
                   <button
                     className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-base shadow-lg hover:shadow-purple-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                     onClick={() => {
                       setShowPaywall(false);
-                      showToast('Subscribe to AI Suite PRO for Rs. 1,500/mo or contact admin.', 'info');
+                      showToast(
+                        'Subscribe to AI Suite PRO for Rs. 1,500/mo or contact admin.',
+                        'info'
+                      );
                     }}
                   >
                     <Crown className="w-5 h-5" />
@@ -548,7 +562,8 @@ export default function ImageToText() {
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-4">
-                  Standard Mode uses Tesseract OCR — fast, offline, and free forever.
+                  Standard Mode uses Tesseract OCR — fast, offline, and free
+                  forever.
                 </p>
               </div>
             </motion.div>
@@ -758,7 +773,8 @@ export default function ImageToText() {
               </h3>
               {hasUnlimitedAIAccess ? (
                 <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-full font-bold flex items-center gap-1.5 shadow-sm">
-                  <Sparkles className="w-3.5 h-3.5 text-purple-400" /> PRO Unlimited
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" /> PRO
+                  Unlimited
                 </span>
               ) : (
                 <span
@@ -770,11 +786,13 @@ export default function ImageToText() {
                 >
                   {hasUsedAITrial() ? (
                     <>
-                      <Lock className="w-3.5 h-3.5 text-rose-400" /> 3/3 Limit Reached
+                      <Lock className="w-3.5 h-3.5 text-rose-400" /> 3/3 Limit
+                      Reached
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> {getAIDailyCount()}/3 Daily AI Images
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />{' '}
+                      {getAIDailyCount()}/3 Daily AI Images
                     </>
                   )}
                 </span>
@@ -865,7 +883,9 @@ export default function ImageToText() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>
-                    <span>Understands context, formatting & Word screenshots</span>
+                    <span>
+                      Understands context, formatting & Word screenshots
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>

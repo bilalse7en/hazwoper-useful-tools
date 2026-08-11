@@ -237,9 +237,7 @@ function AdminDashboard() {
           <div className="flex flex-col items-center gap-2">
             <Switch
               checked={hasAi}
-              onCheckedChange={(checked) =>
-                toggleAIAccess(u.id, checked)
-              }
+              onCheckedChange={(checked) => toggleAIAccess(u.id, checked)}
               className="data-[state=checked]:bg-purple-600"
             />
             <span
@@ -896,7 +894,9 @@ function AdminDashboard() {
 
   async function toggleAIAccess(userId, hasAccess) {
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, has_ai_access: hasAccess } : u))
+      prev.map((u) =>
+        u.id === userId ? { ...u, has_ai_access: hasAccess } : u
+      )
     );
     if (userId === currentUserId) {
       try {
