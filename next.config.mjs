@@ -21,18 +21,13 @@ const nextConfig = {
   // Empty turbopack config to silence webpack warning
   turbopack: {},
 
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     // Add support for FFmpeg.wasm
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
       path: false,
     };
-
-    // Optimize source map generation
-    if (!isServer) {
-      config.devtool = 'source-map';
-    }
 
     return config;
   },

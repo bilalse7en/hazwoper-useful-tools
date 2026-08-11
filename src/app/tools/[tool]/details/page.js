@@ -202,6 +202,64 @@ export default function ToolDetailsPage({ params: paramsProp }) {
               </div>
             </section>
 
+            {/* Related Professional Tools - Internal Linking for SEO */}
+            <section className="space-y-6">
+              <h2 className="text-2xl font-black flex items-center gap-3">
+                <Cpu className="w-6 h-6 text-primary" />
+                Related Professional Tools
+              </h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                {(() => {
+                  const currentCategory = toolInfo[toolSlug]?.category;
+                  const otherTools = Object.entries(toolInfo).filter(
+                    ([slug]) => slug !== toolSlug
+                  );
+                  const sameCategory = otherTools.filter(
+                    ([, info]) => info.category === currentCategory
+                  );
+                  const related =
+                    sameCategory.length >= 3
+                      ? sameCategory.slice(0, 3)
+                      : [
+                          ...sameCategory,
+                          ...otherTools
+                            .filter(
+                              ([, info]) => info.category !== currentCategory
+                            )
+                            .slice(0, 3 - sameCategory.length),
+                        ];
+                  return related.map(([slug, info]) => (
+                    <div
+                      key={slug}
+                      className="p-6 rounded-3xl bg-card/40 border border-border hover:border-primary/30 transition-all group"
+                    >
+                      <span className="text-2xl mb-3 block">{info.icon}</span>
+                      <h3 className="font-black text-foreground mb-2">
+                        {info.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {info.description}
+                      </p>
+                      <div className="flex gap-4">
+                        <Link
+                          href={`/tools/${slug}`}
+                          className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                        >
+                          Launch →
+                        </Link>
+                        <Link
+                          href={`/tools/${slug}/details`}
+                          className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary hover:underline"
+                        >
+                          Details
+                        </Link>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </section>
+
             {/* Bottom Ad Section - Wrapped in a descriptive container per AdSense best practices */}
             <div className="space-y-4">
               <span className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/50 ml-4">

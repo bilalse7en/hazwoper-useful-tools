@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth-provider';
 import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
 import { AdSenseAd } from '@/components/adsense-ad';
+import { ToolSEOContent } from '@/components/tool-seo-content';
 import { JsonLd } from '@/components/json-ld';
 import {
   slugToToolId,
@@ -182,6 +183,9 @@ export default function ToolPage() {
             <ToolComponent />
           )}
         </div>
+
+        {/* SEO Content Section - renders rich text for search engine crawlers */}
+        <ToolSEOContent slug={toolSlug} />
       </div>
     </ToolAccessGuard>
   );

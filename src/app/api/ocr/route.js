@@ -1,5 +1,28 @@
 import { NextResponse } from 'next/server';
 import { createWorker } from 'tesseract.js';
+import path from 'path';
+import fs from 'fs';
+
+// Helper to resolve Tesseract node worker path in Next.js bundled environment
+function getTesseractOptions() {
+  try {
+    const nodeWorkerPath = path.join(
+      process.cwd(),
+      'node_modules',
+      'tesseract.js',
+      'src',
+      'worker-script',
+      'node',
+      'index.js'
+    );
+    if (fs.existsSync(nodeWorkerPath)) {
+      return { workerPath: nodeWorkerPath };
+    }
+  } catch (e) {
+    console.warn('[OCR-API] Custom workerPath check failed:', e.message);
+  }
+  return {};
+}
 
 // Timeout wrapper for fetch requests
 async function fetchWithTimeout(url, options, timeout = 10000) {
@@ -27,7 +50,7 @@ export async function POST(req) {
   const startTime = Date.now();
 
   try {
-    const { image } = await req.json();
+    const { image, mode } = await req.json();
 
     if (!image) {
       console.error('[OCR-API] ❌ No image data provided');
@@ -43,17 +66,15 @@ export async function POST(req) {
     const buffer = Buffer.from(base64Data, 'base64');
     const sizeKB = (buffer.length / 1024).toFixed(2);
 
-    console.log(`[OCR-API] 📊 Image size: ${sizeKB}KB`);
+    console.log(`[OCR-API] 📊 Image size: ${sizeKB}KB (Mode: ${mode || 'ai'})`);
 
     let extractedText = '';
     let provider = '';
+    const useStandardOnly = mode === 'standard';
 
-    // ============================================
-    // OPTION 1: Google Gemini Vision (FREE, FAST, BEST ACCURACY)
-    // ============================================
-    try {
-      console.log('[OCR-API] 🤖 Trying Google Gemini Vision API...');
-
+    // Helper: Gemini Vision AI
+    const runGemini = async () => {
+      console.log('[OCR-API] 🤖 Running Google Gemini Vision API...');
       const geminiResponse = await fetchWithTimeout(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=AIzaSyBqSF2nR6W5-x_cqf_CsIwQkaTmHgcSgT8',
         {
@@ -64,7 +85,7 @@ export async function POST(req) {
               {
                 parts: [
                   {
-                    text: 'Extract all visible text from this image. Return ONLY the extracted text, nothing else. Preserve formatting, line breaks, and special characters exactly as they appear.',
+                    text: 'Extract all text verbatim from this image, screenshot, or document. Return ONLY the exact extracted text without commentary, conversational introduction, or markdown wrapping.',
                   },
                   {
                     inline_data: {
@@ -77,109 +98,214 @@ export async function POST(req) {
             ],
           }),
         },
-        15000 // 15 second timeout
+        15000
       );
 
       if (geminiResponse.ok) {
         const data = await geminiResponse.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
         if (text && text.trim()) {
-          extractedText = text.trim();
-          provider = 'Google Gemini Vision';
-          console.log(
-            `[OCR-API] ✅ Gemini SUCCESS (${Date.now() - startTime}ms)`
-          );
+          return { text: text.trim(), provider: 'Gemini Vision AI' };
         }
-      } else {
-        console.warn(
-          `[OCR-API] ⚠️ Gemini failed with status ${geminiResponse.status}`
-        );
       }
-    } catch (e) {
-      console.warn(`[OCR-API] ⚠️ Gemini error: ${e.message}`);
-    }
+      return null;
+    };
 
-    // ============================================
-    // OPTION 2: OCR.space (FREE, RELIABLE FALLBACK)
-    // ============================================
-    if (!extractedText) {
-      try {
-        console.log('[OCR-API] 🔄 Trying OCR.space API...');
+    // Helper: Pollinations Vision AI
+    const runPollinations = async () => {
+      console.log('[OCR-API] 🚀 Running Pollinations AI Engine...');
+      const pollResponse = await fetchWithTimeout(
+        'https://text.pollinations.ai/openai',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'openai-large',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: 'Extract all visible text from this image or screenshot accurately. Output only the extracted text.',
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:image/jpeg;base64,${base64Data}`,
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+        },
+        15000
+      );
 
-        const formData = new FormData();
-        formData.append('base64Image', `data:image/jpeg;base64,${base64Data}`);
-        formData.append('language', 'eng');
-        formData.append('isOverlayRequired', 'false');
-        formData.append('OCREngine', '2'); // Best engine
-        formData.append('apikey', 'K87161642888957'); // Free tier key
+      if (pollResponse.ok) {
+        const pollText = await pollResponse.text();
+        if (pollText && pollText.trim()) {
+          return { text: pollText.trim(), provider: 'Pollinations AI Engine' };
+        }
+      }
+      return null;
+    };
 
-        const ocrResponse = await fetchWithTimeout(
-          'https://api.ocr.space/parse/image',
-          {
-            method: 'POST',
-            body: formData,
-          },
-          12000 // 12 second timeout
-        );
+    // Helper: OCR.space Engine
+    const runOCRSpace = async () => {
+      console.log('[OCR-API] 🔄 Running OCR.space Engine...');
+      const formData = new FormData();
+      formData.append('base64Image', `data:image/jpeg;base64,${base64Data}`);
+      formData.append('language', 'eng');
+      formData.append('isOverlayRequired', 'false');
+      formData.append('OCREngine', '2');
+      formData.append('apikey', 'K87161642888957');
 
-        if (ocrResponse.ok) {
-          const ocrData = await ocrResponse.json();
-          if (ocrData.ParsedResults?.[0]?.ParsedText) {
-            extractedText = ocrData.ParsedResults[0].ParsedText.trim();
-            provider = 'OCR.space';
-            console.log(
-              `[OCR-API] ✅ OCR.space SUCCESS (${Date.now() - startTime}ms)`
-            );
-          } else {
-            console.warn('[OCR-API] ⚠️ OCR.space returned no text');
+      const ocrResponse = await fetchWithTimeout(
+        'https://api.ocr.space/parse/image',
+        {
+          method: 'POST',
+          body: formData,
+        },
+        12000
+      );
+
+      if (ocrResponse.ok) {
+        const ocrData = await ocrResponse.json();
+        if (ocrData.ParsedResults?.[0]?.ParsedText) {
+          const resText = ocrData.ParsedResults[0].ParsedText.trim();
+          if (resText) {
+            return { text: resText, provider: 'OCR.space Engine' };
           }
         }
-      } catch (e) {
-        console.warn(`[OCR-API] ⚠️ OCR.space error: ${e.message}`);
       }
-    }
+      return null;
+    };
 
-    // ============================================
-    // OPTION 3: Local Tesseract (LAST RESORT FAILSAFE)
-    // ============================================
-    if (!extractedText) {
-      console.log('[OCR-API] 🔧 Using Local Tesseract failsafe...');
+    // Helper: Local Server Tesseract Engine
+    const runLocalTesseract = async () => {
+      console.log('[OCR-API] 🔧 Running Local Tesseract Engine...');
       let worker = null;
       try {
-        worker = await createWorker('eng');
+        const tessOptions = getTesseractOptions();
+        worker = await createWorker('eng', 1, tessOptions);
         const {
           data: { text },
         } = await worker.recognize(buffer);
 
         if (text && text.trim()) {
-          extractedText = text.trim();
-          provider = 'Tesseract (Local)';
-          console.log(
-            `[OCR-API] ✅ Tesseract SUCCESS (${Date.now() - startTime}ms)`
-          );
+          return { text: text.trim(), provider: 'Standard Tesseract Engine' };
         }
       } catch (e) {
-        console.error(`[OCR-API] ❌ Tesseract failed: ${e.message}`);
+        console.warn('[OCR-API] ⚠️ Local Tesseract engine warning:', e.message);
       } finally {
-        if (worker) await worker.terminate();
+        if (worker) {
+          try {
+            await worker.terminate();
+          } catch (_) {}
+        }
+      }
+      return null;
+    };
+
+    // EXECUTION FLOW
+    if (useStandardOnly) {
+      // Standard Mode Pipeline: Local Tesseract -> OCR.space -> Gemini AI (Failsafe)
+      try {
+        const res = await runLocalTesseract();
+        if (res) {
+          extractedText = res.text;
+          provider = res.provider;
+        }
+      } catch (e) {
+        console.warn('[OCR-API] Tesseract step failed:', e.message);
+      }
+
+      if (!extractedText) {
+        try {
+          const res = await runOCRSpace();
+          if (res) {
+            extractedText = res.text;
+            provider = res.provider;
+          }
+        } catch (e) {
+          console.warn('[OCR-API] OCR.space step failed:', e.message);
+        }
+      }
+
+      if (!extractedText) {
+        try {
+          const res = await runGemini();
+          if (res) {
+            extractedText = res.text;
+            provider = `${res.provider} (Standard Fallback)`;
+          }
+        } catch (e) {
+          console.warn('[OCR-API] Gemini fallback failed:', e.message);
+        }
+      }
+    } else {
+      // AI Mode Pipeline: Gemini -> Pollinations -> OCR.space -> Local Tesseract
+      try {
+        const res = await runGemini();
+        if (res) {
+          extractedText = res.text;
+          provider = res.provider;
+        }
+      } catch (e) {
+        console.warn('[OCR-API] Gemini failed:', e.message);
+      }
+
+      if (!extractedText) {
+        try {
+          const res = await runPollinations();
+          if (res) {
+            extractedText = res.text;
+            provider = res.provider;
+          }
+        } catch (e) {
+          console.warn('[OCR-API] Pollinations failed:', e.message);
+        }
+      }
+
+      if (!extractedText) {
+        try {
+          const res = await runOCRSpace();
+          if (res) {
+            extractedText = res.text;
+            provider = res.provider;
+          }
+        } catch (e) {
+          console.warn('[OCR-API] OCR.space failed:', e.message);
+        }
+      }
+
+      if (!extractedText) {
+        try {
+          const res = await runLocalTesseract();
+          if (res) {
+            extractedText = res.text;
+            provider = res.provider;
+          }
+        } catch (e) {
+          console.warn('[OCR-API] Local Tesseract failed:', e.message);
+        }
       }
     }
 
-    // ============================================
-    // FINAL RESULT
-    // ============================================
+    // FINAL RESPONSE
     if (!extractedText) {
       console.error(
         `[OCR-API] ❌ ALL PROVIDERS FAILED (${Date.now() - startTime}ms)`
       );
       return NextResponse.json(
         {
-          error: 'All OCR services are temporarily unavailable.',
+          error: 'Unable to extract text from image.',
           details:
-            'Please try Standard Mode (client-side Tesseract) or try again in a moment. If the issue persists, the image may not contain readable text.',
+            'Please ensure the image contains clear, readable text and try again.',
         },
-        { status: 500 }
+        { status: 400 }
       );
     }
 
@@ -204,3 +330,4 @@ export async function POST(req) {
     );
   }
 }
+

@@ -33,21 +33,41 @@ export function AuthProvider({ children }) {
 
   const fetchProfile = async (sessionUser) => {
     try {
-      const { data: profile, error } = await supabase
+      let profile = null;
+      let error = null;
+
+      // Attempt primary profile fetch including has_ai_access
+      const res = await supabase
         .from('profiles')
         .select(
-          'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
+          'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, has_ai_access, email'
         )
         .eq('id', sessionUser.id)
-        .single();
+        .maybeSingle();
+
+      if (res.error) {
+        // Fallback query without has_ai_access if column is not yet created in Supabase
+        const fallbackRes = await supabase
+          .from('profiles')
+          .select(
+            'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, email'
+          )
+          .eq('id', sessionUser.id)
+          .maybeSingle();
+
+        profile = fallbackRes.data;
+        error = fallbackRes.error;
+      } else {
+        profile = res.data;
+      }
 
       if (error) {
-        console.error('Profile fetch error:', error);
+        console.warn('[Profile Sync Notice]', error.message || error);
       }
 
       // Sync avatar from Gmail metadata to profile Table if profile avatar is missing
       const metadataAvatar = sessionUser.user_metadata?.avatar_url;
-      if (metadataAvatar && !profile?.avatar_url) {
+      if (metadataAvatar && !profile?.avatar_url && profile) {
         await supabase
           .from('profiles')
           .update({ avatar_url: metadataAvatar })
@@ -55,6 +75,7 @@ export function AuthProvider({ children }) {
       }
 
       const activeUser = {
+        ...profile,
         id: sessionUser.id,
         email: sessionUser.email,
         full_name:
@@ -64,16 +85,16 @@ export function AuthProvider({ children }) {
           sessionUser.user_metadata?.full_name ||
           sessionUser.email,
         role: profile?.role || 'user',
-        has_generator_access: profile?.has_generator_access || false,
+        has_generator_access: profile?.has_generator_access === true,
+        has_ai_access: profile?.has_ai_access === true,
         avatar: profile?.avatar_url || metadataAvatar || null,
-        ...profile,
       };
 
       setUser(activeUser);
       localStorage.setItem('user', JSON.stringify(activeUser));
       return activeUser;
     } catch (err) {
-      console.error('Error in fetchProfile:', err);
+      console.warn('[Profile Sync Fallback]', err?.message || err);
       return null;
     }
   };

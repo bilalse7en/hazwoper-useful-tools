@@ -31,14 +31,14 @@ export default async function sitemap() {
       url: `${baseUrl}/tools/${slug}`,
       lastModified: new Date().toISOString().split('T')[0],
       changeFrequency: 'monthly',
-      priority: 0.7,
+      priority: 0.6,
     });
     // Technical documentation page (very unique/high value)
     toolPages.push({
       url: `${baseUrl}/tools/${slug}/details`,
       lastModified: new Date().toISOString().split('T')[0],
       changeFrequency: 'monthly',
-      priority: 0.6,
+      priority: 0.9,
     });
   });
 

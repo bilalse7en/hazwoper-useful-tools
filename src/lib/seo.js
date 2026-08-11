@@ -527,12 +527,12 @@ export const toolInfo = {
     ],
   },
   'ai-assistant': {
-    name: 'AI Assistant',
-    icon: '🤖',
-    description: 'Smart content helper',
+    name: 'Kimi AI & Neural Assistant',
+    icon: '✨',
+    description: 'Word text to HTML cards & code enhancer',
     category: 'AI Tools',
     detailedDescription:
-      'The AI Assistant is your dedicated partner for content refinement. Whether you need to simplify complex technical text or brainstorm content questions, the assistant is here to help.',
+      'Kimi AI & Neural Assistant converts raw text, Word documents, and paragraphs into 100% accurate, mobile-responsive HTML layouts and glassmorphic cards with live interactive rendering.',
     benefits: [
       'Context-aware content suggestions',
       'Grammar and style optimization',
@@ -1037,11 +1037,6 @@ export function generateToolSchema(toolSlug) {
       price: '0',
       priceCurrency: 'USD',
     },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.8',
-      ratingCount: '150',
-    },
   };
 }
 
@@ -1074,5 +1069,24 @@ export function generateBreadcrumbSchema(toolSlug) {
         item: `https://hazwoper-useful-tools.vercel.app/tools/${toolSlug}`,
       },
     ],
+  };
+}
+
+// Generate FAQ structured data for a specific tool
+export function generateFAQSchema(toolSlug) {
+  const info = toolInfo[toolSlug];
+  if (!info?.faq?.length) return null;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: info.faq.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
   };
 }

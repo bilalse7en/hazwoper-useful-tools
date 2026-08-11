@@ -206,12 +206,11 @@ function AdminDashboard() {
       header: 'Generator Suite',
       cell: (info) => {
         const u = info.row.original;
-        const hasAccess = u.has_generator_access || u.role === 'admin';
+        const hasAccess = u.has_generator_access === true;
         return (
           <div className="flex flex-col items-center gap-2">
             <Switch
               checked={hasAccess}
-              disabled={u.role === 'admin'}
               onCheckedChange={(checked) =>
                 toggleGeneratorAccess(u.id, checked)
               }
@@ -223,11 +222,33 @@ function AdminDashboard() {
                 hasAccess ? 'text-primary' : 'text-muted-foreground opacity-50'
               )}
             >
-              {u.role === 'admin'
-                ? 'Fixed Admin'
-                : hasAccess
-                  ? 'PRO Active'
-                  : 'Restricted'}
+              {hasAccess ? 'PRO Active' : 'Restricted'}
+            </span>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor('has_ai_access', {
+      header: 'AI Suite (Paid)',
+      cell: (info) => {
+        const u = info.row.original;
+        const hasAi = u.has_ai_access === true;
+        return (
+          <div className="flex flex-col items-center gap-2">
+            <Switch
+              checked={hasAi}
+              onCheckedChange={(checked) =>
+                toggleAIAccess(u.id, checked)
+              }
+              className="data-[state=checked]:bg-purple-600"
+            />
+            <span
+              className={cn(
+                'text-[9px] font-black uppercase tracking-widest',
+                hasAi ? 'text-purple-400' : 'text-muted-foreground opacity-50'
+              )}
+            >
+              {hasAi ? 'AI PRO Active' : 'Restricted'}
             </span>
           </div>
         );
@@ -845,6 +866,16 @@ function AdminDashboard() {
         u.id === userId ? { ...u, has_generator_access: hasAccess } : u
       )
     );
+    if (userId === currentUserId) {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.has_generator_access = hasAccess;
+          localStorage.setItem('user', JSON.stringify(parsed));
+        }
+      } catch {}
+    }
     try {
       const { error } = await supabase
         .from('profiles')
@@ -859,6 +890,38 @@ function AdminDashboard() {
     } catch (err) {
       console.error('Error updating generator access:', err);
       showToast('Initialization Failed', 'error');
+      await fetchUsers(true); // Rollback to actual db state on error
+    }
+  }
+
+  async function toggleAIAccess(userId, hasAccess) {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, has_ai_access: hasAccess } : u))
+    );
+    if (userId === currentUserId) {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.has_ai_access = hasAccess;
+          localStorage.setItem('user', JSON.stringify(parsed));
+        }
+      } catch {}
+    }
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ has_ai_access: hasAccess })
+        .eq('id', userId);
+
+      if (error) throw error;
+      showSuccess(
+        'AI Access Logic Updated',
+        `AI Suite paid permissions ${hasAccess ? 'authorized' : 'revoked'}.`
+      );
+    } catch (err) {
+      console.error('Error updating AI access:', err);
+      showToast('AI Access Update Failed', 'error');
       await fetchUsers(true); // Rollback to actual db state on error
     }
   }

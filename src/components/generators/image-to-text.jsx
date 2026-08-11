@@ -14,24 +14,114 @@ import {
   Sparkles,
   Zap,
   Clipboard,
+  Lock,
+  Crown,
 } from 'lucide-react';
-import Tesseract from 'tesseract.js';
 import { ProgressButton } from '@/components/progress-button';
 import { cn } from '@/lib/utils';
 import { useAuthAction } from '@/lib/use-auth-action';
+import { useAuth } from '@/components/auth-provider';
 import { showToast, showSuccess } from '@/lib/swal';
 import { saveGeneratorState } from '@/lib/tool-history';
 
 export default function ImageToText() {
   const { performAction } = useAuthAction();
+  const { user } = useAuth();
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [extractedText, setExtractedText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
-  const [useAI, setUseAI] = useState(true); // Default to AI mode - using 100% FREE APIs (no quota limits!)
+  const [useAI, setUseAI] = useState(true); // Default to AI tool
+  const [showPaywall, setShowPaywall] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Check if current user has unlimited access granted from Admin Panel via AI Suite (Paid) toggle
+  const hasUnlimitedAIAccess = user?.has_ai_access === true;
+  const [dbDailyCount, setDbDailyCount] = useState(0);
+
+  // Fetch usage from Supabase Database on mount or user change
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchDbUsage = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const { data } = await supabase
+          .from('ai_daily_usage')
+          .select('count')
+          .eq('user_id', user.id)
+          .eq('usage_date', today)
+          .maybeSingle();
+
+        if (data && typeof data.count === 'number') {
+          setDbDailyCount(data.count);
+        }
+      } catch {}
+    };
+    fetchDbUsage();
+  }, [user?.id]);
+
+  const MAX_DAILY_AI_EXTRACTIONS = 3;
+
+  // Get current daily AI usage count for today (combining DB & localStorage)
+  const getAIDailyCount = useCallback(() => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const raw = localStorage.getItem('ai_ocr_daily_usage');
+      let localCount = 0;
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (data.date === today && typeof data.count === 'number') {
+          localCount = data.count;
+        }
+      }
+      return Math.max(localCount, dbDailyCount);
+    } catch {
+      return dbDailyCount;
+    }
+  }, [dbDailyCount]);
+
+  // Check if user has exhausted their 3 free daily AI image extractions
+  const hasUsedAITrial = useCallback(() => {
+    if (hasUnlimitedAIAccess) return false; // Admin-granted PRO users get unlimited access
+    return getAIDailyCount() >= MAX_DAILY_AI_EXTRACTIONS;
+  }, [hasUnlimitedAIAccess, getAIDailyCount]);
+
+  const markAITrialUsed = async () => {
+    if (hasUnlimitedAIAccess) return; // Do not increment limit for unlimited users
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const currentCount = getAIDailyCount();
+      const nextCount = currentCount + 1;
+
+      // Save to localStorage immediately
+      localStorage.setItem(
+        'ai_ocr_daily_usage',
+        JSON.stringify({ date: today, count: nextCount })
+      );
+      setDbDailyCount(nextCount);
+
+      // Persist to Supabase Database
+      if (user?.id) {
+        try {
+          await supabase.rpc('increment_ai_daily_usage', {
+            target_user_id: user.id,
+          });
+        } catch {
+          await supabase.from('ai_daily_usage').upsert(
+            {
+              user_id: user.id,
+              usage_date: today,
+              count: nextCount,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,usage_date' }
+          );
+        }
+      }
+    } catch {}
+  };
 
   // Auto-save helper
   const persistState = async (updates = {}) => {
@@ -43,48 +133,58 @@ export default function ImageToText() {
     await saveGeneratorState('image_to_text', currentState);
   };
 
-  const handleFileSelect = useCallback((e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFileSelect = useCallback(
+    (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    const validTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/bmp',
-      'image/webp',
-      'image/tiff',
-    ];
-    if (!validTypes.includes(file.type)) {
-      setError(
-        'Please upload a valid image file (JPG, PNG, GIF, BMP, WEBP, TIFF)'
-      );
-      return;
-    }
+      // Stop unpaid user from uploading when daily 3-image AI limit is reached
+      if (!hasUnlimitedAIAccess && getAIDailyCount() >= MAX_DAILY_AI_EXTRACTIONS) {
+        setShowPaywall(true);
+        setError('Daily 3-image AI limit reached (3/3). Please upgrade to AI Suite PRO.');
+        return;
+      }
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    if (file.size > maxSize) {
-      setError('File size must be less than 10MB');
-      return;
-    }
+      const validTypes = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/gif',
+        'image/bmp',
+        'image/webp',
+        'image/tiff',
+      ];
+      if (!validTypes.includes(file.type)) {
+        setError(
+          'Please upload a valid image file (JPG, PNG, GIF, BMP, WEBP, TIFF)'
+        );
+        return;
+      }
 
-    setSelectedFile(file);
-    setError('');
-    setExtractedText('');
-    setProgress(0);
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        setError('File size must be less than 10MB');
+        return;
+      }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewUrl(reader.result);
-    };
-    reader.readAsDataURL(file);
-  }, []);
+      setSelectedFile(file);
+      setError('');
+      setExtractedText('');
+      setProgress(0);
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    },
+    [useAI, hasUnlimitedAIAccess, getAIDailyCount, MAX_DAILY_AI_EXTRACTIONS]
+  );
 
   // Preprocess image for better OCR accuracy
   const preprocessImage = (imageUrl, compress = false) => {
     return new Promise((resolve) => {
-      const img = new Image();
+      const img = new window.Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -197,32 +297,77 @@ export default function ImageToText() {
   };
 
   const extractWithTesseract = async () => {
-    // Preprocess image for better accuracy
     setProgress(5);
-    const processedImage = await preprocessImage(previewUrl);
+    let imageToProcess = previewUrl;
+
+    try {
+      // Preprocess image for better OCR accuracy
+      imageToProcess = await preprocessImage(previewUrl);
+    } catch (prepErr) {
+      console.warn('[OCR] Preprocessing failed, using raw preview URL:', prepErr);
+      imageToProcess = previewUrl;
+    }
+
     setProgress(15);
 
-    const result = await Tesseract.recognize(
-      processedImage, // Use preprocessed image
-      'eng',
-      {
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            setProgress(15 + Math.round(m.progress * 85));
-          }
-        },
-        // Optimal settings for maximum accuracy
-        tessedit_ocr_engine_mode: 1, // LSTM neural network engine (most accurate)
-        tessedit_pageseg_mode: 3, // Fully automatic page segmentation
-        preserve_interword_spaces: 1, // Preserve spacing between words
-        tessedit_char_whitelist: '', // Allow all characters
+    // Use server-side Tesseract via API (client-side Worker blocked by Next.js Turbopack CSP)
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev < 85) return prev + 3;
+        return prev;
+      });
+    }, 500);
+
+    try {
+      const response = await fetch('/api/ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageToProcess, mode: 'standard' }),
+      });
+
+      clearInterval(progressInterval);
+      setProgress(90);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Standard OCR processing failed.');
       }
-    );
-    return result.data.text.trim();
+
+      setProgress(100);
+
+      if (data.provider) {
+        console.log(`[OCR] Standard mode: ${data.provider} in ${data.processingTime}ms`);
+      }
+
+      return data.text;
+    } catch (err) {
+      console.error('[OCR] Standard mode error:', err);
+      throw err;
+    } finally {
+      clearInterval(progressInterval);
+    }
+  };
+
+
+
+  // Handle switching to AI mode with paywall check
+  const handleAIModeSwitch = () => {
+    if (hasUsedAITrial()) {
+      setShowPaywall(true);
+      return;
+    }
+    setUseAI(true);
   };
 
   const handleExtractText = async () => {
     if (!selectedFile) return;
+
+    // If AI mode and already used trial, show paywall
+    if (useAI && hasUsedAITrial()) {
+      setShowPaywall(true);
+      return;
+    }
 
     setIsProcessing(true);
     setError('');
@@ -232,34 +377,47 @@ export default function ImageToText() {
       let text;
 
       if (useAI) {
-        // AI Mode - Preprocess and compress first for better recognition/efficiency
-        setProgress(10);
-        const processedImage = await preprocessImage(previewUrl, true);
-        setProgress(30);
-        text = await extractWithAI(processedImage);
-        setProgress(100);
+        try {
+          // AI Mode - Preprocess and compress first
+          setProgress(10);
+          const processedImage = await preprocessImage(previewUrl, true);
+          setProgress(30);
+          text = await extractWithAI(processedImage);
+          // Mark the free trial as used after successful AI extraction
+          markAITrialUsed();
+        } catch (aiErr) {
+          console.warn(
+            '[OCR] AI Mode failed, falling back to Standard (Tesseract) Mode:',
+            aiErr
+          );
+          showToast('AI service busy, switching to Standard Mode...', 'info');
+          // Automatic fallback to Tesseract
+          text = await extractWithTesseract();
+          markAITrialUsed();
+        }
       } else {
         // Standard Mode - Tesseract
         text = await extractWithTesseract();
       }
 
-      if (!text || text.length === 0) {
+      if (!text || text.trim().length === 0) {
         setError(
           'No text found in the image. Please try another image with clearer text.'
         );
       } else {
-        setExtractedText(text);
+        setExtractedText(text.trim());
         setError('');
         setProgress(100);
         showSuccess('Intelligence Extracted Successfully');
-        persistState({ extractedText: text });
+        persistState({ extractedText: text.trim() });
       }
     } catch (err) {
-      console.error('OCR Error:', err);
-      setError(
-        err.message ||
-          'Failed to extract text. Please try again with a clearer image.'
-      );
+      const errMsg =
+        err?.message ||
+        (typeof err === 'string' ? err : null) ||
+        'Failed to extract text. Please try again with a clearer image.';
+      console.error('OCR Error:', errMsg);
+      setError(errMsg);
     } finally {
       setIsProcessing(false);
     }
@@ -337,6 +495,67 @@ export default function ImageToText() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {/* Paywall Modal */}
+      <AnimatePresence>
+        {showPaywall && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowPaywall(false)}
+          >
+            <motion.div
+              className="glass-panel p-8 rounded-3xl border border-purple-500/30 max-w-md w-full mx-4 relative overflow-hidden"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/10" />
+              <div className="relative z-10 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                  <Crown className="w-8 h-8 text-white" />
+                </div>
+                <div className="inline-block px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs font-black uppercase tracking-widest mb-3">
+                  Rs. 1,500 / Month
+                </div>
+                <h3 className="text-2xl font-black text-foreground mb-2">
+                  Daily AI Limit Reached (3/3 Limit Finished)
+                </h3>
+                <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
+                  You have used your <strong>3 free daily AI extractions</strong>. Upgrade to <strong>AI Suite PRO for Rs. 1,500/month</strong> for unlimited extractions, or request Admin Panel authorization.
+                </p>
+                <div className="space-y-3">
+                  <button
+                    className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-base shadow-lg hover:shadow-purple-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                    onClick={() => {
+                      setShowPaywall(false);
+                      showToast('Subscribe to AI Suite PRO for Rs. 1,500/mo or contact admin.', 'info');
+                    }}
+                  >
+                    <Crown className="w-5 h-5" />
+                    Buy AI Suite PRO (Rs. 1,500/Mo)
+                  </button>
+                  <button
+                    className="w-full py-3 px-6 rounded-2xl border border-border text-foreground font-semibold hover:bg-muted/50 transition-all text-sm"
+                    onClick={() => {
+                      setShowPaywall(false);
+                      setUseAI(false);
+                    }}
+                  >
+                    Use Standard Mode (Always Free & Unlimited)
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Standard Mode uses Tesseract OCR — fast, offline, and free forever.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <motion.div
         className="text-center"
@@ -347,11 +566,11 @@ export default function ImageToText() {
           AI Image to Text Converter
         </h2>
         <p className="text-muted-foreground text-lg">
-          Extract text from images using advanced AI or standard OCR
+          Extract text from images & screenshots using our free Vision AI tool
         </p>
       </motion.div>
 
-      {/* AI Toggle */}
+      {/* Mode Selector */}
       <motion.div
         className="flex justify-center"
         initial={{ opacity: 0 }}
@@ -371,15 +590,28 @@ export default function ImageToText() {
             Standard Mode
           </button>
           <button
-            onClick={() => setUseAI(true)}
+            onClick={handleAIModeSwitch}
             className={`px-6 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${
               useAI
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
                 : 'text-foreground/60 hover:text-foreground'
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            AI Mode (Best)
+            AI Tool
+            {hasUnlimitedAIAccess ? (
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full uppercase font-black tracking-widest ml-1">
+                PRO
+              </span>
+            ) : hasUsedAITrial() ? (
+              <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full font-bold ml-1 flex items-center gap-1">
+                <Lock className="w-3 h-3 text-rose-400" /> 3/3 Limit Reached
+              </span>
+            ) : (
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold ml-1">
+                {getAIDailyCount()}/3 Images
+              </span>
+            )}
           </button>
         </div>
       </motion.div>
@@ -520,9 +752,34 @@ export default function ImageToText() {
           transition={{ delay: 0.3 }}
         >
           <div className="glass-panel p-8 rounded-3xl border border-border">
-            <h3 className="text-2xl font-bold text-foreground mb-4">
-              Extracted Text
-            </h3>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h3 className="text-2xl font-bold text-foreground">
+                Extracted Text
+              </h3>
+              {hasUnlimitedAIAccess ? (
+                <span className="text-xs bg-purple-500/20 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-full font-bold flex items-center gap-1.5 shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" /> PRO Unlimited
+                </span>
+              ) : (
+                <span
+                  className={`text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1.5 shadow-sm border ${
+                    hasUsedAITrial()
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  }`}
+                >
+                  {hasUsedAITrial() ? (
+                    <>
+                      <Lock className="w-3.5 h-3.5 text-rose-400" /> 3/3 Limit Reached
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> {getAIDailyCount()}/3 Daily AI Images
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
 
             {extractedText ? (
               <div className="space-y-4">
@@ -589,7 +846,7 @@ export default function ImageToText() {
           {/* Info Card */}
           <div className="glass-panel p-6 rounded-2xl border border-border">
             <h4 className="font-bold text-foreground mb-3">
-              {useAI ? '🤖 AI Mode Features:' : '⚡ Standard Mode Features:'}
+              {useAI ? '🤖 AI Tool Features:' : '⚡ Standard Mode Features:'}
             </h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               {useAI ? (
@@ -600,11 +857,15 @@ export default function ImageToText() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>
-                    <span>Understands context and formatting</span>
+                    <span>
+                      {hasUnlimitedAIAccess
+                        ? 'Unlimited extractions (Admin Authorized PRO)'
+                        : '3 Free daily extractions (Rs. 1,500/Mo for Unlimited)'}
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>
-                    <span>Perfect for Word screenshots & documents</span>
+                    <span>Understands context, formatting & Word screenshots</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>
@@ -619,7 +880,7 @@ export default function ImageToText() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>
-                    <span>Works 100% offline (client-side)</span>
+                    <span>Always free &mdash; no usage limits</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>
@@ -627,7 +888,7 @@ export default function ImageToText() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>
-                    <span>No internet required after first load</span>
+                    <span>Server-side processing for reliability</span>
                   </li>
                 </>
               )}

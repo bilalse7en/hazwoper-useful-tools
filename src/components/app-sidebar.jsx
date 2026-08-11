@@ -108,7 +108,7 @@ const navGroups = [
         ],
       },
       { id: 'word-to-html', label: 'Word to HTML', icon: FileType },
-      { id: 'ai-assistant', label: 'AI UNIVERSE', icon: BrainCircuit },
+      { id: 'ai-assistant', label: 'Kimi AI Hub', icon: BrainCircuit },
       {
         id: 'tools-directory',
         label: 'Systems Index',

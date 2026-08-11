@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { showToast, showSuccess } from '@/lib/swal';
+import { showToast } from '@/lib/swal';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BRAND_CONFIG } from '@/lib/constants';
@@ -19,7 +19,6 @@ import {
   ImageIcon,
   Download,
   Wand2,
-  Settings2,
   Paperclip,
   X,
   FileText,
@@ -32,7 +31,9 @@ import {
   Maximize2,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
+  Eye,
+  Code as CodeIcon,
+  Check,
 } from 'lucide-react';
 import {
   Select,
@@ -47,7 +48,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -62,57 +62,115 @@ const MODELS = [
     label: 'Neural Assistant',
     icon: Bot,
     provider: 'GPT Intelligence',
+    description: 'General AI Q&A and technical guidance',
   },
   {
-    id: 'coder',
-    label: 'Pro Coder',
-    icon: Terminal,
-    provider: 'Claude Core',
-  },
-  {
-    id: 'image-gen',
-    label: 'Imagine Artist',
-    icon: ImageIcon,
-    provider: 'Neural Art',
+    id: 'kimi',
+    label: 'Kimi Code Enhancer',
+    icon: Wand2,
+    provider: 'Kimi Neural Engine',
+    description:
+      'Transforms raw text & word content into 100% accurate responsive HTML cards & layouts',
   },
 ];
 
-// Compact knowledge base for system prompt — kept short to avoid URI limits
-const TOOL_SUMMARY = Object.entries(toolInfo)
-  .map(([slug, info]) => `${info.name}: ${info.description}`)
-  .join('\n');
-
-const SYSTEM_PROMPT = `You are AI UNIVERSE, the flagship AI Assistant for "HAZWOPER Useful Tools" (Content Suite), architected by Bilal Se7eN.
+const SYSTEM_PROMPT_ASSISTANT = `You are AI UNIVERSE, the flagship AI Assistant for "HAZWOPER Useful Tools" (Content Suite), architected by Bilal Se7eN.
 
 YOUR MISSION:
 Empower safety managers, industrial trainers, and developers with expert assistance, code generation, content creation, and tool guidance.
 
-ECOSYSTEM TOOLS KNOWLEDGE:
-- YouTube Video & Audio Downloader: Extract MP4 (1080p, 720p) and MP3 (320kbps) without watermark 100% free.
-- AI Watermark & Background Eraser: Interactive canvas brush inpainting to remove watermarks, logos, timestamps, and generate transparent PNGs.
-- Lesson Quiz Builder: Extract questions, choices (A-D), and answer keys from DOCX with neural mapping.
-- Document Extractor: Bulk table and embedded image harvesting from DOCX/PDF files.
-- Web Content & Blog Generators: Extract syllabus, FAQs, glossaries, and SEO posts from DOCX.
-- Media Processing: Client-side video/audio conversion (MP4, WebM, MOV, AVI, MP3, WAV, GIF) and compression (100% private WASM).
-- Image to Text OCR: Tesseract-powered optical character recognition.
-- Neural Chat: Real-time global and private chat with live site-wide online users presence dropdown.
-
 ASSISTANCE PRINCIPLES:
 1. Provide authoritative, clear, precise, and professional answers.
 2. Emphasize that media processing and document extraction happen 100% locally in the browser (data privacy).
-3. Provide step-by-step instructions or code snippets when requested.
-4. Always recommend the /details page for technical specifications and FAQs of each tool.`;
+3. Provide step-by-step instructions or code snippets when requested.`;
+
+const SYSTEM_PROMPT_KIMI = `You are Kimi Code Enhancer & HTML Generator, an elite frontend architect and code transformer inside AI UNIVERSE.
+
+CRITICAL DIRECTIVES FOR KIMI CODE ENHANCER:
+1. EXACT CONTENT PRESERVATION (100% ACCURACY):
+   - When the user provides text, paragraphs, or bullet points (e.g. 2 paragraphs, 4 feature descriptions, or raw text pasted from Word files):
+   - PRESERVE 100% OF THE USER'S EXACT CONTENT TEXT. NEVER alter, rephrase, remove, or add fake filler text.
+   - If the user provides content for 4 cards, create 4 visually stunning, modern HTML card components containing their EXACT text word-for-word.
+
+2. STUNNING HTML/CSS STRUCTURE:
+   - Wrap the content in ultra-modern, production-ready, 100% mobile-responsive HTML layouts using Tailwind CSS CDN (\`<script src="https://cdn.tailwindcss.com"></script>\`) or sleek inline styles.
+   - Use dynamic visual hierarchy: smooth gradients, backdrop blurs, dark/light glassmorphic cards, crisp typography (Inter/Roboto), clean padding, rounded corners (rounded-2xl/rounded-3xl), subtle shadow effects, and hover micro-animations.
+
+3. DYNAMIC IMAGE & ICON EMBEDDING:
+   - If visual cards or headers need illustration, automatically include relevant high-quality image URLs using Pollinations API format:
+     \`https://image.pollinations.ai/prompt/<encoded_descriptive_prompt>?width=800&height=500&nologo=true\`
+   - You can also embed inline SVGs or Lucide/FontAwesome icon visual elements.
+
+4. RESPONSE STRUCTURE & CODE FORMAT:
+   - Start with a brief, high-level summary explaining the layout design (e.g., "Here is your content formatted into 4 interactive glassmorphic cards with responsive grid layout").
+   - Always output clean, modular HTML component code (e.g. \`<div class="grid grid-cols-1 md:grid-cols-2 gap-6 ...">\` or \`<section class="...">...\</section>\`) inside an \`\`\`html ... \`\`\` code block.
+   - DO NOT include \`<!DOCTYPE html>\`, \`<html>\`, \`<head>\`, or \`<body>\` boilerplate tags in your output snippet. Provide ONLY the clean, standalone HTML cards/layout containing the user's exact wording.`;
 
 const CodeBlock = ({ children, language }) => {
   const [expanded, setExpanded] = useState(false);
   const [showFullView, setShowFullView] = useState(false);
+  const [activeTab, setActiveTab] = useState('code'); // 'code' | 'preview'
+  const [copied, setCopied] = useState(false);
   const codeString = String(children).replace(/\n$/, '');
   const lineCount = codeString.split('\n').length;
   const isLong = lineCount > 15;
+  const isHtml =
+    language === 'html' ||
+    language === 'xml' ||
+    codeString.includes('<html') ||
+    codeString.includes('<div') ||
+    codeString.includes('<!DOCTYPE');
+
+  const handleCopy = () => {
+    // Copy clean snippet ONLY (strip any DOCTYPE, html, or body boilerplate tags if present)
+    let cleanCode = codeString;
+    if (cleanCode.includes('<!DOCTYPE') || cleanCode.includes('<html')) {
+      const bodyMatch = cleanCode.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      if (bodyMatch && bodyMatch[1]) {
+        cleanCode = bodyMatch[1].trim();
+      } else {
+        cleanCode = cleanCode
+          .replace(/<!DOCTYPE[^>]*>/gi, '')
+          .replace(/<html[^>]*>/gi, '')
+          .replace(/<\/html>/gi, '')
+          .replace(/<head[\s\S]*?<\/head>/gi, '')
+          .replace(/<body[^>]*>/gi, '')
+          .replace(/<\/body>/gi, '')
+          .trim();
+      }
+    }
+    navigator.clipboard.writeText(cleanCode);
+    setCopied(true);
+    showToast('Clean HTML snippet copied (No DOCTYPE)', 'success');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Build full html doc for iframe preview only
+  const getFullHtmlDoc = (htmlSnippet) => {
+    if (htmlSnippet.includes('<!DOCTYPE')) {
+      return htmlSnippet;
+    }
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; padding: 1.5rem; }
+  </style>
+</head>
+<body>
+  ${htmlSnippet}
+</body>
+</html>`;
+  };
 
   return (
-    <div className="group relative my-4 rounded-2xl overflow-hidden border border-border/50 bg-[#0d0d0d] backdrop-blur-sm transition-all hover:border-primary/30 max-w-full not-prose">
-      <div className="bg-card/40 px-4 py-2.5 flex items-center justify-between border-b border-border/50 select-none">
+    <div className="group relative my-4 rounded-2xl overflow-hidden border border-border/50 bg-[#0d0d0d] backdrop-blur-sm transition-all hover:border-primary/30 max-w-full not-prose shadow-xl">
+      {/* Header bar */}
+      <div className="bg-card/70 px-4 py-2.5 flex items-center justify-between border-b border-border/50 select-none flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center">
             <Terminal className="h-3.5 w-3.5 text-primary" />
@@ -120,75 +178,131 @@ const CodeBlock = ({ children, language }) => {
           <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/80">
             {language}
           </span>
+
+          {/* Toggle buttons for HTML Code vs Live Rendered Preview */}
+          {isHtml && (
+            <div className="flex items-center bg-black/50 p-1 rounded-xl border border-border/50 ml-2">
+              <button
+                onClick={() => setActiveTab('code')}
+                className={cn(
+                  'px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1.5',
+                  activeTab === 'code'
+                    ? 'bg-primary text-primary-foreground shadow'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <CodeIcon className="h-3 w-3" /> Code View
+              </button>
+              <button
+                onClick={() => setActiveTab('preview')}
+                className={cn(
+                  'px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-1.5',
+                  activeTab === 'preview'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-muted-foreground hover:text-emerald-400'
+                )}
+              >
+                <Eye className="h-3 w-3" /> Live Render
+              </button>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-1">
+
+        <div className="flex items-center gap-2">
+          {/* Labeled Copy Code Button */}
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-lg hover:bg-primary/10"
-            onClick={() => setShowFullView(true)}
-            title="Perfect Preview"
-          >
-            <Maximize2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-lg hover:bg-primary/10"
-            onClick={() => navigator.clipboard.writeText(codeString)}
+            variant="outline"
+            size="sm"
+            className="h-7 px-3 text-[9px] font-black uppercase rounded-lg border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary gap-1.5"
+            onClick={handleCopy}
             title="Copy Code"
           >
-            <Copy className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+            {copied ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-400" /> Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" /> Copy Code
+              </>
+            )}
+          </Button>
+
+          {/* Labeled Fullscreen Preview Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-3 text-[9px] font-black uppercase rounded-lg border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 gap-1.5"
+            onClick={() => {
+              setActiveTab('preview');
+              setShowFullView(true);
+            }}
+            title="Fullscreen Preview"
+          >
+            <Maximize2 className="h-3.5 w-3.5" /> Preview
           </Button>
         </div>
       </div>
 
-      <div
-        className={cn(
-          'relative transition-all duration-300 ease-in-out w-full overflow-hidden',
-          !expanded && isLong ? 'max-h-[350px]' : 'max-h-none'
-        )}
-      >
-        <div className="w-full overflow-x-auto custom-scrollbar-horizontal">
-          <SyntaxHighlighter
-            style={vscDarkPlus}
-            language={language}
-            PreTag="div"
-            showLineNumbers={true}
-            lineNumberStyle={{
-              minWidth: '2.5em',
-              paddingRight: '1em',
-              color: 'rgba(255,255,255,0.2)',
-              fontSize: '10px',
-            }}
-            className="!bg-transparent !p-4 !m-0 !text-xs !leading-relaxed selection:bg-primary/30"
-            customStyle={{
-              margin: 0,
-              padding: '1rem',
-              background: 'transparent',
-              fontSize: '12px',
-              lineHeight: '1.5',
-              minWidth: '100%',
-            }}
-          >
-            {codeString}
-          </SyntaxHighlighter>
+      {/* Content area: Code syntax view or Live HTML Preview */}
+      {activeTab === 'preview' && isHtml ? (
+        <div className="w-full h-[450px] bg-slate-950 p-2 overflow-hidden relative">
+          <iframe
+            srcDoc={getFullHtmlDoc(codeString)}
+            title="HTML Live Preview"
+            className="w-full h-full rounded-xl border border-slate-800 bg-slate-900"
+            sandbox="allow-scripts"
+          />
         </div>
-
-        {!expanded && isLong && (
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/80 to-transparent pointer-events-none flex items-end justify-center pb-4">
-            <Button
-              variant="outline"
-              className="h-8 px-4 rounded-xl bg-[#0d0d0d]/90 backdrop-blur-md border border-primary/20 pointer-events-auto text-[10px] font-black uppercase text-primary hover:bg-primary/10 shadow-2xl"
-              onClick={() => setExpanded(true)}
+      ) : (
+        <div
+          className={cn(
+            'relative transition-all duration-300 ease-in-out w-full overflow-hidden',
+            !expanded && isLong ? 'max-h-[350px]' : 'max-h-none'
+          )}
+        >
+          <div className="w-full overflow-x-auto custom-scrollbar-horizontal">
+            <SyntaxHighlighter
+              style={vscDarkPlus}
+              language={language}
+              PreTag="div"
+              showLineNumbers={true}
+              lineNumberStyle={{
+                minWidth: '2.5em',
+                paddingRight: '1em',
+                color: 'rgba(255,255,255,0.2)',
+                fontSize: '10px',
+              }}
+              className="!bg-transparent !p-4 !m-0 !text-xs !leading-relaxed selection:bg-primary/30"
+              customStyle={{
+                margin: 0,
+                padding: '1rem',
+                background: 'transparent',
+                fontSize: '12px',
+                lineHeight: '1.5',
+                minWidth: '100%',
+              }}
             >
-              <ChevronDown className="h-3 w-3 mr-1" /> Expand {lineCount} Lines
-            </Button>
+              {codeString}
+            </SyntaxHighlighter>
           </div>
-        )}
-      </div>
 
-      {expanded && isLong && (
+          {!expanded && isLong && (
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0d0d0d] via-[#0d0d0d]/80 to-transparent pointer-events-none flex items-end justify-center pb-4">
+              <Button
+                variant="outline"
+                className="h-8 px-4 rounded-xl bg-[#0d0d0d]/90 backdrop-blur-md border border-primary/20 pointer-events-auto text-[10px] font-black uppercase text-primary hover:bg-primary/10 shadow-2xl"
+                onClick={() => setExpanded(true)}
+              >
+                <ChevronDown className="h-3 w-3 mr-1" /> Expand {lineCount}{' '}
+                Lines
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {expanded && isLong && activeTab === 'code' && (
         <div className="p-2 flex justify-center border-t border-border/50 bg-card/20">
           <Button
             variant="ghost"
@@ -201,43 +315,84 @@ const CodeBlock = ({ children, language }) => {
         </div>
       )}
 
+      {/* Fullscreen Dialog Modal */}
       <Dialog open={showFullView} onOpenChange={setShowFullView}>
-        <DialogContent className="max-w-5xl h-[85vh] p-0 flex flex-col bg-[#0d0d0d] border-border/50 overflow-hidden rounded-[2rem]">
+        <DialogContent className="max-w-6xl h-[90vh] p-0 flex flex-col bg-[#0d0d0d] border-border/50 overflow-hidden rounded-[2rem]">
           <DialogHeader className="p-6 border-b border-border/50 flex flex-row items-center justify-between shrink-0 bg-card/20 pb-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-2xl bg-primary/20 flex items-center justify-center">
-                <Terminal className="h-5 w-5 text-primary" />
+                <Wand2 className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <DialogTitle className="text-lg font-black uppercase tracking-tight">
-                  Perfect Preview
+                  Perfect Preview & Code Inspection
                 </DialogTitle>
                 <DialogDescription className="text-[10px] text-muted-foreground uppercase tracking-widest">
                   {language} • {lineCount} Lines
                 </DialogDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2 pr-8">
+
+            <div className="flex items-center gap-3 pr-8">
+              {isHtml && (
+                <div className="flex items-center bg-black/60 p-1 rounded-xl border border-border/50">
+                  <button
+                    onClick={() => setActiveTab('code')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all flex items-center gap-1.5',
+                      activeTab === 'code'
+                        ? 'bg-primary text-primary-foreground shadow'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <CodeIcon className="h-3.5 w-3.5" /> Source Code
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('preview')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-black uppercase transition-all flex items-center gap-1.5',
+                      activeTab === 'preview'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'text-muted-foreground hover:text-emerald-400'
+                    )}
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Interactive Render
+                  </button>
+                </div>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigator.clipboard.writeText(codeString)}
+                onClick={handleCopy}
                 className="rounded-xl border-primary/20 hover:bg-primary/10 text-[10px] font-black uppercase"
               >
-                <Copy className="h-3.5 w-3.5 mr-2" /> Copy Full
+                <Copy className="h-3.5 w-3.5 mr-2" /> Copy All
               </Button>
             </div>
           </DialogHeader>
-          <div className="flex-1 overflow-auto p-6 bg-black/40 custom-scrollbar">
-            <SyntaxHighlighter
-              style={vscDarkPlus}
-              language={language}
-              PreTag="div"
-              showLineNumbers={true}
-              className="!bg-transparent !p-0 !m-0 !text-sm"
-            >
-              {codeString}
-            </SyntaxHighlighter>
+
+          <div className="flex-1 overflow-hidden bg-black/40">
+            {activeTab === 'preview' && isHtml ? (
+              <iframe
+                srcDoc={getFullHtmlDoc(codeString)}
+                title="Fullscreen HTML Preview"
+                className="w-full h-full border-none bg-slate-950"
+                sandbox="allow-scripts"
+              />
+            ) : (
+              <div className="h-full overflow-auto p-6 custom-scrollbar">
+                <SyntaxHighlighter
+                  style={vscDarkPlus}
+                  language={language}
+                  PreTag="div"
+                  showLineNumbers={true}
+                  className="!bg-transparent !p-0 !m-0 !text-sm"
+                >
+                  {codeString}
+                </SyntaxHighlighter>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -440,79 +595,6 @@ export function AIAssistant() {
     removeAttachment();
     setIsLoading(true);
 
-    // IMAGE GENERATION (Pollinations - still the best free image gen)
-    if (selectedModel === 'image-gen') {
-      try {
-        const enhancedPrompt = `${currentInput}, cinematic lighting, high resolution, 8k, highly detailed, professional masterpiece`;
-        const seed = Math.floor(Math.random() * 1000000);
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&nologo=true&private=true&enhance=true&seed=${seed}`;
-
-        // Create a temporary loading message
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: `🎨 Generating neural art for: "${currentInput}"...`,
-            timestamp: new Date(),
-            tempId: `loading-${Date.now()}`,
-          },
-        ]);
-
-        // Preload the image using native browser HTMLImageElement
-        const img = new window.Image();
-
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(
-              new Error(
-                'Image generation timed out. The service might be busy.'
-              )
-            );
-          }, 30000);
-
-          img.onload = () => {
-            clearTimeout(timeout);
-            resolve();
-          };
-
-          img.onerror = () => {
-            clearTimeout(timeout);
-            reject(new Error('Failed to load generated image'));
-          };
-
-          img.src = imageUrl;
-        });
-
-        // Remove loading message and add the actual image
-        setMessages((prev) =>
-          prev
-            .filter((m) => !m.tempId)
-            .concat({
-              role: 'assistant',
-              content: `Generated neural art for: "${currentInput}"`,
-              type: 'image',
-              url: imageUrl,
-              timestamp: new Date(),
-            })
-        );
-      } catch (error) {
-        console.error('[Image Gen Error]:', error);
-        setMessages((prev) =>
-          prev
-            .filter((m) => !m.tempId)
-            .concat({
-              role: 'assistant',
-              content: `⚠️ Image generation failed: ${error.message}. Try simplifying your prompt or wait a moment before trying again.`,
-              timestamp: new Date(),
-            })
-        );
-      } finally {
-        setIsLoading(false);
-      }
-      return;
-    }
-
-    // TEXT & CODE GENERATION — Powered by Puter.js (Free, No Key Required)
     try {
       if (!window.puter) {
         throw new Error(
@@ -520,31 +602,27 @@ export function AIAssistant() {
         );
       }
 
-      const systemPrompt =
-        selectedModel === 'coder'
-          ? 'You are a professional software engineer. Provide high-quality, efficient code with clear explanations. ' +
-            SYSTEM_PROMPT
-          : SYSTEM_PROMPT;
+      const activeSystemPrompt =
+        selectedModel === 'kimi' ? SYSTEM_PROMPT_KIMI : SYSTEM_PROMPT_ASSISTANT;
 
       // Build conversation history for context
       const chatHistory = messages
         .filter((m) => !m.type && !m.tempId)
-        .slice(-10) // Keep last 10 messages for context
+        .slice(-10)
         .map((m) => ({ role: m.role, content: m.content }));
 
       const fullMessages = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: activeSystemPrompt },
         ...chatHistory,
         { role: 'user', content: currentInput },
       ];
 
-      // Puter.js AI Chat — Free, Unlimited, Intelligent
+      // Puter.js AI Chat — Free, Unlimited, High Performance
       const response = await window.puter.ai.chat(currentInput, {
         model: 'gpt-4o-mini',
         messages: fullMessages,
       });
 
-      // Extract text from Puter response
       const responseText =
         typeof response === 'string'
           ? response
@@ -558,9 +636,12 @@ export function AIAssistant() {
           role: 'assistant',
           content:
             cleanText ||
-            'I processed your request but received an empty response. Please try rephrasing your question.',
+            'I processed your request but received an empty response. Please try rephrasing your prompt.',
           timestamp: new Date(),
-          model: selectedModel === 'coder' ? 'Pro Coder' : 'Neural GPT',
+          model:
+            selectedModel === 'kimi'
+              ? 'Kimi Code Enhancer'
+              : 'Neural Assistant',
         },
       ]);
     } catch (error) {
@@ -576,15 +657,6 @@ export function AIAssistant() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const downloadImage = (url) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ai-generated-${Date.now()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   return (
@@ -710,7 +782,7 @@ export function AIAssistant() {
         <header className="h-16 border-b border-border/50 px-6 flex items-center justify-between glass-panel shrink-0 select-none">
           <div className="flex items-center gap-4">
             <div
-              className="lg:hidden h-9 w-9 rounded-xl bg-card border border-border/50 flex items-center justify-center"
+              className="lg:hidden h-9 w-9 rounded-xl bg-card border border-border/50 flex items-center justify-center cursor-pointer"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               <Menu className="h-5 w-5 text-primary" />
@@ -747,16 +819,21 @@ export function AIAssistant() {
               </div>
             </div>
           </div>
+
           <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-[180px] h-9 text-[10px] font-black uppercase rounded-lg">
+            <SelectTrigger className="w-[210px] h-9 text-[10px] font-black uppercase rounded-xl bg-card/80 border-primary/30">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
               {MODELS.map((m) => (
-                <SelectItem key={m.id} value={m.id} className="text-xs">
+                <SelectItem
+                  key={m.id}
+                  value={m.id}
+                  className="text-xs focus:bg-primary/20"
+                >
                   <div className="flex items-center gap-2">
-                    <m.icon className="h-3 w-3" />
-                    <span>{m.label}</span>
+                    <m.icon className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-bold">{m.label}</span>
                   </div>
                 </SelectItem>
               ))}
@@ -784,30 +861,56 @@ export function AIAssistant() {
                   />
                 </div>
               </div>
-              <div className="space-y-4 max-w-sm">
+              <div className="space-y-4 max-w-md">
                 <h2 className="text-3xl font-black uppercase tracking-tighter text-foreground drop-shadow-xl">
-                  Neural <span className="text-primary">Intelligence</span>
+                  AI Universe <span className="text-primary">Intelligence</span>
                 </h2>
                 <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                  Welcome to your premium AI companion. Ask questions, generate
-                  code, or create stunning visuals with our integrated neural
-                  network.
+                  Switch between{' '}
+                  <strong className="text-foreground">Neural Assistant</strong>{' '}
+                  for general guidance or{' '}
+                  <strong className="text-primary">Kimi Code Enhancer</strong>{' '}
+                  to paste Word text and generate 100% accurate responsive HTML
+                  cards & layouts!
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
                 {[
-                  { t: 'Code', i: Terminal, c: 'Write a JS function' },
-                  { t: 'Image', i: ImageIcon, c: 'Generate a sunset' },
-                  { t: 'Analyze', i: ScanFace, c: 'Explain this code' },
-                  { t: 'Ideas', i: BrainCircuit, c: 'App ideas for 2024' },
+                  {
+                    t: 'Kimi HTML Cards',
+                    i: Wand2,
+                    c: 'Convert these 4 feature descriptions into styled cards in HTML',
+                    model: 'kimi',
+                  },
+                  {
+                    t: 'Convert Word Text',
+                    i: FileText,
+                    c: 'Paste 2 paragraphs here to format into responsive HTML layout',
+                    model: 'kimi',
+                  },
+                  {
+                    t: 'Neural Guidance',
+                    i: Bot,
+                    c: 'Explain the local browser processing architecture of this app',
+                    model: 'assistant',
+                  },
+                  {
+                    t: 'Code Review',
+                    i: Terminal,
+                    c: 'Optimize a JavaScript async file handler',
+                    model: 'assistant',
+                  },
                 ].map((item, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setInput(item.c)}
-                    className="p-3 rounded-xl bg-card/40 border border-border/50 hover:border-primary/50 transition-all text-left flex items-center gap-2"
+                    onClick={() => {
+                      setSelectedModel(item.model);
+                      setInput(item.c);
+                    }}
+                    className="p-3 rounded-xl bg-card/40 border border-border/50 hover:border-primary/50 transition-all text-left flex items-center gap-2 group hover:bg-card/70"
                   >
-                    <item.i className="h-4 w-4 text-primary" />
-                    <span className="text-[10px] font-bold uppercase">
+                    <item.i className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
+                    <span className="text-[10px] font-bold uppercase text-foreground">
                       {item.t}
                     </span>
                   </button>
@@ -819,13 +922,13 @@ export function AIAssistant() {
               <div
                 key={i}
                 className={cn(
-                  'flex gap-2',
+                  'flex gap-3',
                   m.role === 'user' ? 'flex-row-reverse' : ''
                 )}
               >
                 <div
                   className={cn(
-                    'h-8 w-8 rounded-xl flex items-center justify-center shrink-0 border border-border/50 shadow-sm',
+                    'h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border border-border/50 shadow-sm font-black text-xs',
                     m.role === 'user'
                       ? 'bg-primary text-primary-foreground overflow-hidden'
                       : 'bg-black/50 overflow-hidden'
@@ -847,7 +950,7 @@ export function AIAssistant() {
 
                 <div
                   className={cn(
-                    'flex-1 min-w-0 max-w-[85%] space-y-2',
+                    'flex-1 min-w-0 max-w-[88%] space-y-2',
                     m.role === 'user' ? 'items-end' : ''
                   )}
                 >
@@ -866,78 +969,54 @@ export function AIAssistant() {
 
                   <div
                     className={cn(
-                      'p-3 rounded-xl text-sm',
+                      'p-4 rounded-2xl text-sm leading-relaxed shadow-lg',
                       m.role === 'user'
-                        ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                        : 'bg-card border border-border/50 rounded-tl-sm'
+                        ? 'bg-primary text-primary-foreground rounded-tr-xs font-medium'
+                        : 'bg-card/90 border border-border/60 rounded-tl-xs backdrop-blur-md'
                     )}
                   >
-                    {m.type === 'image' ? (
-                      <div className="space-y-2">
-                        <div className="relative group rounded-lg overflow-hidden">
-                          <Image
-                            src={m.url}
-                            alt="Generated"
-                            width={300}
-                            height={300}
-                            className="w-full h-auto max-w-[300px]"
-                            unoptimized
-                          />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Button
-                              size="icon"
-                              variant="secondary"
-                              onClick={() => downloadImage(m.url)}
-                              className="rounded-xl"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          {m.content}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="prose prose-sm prose-invert max-w-none break-words">
-                        <ReactMarkdown
-                          components={{
-                            code({
-                              node,
-                              inline,
-                              className,
-                              children,
-                              ...props
-                            }) {
-                              const match = /language-(\w+)/.exec(
-                                className || ''
-                              );
-                              if (!inline) {
-                                return (
-                                  <CodeBlock
-                                    language={match ? match[1] : 'code'}
-                                  >
-                                    {children}
-                                  </CodeBlock>
-                                );
-                              }
-                              return (
-                                <code className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-md text-[11px] font-bold border border-primary/20 whitespace-normal break-all">
-                                  {children}
-                                </code>
-                              );
-                            },
-                            pre({ node, children }) {
-                              return (
-                                <div className="not-prose my-4">{children}</div>
-                              );
-                            },
-                          }}
-                        >
-                          {m.content}
-                        </ReactMarkdown>
+                    {m.model && m.role !== 'user' && (
+                      <div className="mb-2 pb-2 border-b border-border/30 flex items-center gap-1.5 text-[9px] font-black uppercase text-primary tracking-widest">
+                        <Wand2 className="h-3 w-3" /> {m.model}
                       </div>
                     )}
+
+                    <div className="prose prose-sm prose-invert max-w-none break-words">
+                      <ReactMarkdown
+                        components={{
+                          code({
+                            node,
+                            inline,
+                            className,
+                            children,
+                            ...props
+                          }) {
+                            const match = /language-(\w+)/.exec(
+                              className || ''
+                            );
+                            if (!inline) {
+                              return (
+                                <CodeBlock language={match ? match[1] : 'code'}>
+                                  {children}
+                                </CodeBlock>
+                              );
+                            }
+                            return (
+                              <code className="bg-primary/20 text-primary px-1.5 py-0.5 rounded-md text-[11px] font-bold border border-primary/20 whitespace-normal break-all">
+                                {children}
+                              </code>
+                            );
+                          },
+                          pre({ node, children }) {
+                            return (
+                              <div className="not-prose my-4">{children}</div>
+                            );
+                          },
+                        }}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
                   </div>
 
                   <span className="text-[8px] text-muted-foreground/50 px-2">
@@ -951,14 +1030,18 @@ export function AIAssistant() {
             ))
           )}
           {isLoading && (
-            <div className="flex gap-2">
-              <div className="h-8 w-8 rounded-xl bg-card border border-border/50 flex items-center justify-center">
+            <div className="flex gap-2 items-center">
+              <div className="h-9 w-9 rounded-xl bg-card border border-border/50 flex items-center justify-center">
                 <Activity className="h-4 w-4 text-primary animate-spin" />
               </div>
-              <div className="p-3 rounded-xl bg-card border border-border/50 rounded-tl-sm">
+              <div className="p-3.5 rounded-2xl bg-card/80 border border-border/50 rounded-tl-xs backdrop-blur-md">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-16 bg-primary/20 rounded-full animate-pulse" />
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {selectedModel === 'kimi'
+                      ? 'Kimi is parsing content & crafting HTML layout...'
+                      : 'Neural Engine thinking...'}
+                  </span>
+                  <div className="h-2 w-2 rounded-full bg-primary animate-ping" />
                 </div>
               </div>
             </div>
@@ -1010,15 +1093,16 @@ export function AIAssistant() {
               size="icon"
               onClick={() => fileInputRef.current?.click()}
               className="h-10 w-10 shrink-0 rounded-xl"
+              title="Attach File"
             >
               <Paperclip className="h-4 w-4" />
             </Button>
 
             <Textarea
               placeholder={
-                selectedModel === 'image-gen'
-                  ? 'Describe an image...'
-                  : 'Type a message...'
+                selectedModel === 'kimi'
+                  ? 'Paste raw text/Word content here to convert to HTML cards or layout...'
+                  : 'Ask Neural Assistant anything...'
               }
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -1028,26 +1112,26 @@ export function AIAssistant() {
                   handleSend();
                 }
               }}
-              className="min-h-[40px] max-h-[120px] flex-1 resize-none rounded-xl text-sm"
+              className="min-h-[44px] max-h-[140px] flex-1 resize-none rounded-xl text-sm font-medium bg-black/20 border-border/50 focus:border-primary"
             />
 
             <Button
               onClick={handleSend}
               disabled={(!input.trim() && !attachedFile) || isLoading}
-              className="h-10 w-10 shrink-0 rounded-xl"
+              className="h-10 w-10 shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
             >
               <Send className="h-4 w-4" />
             </Button>
           </div>
 
-          <div className="mt-2 flex items-center justify-center gap-4 text-[8px] text-muted-foreground/30 uppercase tracking-widest">
-            <span className="flex items-center gap-1">
-              <Cpu className="h-2 w-2" />
-              Neural Active
+          <div className="mt-2.5 flex items-center justify-between text-[8px] text-muted-foreground/60 uppercase tracking-widest px-1">
+            <span className="flex items-center gap-1 font-bold">
+              <Zap className="h-2.5 w-2.5 text-primary" /> Active Model:{' '}
+              {MODELS.find((m) => m.id === selectedModel)?.label}
             </span>
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="h-2 w-2" />
-              Secure
+            <span className="flex items-center gap-1 font-bold">
+              <ShieldCheck className="h-2.5 w-2.5 text-emerald-400" /> 100%
+              Content Preserved
             </span>
           </div>
         </div>
