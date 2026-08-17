@@ -190,6 +190,16 @@ export const toolMetadata = {
     canonical: '/tools/bg-remover',
     ogImage: '/og-bg-remover.png',
   },
+  'pdf-editor': {
+    title:
+      'Free Online PDF Editor - Add Pages, Edit Text, Images & Annotate PDFs | Content Suite',
+    description:
+      'Edit PDF documents 100% free online. Add new blank pages, edit or add text, insert images, freehand draw, add signatures, rubber stamps, whiteout text, undo/redo edits, and reorder pages without watermarks.',
+    keywords:
+      'free pdf editor, edit pdf online, add page to pdf, edit text in pdf, add image to pdf, pdf annotator, digital signature pdf, redact pdf, sejda pdf alternative, pdf24 alternative',
+    canonical: '/tools/pdf-editor',
+    ogImage: '/og-pdf-editor.png',
+  },
   privacy: {
     title: 'Privacy Policy | Content Suite',
     description:
@@ -237,7 +247,9 @@ export const toolIdToSlug = {
   'youtube-downloader': 'youtube-downloader',
   'watermark-remover': 'watermark-remover',
   'bg-remover': 'bg-remover',
+  'pdf-editor': 'pdf-editor',
 };
+
 
 // Reverse mapping
 export const slugToToolId = Object.fromEntries(
@@ -1002,7 +1014,58 @@ export const toolInfo = {
       },
     ],
   },
+  'pdf-editor': {
+    name: 'Free PDF Editor',
+    icon: '📄',
+    description:
+      'Edit PDFs online: add pages, insert images, edit text, draw, and sign',
+    category: 'Document Tools',
+    detailedDescription:
+      'Full-featured client-side PDF Editor. Edit text, add new blank pages, insert images, draw annotations, whiteout/redact content, place digital signatures and official rubber stamps, reorder pages, and export crisp PDFs with full undo/redo support.',
+    benefits: [
+      'Insert new pages anywhere with custom page sizes (Letter, A4, Legal)',
+      'Add & edit text with custom font families, colors, and styling',
+      'Upload images, logos, and signatures with drag-and-drop',
+      'Whiteout & blackout redact sensitive document content',
+      'Freehand drawing pen & highlighter tools',
+      'Preset official rubber stamps (Approved, Confidential, Draft, etc.)',
+      'Reorder, duplicate, rotate, and delete pages visually',
+      'Full Undo / Redo history stack',
+    ],
+    howToUse:
+      'Upload an existing PDF or click "New Blank", select tools from the top bar to add text, images, drawings, or stamps, manage pages from the sidebar, and click "Download PDF" to save.',
+    useCases: [
+      {
+        title: 'Contract & Form Signing',
+        description:
+          'Draw or type your signature and place date stamps directly onto PDF forms and contracts.',
+      },
+      {
+        title: 'Document Redaction & Correction',
+        description:
+          'Whiteout old text and overlay updated text, logos, or callouts onto PDF files.',
+      },
+      {
+        title: 'PDF Page Assembly',
+        description:
+          'Insert blank pages, reorder pages, rotate upside-down scans, or remove unnecessary pages.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Is it completely free to edit and download PDFs?',
+        answer:
+          'Yes! Our PDF Editor is 100% free with no page limits, no caps, and no forced watermarks.',
+      },
+      {
+        question: 'Are my uploaded PDF files safe and private?',
+        answer:
+          'Yes, all processing happens locally inside your browser using WebAssembly and HTML5 canvas. Your documents are never uploaded to any remote server.',
+      },
+    ],
+  },
 };
+
 
 // Get all tool slugs for sitemap generation
 export const getAllToolSlugs = () => Object.keys(toolMetadata);

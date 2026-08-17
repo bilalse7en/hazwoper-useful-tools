@@ -207,6 +207,14 @@ export function Footer({ overrideShow = false }) {
                   Cookie Policy
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/disclaimer"
+                  className="hover:text-foreground transition-colors"
+                >
+                  Legal Disclaimer
+                </Link>
+              </li>
             </ul>
           </div>
 

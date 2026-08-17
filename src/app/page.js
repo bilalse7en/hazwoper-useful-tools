@@ -20,6 +20,21 @@ export default function Home() {
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
+            '@type': 'WebApplication',
+            name: 'HAZWOPER Content Suite',
+            url: 'https://hazwoper-useful-tools.vercel.app',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web Browser',
+            offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+            description: '20+ professional tools for safety documentation, media processing, and content automation. Browser-based, privacy-first, HAZWOPER compliant.',
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
             name: 'Content Suite',
             operatingSystem: 'Web',

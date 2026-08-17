@@ -42,6 +42,7 @@ const iconMap = {
   'youtube-downloader': Video,
   'watermark-remover': Wand2,
   'bg-remover': Wand2,
+  'pdf-editor': FileText,
 };
 
 export default function ToolsDirectoryPage() {

@@ -12,6 +12,7 @@ export default async function sitemap() {
     '/privacy',
     '/terms',
     '/cookies',
+    '/disclaimer',
     '/blog',
     '/tools',
   ].map((route) => ({

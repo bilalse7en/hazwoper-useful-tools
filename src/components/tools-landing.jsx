@@ -52,6 +52,7 @@ const iconMap = {
   'youtube-downloader': Video,
   'watermark-remover': Wand2,
   'bg-remover': Wand2,
+  'pdf-editor': FileText,
 };
 
 // Free tools that anyone can access (even without login)
@@ -69,6 +70,7 @@ const FREE_TOOL_IDS = [
   'youtube-downloader',
   'watermark-remover',
   'bg-remover',
+  'pdf-editor',
 ];
 
 // Generator tools that require login + generator access

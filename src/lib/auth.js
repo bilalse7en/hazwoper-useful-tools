@@ -32,6 +32,7 @@ export const NAV_ITEMS = [
   },
   { id: 'watermark-remover', label: 'Watermark Remover', icon: 'Wand2' },
   { id: 'bg-remover', label: 'AI Background Remover', icon: 'Wand2' },
+  { id: 'pdf-editor', label: 'Free PDF Editor', icon: 'FileText' },
   { id: 'ai-assistant', label: 'AI UNIVERSE', icon: 'BrainCircuit' },
 ];
 
@@ -129,6 +130,7 @@ export function hasAccess(user, featureId, toolSettings = null) {
     'youtube-downloader',
     'watermark-remover',
     'bg-remover',
+    'pdf-editor',
     'chat',
   ];
 
