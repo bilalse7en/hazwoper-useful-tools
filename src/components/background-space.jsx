@@ -22,8 +22,11 @@ export function BackgroundSpace() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Skip heavy effects if performance mode is enabled
-    if (isLowEnd()) {
+    // Skip heavy effects if performance mode is enabled or on small mobile screens
+    if (
+      isLowEnd() ||
+      (typeof window !== 'undefined' && window.innerWidth < 640)
+    ) {
       return;
     }
 

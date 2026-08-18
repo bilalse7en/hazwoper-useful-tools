@@ -5,7 +5,6 @@ import { BackgroundSpace } from '@/components/background-space';
 import { GdprConsent } from '@/components/gdpr-consent';
 import { DelayedScriptLoader } from '@/components/delayed-script-loader';
 import './globals.css';
-import 'animate.css/animate.min.css';
 
 import { GlobalHeader } from '@/components/global-header';
 import { Footer } from '@/components/footer';

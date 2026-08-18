@@ -64,6 +64,7 @@ export function InitialLoadingShell({ isReady = false }) {
               width={96}
               height={96}
               fetchPriority="high"
+              decoding="async"
               className="h-full w-full object-cover"
             />
           </div>

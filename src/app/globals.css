@@ -875,3 +875,25 @@ ol {
     0 0 15px rgba(56, 189, 248, 0.2) !important;
 }
 
+/* SweetAlert Animations */
+@keyframes swalZoomIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes swalZoomOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.92); }
+}
+@keyframes swalFadeInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes swalFadeOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(30px); }
+}
+.swal-zoom-in { animation: swalZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.swal-zoom-out { animation: swalZoomOut 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.swal-fade-in-right { animation: swalFadeInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.swal-fade-out-right { animation: swalFadeOutRight 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+

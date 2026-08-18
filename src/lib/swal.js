@@ -60,10 +60,10 @@ const getCommonOptions = () => {
       timerProgressBar: 'bg-primary',
     },
     showClass: {
-      popup: 'animate__animated animate__zoomIn animate__faster',
+      popup: 'swal-zoom-in',
     },
     hideClass: {
-      popup: 'animate__animated animate__zoomOut animate__faster',
+      popup: 'swal-zoom-out',
     },
   };
 };
@@ -139,10 +139,10 @@ export const showToast = (message, icon = 'success') => {
     background: colors.background,
     color: colors.color,
     showClass: {
-      popup: 'animate__animated animate__fadeInRight animate__faster',
+      popup: 'swal-fade-in-right',
     },
     hideClass: {
-      popup: 'animate__animated animate__fadeOutRight animate__faster',
+      popup: 'swal-fade-out-right',
     },
     didOpen: (toast) => {
       toast.addEventListener('mouseenter', Swal.stopTimer);
