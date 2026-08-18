@@ -16,7 +16,7 @@ export function InitialLoadingShell({ isReady = false }) {
       mountTimeRef.current = Date.now();
     }
 
-    const MIN_LOADING_TIME = 2000; // 2 seconds minimum
+    const MIN_LOADING_TIME = 0; // Instant ready for minimum LCP delay
 
     // Fail-safe: Always hide after 8 seconds to prevent "stuck" UI
     const safetyTimer = setTimeout(() => {

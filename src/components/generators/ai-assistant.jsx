@@ -246,9 +246,23 @@ export function AIAssistant() {
           if (
             lower.includes('marry') ||
             lower.includes('married') ||
-            lower.includes('wedding')
+            lower.includes('wedding') ||
+            lower.includes('gown') ||
+            lower.includes('tuxedo') ||
+            lower.includes('ring') ||
+            lower.includes('chapel')
           ) {
-            promptDesc = `Romantic cinematic wedding portrait of the couple getting married, elegant white bridal gown with veil, groom in sharp bespoke tuxedo, holding hands at a gorgeous floral wedding altar with bokeh lights, golden hour romantic lighting, hyper-realistic 8k masterpiece`;
+            const background = lower.includes('chapel')
+              ? 'inside a majestic grand chapel'
+              : lower.includes('courthouse')
+                ? 'elegant courthouse wedding hall'
+                : lower.includes('nature') || lower.includes('garden')
+                  ? 'lush botanical garden with floral arch'
+                  : 'gorgeous romantic wedding altar with bokeh lights';
+            const accessories = lower.includes('ring')
+              ? 'sparkling diamond wedding rings on their fingers, floral bouquet'
+              : 'holding hands, bridal bouquet, gold rings';
+            promptDesc = `Romantic cinematic wedding portrait of the couple, wearing luxurious wedding attire (bride in exquisite white bridal gown with veil, groom in sharp tailored black tuxedo), ${accessories}, setting in ${background}, warm golden hour lighting, cinematic depth of field, hyper-realistic 8k masterpiece portrait`;
           } else {
             promptDesc = `${currentInput}, ultra realistic cinematic 8k masterpiece, professional photo`;
           }

@@ -66,32 +66,24 @@ export default function RootLayout({ children }) {
           href="https://gyglsbmpxopaoeljoofp.supabase.co"
           crossOrigin="anonymous"
         />
-        <link
-          rel="preconnect"
-          href="https://js.puter.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preconnect"
-          href="https://pagead2.googlesyndication.com"
-          crossOrigin="anonymous"
-        />
+        <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
         <link
           rel="dns-prefetch"
           href="https://gyglsbmpxopaoeljoofp.supabase.co"
         />
         <link rel="dns-prefetch" href="https://js.puter.com" />
         <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
-          crossOrigin="anonymous"
-        ></script>
       </head>
       <body
         className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
+        <Script
+          id="adsense-init"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
+          strategy="lazyOnload"
+          crossOrigin="anonymous"
+        />
         <Script
           id="organization-json-ld"
           type="application/ld+json"

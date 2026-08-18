@@ -154,9 +154,9 @@ export function ToolsLanding({ user }) {
         <div className="container relative mx-auto px-6">
           <div className="max-w-3xl">
             <motion.div
-              initial={mounted && isLowEnd() ? false : { opacity: 0, y: 30 }}
-              animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
             >
               <Badge
                 variant="secondary"
@@ -278,13 +278,9 @@ export function ToolsLanding({ user }) {
               return (
                 <motion.div
                   key={tool.id}
-                  initial={
-                    mounted && isLowEnd() ? false : { opacity: 0, y: 20 }
-                  }
-                  animate={
-                    mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }
-                  }
-                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  initial={false}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
                   className="group h-full"
                 >
                   <Card

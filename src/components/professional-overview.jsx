@@ -32,8 +32,8 @@ export function ProfessionalOverview() {
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center mb-24">
           <motion.div
-            initial={mounted && isLowEnd() ? false : { opacity: 0, y: 20 }}
-            animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            initial={false}
+            animate={{ opacity: 1, y: 0 }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-8"
           >
             <Shield className="w-4 h-4 text-primary" />
@@ -91,9 +91,9 @@ export function ProfessionalOverview() {
           ].map((item, i) => (
             <motion.div
               key={i}
-              initial={mounted && isLowEnd() ? false : { opacity: 0, y: 20 }}
-              animate={mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-              transition={{ delay: i * 0.1 }}
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
               className="space-y-6 p-8 rounded-[32px] bg-card/40 backdrop-blur-xl border border-border hover:border-primary/30 transition-all group"
             >
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500">

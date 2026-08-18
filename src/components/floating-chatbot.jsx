@@ -63,8 +63,9 @@ export function FloatingChatbot() {
 
   const scrollRef = useRef(null);
 
-  // Load Puter.js SDK
+  // Load Puter.js SDK lazily when chatbot is opened
   useEffect(() => {
+    if (!isOpen) return;
     if (typeof window !== 'undefined' && !window.puter) {
       const script = document.createElement('script');
       script.src = 'https://js.puter.com/v2/';
@@ -80,7 +81,7 @@ export function FloatingChatbot() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPuterReady(true);
     }
-  }, []);
+  }, [isOpen]);
 
   useEffect(() => {
     if (scrollRef.current) {

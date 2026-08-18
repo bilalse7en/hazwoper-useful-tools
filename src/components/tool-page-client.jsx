@@ -12,73 +12,106 @@ import { ToolBreadcrumbs } from '@/components/tool-breadcrumbs';
 import { cn } from '@/lib/utils';
 import { ToolAccessGuard } from '@/components/tool-access-guard';
 
-// Dynamically import all tool components with no SSR from the index file
+// Dynamically import all tool components directly from file paths for optimal code-splitting
 const CourseGenerator = nextDynamic(
-  () => import('@/components/generators').then((m) => m.CourseGenerator),
+  () =>
+    import('@/components/generators/course-generator').then(
+      (m) => m.CourseGenerator
+    ),
   { ssr: false }
 );
 const BlogGenerator = nextDynamic(
-  () => import('@/components/generators').then((m) => m.BlogGenerator),
+  () =>
+    import('@/components/generators/blog-generator').then(
+      (m) => m.BlogGenerator
+    ),
   { ssr: false }
 );
 const GlossaryGenerator = nextDynamic(
-  () => import('@/components/generators').then((m) => m.GlossaryGenerator),
+  () =>
+    import('@/components/generators/glossary-generator').then(
+      (m) => m.GlossaryGenerator
+    ),
   { ssr: false }
 );
 const ResourceGenerator = nextDynamic(
-  () => import('@/components/generators').then((m) => m.ResourceGenerator),
+  () =>
+    import('@/components/generators/resource-generator').then(
+      (m) => m.ResourceGenerator
+    ),
   { ssr: false }
 );
 const HTMLCleaner = nextDynamic(
-  () => import('@/components/generators').then((m) => m.HTMLCleaner),
+  () =>
+    import('@/components/generators/html-cleaner').then((m) => m.HTMLCleaner),
   { ssr: false }
 );
 const ImageConverter = nextDynamic(
-  () => import('@/components/generators').then((m) => m.ImageConverter),
+  () =>
+    import('@/components/generators/image-converter').then(
+      (m) => m.ImageConverter
+    ),
   { ssr: false }
 );
 const AIAssistant = nextDynamic(
-  () => import('@/components/generators').then((m) => m.AIAssistant),
+  () =>
+    import('@/components/generators/ai-assistant').then((m) => m.AIAssistant),
   { ssr: false }
 );
 const ImageToText = nextDynamic(
-  () => import('@/components/generators').then((m) => m.ImageToText),
+  () =>
+    import('@/components/generators/image-to-text').then(
+      (m) => m.default || m.ImageToText
+    ),
   { ssr: false }
 );
 const DocumentExtractor = nextDynamic(
-  () => import('@/components/generators').then((m) => m.DocumentExtractor),
+  () =>
+    import('@/components/generators/document-extractor').then(
+      (m) => m.default || m.DocumentExtractor
+    ),
   { ssr: false }
 );
 const AudioHub = nextDynamic(
-  () => import('@/components/generators').then((m) => m.AudioHub),
+  () => import('@/components/generators/audio-hub').then((m) => m.AudioHub),
   { ssr: false }
 );
 const VideoHub = nextDynamic(
-  () => import('@/components/generators').then((m) => m.VideoHub),
+  () => import('@/components/generators/video-hub').then((m) => m.VideoHub),
   { ssr: false }
 );
 const WordToHtml = nextDynamic(
-  () => import('@/components/generators').then((m) => m.WordToHtml),
+  () =>
+    import('@/components/generators/word-to-html').then((m) => m.WordToHtml),
   { ssr: false }
 );
 const LessonQuizBuilder = nextDynamic(
-  () => import('@/components/generators').then((m) => m.LessonQuizBuilder),
+  () =>
+    import('@/components/generators/lesson-quiz-builder').then(
+      (m) => m.default || m.LessonQuizBuilder
+    ),
   { ssr: false }
 );
 const YouTubeDownloader = nextDynamic(
-  () => import('@/components/generators').then((m) => m.YouTubeDownloader),
+  () =>
+    import('@/components/generators/youtube-downloader').then(
+      (m) => m.YouTubeDownloader
+    ),
   { ssr: false }
 );
 const WatermarkRemover = nextDynamic(
-  () => import('@/components/generators').then((m) => m.WatermarkRemover),
+  () =>
+    import('@/components/generators/watermark-remover').then(
+      (m) => m.WatermarkRemover
+    ),
   { ssr: false }
 );
 const BgRemover = nextDynamic(
-  () => import('@/components/generators').then((m) => m.BgRemover),
+  () => import('@/components/generators/bg-remover').then((m) => m.BgRemover),
   { ssr: false }
 );
 const PDFEditor = nextDynamic(
-  () => import('@/components/generators').then((m) => m.PDFEditor),
+  () => import('@/components/generators/pdf-editor').then((m) => m.PDFEditor),
   { ssr: false }
 );
 

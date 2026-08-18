@@ -4,8 +4,9 @@ const nextConfig = {
   // Enable source maps in production for better debugging and PageSpeed Insights compliance
   productionBrowserSourceMaps: true,
 
-  // Configure external image domains for optimization
+  // Configure external image domains and formats for optimization
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -15,6 +16,27 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'gyglsbmpxopaoeljoofp.supabase.co',
       },
+    ],
+  },
+
+  // Compiler optimizations
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? { exclude: ['error', 'warn'] }
+        : false,
+  },
+
+  // Optimize package imports for tree-shaking
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-select',
+      '@radix-ui/react-progress',
+      '@radix-ui/react-tooltip',
     ],
   },
 
@@ -65,6 +87,34 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+
+      {
+        source: '/pdfjs/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/ffmpeg/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/:all*(svg|jpg|png|webp|avif|gif|ico|woff|woff2|ttf|wasm)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
