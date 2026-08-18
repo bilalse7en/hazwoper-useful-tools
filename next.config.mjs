@@ -2,7 +2,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 
 const nextConfig = {
   // Enable source maps in production for better debugging and PageSpeed Insights compliance
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false,
 
   // Configure external image domains and formats for optimization
   images: {

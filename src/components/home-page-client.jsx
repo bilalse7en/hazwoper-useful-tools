@@ -5,9 +5,6 @@ import { useState, useEffect } from 'react';
 import { InitialLoadingShell } from '@/components/initial-loading-shell';
 import { showSuccess, showAlert } from '@/lib/swal';
 import { ToolsLanding } from '@/components/tools-landing';
-import { BlogSection } from '@/components/blog-section';
-import { ProfessionalOverview } from '@/components/professional-overview';
-import { IndustryInsights } from '@/components/industry-insights';
 import { useAuth } from '@/components/auth-provider';
 
 const WelcomeScroll = dynamic(
@@ -16,6 +13,27 @@ const WelcomeScroll = dynamic(
     loading: () => <InitialLoadingShell isReady={false} />,
     ssr: false,
   }
+);
+
+const IndustryInsights = dynamic(
+  () =>
+    import('@/components/industry-insights').then(
+      (mod) => mod.IndustryInsights
+    ),
+  { ssr: true }
+);
+
+const ProfessionalOverview = dynamic(
+  () =>
+    import('@/components/professional-overview').then(
+      (mod) => mod.ProfessionalOverview
+    ),
+  { ssr: true }
+);
+
+const BlogSection = dynamic(
+  () => import('@/components/blog-section').then((mod) => mod.BlogSection),
+  { ssr: true }
 );
 
 export function HomePageClient() {

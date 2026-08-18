@@ -1,18 +1,14 @@
 import { Inter, Orbitron } from 'next/font/google';
 import Script from 'next/script';
 import { ThemeProvider } from '@/components/theme-provider';
-import { BackgroundSpace } from '@/components/background-space';
-import { GdprConsent } from '@/components/gdpr-consent';
 import { DelayedScriptLoader } from '@/components/delayed-script-loader';
+import { ClientOverlays } from '@/components/client-overlays';
 import './globals.css';
 
 import { GlobalHeader } from '@/components/global-header';
 import { Footer } from '@/components/footer';
-import { EnvironmentalSetup } from '@/components/environmental-setup';
-import { FloatingChatbot } from '@/components/floating-chatbot';
 import { AuthProvider } from '@/components/auth-provider';
 import { ChatProvider } from '@/components/chat-provider';
-import { BlockedOverlay } from '@/components/chat/BlockedOverlay';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -135,16 +131,12 @@ export default function RootLayout({ children }) {
         >
           <AuthProvider>
             <ChatProvider>
-              <BackgroundSpace />
               <div className="flex flex-col min-h-screen relative">
                 <GlobalHeader />
                 <main className="flex-1">{children}</main>
                 <Footer />
               </div>
-              <GdprConsent />
-              <EnvironmentalSetup />
-              <FloatingChatbot />
-              <BlockedOverlay />
+              <ClientOverlays />
             </ChatProvider>
           </AuthProvider>
         </ThemeProvider>
