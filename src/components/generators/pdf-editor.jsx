@@ -1429,7 +1429,7 @@ export function PDFEditor() {
                     />
                     {/* Address Block */}
                     <a
-                      href="https://hazwoper-osha.com/contact-us"
+                      href="https://hazwoper-osha.com/contact"
                       target="_blank"
                       rel="noreferrer"
                       title="HAZWOPER-OSHA Los Angeles Office - Contact Us"

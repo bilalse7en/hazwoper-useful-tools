@@ -109,7 +109,7 @@ const navGroups = [
       },
       { id: 'word-to-html', label: 'Word to HTML', icon: FileType },
       { id: 'pdf-editor', label: 'Free PDF Editor', icon: FileText },
-      { id: 'ai-assistant', label: 'Kimi AI Hub', icon: BrainCircuit },
+      { id: 'ai-assistant', label: 'AI Hub', icon: BrainCircuit },
       {
         id: 'tools-directory',
         label: 'Systems Index',

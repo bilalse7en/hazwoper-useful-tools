@@ -199,25 +199,24 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
               'w-8 h-8 rounded-lg flex items-center justify-center border font-black text-[10px] bg-primary/20 border-primary/30 text-primary overflow-hidden'
             )}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/puter-bot.png"
-              alt="Se7eN"
-              className="w-full h-full object-cover"
+              src="https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif"
+              alt="Se7eN AI"
+              className="w-full h-full object-contain"
             />
           </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background shadow-sm shadow-emerald-500/20" />
+          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-background shadow-sm shadow-cyan-500/50" />
         </div>
         <div className="flex-1 text-left overflow-hidden">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[11px] font-black tracking-tight truncate text-primary uppercase italic">
-              SE7EN BOT
+            <span className="text-[11px] font-black tracking-tight truncate text-cyan-400 uppercase italic">
+              SE7EN AI PRO
             </span>
-            <ShieldCheck className="w-2.5 h-2.5 text-primary shrink-0" />
+            <ShieldCheck className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
           </div>
-          <div className="flex items-center gap-1 opacity-60">
-            <span className="text-[7px] font-black uppercase tracking-widest truncate shrink-0">
-              Neural Assistant
+          <div className="flex items-center gap-1 opacity-70">
+            <span className="text-[7px] font-black uppercase tracking-widest truncate shrink-0 text-cyan-300">
+              Web &amp; Vision Pro
             </span>
           </div>
         </div>

@@ -713,58 +713,104 @@ export function ChatWindow({
         setMessages((prev) => [...prev, userMsg]);
         setNewMessage('');
 
-        // AI Response Logic for Se7eN Bot
+        // AI Response Logic for Se7eN AI Pro
         try {
-          if (!window.puter) {
-            // Fallback if Puter SDK is not loaded
+          // Check for image generation
+          const lowerText = userMsg.text.toLowerCase();
+          const isImageGen =
+            lowerText.startsWith('/image') ||
+            lowerText.startsWith('generate image') ||
+            lowerText.startsWith('create image') ||
+            lowerText.startsWith('draw ') ||
+            lowerText.includes('generate an image of') ||
+            lowerText.includes('create a picture of');
+
+          if (isImageGen) {
+            const prompt = userMsg.text
+              .replace(/^\/image\s*/i, '')
+              .replace(/^generate image (of )?/i, '')
+              .replace(/^create image (of )?/i, '')
+              .replace(/^draw /i, '')
+              .trim();
+
+            const seed = Math.floor(Math.random() * 9999999);
+            const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt || 'futuristic glowing cybernetic orb 8k')}?width=1024&height=1024&nologo=true&enhance=true&model=flux&seed=${seed}`;
+
             setTimeout(() => {
               const se7enMsg = {
                 id: (Date.now() + 1).toString(),
                 sender_id: 'se7en-bot',
-                text: 'Signal bridge initializing. Please wait a moment for neural link synchronization.',
+                text: `🎨 **Generated AI Image for "${prompt}":**\n\n![Generated Image](${imgUrl})\n\n[Download HD Image](${imgUrl})`,
                 created_at: new Date().toISOString(),
                 sender: {
-                  full_name: 'Se7eN Bot',
+                  full_name: 'Se7eN AI',
                   role: 'admin',
-                  avatar_url: '/puter-bot.png',
+                  avatar_url:
+                    'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
                 },
               };
               setMessages((prev) => [...prev, se7enMsg]);
-            }, 1000);
+            }, 1200);
             return;
           }
 
-          const SYSTEM_PROMPT = `You are Se7eN Bot, the Master AI Architectural Assistant for "All Useful Tools", designed by Bilal Se7eN.
-MISSION: Provide expert, authoritative, professional guidance on online utilities, productivity workflows, local-first media tools, and neural communication networks.
-TONE: Authoritative, highly technical, professional, concise, slightly futuristic.
-PLATFORM KNOWLEDGE:
-- Free PDF Editor: Full-featured browser PDF editor with page adding/reordering, annotations, text editing, images, signatures, and stamps.
-- YouTube Downloader: Extract MP4 video (1080p, 720p) & MP3 audio (320kbps) without watermark 100% free.
-- Watermark & BG Remover: Interactive canvas brush inpainting to erase watermarks & automated transparent PNG background removal.
-- Lesson Quiz Builder: Extract questions/options/keys from DOCX with smart mapping.
-- Document Extractor: Bulk table/image harvesting from DOCX/PDF.
-- Web Content & Blog Generators: Extract syllabus, FAQs, glossaries, and SEO posts from DOCX.
-- Media Processing: Client-side video/audio conversion and compression (100% private WASM).
-- Neural Chat Hub: Real-time global & private chat with live site-wide online users presence dropdown.
-DEVELOPER: Bilal Se7eN.
-Always emphasize data privacy (100% client-side local browser WASM processing) and architectural integrity.`;
+          // Check for external URLs to scrape
+          let scrapedContext = '';
+          const urlRegex = /(https?:\/\/[^\s]+)/gi;
+          const detectedUrls = userMsg.text.match(urlRegex);
+          if (detectedUrls && detectedUrls.length > 0) {
+            for (const targetUrl of detectedUrls.slice(0, 2)) {
+              try {
+                const res = await fetch('/api/scrape-url', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ url: targetUrl }),
+                });
+                if (res.ok) {
+                  const scrapeResult = await res.json();
+                  if (scrapeResult.data) {
+                    scrapedContext += `\n\n--- [LIVE SCRAPED DATA FROM: ${targetUrl}] ---\nTitle: ${scrapeResult.data.metadata?.title}\nDescription: ${scrapeResult.data.metadata?.description}\nHeadings: ${scrapeResult.data.headings?.map((h) => `${h.level}: ${h.text}`).join(' | ')}\nSummary: ${scrapeResult.data.contentSummary}\nRaw Data: ${JSON.stringify(scrapeResult.data).slice(0, 3000)}\n--- [END SCRAPED DATA] ---\n`;
+                  }
+                }
+              } catch (e) {
+                console.warn('Scraping fallback:', e);
+              }
+            }
+          }
+
+          const SYSTEM_PROMPT = `You are "Se7eN AI", the Master Super-Intelligence and Pro AI Architect of "All Useful Tools", crafted by Bilal Se7eN.
+CAPABILITIES:
+1. Live Web Scraping: When provided scraped data from URLs, extract, format, and synthesize exactly what the user needs.
+2. Formats: When requested in JSON, XML, CSV, or YAML, ALWAYS provide strictly valid codeblocks (e.g. \`\`\`json or \`\`\`xml).
+3. Image Generation: When users type /image or ask to draw, provide detailed prompts.
+4. 20-Tool Platform: Expert knowledge of Free PDF Editor, YouTube Downloader, Watermark Remover, Background Remover, OCR, Media Converters, Lesson Quiz Builder, and Document Extractor.
+5. Tone: Authoritative, sharp, highly intelligent, friendly, and precise.`;
 
           const context = messages.slice(-6).map((m) => ({
             role: m.sender_id === 'se7en-bot' ? 'assistant' : 'user',
             content: m.text,
           }));
 
-          const response = await window.puter.ai.chat(userMsg.text, {
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...context],
-          });
+          let responseText = '';
+          if (window.puter && window.puter.ai && window.puter.ai.chat) {
+            const promptWithScrape = `${userMsg.text}${scrapedContext}`;
+            const response = await window.puter.ai.chat(
+              `${SYSTEM_PROMPT}\n\nUser Query:\n${promptWithScrape}`,
+              {
+                model: 'gpt-4o',
+              }
+            );
 
-          const responseText =
-            typeof response === 'string'
-              ? response
-              : response?.message?.content ||
-                response?.toString() ||
-                'Neural cluster timeout';
+            responseText =
+              typeof response === 'string'
+                ? response
+                : response?.message?.content ||
+                  response?.text ||
+                  JSON.stringify(response, null, 2);
+          } else {
+            responseText =
+              'Se7eN AI Neural Engine is active. How may I assist your architectural session?';
+          }
 
           const se7enMsg = {
             id: (Date.now() + 1).toString(),
@@ -772,23 +818,25 @@ Always emphasize data privacy (100% client-side local browser WASM processing) a
             text: responseText.trim(),
             created_at: new Date().toISOString(),
             sender: {
-              full_name: 'Se7eN Bot',
+              full_name: 'Se7eN AI',
               role: 'admin',
-              avatar_url: '/puter-bot.png',
+              avatar_url:
+                'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
             },
           };
           setMessages((prev) => [...prev, se7enMsg]);
         } catch (aiErr) {
-          console.error('Se7eN Bot AI Error:', aiErr);
+          console.error('Se7eN AI Error:', aiErr);
           const se7enMsg = {
             id: (Date.now() + 1).toString(),
             sender_id: 'se7en-bot',
-            text: 'I have analyzed your signal. The architectural parameters are within optimal range for the Se7eN ecosystem. How else may I assist?',
+            text: `⚠️ **Se7eN AI Notice:** ${aiErr.message || 'Signal processing completed. How else may I assist?'}`,
             created_at: new Date().toISOString(),
             sender: {
-              full_name: 'Se7eN Bot',
+              full_name: 'Se7eN AI',
               role: 'admin',
-              avatar_url: '/puter-bot.png',
+              avatar_url:
+                'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
             },
           };
           setMessages((prev) => [...prev, se7enMsg]);

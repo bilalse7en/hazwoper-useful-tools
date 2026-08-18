@@ -538,20 +538,21 @@ export const toolInfo = {
     ],
   },
   'ai-assistant': {
-    name: 'Kimi AI & Neural Assistant',
+    name: 'AI Hub',
     icon: '✨',
-    description: 'Word text to HTML cards & code enhancer',
+    description:
+      'Se7eN AI & Kimi Code Enhancer with live web scraping & JSON/XML export',
     category: 'AI Tools',
     detailedDescription:
-      'Kimi AI & Neural Assistant converts raw text, Word documents, and paragraphs into 100% accurate, mobile-responsive HTML layouts and glassmorphic cards with live interactive rendering.',
+      'AI Hub integrates Se7eN AI and Kimi Code Enhancer. Extract live web data from URLs into structured JSON or XML, analyze uploaded images and documents, generate free HD AI images, and convert raw text into 100% accurate responsive HTML cards.',
     benefits: [
-      'Context-aware content suggestions',
-      'Grammar and style optimization',
-      'Interactive Q&A for content development',
-      'Connected to latest language standards',
+      'Live web scraping & URL data extraction to JSON and XML',
+      'Multi-modal image, PDF, DOCX, and Excel data extraction',
+      'Free high-definition AI image generation',
+      'Kimi Code Enhancer for responsive HTML cards & layouts',
     ],
     howToUse:
-      'Type your query or paste the content you need help with. The AI will provide tailored suggestions and improvements instantly.',
+      'Select Se7eN AI Pro or Kimi Code Enhancer. Paste any web URL, upload documents/images, or prompt for code and image generation with instant JSON, XML, or CSV export.',
     useCases: [
       {
         title: 'Technical Summarization',
