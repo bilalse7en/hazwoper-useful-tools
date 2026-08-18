@@ -47,7 +47,7 @@ export function MobileHeader({
       <div className="flex items-center gap-2 absolute left-1/2 transform -translate-x-1/2 pointer-events-none">
         <BrandLogo size="md" className="shadow-sm" />
         <span className="font-bold text-sm tracking-tight text-foreground whitespace-nowrap">
-          Content Suite
+          All Useful Tools
         </span>
       </div>
 

@@ -5,19 +5,36 @@ function renderParagraphs(text) {
   if (!text) return null;
   if (Array.isArray(text)) {
     return text.map((item, idx) => (
-      <p key={idx} className="text-muted-foreground font-medium leading-relaxed mb-4">
+      <p
+        key={idx}
+        className="text-muted-foreground font-medium leading-relaxed mb-4"
+      >
         {typeof item === 'string' ? item : JSON.stringify(item)}
       </p>
     ));
   }
-  const blocks = text.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
   return blocks.map((block, idx) => {
-    if (block.startsWith('1.') || block.startsWith('2.') || block.startsWith('- ') || block.startsWith('* ')) {
-      const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (
+      block.startsWith('1.') ||
+      block.startsWith('2.') ||
+      block.startsWith('- ') ||
+      block.startsWith('* ')
+    ) {
+      const lines = block
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
       return (
         <div key={idx} className="space-y-3 my-4">
           {lines.map((line, lIdx) => (
-            <div key={lIdx} className="flex items-start gap-3 p-3.5 rounded-2xl bg-muted/20 border border-border/60">
+            <div
+              key={lIdx}
+              className="flex items-start gap-3 p-3.5 rounded-2xl bg-muted/20 border border-border/60"
+            >
               <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
                 {lIdx + 1}
               </span>
@@ -30,7 +47,10 @@ function renderParagraphs(text) {
       );
     }
     return (
-      <p key={idx} className="text-muted-foreground font-medium leading-relaxed mb-4">
+      <p
+        key={idx}
+        className="text-muted-foreground font-medium leading-relaxed mb-4"
+      >
         {block}
       </p>
     );
@@ -249,10 +269,10 @@ export function ToolSEOContentServer({ slug }) {
         <p className="text-sm text-muted-foreground leading-relaxed">
           The {info.name} is engineered with a strict client-side first model.
           All media transformation, optical character recognition, document
-          parsing, and text sanitization algorithms execute directly inside
-          your local browser memory (via WebAssembly and Web Workers). Your
-          files and confidential industrial training records are never uploaded
-          to third-party remote processing servers.
+          parsing, and text sanitization algorithms execute directly inside your
+          local browser memory (via WebAssembly and Web Workers). Your files and
+          confidential records are never uploaded to third-party remote
+          processing servers.
         </p>
       </div>
     </section>

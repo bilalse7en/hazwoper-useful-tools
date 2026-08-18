@@ -89,11 +89,11 @@ export default function BlogListPage() {
                   Editorial Archive
                 </Badge>
                 <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none">
-                  Neural <span className="text-primary">Insights</span>
+                  Articles & <span className="text-primary">Insights</span>
                 </h1>
                 <p className="text-xl text-muted-foreground font-medium max-w-2xl leading-relaxed">
-                  Deep dives into HAZWOPER automation, safety technical
-                  standards, and the future of industrial safety education.
+                  Deep dives into document utilities, media conversion
+                  techniques, and modern online productivity workflows.
                 </p>
               </div>
             </div>

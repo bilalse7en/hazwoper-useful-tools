@@ -23,12 +23,16 @@ export function EnvironmentalSetup() {
   const [performance, setPerformance] = useState('high');
 
   useEffect(() => {
-    const isComplete = localStorage.getItem('environmental_setup_complete');
-    if (!isComplete) {
-      // Small delay to let the initial landing breathe
-      const timer = setTimeout(() => setIsOpen(true), 1500);
-      return () => clearTimeout(timer);
-    }
+    const handleOpen = () => {
+      const isComplete = localStorage.getItem('environmental_setup_complete');
+      if (!isComplete) {
+        setIsOpen(true);
+      }
+    };
+
+    window.addEventListener('open_environmental_setup', handleOpen);
+    return () =>
+      window.removeEventListener('open_environmental_setup', handleOpen);
   }, []);
 
   const handleComplete = () => {
@@ -56,7 +60,7 @@ export function EnvironmentalSetup() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -95,12 +99,12 @@ export function EnvironmentalSetup() {
                   <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                     <Cpu className="w-8 h-8" />
                   </div>
-                  <h2 className="text-3xl font-black tracking-tight italic uppercase italic">
-                    Engine Calibration
+                  <h2 className="text-3xl font-black tracking-tight uppercase">
+                    Performance & Engine Mode
                   </h2>
                   <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our platform uses neural-grade visual effects. Tell us about
-                    your hardware to optimize your processing environment.
+                    Our platform uses local-first WebAssembly processing. Choose
+                    your hardware profile for optimal efficiency.
                   </p>
                 </div>
 
@@ -128,8 +132,8 @@ export function EnvironmentalSetup() {
                       <h4 className="font-black uppercase tracking-tight text-foreground">
                         High Performance
                       </h4>
-                      <p className="text-xs text-muted-foreground mt-1 font-medium italic">
-                        Full neural visuals & particles
+                      <p className="text-xs text-muted-foreground mt-1 font-medium">
+                        Full WebAssembly multi-threading & visuals
                       </p>
                     </div>
                   </button>
@@ -157,8 +161,8 @@ export function EnvironmentalSetup() {
                       <h4 className="font-black uppercase tracking-tight text-foreground">
                         Efficiency Mode
                       </h4>
-                      <p className="text-xs text-muted-foreground mt-1 font-medium italic">
-                        Optimized for low-end hardware
+                      <p className="text-xs text-muted-foreground mt-1 font-medium">
+                        Battery saver & minimal animations
                       </p>
                     </div>
                   </button>
@@ -184,13 +188,12 @@ export function EnvironmentalSetup() {
                   <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                     <Zap className="w-8 h-8" />
                   </div>
-                  <h2 className="text-3xl font-black tracking-tight uppercase italic">
-                    Visual Sync
+                  <h2 className="text-3xl font-black tracking-tight uppercase">
+                    Visual Theme &amp; Aesthetic
                   </h2>
                   <p className="text-muted-foreground font-medium leading-relaxed">
-                    Select your preferred documentation aesthetic. We can
-                    automatically synchronize with your operating system or
-                    allow you to initialize the Nebula profile.
+                    Choose your preferred workspace theme. Light, Dark, or
+                    Nebula cyber glow.
                   </p>
                 </div>
 
@@ -204,9 +207,9 @@ export function EnvironmentalSetup() {
                       key={t.id}
                       onClick={() => setTheme(t.id)}
                       className={cn(
-                        'p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3',
+                        'p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 cursor-pointer',
                         theme === t.id
-                          ? 'border-primary bg-primary/5'
+                          ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
                           : 'border-border bg-muted/40 hover:border-primary/30'
                       )}
                     >
@@ -236,7 +239,7 @@ export function EnvironmentalSetup() {
                     variant="ghost"
                     size="sm"
                     onClick={autoDetectTheme}
-                    className="text-[10px] font-black uppercase tracking-widest text-primary"
+                    className="text-[10px] font-black uppercase tracking-widest text-primary cursor-pointer"
                   >
                     Auto-Sync
                   </Button>
@@ -246,13 +249,13 @@ export function EnvironmentalSetup() {
                   <Button
                     variant="outline"
                     onClick={() => setStep(1)}
-                    className="h-14 rounded-xl px-8 font-black uppercase tracking-widest border-border hover:bg-primary/5 hover:text-primary"
+                    className="h-14 rounded-xl px-8 font-black uppercase tracking-widest border-border hover:bg-primary/5 hover:text-primary cursor-pointer"
                   >
                     Back
                   </Button>
                   <Button
                     onClick={() => setStep(3)}
-                    className="flex-1 h-14 rounded-xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground"
+                    className="flex-1 h-14 rounded-xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer"
                   >
                     Next Sequence
                   </Button>
@@ -284,8 +287,8 @@ export function EnvironmentalSetup() {
                 </div>
 
                 <div className="space-y-4">
-                  <h2 className="text-4xl font-black tracking-tight uppercase italic">
-                    Protocol Initialized
+                  <h2 className="text-4xl font-black tracking-tight uppercase">
+                    Workspace Ready
                   </h2>
                   <p className="text-muted-foreground font-medium max-w-xs mx-auto">
                     Environment calibrated for{' '}
@@ -296,9 +299,9 @@ export function EnvironmentalSetup() {
 
                 <Button
                   onClick={handleComplete}
-                  className="w-full h-16 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 group"
+                  className="w-full h-16 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 group cursor-pointer"
                 >
-                  Enter Command Hub
+                  Enter All Useful Tools
                   <Zap className="ml-2 w-5 h-5 group-hover:scale-125 transition-transform" />
                 </Button>
               </motion.div>

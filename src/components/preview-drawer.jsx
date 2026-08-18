@@ -80,7 +80,9 @@ export function PreviewDrawer({
         let cleanP3 = p3
           .replace(/\s+(target|rel)=["'][^"']*?["']/gi, '')
           .trim();
-        const isInternalLink = p2.toLowerCase().includes('hazwoper-osha.com');
+        const isInternalLink = p2
+          .toLowerCase()
+          .includes('hazwoper-useful-tools.vercel.app');
         let newTag = '<a href="' + p2 + '" target="_blank"';
         if (!isInternalLink) newTag += ' rel="noopener noreferrer"';
         if (cleanP3) newTag += ' ' + cleanP3;

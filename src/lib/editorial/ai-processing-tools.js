@@ -1,6 +1,6 @@
 export const aiProcessingEditorial = {
   'ai-assistant': {
-    overview: `The AI Assistant tool (Kimi AI & Neural Assistant) is a cutting-edge web utility designed to convert raw text and standard Word document content into fully formatted HTML cards featuring modern, glassmorphic layouts. In the realm of web design and content management, structuring raw text into visually appealing, interactive user interface components is traditionally a time-consuming process requiring proficient HTML, CSS, and Javascript skills. This tool fundamentally automates that transition, providing live interactive rendering that enables immediate visual feedback. It is critically important for technical content creators, front-end engineers, web designers, and safety personnel who need to rapidly deploy professional-grade web assets—such as HAZWOPER safety guidelines or procedural checklists—without writing boilerplate code from scratch. By integrating context-aware suggestions and automated grammar optimization, the AI Assistant ensures that the generated text is not only beautifully presented but also structurally and syntactically flawless. Professionals benefit from a significantly reduced time-to-market for digital materials, allowing them to focus on the substantive quality of the content rather than the intricate details of responsive web design.`,
+    overview: `The AI Assistant tool (Kimi AI & Neural Assistant) is a cutting-edge web utility designed to convert raw text and standard Word document content into fully formatted HTML cards featuring modern, glassmorphic layouts. In the realm of web design and content management, structuring raw text into visually appealing, interactive user interface components is traditionally a time-consuming process requiring proficient HTML, CSS, and Javascript skills. This tool fundamentally automates that transition, providing live interactive rendering that enables immediate visual feedback. It is critically important for technical content creators, front-end engineers, web designers, and operations teams who need to rapidly deploy professional-grade web assets—such as technical documentation guidelines or procedural checklists—without writing boilerplate code from scratch. By integrating context-aware suggestions and automated grammar optimization, the AI Assistant ensures that the generated text is not only beautifully presented but also structurally and syntactically flawless. Professionals benefit from a significantly reduced time-to-market for digital materials, allowing them to focus on the substantive quality of the content rather than the intricate details of responsive web design.`,
     stepByStep: `1. Prepare Your Content: Start by gathering your raw text or copying content from your Word document. Ensure that the text is logically separated into paragraphs or bullet points to help the AI understand the underlying structure.
 2. Input the Text: Paste your unformatted text into the main input editor of the AI Assistant. 
 3. Configure Layout Options: Select the "Glassmorphic Card" preset from the layout settings. You can adjust parameters such as blur intensity, background opacity, and border radius to suit your specific aesthetic requirements.
@@ -11,7 +11,7 @@ export const aiProcessingEditorial = {
 Common Errors to Avoid:
 - Overloading the input: Pasting excessively long documents (over 5,000 words) at once can degrade the live rendering performance and confuse the contextual analysis.
 - Ignoring contrast ratios: When customizing the glassmorphic settings, failing to account for text color against the translucent background can lead to severe readability and accessibility issues.
-- Skipping grammar reviews: Blindly accepting all AI grammar suggestions without reviewing them may result in the loss of industry-specific technical jargon (e.g., specific HAZWOPER terminologies) that the AI might flag as irregular.`,
+- Skipping grammar reviews: Blindly accepting all AI grammar suggestions without reviewing them may result in the loss of industry-specific technical jargon (e.g., specific Technical terminologies) that the AI might flag as irregular.`,
     methodology: `The AI Assistant employs sophisticated Natural Language Processing (NLP) models based on Transformer architectures to analyze text structure, semantic meaning, and grammatical correctness. The core of this system relies on the self-attention mechanism, which allows the model to weigh the importance of different words in a sequence regardless of their positional distance. This contextual understanding enables the generation of accurate grammar optimizations and intelligent component chunking for the HTML cards. The glassmorphic layout generation utilizes CSS3 backdrop-filter properties combined with semi-transparent RGBA color spaces to create depth and hierarchy in the user interface. 
 
 Here are the critical mathematical and computational principles driving the AI model:
@@ -27,7 +27,7 @@ Explanation: Used during the training phase of the underlying neural network, th
 3. **Glassmorphism Luminance Calculation**:
 Expression: L = 0.2126 * R + 0.7152 * G + 0.0722 * B
 Explanation: When the AI automatically suggests text colors for the glassmorphic cards, it calculates the relative luminance (L) of the semi-transparent background to ensure sufficient contrast ratios according to WCAG 2.1 standards, adjusting the text color to either dark or light dynamically.`,
-    examples: `Example 1: Converting a HAZWOPER Training Module
+    examples: `Example 1: Converting a technical training module
 Input: A 400-word raw text block detailing "Personal Protective Equipment (PPE) Levels A through D" for hazardous waste operations. 
 Process: The user pastes the text. The AI Assistant automatically identifies the four distinct PPE levels and chunks them into four separate structural blocks. It corrects three minor grammatical inconsistencies and suggests a glassmorphic layout with a 15px backdrop-blur and a subtle white border. 
 Result: The tool generates four responsive HTML cards, instantly viewable in the live rendering pane. The output code consists of 120 lines of clean HTML and CSS, saving the front-end developer approximately 45 minutes of manual coding and styling work.
@@ -43,29 +43,39 @@ Process: The user requests the AI to not only format the text but summarize it i
 Result: A highly engaging, interactive HTML carousel component is produced, reducing the reading burden on employees and ensuring critical safety information is highlighted efficiently.`,
     additionalFaq: [
       {
-        question: "Does the AI Assistant support frameworks like React or Vue, or just plain HTML?",
-        answer: "Currently, the tool exports primarily in plain HTML and CSS to ensure universal compatibility. However, the generated markup is structurally semantic and uses standard CSS classes, making it trivial to port into JSX for React or template tags for Vue. Future updates will introduce direct export options for popular JavaScript frameworks."
+        question:
+          'Does the AI Assistant support frameworks like React or Vue, or just plain HTML?',
+        answer:
+          'Currently, the tool exports primarily in plain HTML and CSS to ensure universal compatibility. However, the generated markup is structurally semantic and uses standard CSS classes, making it trivial to port into JSX for React or template tags for Vue. Future updates will introduce direct export options for popular JavaScript frameworks.',
       },
       {
-        question: "How does the tool handle sensitive or confidential corporate documents?",
-        answer: "The AI Assistant processes text entirely in-memory during your session. We do not store your raw input or the generated HTML on our servers after the session expires. For enterprise users with strict data compliance requirements, we recommend reviewing our privacy policy, but rest assured that your proprietary safety protocols remain secure."
+        question:
+          'How does the tool handle sensitive or confidential corporate documents?',
+        answer:
+          'The AI Assistant processes text entirely in-memory during your session. We do not store your raw input or the generated HTML on our servers after the session expires. For enterprise users with strict data compliance requirements, we recommend reviewing our privacy policy, but rest assured that your proprietary safety protocols remain secure.',
       },
       {
-        question: "Can I import custom CSS variables to match my company's branding?",
-        answer: "Yes. In the layout configuration panel, there is an 'Advanced' tab where you can define custom CSS properties. You can input your company's specific RGBA color codes and typography variables, and the live renderer will instantly apply them to the glassmorphic card generation."
+        question:
+          "Can I import custom CSS variables to match my company's branding?",
+        answer:
+          "Yes. In the layout configuration panel, there is an 'Advanced' tab where you can define custom CSS properties. You can input your company's specific RGBA color codes and typography variables, and the live renderer will instantly apply them to the glassmorphic card generation.",
       },
       {
-        question: "Why does the live rendering occasionally lag when pasting very large texts?",
-        answer: "Live rendering combined with real-time NLP grammatical analysis is computationally intensive. When pasting texts exceeding 5,000 words, the browser must parse large syntax trees and re-render complex backdrop-filter CSS properties simultaneously. We recommend breaking exceptionally large documents into smaller, logical sections."
+        question:
+          'Why does the live rendering occasionally lag when pasting very large texts?',
+        answer:
+          'Live rendering combined with real-time NLP grammatical analysis is computationally intensive. When pasting texts exceeding 5,000 words, the browser must parse large syntax trees and re-render complex backdrop-filter CSS properties simultaneously. We recommend breaking exceptionally large documents into smaller, logical sections.',
       },
       {
-        question: "Is the generated glassmorphic CSS compatible with older web browsers?",
-        answer: "Glassmorphism heavily relies on the CSS 'backdrop-filter' property. This is fully supported in modern versions of Chrome, Edge, Safari, and Firefox. For older browsers that lack support, the tool automatically generates fallback CSS rules using standard semi-transparent background colors to ensure the content remains fully visible and structured."
-      }
-    ]
+        question:
+          'Is the generated glassmorphic CSS compatible with older web browsers?',
+        answer:
+          "Glassmorphism heavily relies on the CSS 'backdrop-filter' property. This is fully supported in modern versions of Chrome, Edge, Safari, and Firefox. For older browsers that lack support, the tool automatically generates fallback CSS rules using standard semi-transparent background colors to ensure the content remains fully visible and structured.",
+      },
+    ],
   },
   'image-to-text': {
-    overview: `The Image to Text OCR (Optical Character Recognition) tool is an advanced, browser-based utility that extracts textual data from images and scanned PDF documents. Utilizing the powerful Tesseract OCR engine compiled via WebAssembly, this tool runs entirely on the client side, ensuring rapid processing and high data privacy. It supports over 50 global languages and includes specialized models for handwriting recognition, making it extraordinarily versatile. This utility is essential for technicians, data entry clerks, safety inspectors, and engineers who frequently deal with legacy paper documentation, safety data sheets (SDS), or physical HAZWOPER compliance forms that need to be digitized. Instead of manually transcribing thousands of words—a process prone to human error—users can simply upload an image or scan and let the OCR pipeline convert the visual data into editable, searchable text. The final output can be exported as raw TXT or formatted DOCX files. By automating the digitization of physical records, organizations can vastly improve their data accessibility, compliance tracking, and archival efficiency.`,
+    overview: `The Image to Text OCR (Optical Character Recognition) tool is an advanced, browser-based utility that extracts textual data from images and scanned PDF documents. Utilizing the powerful Tesseract OCR engine compiled via WebAssembly, this tool runs entirely on the client side, ensuring rapid processing and high data privacy. It supports over 50 global languages and includes specialized models for handwriting recognition, making it extraordinarily versatile. This utility is essential for technicians, data entry clerks, technical inspectors, and engineers who frequently deal with legacy paper documentation, safety data sheets (SDS), or physical operational compliance forms that need to be digitized. Instead of manually transcribing thousands of words—a process prone to human error—users can simply upload an image or scan and let the OCR pipeline convert the visual data into editable, searchable text. The final output can be exported as raw TXT or formatted DOCX files. By automating the digitization of physical records, organizations can vastly improve their data accessibility, compliance tracking, and archival efficiency.`,
     stepByStep: `1. Select the Source File: Click the upload zone or drag and drop your target image file (JPG, PNG, TIFF) or scanned PDF into the tool interface.
 2. Choose the Language: Use the dropdown menu to select the primary language of the text. If the document contains multiple languages, select the most prominent one, or download additional language packs if prompted.
 3. Pre-process the Image (Optional): Use the built-in contrast and brightness sliders to enhance the legibility of faded text or poorly lit scans.
@@ -92,8 +102,8 @@ Explanation: In the LSTM network recognizing sequences of text, the forget gate 
 3. **Softmax Output for Classification**:
 Expression: P(y=j|x) = e^(z_j) / Σ(e^(z_k))
 Explanation: At the final layer of the neural network, the model outputs raw scores (logits, z) for every possible character. The softmax function normalizes these scores into a probability distribution. The character class (j) with the highest probability P is selected as the recognized character for that specific visual segment.`,
-    examples: `Example 1: Digitizing an Old HAZWOPER Certificate
-Input: A scanned JPEG image (600 DPI) of a 1995 HAZWOPER 40-hour training certificate. The paper has yellowed, and the typed text is slightly faded.
+    examples: `Example 1: Digitizing an Old Professional Certificate
+Input: A scanned JPEG image (600 DPI) of a 1995 Technical Workflow training certificate. The paper has yellowed, and the typed text is slightly faded.
 Process: The user uploads the certificate and applies a slight contrast boost using the pre-processing tools. The tool utilizes Otsu's thresholding to isolate the faded black text from the yellowed background. The Tesseract engine processes the document in 2.4 seconds, successfully navigating the complex serif font used in the 90s.
 Result: The tool outputs a 100% accurate text string including the name, date of certification, and trainer ID. The user exports this as a TXT file and uploads it directly to their modern digital compliance database, eliminating the need for physical storage.
 
@@ -108,26 +118,35 @@ Process: The user selects the "Handwriting Recognition" model. The neural networ
 Result: Out of the 150 words written, the tool accurately transcribes 142. The system flags 8 ambiguous words with a yellow highlight for manual review. The inspector corrects the flagged words (mostly technical abbreviations) and exports the clean digital text for the official incident report.`,
     additionalFaq: [
       {
-        question: "Is my data sent to the cloud for OCR processing?",
-        answer: "No. The entire OCR process utilizes a WebAssembly compilation of the Tesseract engine, meaning all binarization, segmentation, and neural network calculations happen locally within your web browser. Your images and extracted text never leave your device, ensuring maximum data privacy and security."
+        question: 'Is my data sent to the cloud for OCR processing?',
+        answer:
+          'No. The entire OCR process utilizes a WebAssembly compilation of the Tesseract engine, meaning all binarization, segmentation, and neural network calculations happen locally within your web browser. Your images and extracted text never leave your device, ensuring maximum data privacy and security.',
       },
       {
-        question: "Can the tool recognize text in images that contain complex or noisy backgrounds?",
-        answer: "Yes, but accuracy may vary. The tool uses advanced binarization algorithms to separate text from backgrounds, but heavy visual noise, patterns, or low-contrast colors can interfere. We highly recommend using the built-in contrast and brightness sliders to isolate the text visually before clicking 'Extract'."
+        question:
+          'Can the tool recognize text in images that contain complex or noisy backgrounds?',
+        answer:
+          "Yes, but accuracy may vary. The tool uses advanced binarization algorithms to separate text from backgrounds, but heavy visual noise, patterns, or low-contrast colors can interfere. We highly recommend using the built-in contrast and brightness sliders to isolate the text visually before clicking 'Extract'.",
       },
       {
-        question: "Does the OCR tool preserve the exact layout and formatting of my original document?",
-        answer: "The tool attempts to preserve spatial layout when exporting to DOCX by mapping recognized text blocks to their approximate coordinates. However, complex multi-column layouts, intricate tables, or embedded graphics may require manual adjustment in your word processor after export."
+        question:
+          'Does the OCR tool preserve the exact layout and formatting of my original document?',
+        answer:
+          'The tool attempts to preserve spatial layout when exporting to DOCX by mapping recognized text blocks to their approximate coordinates. However, complex multi-column layouts, intricate tables, or embedded graphics may require manual adjustment in your word processor after export.',
       },
       {
-        question: "Why does handwriting recognition sometimes produce nonsensical output?",
-        answer: "Handwriting is highly subjective and lacks the uniform structure of printed fonts. If the handwriting is extremely cursive, messy, or uses non-standard abbreviations, the LSTM model may misinterpret the sequence of strokes. Selecting the specific handwriting model and ensuring high image clarity yields the best results."
+        question:
+          'Why does handwriting recognition sometimes produce nonsensical output?',
+        answer:
+          'Handwriting is highly subjective and lacks the uniform structure of printed fonts. If the handwriting is extremely cursive, messy, or uses non-standard abbreviations, the LSTM model may misinterpret the sequence of strokes. Selecting the specific handwriting model and ensuring high image clarity yields the best results.',
       },
       {
-        question: "Are there any file size limits for uploading PDFs or images?",
-        answer: "Since the processing occurs entirely in your browser, the limit is largely dictated by your device's available RAM. Generally, images up to 20MB and PDFs up to 50 pages can be processed smoothly on a standard modern laptop. Larger files may cause the browser tab to become unresponsive."
-      }
-    ]
+        question:
+          'Are there any file size limits for uploading PDFs or images?',
+        answer:
+          "Since the processing occurs entirely in your browser, the limit is largely dictated by your device's available RAM. Generally, images up to 20MB and PDFs up to 50 pages can be processed smoothly on a standard modern laptop. Larger files may cause the browser tab to become unresponsive.",
+      },
+    ],
   },
   'youtube-downloader': {
     overview: `The Universal Social Video Downloader is a comprehensive web application designed to extract and download multimedia content from major platforms including YouTube, TikTok, Instagram Reels, Facebook, Twitter, Reddit, and Pinterest. It provides users the capability to download high-definition video files up to 4K resolution in MP4 format, or extract pure audio tracks at a pristine 320kbps in MP3 format. In professional and educational environments, accessing reliable training materials, instructional videos, and safety demonstrations is critical. However, relying on an active internet connection to stream these resources during on-site training or in remote field locations is often impractical or impossible. This tool empowers safety instructors, content curators, and media professionals to archive vital video content locally. A standout feature is its ability to bypass and remove platform-specific watermarks (such as the bouncing TikTok logo), ensuring the downloaded media is clean and presentation-ready. By facilitating the offline availability of high-quality multimedia, this tool ensures uninterrupted training sessions and reliable archival of digital assets.`,
@@ -162,8 +181,8 @@ Input: A URL to a 15-minute, 1080p YouTube video demonstrating proper confined s
 Process: The user pastes the URL and selects the 1080p MP4 option. The tool accesses YouTube's DASH manifest, locating the distinct 1080p H.264 video track and the separate 256kbps WebM audio track. 
 Result: The backend swiftly downloads both streams and multiplexes them together in under a minute. The user receives a single, high-quality 250MB MP4 file. The instructor can now embed this video directly into their offline PowerPoint presentation, avoiding buffering issues during the actual training session.
 
-Example 2: Extracting Audio from an OSHA Compliance Podcast
-Input: A URL to a Twitter video featuring an hour-long recorded panel discussion on recent changes to OSHA 29 CFR 1910.120 standards.
+Example 2: Extracting Audio from an quality compliance Podcast
+Input: A URL to a Twitter video featuring an hour-long recorded panel discussion on recent changes to industry documentation standards standards.
 Process: The user is only interested in the discussion, not the static video feed, so they select the "MP3 320kbps" extraction option. The tool isolates the AAC audio stream from the Twitter server.
 Result: Bypassing the heavy video data, the tool downloads the audio and transcodes it to a pristine 320kbps MP3. The user gets a compact 140MB audio file they can listen to on their mobile device while commuting, maximizing their educational time.
 
@@ -173,26 +192,32 @@ Process: The user pastes the link and ensures the "Remove Watermark" toggle is a
 Result: The user downloads a clean, 1080p vertical video perfectly suited for inclusion in a corporate training module. Without the distracting bouncing logo and username overlay, the video maintains a professional appearance suitable for formal safety instruction.`,
     additionalFaq: [
       {
-        question: "Is it legal to download videos from social media platforms?",
-        answer: "Downloading videos for personal use, educational purposes, or under the doctrine of 'fair use' is generally acceptable. However, redistributing, monetizing, or claiming ownership of downloaded copyrighted content violates platform terms of service and copyright law. Always use discretion and respect intellectual property."
+        question: 'Is it legal to download videos from social media platforms?',
+        answer:
+          "Downloading videos for personal use, educational purposes, or under the doctrine of 'fair use' is generally acceptable. However, redistributing, monetizing, or claiming ownership of downloaded copyrighted content violates platform terms of service and copyright law. Always use discretion and respect intellectual property.",
       },
       {
-        question: "Why does the tool sometimes take longer to process 4K videos?",
-        answer: "Platforms like YouTube separate their high-resolution 4K video tracks from the audio tracks. To provide you with a single playable file, our tool must download the massive 4K video file and the audio file separately, and then multiplex (combine) them. This processing time depends on the file size and server bandwidth."
+        question:
+          'Why does the tool sometimes take longer to process 4K videos?',
+        answer:
+          'Platforms like YouTube separate their high-resolution 4K video tracks from the audio tracks. To provide you with a single playable file, our tool must download the massive 4K video file and the audio file separately, and then multiplex (combine) them. This processing time depends on the file size and server bandwidth.',
       },
       {
-        question: "Can I download private videos or videos requiring a login?",
-        answer: "No. The tool relies on public API endpoints to analyze and retrieve media streams. It cannot access videos that are set to private, restricted to specific followers, or require user authentication to view. The video must be publicly accessible via its URL."
+        question: 'Can I download private videos or videos requiring a login?',
+        answer:
+          'No. The tool relies on public API endpoints to analyze and retrieve media streams. It cannot access videos that are set to private, restricted to specific followers, or require user authentication to view. The video must be publicly accessible via its URL.',
       },
       {
-        question: "How does the tool remove watermarks from TikTok videos?",
-        answer: "The tool does not actually edit or blur the video to remove the watermark. Instead, it utilizes specific API requests that fetch the original, raw video file from the platform's servers before the watermark overlay is dynamically generated and applied to the standard user-facing video feed."
+        question: 'How does the tool remove watermarks from TikTok videos?',
+        answer:
+          "The tool does not actually edit or blur the video to remove the watermark. Instead, it utilizes specific API requests that fetch the original, raw video file from the platform's servers before the watermark overlay is dynamically generated and applied to the standard user-facing video feed.",
       },
       {
-        question: "Why did the video download without sound?",
-        answer: "This is a rare error that occurs if the platform unexpectedly alters its streaming protocol, causing the audio stream demultiplexing to fail. If this happens, try analyzing the link again and explicitly selecting an option that lists both video and audio bitrates, or choose a slightly lower resolution."
-      }
-    ]
+        question: 'Why did the video download without sound?',
+        answer:
+          'This is a rare error that occurs if the platform unexpectedly alters its streaming protocol, causing the audio stream demultiplexing to fail. If this happens, try analyzing the link again and explicitly selecting an option that lists both video and audio bitrates, or choose a slightly lower resolution.',
+      },
+    ],
   },
   'watermark-remover': {
     overview: `The AI Watermark & Object Remover is a sophisticated web application that allows users to seamlessly erase unwanted elements—such as watermarks, timestamps, logos, or distracting background objects—from their digital images. Operating via an intuitive canvas brush tool, users can paint over the offending area, and the application's underlying content-aware AI model reconstructs the missing pixels to blend flawlessly with the surrounding environment. In professional media editing, corporate presentations, and documentation cleanup, photographs are often marred by intrusive dates or stock photo watermarks that degrade visual professionalism. Manually cloning or healing these areas in complex software like Photoshop requires significant skill and time. This tool democratizes that capability, using advanced inpainting algorithms to automatically generate logical, texture-matching replacements in seconds. It is an invaluable resource for marketers, web developers, and training coordinators who need pristine, distraction-free visual assets for their web pages, safety manuals, or public-facing materials without investing in expensive image manipulation software.`,
@@ -238,26 +263,35 @@ Process: The user masks the entire safety cone. The background consists of a bri
 Result: The AI analyzes the structural geometry of the brick wall on either side of the mask and connects the mortar lines seamlessly through the masked area. The cone is entirely removed, and the structural integrity of the background is maintained, focusing all visual attention on the worker's lifting technique.`,
     additionalFaq: [
       {
-        question: "Can this tool reconstruct detailed text or faces obscured by a watermark?",
-        answer: "No. Content-aware inpainting relies on analyzing surrounding pixels and general semantic context. It cannot accurately 'guess' or reconstruct specific unique details like obscured alphanumeric characters, intricate logos, or unique facial features that it cannot see. It works best on continuous textures like sky, skin, or walls."
+        question:
+          'Can this tool reconstruct detailed text or faces obscured by a watermark?',
+        answer:
+          "No. Content-aware inpainting relies on analyzing surrounding pixels and general semantic context. It cannot accurately 'guess' or reconstruct specific unique details like obscured alphanumeric characters, intricate logos, or unique facial features that it cannot see. It works best on continuous textures like sky, skin, or walls.",
       },
       {
-        question: "Does the size of my brush mask affect the final quality?",
-        answer: "Yes, significantly. Creating a mask that is vastly larger than the object you wish to remove forces the AI to synthesize a large area unnecessarily, increasing the likelihood of blurry or repeating textures. Always try to keep your brush mask as tight to the edges of the object as possible."
+        question: 'Does the size of my brush mask affect the final quality?',
+        answer:
+          'Yes, significantly. Creating a mask that is vastly larger than the object you wish to remove forces the AI to synthesize a large area unnecessarily, increasing the likelihood of blurry or repeating textures. Always try to keep your brush mask as tight to the edges of the object as possible.',
       },
       {
-        question: "Is there a limit to how many objects I can remove from a single image?",
-        answer: "There is no hard limit on the number of objects, but processing time and quality may degrade if you attempt to remove a massive percentage of the image at once. We recommend removing multiple objects in sequential, individual passes rather than masking them all simultaneously."
+        question:
+          'Is there a limit to how many objects I can remove from a single image?',
+        answer:
+          'There is no hard limit on the number of objects, but processing time and quality may degrade if you attempt to remove a massive percentage of the image at once. We recommend removing multiple objects in sequential, individual passes rather than masking them all simultaneously.',
       },
       {
-        question: "Will removing a watermark reduce the overall resolution of my image?",
-        answer: "No. The AI processes the image at its original uploaded resolution. The only pixels altered are the ones explicitly contained within the red mask you draw. The rest of the image, and its overall resolution and quality, remain entirely untouched and intact upon download."
+        question:
+          'Will removing a watermark reduce the overall resolution of my image?',
+        answer:
+          'No. The AI processes the image at its original uploaded resolution. The only pixels altered are the ones explicitly contained within the red mask you draw. The rest of the image, and its overall resolution and quality, remain entirely untouched and intact upon download.',
       },
       {
-        question: "What is the best way to handle very dark or opaque watermarks?",
-        answer: "Solid, opaque objects leave no visual data behind them for the AI to analyze, making them harder to remove than semi-transparent watermarks. For solid objects, try to remove them in multiple small sections. If the result is blurry, undo the action and try painting a slightly smaller or larger mask to give the AI different context clues."
-      }
-    ]
+        question:
+          'What is the best way to handle very dark or opaque watermarks?',
+        answer:
+          'Solid, opaque objects leave no visual data behind them for the AI to analyze, making them harder to remove than semi-transparent watermarks. For solid objects, try to remove them in multiple small sections. If the result is blurry, undo the action and try painting a slightly smaller or larger mask to give the AI different context clues.',
+      },
+    ],
   },
   'bg-remover': {
     overview: `The AI Background Remover is an extraordinarily fast and precise web tool that utilizes client-side machine learning to isolate human subjects, products, or specific objects from complex backgrounds, generating clean, transparent PNG files. Powered by the state-of-the-art @imgly/background-removal library, this tool executes sophisticated semantic segmentation entirely within the user's browser, eliminating the need to upload sensitive or proprietary images to external servers. In e-commerce, digital marketing, and the creation of safety training modules, isolating subjects is a fundamental task. Creating diagrams involving machinery or personnel often requires removing distracting warehouse backgrounds to focus the viewer's attention. Traditionally requiring meticulous, pixel-by-pixel tracing with a pen tool in professional software, this tool automates the process in mere seconds. The AI Background Remover significantly accelerates graphic design workflows, enabling professionals to rapidly composite isolated assets onto new backgrounds, presentation slides, or training materials with pixel-perfect accuracy.`,
@@ -303,25 +337,33 @@ Process: An engineer needs a clear icon of the barrel for a digital database. Th
 Result: The tool accurately cuts out the barrel, even maintaining the integrity of the hazard warning stickers on its surface. The engineer downloads the isolated barrel and composites it into the digital inventory system, improving visual recognition for staff managing the storage facility.`,
     additionalFaq: [
       {
-        question: "Is my image uploaded to a server to process the background removal?",
-        answer: "No. The AI model (@imgly/background-removal) is downloaded into your browser cache upon your first visit, and all the intense computational processing happens locally using your device's GPU/WebGL. Your images remain completely private and are never transmitted across the internet."
+        question:
+          'Is my image uploaded to a server to process the background removal?',
+        answer:
+          "No. The AI model (@imgly/background-removal) is downloaded into your browser cache upon your first visit, and all the intense computational processing happens locally using your device's GPU/WebGL. Your images remain completely private and are never transmitted across the internet.",
       },
       {
-        question: "Why does the tool sometimes cut off parts of the subject, like a hand or a tool they are holding?",
-        answer: "The AI is trained to recognize primary subjects (usually human bodies, animals, or central objects). If an appendage or held object blends too seamlessly into the background color, or if it stretches far from the main 'mass' of the subject, the network might misclassify those pixels as background. High contrast lighting prevents this."
+        question:
+          'Why does the tool sometimes cut off parts of the subject, like a hand or a tool they are holding?',
+        answer:
+          "The AI is trained to recognize primary subjects (usually human bodies, animals, or central objects). If an appendage or held object blends too seamlessly into the background color, or if it stretches far from the main 'mass' of the subject, the network might misclassify those pixels as background. High contrast lighting prevents this.",
       },
       {
-        question: "Can I replace the removed background with a solid color instead of transparency?",
-        answer: "The primary output of the tool is a transparent PNG. However, because it is transparent, you can easily open the downloaded file in any basic image viewer or presentation software (like Word or PowerPoint) and simply place a colored shape or image directly behind it to achieve a new background."
+        question:
+          'Can I replace the removed background with a solid color instead of transparency?',
+        answer:
+          'The primary output of the tool is a transparent PNG. However, because it is transparent, you can easily open the downloaded file in any basic image viewer or presentation software (like Word or PowerPoint) and simply place a colored shape or image directly behind it to achieve a new background.',
       },
       {
-        question: "Does the background remover work on videos or GIFs?",
-        answer: "Currently, this specific tool is designed to process static images only (JPG, PNG, WebP). Processing real-time video for background removal (rotoscoping) requires significantly more computational power and a different temporal AI architecture that is not yet supported in this browser-based implementation."
+        question: 'Does the background remover work on videos or GIFs?',
+        answer:
+          'Currently, this specific tool is designed to process static images only (JPG, PNG, WebP). Processing real-time video for background removal (rotoscoping) requires significantly more computational power and a different temporal AI architecture that is not yet supported in this browser-based implementation.',
       },
       {
-        question: "Why does the tool run slower on my older computer?",
-        answer: "Because the machine learning model runs entirely on the client side, it relies heavily on your computer's hardware, specifically the Graphics Processing Unit (GPU) via WebGL. Older machines with integrated graphics or outdated browsers may take several seconds longer to compute the segmentation compared to modern devices."
-      }
-    ]
-  }
+        question: 'Why does the tool run slower on my older computer?',
+        answer:
+          "Because the machine learning model runs entirely on the client side, it relies heavily on your computer's hardware, specifically the Graphics Processing Unit (GPU) via WebGL. Older machines with integrated graphics or outdated browsers may take several seconds longer to compute the segmentation compared to modern devices.",
+      },
+    ],
+  },
 };

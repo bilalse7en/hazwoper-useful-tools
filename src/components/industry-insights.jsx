@@ -19,16 +19,16 @@ export function IndustryInsights() {
             <div className="space-y-4">
               <h2 className="text-3xl md:text-5xl font-black tracking-tight text-foreground leading-tight">
                 Advancing{' '}
-                <span className="text-secondary">Safety Standards</span> <br />
+                <span className="text-secondary">Productivity Standards</span>{' '}
+                <br />
                 Through Automation
               </h2>
               <p className="text-lg text-muted-foreground font-medium leading-relaxed">
-                In the highly regulated world of HAZWOPER (Hazardous Waste
-                Operations and Emergency Response), accuracy in training
-                documentation is not just a matter of efficiency&mdash;it&apos;s
-                a matter of life and safety. Our platform is engineered to
-                bridge the gap between complex regulatory requirements and
-                scalable content dissemination.
+                In today&apos;s fast-moving digital world, speed and accuracy in
+                file conversion, document management, and media editing are
+                essential. Our platform is engineered to bridge the gap between
+                complex workflows and effortless, lightning-fast browser
+                execution.
               </p>
             </div>
 
@@ -36,27 +36,27 @@ export function IndustryInsights() {
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="w-5 h-5 text-secondary" />
-                  <h4 className="font-bold text-foreground">OSHA Alignment</h4>
+                  <h4 className="font-bold text-foreground">
+                    Universal Standards
+                  </h4>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Every module generated through our system follows the semantic
-                  hierarchy recommended by OSHA 29 CFR 1910.120, ensuring that
-                  learning objectives are clearly stated and verified.
+                  Every tool generated through our system follows modern web and
+                  media standards, ensuring seamless compatibility across all
+                  browsers and devices.
                 </p>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-secondary" />
                   <h4 className="font-bold text-foreground">
-                    Technical Fidelity
+                    Local Data Fidelity
                   </h4>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  We implement strict state management protocols to ensure that
-                  transient data is not cached longer than necessary. This
-                  reduces the risk of unauthorized access and maintains the
-                  &quot;clean environment&quot; necessary for high-stakes
-                  industrial safety tasks.
+                  We implement strict client-side processing protocols so your
+                  files stay in your browser memory. Zero remote file storage,
+                  zero security leaks, and complete privacy.
                 </p>
               </div>
             </div>
@@ -68,9 +68,9 @@ export function IndustryInsights() {
                   Real-Time Processing Metrics
                 </h5>
                 <p className="text-xs text-muted-foreground">
-                  Our engine analyzes over 500 semantic markers per second to
-                  identify critical safety definitions, warnings, and procedural
-                  steps within your source documents.
+                  Our browser engines process millions of operations per second
+                  to convert media, parse documents, and render PDF edits in
+                  real time.
                 </p>
               </div>
             </div>
@@ -92,23 +92,23 @@ export function IndustryInsights() {
                   <Globe className="w-10 h-10 text-secondary mb-4" />
                   <h5 className="font-black text-xl mb-2">Global UI</h5>
                   <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                    Standardized for international safety documentation.
+                    Standardized for modern web workflows worldwide.
                   </p>
                 </div>
               </div>
               <div className="space-y-4 pt-12">
                 <div className="aspect-square bg-muted/30 rounded-[40px] border border-border p-8 flex flex-col justify-end">
                   <BookOpen className="w-10 h-10 text-secondary mb-4" />
-                  <h5 className="font-black text-xl mb-2">NLP Library</h5>
+                  <h5 className="font-black text-xl mb-2">Smart Engine</h5>
                   <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                    Deep analysis of technical and industrial linguistics.
+                    Deep analysis of document structures and media codecs.
                   </p>
                 </div>
                 <div className="aspect-[4/5] bg-muted/30 rounded-[40px] border border-border p-8 flex flex-col justify-end">
                   <ShieldCheck className="w-10 h-10 text-secondary mb-4" />
-                  <h5 className="font-black text-xl mb-2">GDPR Ready</h5>
+                  <h5 className="font-black text-xl mb-2">Privacy First</h5>
                   <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                    Privacy is baked into every layer of our content ecosystem.
+                    Privacy is baked into every layer of our utility ecosystem.
                   </p>
                 </div>
               </div>
@@ -119,35 +119,30 @@ export function IndustryInsights() {
         {/* High Value Content Block for AdSense */}
         <div className="mt-32 max-w-4xl mx-auto space-y-12">
           <h3 className="text-2xl md:text-3xl font-black text-center text-foreground">
-            The Role of Professional Tools in Technical Safety
+            The Role of All-in-One Online Utilities in Modern Workflows
           </h3>
           <div className="prose prose-invert max-w-none text-muted-foreground font-medium leading-relaxed columns-1 md:columns-2 gap-12">
             <p>
-              Modern safety training requires more than just static content; it
-              demands a dynamic relationship between the instructor and the
-              source material. Our content generators are designed to simplify
-              the complex workflows associated with OSHA and HAZWOPER
-              compliance, providing course architects with the precision
-              required to translate scientific and legal data into accessible
-              educational modules.
+              Modern digital tasks require more than just separate, disconnected
+              websites; they demand a cohesive, unified workspace where you can
+              edit PDFs, convert audio and video, extract text via OCR, and
+              clean HTML in one single place. Our utility platform is designed
+              to simplify high-friction workflows, providing professionals with
+              the speed and reliability needed to get work done efficiently.
             </p>
             <p>
-              By focusing on clean HTML output and semantic integrity, we ensure
-              that every training asset generated is optimized for search
-              engines and accessibility standards. This reduces the friction of
-              content migration between platforms and ensures that critical
-              safety information is always accessible to those who need it most.
-              Our commitment to technical excellence reflects the high standards
-              of the industrial and medical centers we serve across the globe.
+              By focusing on clean outputs and client-side processing, we ensure
+              that every file you convert or generate remains 100% private to
+              your device. This reduces bandwidth costs, eliminates upload wait
+              times, and provides instant results. Our commitment to performance
+              reflects the needs of students, creators, and business
+              professionals alike.
             </p>
             <p>
               Furthermore, the architectural resilience of our platform allows
-              for consistent updates in response to changing federal
-              regulations. As new safety standards emerge, our neural engine
-              updates its mapping protocols to ensure that your generated
-              content remains legally compliant and educationally effective,
-              providing a future-proof solution for industrial documentation
-              management.
+              for continuous updates and expansion. As new formats and browser
+              technologies emerge, our utility engine evolves to ensure that
+              your workflow remains smooth, frictionless, and lightning-fast.
             </p>
           </div>
         </div>

@@ -1,9 +1,9 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Privacy Policy | Content Suite',
+  title: 'Privacy Policy | All Useful Tools',
   description:
-    'Privacy Policy for Content Suite - Learn how we collect, use, and protect your data in compliance with GDPR and privacy regulations.',
+    'Privacy Policy for All Useful Tools - Learn how we collect, use, and protect your data in compliance with GDPR and privacy regulations.',
   robots: 'index, follow',
 };
 
@@ -30,7 +30,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">Introduction</h2>
             <p>
-              Welcome to Content Suite, operated by Bilal (&quot;we,&quot;
+              Welcome to All Useful Tools, operated by Bilal (&quot;we,&quot;
               &quot;our,&quot; or &quot;us&quot;). We are committed to
               protecting your privacy and ensuring transparency about how we
               collect, use, and share your information. This Privacy Policy

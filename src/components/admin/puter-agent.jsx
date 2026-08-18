@@ -24,7 +24,7 @@ const TOOL_SUMMARY = Object.entries(toolInfo)
   .map(([slug, info]) => `- ${info.name}: ${info.description}`)
   .join('\n');
 
-const SYSTEM_PROMPT = `You are the Se7eN Bot "Autopilot Ultimate" for "HAZWOPER Useful Tools".
+const SYSTEM_PROMPT = `You are the Se7eN Bot "Autopilot Ultimate" for "All Useful Tools".
 Your mission is to generate an exhaustive, world-class blog post of exactly 5000 words.
 This content must be the absolute authority on the topic provided.
 

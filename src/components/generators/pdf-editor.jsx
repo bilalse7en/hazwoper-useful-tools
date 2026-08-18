@@ -626,13 +626,15 @@ export function PDFEditor() {
       let mergedDoc;
 
       if (pdfArrayBuffer) {
-        const existingDoc = await PDFDocument.load(pdfArrayBuffer.slice(0), { ignoreEncryption: true });
+        const existingDoc = await PDFDocument.load(pdfArrayBuffer.slice(0), {
+          ignoreEncryption: true,
+        });
         mergedDoc = await PDFDocument.create();
-        
+
         // Copy cover page first
         const [coverPage] = await mergedDoc.copyPages(coverDoc, [0]);
         mergedDoc.addPage(coverPage);
-        
+
         // Copy all existing pages
         const existingPageCount = existingDoc.getPageCount();
         for (let i = 0; i < existingPageCount; i++) {
@@ -661,7 +663,7 @@ export function PDFEditor() {
       Swal.fire({
         icon: 'success',
         title: 'Cover Page Added!',
-        text: 'Branded HAZWOPER-OSHA cover page has been inserted as page 1.',
+        text: 'Branded All Useful Tools cover page has been inserted as page 1.',
         timer: 2500,
         showConfirmButton: false,
       });
@@ -851,8 +853,8 @@ export function PDFEditor() {
             size="sm"
             onClick={handleAddCoverPage}
             disabled={isProcessing}
-            className="h-8 text-xs font-bold gap-1.5 border-amber-500/50 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30"
-            title="Add branded HAZWOPER-OSHA cover page as first page"
+            className="h-8 text-xs font-bold gap-1.5 border-primary/50 text-primary hover:bg-primary/10"
+            title="Add branded All Useful Tools cover page as first page"
           >
             <BookOpen className="w-4 h-4" />
             {isProcessing ? 'Adding...' : 'Cover Page'}
@@ -1326,141 +1328,67 @@ export function PDFEditor() {
               />
 
               {/* Interactive HTML Link Overlay for Cover Page in Select Mode */}
-              {Boolean(activePage?.isCoverPage || activePage?.id?.includes('cover')) && activeTool === 'select' && (
-                <div className="absolute inset-0 z-20 pointer-events-auto">
-                  {/* Phone */}
-                  <a
-                    href="tel:1-866-429-6742"
-                    title="Call 1-866-429-6742"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '68%', top: '1.2%', width: '29%', height: '3.0%' }}
-                  />
-                  {/* Email */}
-                  <a
-                    href="mailto:info@hazwoper-osha.com"
-                    title="Email info@hazwoper-osha.com"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '66%', top: '4.0%', width: '31%', height: '3.0%' }}
-                  />
-                  {/* Website Header */}
-                  <a
-                    href="https://hazwoper-osha.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Visit www.hazwoper-osha.com"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '66%', top: '6.8%', width: '31%', height: '3.0%' }}
-                  />
-                  {/* Logo Header */}
-                  <a
-                    href="https://hazwoper-osha.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="HAZWOPER-OSHA Homepage"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '2.5%', top: '1.2%', width: '42%', height: '8.5%' }}
-                  />
-                  {/* QR Code Footer */}
-                  <a
-                    href="https://hazwoper-osha.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Scan/Visit HAZWOPER-OSHA"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '2.3%', top: '85.5%', width: '13.5%', height: '10.5%' }}
-                  />
-                  {/* Services Column 1 */}
-                  <a
-                    href="https://hazwoper-osha.com/online-courses"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Browse All OSHA & HAZWOPER Training Courses"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '18.5%', top: '84.0%', width: '28.0%', height: '12.0%' }}
-                  />
-                  {/* Services Column 2 */}
-                  <a
-                    href="https://hazwoper-osha.com/online-courses"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Browse Safety Programs & Training"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '49.0%', top: '84.0%', width: '26.5%', height: '12.0%' }}
-                  />
-                  {/* Address Block */}
-                  <a
-                    href="https://hazwoper-osha.com/contact-us"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="HAZWOPER-OSHA Los Angeles Office - Contact Us"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '77.0%', top: '83.5%', width: '21.0%', height: '7.8%' }}
-                  />
-                  {/* Social: LinkedIn */}
-                  <a
-                    href="https://www.linkedin.com/company/hazwoper-osha/"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="HAZWOPER-OSHA LinkedIn"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '76.8%', top: '92.4%', width: '3.4%', height: '2.8%' }}
-                  />
-                  {/* Social: Facebook */}
-                  <a
-                    href="https://www.facebook.com/HazwoperOsha"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="HAZWOPER-OSHA Facebook"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '80.5%', top: '92.4%', width: '3.4%', height: '2.8%' }}
-                  />
-                  {/* Social: YouTube */}
-                  <a
-                    href="https://www.youtube.com/@hazwoper-osha"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="HAZWOPER-OSHA YouTube Channel"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '84.1%', top: '92.4%', width: '3.4%', height: '2.8%' }}
-                  />
-                  {/* Social: Instagram */}
-                  <a
-                    href="https://www.instagram.com/hazwoper_osha_training/"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="HAZWOPER-OSHA Instagram"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '87.7%', top: '92.4%', width: '3.4%', height: '2.8%' }}
-                  />
-                  {/* Social: Twitter / X */}
-                  <a
-                    href="https://twitter.com/HazwoperOsha/"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="HAZWOPER-OSHA Twitter / X"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '91.3%', top: '92.4%', width: '3.4%', height: '2.8%' }}
-                  />
-                  {/* Social: Pinterest */}
-                  <a
-                    href="https://www.pinterest.com/HazwoperOsha/"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="HAZWOPER-OSHA Pinterest"
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '94.9%', top: '92.4%', width: '3.4%', height: '2.8%' }}
-                  />
-                  {/* Tagline Footer */}
-                  <a
-                    href="https://www.hazwoper-osha.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Train Today. Work Safely. Return Home."
-                    className="absolute cursor-pointer block focus:outline-none"
-                    style={{ left: '24.5%', top: '97.0%', width: '51.0%', height: '3.0%' }}
-                  />
-                </div>
-              )}
+              {Boolean(
+                activePage?.isCoverPage || activePage?.id?.includes('cover')
+              ) &&
+                activeTool === 'select' && (
+                  <div className="absolute inset-0 z-20 pointer-events-auto">
+                    {/* Email */}
+                    <a
+                      href="mailto:support@hazwoper-useful-tools.com"
+                      title="Email Support"
+                      className="absolute cursor-pointer block focus:outline-none"
+                      style={{
+                        left: '60%',
+                        top: '4.0%',
+                        width: '37%',
+                        height: '3.5%',
+                      }}
+                    />
+                    {/* Website Header */}
+                    <a
+                      href="https://hazwoper-useful-tools.vercel.app"
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Visit All Useful Tools"
+                      className="absolute cursor-pointer block focus:outline-none"
+                      style={{
+                        left: '60%',
+                        top: '7.5%',
+                        width: '37%',
+                        height: '3.5%',
+                      }}
+                    />
+                    {/* Logo Header */}
+                    <a
+                      href="https://hazwoper-useful-tools.vercel.app"
+                      target="_blank"
+                      rel="noreferrer"
+                      title="All Useful Tools Homepage"
+                      className="absolute cursor-pointer block focus:outline-none"
+                      style={{
+                        left: '2.5%',
+                        top: '1.2%',
+                        width: '45%',
+                        height: '9.0%',
+                      }}
+                    />
+                    {/* Tagline Footer */}
+                    <a
+                      href="https://hazwoper-useful-tools.vercel.app"
+                      target="_blank"
+                      rel="noreferrer"
+                      title="All Useful Tools Platform"
+                      className="absolute cursor-pointer block focus:outline-none"
+                      style={{
+                        left: '24.5%',
+                        top: '97.0%',
+                        width: '51.0%',
+                        height: '3.0%',
+                      }}
+                    />
+                  </div>
+                )}
 
               {/* Canvas Overlay for adding/editing elements */}
               <CanvasOverlay

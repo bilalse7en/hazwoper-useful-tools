@@ -140,13 +140,12 @@ export function ToolSEOContent({ slug }) {
           {info.detailedDescription}
         </p>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          The {info.name} is part of Content Suite&apos;s professional{' '}
+          The {info.name} is part of All Useful Tools&apos; professional{' '}
           {info.category?.toLowerCase()} toolkit. All processing happens
           directly in your browser using advanced WebAssembly and Web Worker
           technologies, ensuring your files never leave your device. This
-          privacy-first approach makes it ideal for sensitive industrial
-          documentation and safety training materials that require strict data
-          handling protocols.
+          privacy-first approach makes it ideal for sensitive documentation and
+          digital workflows that require strict data privacy.
         </p>
       </div>
     </section>

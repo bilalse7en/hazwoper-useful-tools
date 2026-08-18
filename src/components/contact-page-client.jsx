@@ -35,9 +35,9 @@ export function ContactPageClient() {
                 <span className="text-primary italic">Touch.</span>
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed font-medium max-w-2xl">
-                Have questions about HAZWOPER compliance, tool integration, or
-                custom enterprise solutions? Our technical support team is
-                standing by to assist your safety operations.
+                Have questions about our tools, feature suggestions, or custom
+                workflows? Our technical support team is standing by to assist
+                you.
               </p>
             </motion.div>
           </div>
@@ -53,9 +53,9 @@ export function ContactPageClient() {
                 Communication Hub
               </h2>
               <p className="text-muted-foreground font-medium leading-relaxed">
-                We prioritize high-speed responses for industrial compliance
-                inquiries. Expect a response within 2-4 business hours for all
-                priority documentation requests.
+                We prioritize high-speed responses for all user inquiries.
+                Expect a response within 2-4 business hours for all support
+                requests.
               </p>
             </div>
 
@@ -108,8 +108,8 @@ export function ContactPageClient() {
               </div>
               <p className="text-sm text-muted-foreground font-medium leading-relaxed">
                 All communications through our official channels are encrypted.
-                We treat your proprietary safety protocols with absolute
-                confidentiality and industrial-grade security.
+                We treat your data with absolute confidentiality and high-grade
+                security.
               </p>
             </div>
           </div>
@@ -149,7 +149,7 @@ export function ContactPageClient() {
                   Subject
                 </label>
                 <Input
-                  placeholder="HAZWOPER Content Integration"
+                  placeholder="Tool Feedback or Integration"
                   className="h-14 rounded-2xl bg-background border-border/50 focus:ring-primary"
                 />
               </div>
@@ -159,7 +159,7 @@ export function ContactPageClient() {
                   Message
                 </label>
                 <Textarea
-                  placeholder="How can we help your safety team today?"
+                  placeholder="How can we help you today?"
                   className="min-h-[150px] rounded-2xl bg-background border-border/50 focus:ring-primary p-4"
                 />
               </div>

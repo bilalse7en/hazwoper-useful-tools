@@ -72,10 +72,10 @@ export function GlobalHeader({ activeTab, onTabChange }) {
               </div>
               <div className="flex flex-col">
                 <span className="font-black text-sm tracking-tight uppercase leading-tight">
-                  Content Suite
+                  All Useful Tools
                 </span>
                 <span className="text-[8px] font-bold text-primary uppercase tracking-[0.2em]">
-                  Enterprise
+                  Utilities
                 </span>
               </div>
             </Link>

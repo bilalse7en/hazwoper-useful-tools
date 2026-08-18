@@ -73,10 +73,10 @@ export default function ToolsDirectoryPage() {
               <span className="text-primary">Tool Directory</span>
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed font-medium max-w-2xl">
-              Explore our comprehensive suite of automated content generation
-              and media optimization units. Each tool is engineered for
-              professional safety training, industrial documentation, and
-              high-performance web deployment.
+              Explore our comprehensive suite of automated content generation,
+              document management, and media optimization tools. Each utility is
+              engineered for speed, privacy, and high-performance browser
+              execution.
             </p>
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function ToolsDirectoryPage() {
             variant="outline"
             className="px-5 py-2 rounded-full border-primary/30 text-primary font-black uppercase text-[10px] tracking-widest bg-primary/5"
           >
-            HAZWOPER Content Architecture
+            All-in-One Utility Architecture
           </Badge>
           <h2 className="text-4xl md:text-6xl font-black tracking-tight text-foreground leading-tight">
             Engineered for <br />
@@ -201,27 +201,25 @@ export default function ToolsDirectoryPage() {
             <div className="space-y-4">
               <h4 className="text-xl font-bold text-foreground flex items-center gap-3">
                 <ShieldCheck className="w-6 h-6 text-primary" />
-                Compliance-First Design
+                Performance-First Design
               </h4>
               <p className="text-muted-foreground font-medium leading-relaxed">
-                Our suite is built with industrial standards in mind. We
-                understand the specific structural requirements of HAZWOPER,
-                OSHA, and complex safety training environments. Every tool
-                produces semantically accurate HTML5 that integrates seamlessly
-                into enterprise LMS platforms.
+                Our suite is built with enterprise standards in mind. We
+                understand the need for speed, accuracy, and reliability. Every
+                tool produces clean, optimized outputs that integrate seamlessly
+                into modern workflows and web platforms.
               </p>
             </div>
             <div className="space-y-4">
               <h4 className="text-xl font-bold text-foreground flex items-center gap-3">
                 <Zap className="w-6 h-6 text-primary" />
-                Zero-Latency Extraction
+                Zero-Latency Processing
               </h4>
               <p className="text-muted-foreground font-medium leading-relaxed">
-                By shifting core processing tasks directly into the
-                decentralized browser environment, we eliminate server
-                bottlenecks and ensure maximum data privacy. Your technical
-                documentation remains local while being transformed by our
-                high-performance neural extraction logic.
+                By shifting core processing tasks directly into the browser
+                environment, we eliminate server bottlenecks and ensure maximum
+                data privacy. Your files and documentation remain completely
+                local.
               </p>
             </div>
           </div>

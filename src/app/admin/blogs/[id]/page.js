@@ -47,7 +47,7 @@ export default function AdminBlogEditPage() {
     slug: '',
     category: 'Productivity',
     read_time: '1 min read',
-    author: 'Content Suite Team',
+    author: 'All Useful Tools Team',
     date: new Date().toLocaleDateString('en-US', {
       month: 'long',
       day: 'numeric',
@@ -221,7 +221,7 @@ export default function AdminBlogEditPage() {
     showToast(`Synthesizing editorial...`, 'info');
 
     try {
-      const systemPrompt = `You are an elite HAZWOPER and Industrial Safety technical writer. 
+      const systemPrompt = `You are an elite technology and digital productivity technical writer. 
       Your goal is to write a comprehensive, research-driven blog post of approximately ${aiInput.wordCount} words.
       
       Requirements:
@@ -311,7 +311,7 @@ export default function AdminBlogEditPage() {
         try {
           const puterResponse = await window.puter.ai.chat(
             `I need a professional, high-end photography prompt for an article titled "${formData.title}". 
-            Context: Industrial safety, HAZWOPER, professional workspace. 
+            Context: Modern technology, online productivity, digital workspace. 
             Rules: No text in image, 8k resolution, cinematic lighting. 
             Output only the 1-sentence prompt itself.`,
             { model: 'gpt-4o-mini' }
@@ -744,7 +744,7 @@ export default function AdminBlogEditPage() {
                   value={formData.slug || ''}
                   onChange={handleChange}
                   required
-                  placeholder="e.g. hazwoper-safety-tech"
+                  placeholder="e.g. online-pdf-editor-guide"
                   className="h-12 rounded-xl bg-muted/30 border-border/50 font-mono text-xs"
                 />
               </div>

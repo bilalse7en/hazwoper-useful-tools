@@ -41,12 +41,12 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: 'HAZWOPER Content Suite | Professional Generator',
+  title: 'All Useful Tools | All-in-One Online Productivity & Media Utilities',
   description:
-    'Extract Overview, Syllabus, FAQs, Glossary, Resources and Blog Content from your documents. Professional web content generation tool.',
+    'Free online productivity and media tools: PDF Editor, Word to HTML, Video Compressor, Video to GIF, Audio Converter, Audio Editor, Image Converter, OCR, and AI Assistants.',
   keywords:
-    'course generator, content generator, DOCX to HTML, blog generator, glossary generator',
-  authors: [{ name: 'Content Suite' }],
+    'all useful tools, pdf editor, word to html, video converter, audio converter, image converter, free online tools, productivity suite',
+  authors: [{ name: 'All Useful Tools' }],
   other: {
     'google-adsense-account': 'ca-pub-9874465109252768',
   },
@@ -100,11 +100,11 @@ export default function RootLayout({ children }) {
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Organization',
-              name: 'Content Suite',
+              name: 'All Useful Tools',
               url: 'https://hazwoper-useful-tools.vercel.app',
               logo: 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
               description:
-                'Professional content generation platform for safety and technical documentation.',
+                'Professional online utilities for document management, media conversion, and content automation.',
               contactPoint: {
                 '@type': 'ContactPoint',
                 email: 'bilalghaffar46@gmail.com',
@@ -140,7 +140,7 @@ export default function RootLayout({ children }) {
           defaultTheme="system"
           enableSystem={true}
           themes={['light', 'dark', 'nebula']}
-          storageKey="content-suite-theme"
+          storageKey="all-useful-tools-theme"
         >
           <AuthProvider>
             <ChatProvider>

@@ -1,9 +1,9 @@
 export const metadata = {
-  title: 'Neural Insights Blog | Safety Automation & Compliance Tech',
+  title: 'Insights & Tutorials Blog | All Useful Tools',
   description:
-    'Deep dives into HAZWOPER automation, safety technical guidelines, and the future of industrial safety education. Powered by Content Suite.',
+    'Deep dives into web productivity tools, PDF editing techniques, browser media conversion, and content workflows. Powered by All Useful Tools.',
   keywords:
-    'hazwoper blog, safety tech blog, content automation insights, compliance guides, osha instructions, technical content generator',
+    'utility blog, web tools tutorial, PDF editing guide, video converter tips, OCR extraction, audio editor tutorial, online productivity',
   alternates: {
     canonical: 'https://hazwoper-useful-tools.vercel.app/blog',
   },

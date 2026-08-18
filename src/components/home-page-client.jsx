@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { InitialLoadingShell } from '@/components/initial-loading-shell';
-import { showSuccess } from '@/lib/swal';
+import { showSuccess, showAlert } from '@/lib/swal';
 import { ToolsLanding } from '@/components/tools-landing';
 import { BlogSection } from '@/components/blog-section';
 import { ProfessionalOverview } from '@/components/professional-overview';
@@ -49,6 +49,13 @@ export function HomePageClient() {
   const handleWelcomeComplete = () => {
     localStorage.setItem('welcome_seen', 'true');
     setShowWelcome(false);
+
+    // Open the Theme & Performance Setup modal directly on the landing page
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('open_environmental_setup'));
+      }
+    }, 400);
   };
 
   return (

@@ -1,21 +1,21 @@
 /**
- * SEO Configuration for Content Suite
+ * SEO Configuration for All Useful Tools
  * Centralized metadata for all tool pages
  */
 
 export const toolMetadata = {
   'web-content': {
     title:
-      'Web Content Generator - Extract Course Content from Documents | Content Suite',
+      'Web Content Generator - Extract Structured Web Content from Documents | All Useful Tools',
     description:
       'Professional web content generator tool. Extract Overview, Syllabus, FAQs, Glossary, and Resources from DOCX documents. Convert material to clean, SEO-optimized HTML.',
     keywords:
-      'course generator, web content generator, DOCX to HTML, content extraction, syllabus generator, FAQ generator, professional content',
+      'course generator, web content generator, DOCX to HTML, content extraction, syllabus generator, FAQ generator, all useful tools',
     canonical: '/tools/web-content',
     ogImage: '/og-web-content.png',
   },
   'blog-generator': {
-    title: 'Blog Generator - AI-Powered Blog Post Creator | Content Suite',
+    title: 'Blog Generator - AI-Powered Blog Post Creator | All Useful Tools',
     description:
       'Create professional blog posts from DOCX documents. AI-powered blog generator with automatic formatting, HTML output, and SEO optimization. Perfect for content creators.',
     keywords:
@@ -25,17 +25,17 @@ export const toolMetadata = {
   },
   'glossary-generator': {
     title:
-      'Glossary Generator - Create Professional Glossaries from Documents | Content Suite',
+      'Glossary Generator - Create Professional Glossaries from Documents | All Useful Tools',
     description:
-      'Generate professional glossaries from DOCX documents. Automatic term extraction, alphabetical sorting, and clean HTML output. Perfect for training materials and documentation.',
+      'Generate professional glossaries from DOCX documents. Automatic term extraction, alphabetical sorting, and clean HTML output. Perfect for documentation and resource guides.',
     keywords:
-      'glossary generator, terminology extractor, DOCX glossary, term definition generator, training glossary, documentation tool',
+      'glossary generator, terminology extractor, DOCX glossary, term definition generator, documentation tool, all useful tools',
     canonical: '/tools/glossary-generator',
     ogImage: '/og-glossary-generator.png',
   },
   'resource-generator': {
     title:
-      'Resource Generator - Extract Resources & References | Content Suite',
+      'Resource Generator - Extract Resources & References | All Useful Tools',
     description:
       'Extract and organize resources, references, and links from documents. Generate clean, categorized resource lists in HTML format.',
     keywords:
@@ -44,7 +44,7 @@ export const toolMetadata = {
     ogImage: '/og-resource-generator.png',
   },
   'html-cleaner': {
-    title: 'HTML Cleaner - Clean & Format HTML Code Online | Content Suite',
+    title: 'HTML Cleaner - Clean & Format HTML Code Online | All Useful Tools',
     description:
       'Professional HTML cleaner and formatter. Remove unwanted tags, clean up messy code, and optimize HTML for web publishing. Free online tool.',
     keywords:
@@ -54,7 +54,7 @@ export const toolMetadata = {
   },
   'image-converter': {
     title:
-      'Image Converter - Convert Images to WebP, JPG, PNG Online | Content Suite',
+      'Image Converter - Convert Images to WebP, JPG, PNG Online | All Useful Tools',
     description:
       'Free online image converter. Convert between WebP, JPG, PNG, and other formats. Batch conversion, quality control, and instant download.',
     keywords:
@@ -63,7 +63,7 @@ export const toolMetadata = {
     ogImage: '/og-image-converter.png',
   },
   'video-compressor': {
-    title: 'Video Compressor - Compress Videos Online Free | Content Suite',
+    title: 'Video Compressor - Compress Videos Online Free | All Useful Tools',
     description:
       'Free online video compressor. Reduce video file size without losing quality. Supports MP4, MOV, AVI. Client-side processing for privacy.',
     keywords:
@@ -72,7 +72,7 @@ export const toolMetadata = {
     ogImage: '/og-video-compressor.png',
   },
   'ai-assistant': {
-    title: 'AI Assistant - Smart Content Helper | Content Suite',
+    title: 'AI Assistant - Smart Content Helper | All Useful Tools',
     description:
       'AI-powered content assistant. Get help with writing, editing, and content creation. Intelligent suggestions and improvements.',
     keywords:
@@ -82,7 +82,7 @@ export const toolMetadata = {
   },
   'image-to-text': {
     title:
-      'Image to Text OCR - Extract Text from Images Online | Content Suite',
+      'Image to Text OCR - Extract Text from Images Online | All Useful Tools',
     description:
       'Free OCR tool. Extract text from images and PDFs. Supports multiple languages, handwriting recognition, and batch processing.',
     keywords:
@@ -92,7 +92,7 @@ export const toolMetadata = {
   },
   'document-extractor': {
     title:
-      'Document Extractor - Extract Content from Documents | Content Suite',
+      'Document Extractor - Extract Content from Documents | All Useful Tools',
     description:
       'Extract and analyze content from DOCX documents. Professional document processing with AI-powered content extraction.',
     keywords:
@@ -102,7 +102,7 @@ export const toolMetadata = {
   },
   'video-converter': {
     title:
-      'Video Converter - Convert Videos Between MP4, WebM, MOV, AVI Online | Content Suite',
+      'Video Converter - Convert Videos Between MP4, WebM, MOV, AVI Online | All Useful Tools',
     description:
       'Free online video converter. Convert between MP4, WebM, MOV, AVI, and GIF formats. Browser-based processing for complete privacy. No upload required.',
     keywords:
@@ -112,7 +112,7 @@ export const toolMetadata = {
   },
   'audio-converter': {
     title:
-      'Audio Converter - Convert MP3, WAV, AAC, OGG Online | Content Suite',
+      'Audio Converter - Convert MP3, WAV, AAC, OGG Online | All Useful Tools',
     description:
       'Professional browser-based audio converter. Convert between MP3, WAV, AAC, OGG, and M4A formats. High-fidelity re-encoding with complete privacy.',
     keywords:
@@ -122,7 +122,7 @@ export const toolMetadata = {
   },
   'audio-editor': {
     title:
-      'Audio Editor - Edit, Trim & Apply Audio Filters Online | Content Suite',
+      'Audio Editor - Edit, Trim & Apply Audio Filters Online | All Useful Tools',
     description:
       'Free browser-based audio editor. Visualize audio waveform, crop, trim, fade in/out, reverse, adjust speed and volume gain with complete privacy.',
     keywords:
@@ -132,17 +132,17 @@ export const toolMetadata = {
   },
   'video-to-gif': {
     title:
-      'Video to GIF Converter - Create GIFs Under 10 Seconds | Content Suite',
+      'Video to GIF Converter - Create High-Quality GIFs Under 10 Seconds | All Useful Tools',
     description:
-      'Professional video to GIF converter. Optimized for short training clips under 10 seconds. High-quality output with custom framerate and scaling controls.',
+      'Professional video to GIF converter. Optimized for short video clips under 10 seconds. High-quality output with custom framerate and scaling controls.',
     keywords:
-      'video to GIF, convert video to GIF, short video converter, 10 second GIF, training GIFs, animated GIF maker, browser video processing',
+      'video to GIF, convert video to GIF, short video converter, 10 second GIF, animated GIF maker, browser video processing',
     canonical: '/tools/video-to-gif',
     ogImage: '/og-video-to-gif.png',
   },
   'word-to-html': {
     title:
-      'Word to HTML Converter - Clean Word Content for Web | Content Suite',
+      'Word to HTML Converter - Clean Word Content for Web | All Useful Tools',
     description:
       'Professional Word to HTML converter. Remove messy inline styles, extra spans, and empty tags from Word content. Optimized for clean web publishing.',
     keywords:
@@ -152,17 +152,17 @@ export const toolMetadata = {
   },
   'lesson-quiz-builder': {
     title:
-      'Lesson Quiz Builder - Extract Quiz from Training Material | Content Suite',
+      'Lesson Quiz Builder - Extract Quiz & Assessments from Documents | All Useful Tools',
     description:
-      'Professional lesson quiz generator for safety training. Automatically extract questions, options, and correct answers from DOCX files using neural mapping. Optimized for industrial LMS integration.',
+      'Professional lesson quiz generator. Automatically extract questions, options, and correct answers from DOCX files using smart mapping for instant LMS & web deployment.',
     keywords:
-      'quiz generator, lesson quiz builder, training quiz extractor, docx to quiz, automated quiz creator, safety training assessment, industrial education tools, OSHA compliance quiz',
+      'quiz generator, lesson quiz builder, quiz extractor, docx to quiz, automated quiz creator, assessment generator, online education tools',
     canonical: '/tools/lesson-quiz-builder',
     ogImage: '/og-lesson-quiz-builder.png',
   },
   'youtube-downloader': {
     title:
-      'Universal Social Video Downloader - Download YouTube, TikTok, IG, FB & Twitter Videos | Content Suite',
+      'Universal Social Video Downloader - Download YouTube, TikTok, IG, FB & Twitter Videos | All Useful Tools',
     description:
       'Download high-quality 4K, 1080p videos and 320kbps MP3 audio from YouTube, TikTok, Instagram Reels, Facebook, Twitter, Reddit, and Pinterest without watermarks. Fast, free, browser-based media downloader.',
     keywords:
@@ -172,7 +172,7 @@ export const toolMetadata = {
   },
   'watermark-remover': {
     title:
-      'AI Watermark & Object Remover - Free Online Watermark Eraser | Content Suite',
+      'AI Watermark & Object Remover - Free Online Watermark Eraser | All Useful Tools',
     description:
       'Remove watermarks, logos, dates, stamps, and objects from images online 100% free. AI content-aware inpainting with background removal capabilities.',
     keywords:
@@ -182,7 +182,7 @@ export const toolMetadata = {
   },
   'bg-remover': {
     title:
-      'AI Background Remover - Remove Image Background Online Free | Content Suite',
+      'AI Background Remover - Remove Image Background Online Free | All Useful Tools',
     description:
       'Extract subjects and create transparent PNG backgrounds instantly. Free browser-based AI background removal tool for photos and product images.',
     keywords:
@@ -192,7 +192,7 @@ export const toolMetadata = {
   },
   'pdf-editor': {
     title:
-      'Free Online PDF Editor - Add Pages, Edit Text, Images & Annotate PDFs | Content Suite',
+      'Free Online PDF Editor - Add Pages, Edit Text, Images & Annotate PDFs | All Useful Tools',
     description:
       'Edit PDF documents 100% free online. Add new blank pages, edit or add text, insert images, freehand draw, add signatures, rubber stamps, whiteout text, undo/redo edits, and reorder pages without watermarks.',
     keywords:
@@ -201,25 +201,25 @@ export const toolMetadata = {
     ogImage: '/og-pdf-editor.png',
   },
   privacy: {
-    title: 'Privacy Policy | Content Suite',
+    title: 'Privacy Policy | All Useful Tools',
     description:
-      'Privacy Policy for Content Suite - Learn how we collect, use, and protect your data in compliance with GDPR and privacy regulations.',
+      'Privacy Policy for All Useful Tools - Learn how we collect, use, and protect your data in compliance with GDPR and privacy regulations.',
     keywords:
       'privacy policy, GDPR, data protection, cookie policy, user privacy',
     canonical: '/privacy',
   },
   terms: {
-    title: 'Terms of Service | Content Suite',
+    title: 'Terms of Service | All Useful Tools',
     description:
-      'Terms of Service for Content Suite - Read the terms and conditions for using our content generation and media processing tools.',
+      'Terms of Service for All Useful Tools - Read the terms and conditions for using our content generation and media processing tools.',
     keywords:
       'terms of service, terms and conditions, user agreement, legal terms',
     canonical: '/terms',
   },
   cookies: {
-    title: 'Cookie Policy | Content Suite',
+    title: 'Cookie Policy | All Useful Tools',
     description:
-      'Cookie Policy for Content Suite - Learn about the cookies we use and how to manage your cookie preferences.',
+      'Cookie Policy for All Useful Tools - Learn about the cookies we use and how to manage your cookie preferences.',
     keywords:
       'cookie policy, cookies, tracking, advertising cookies, GDPR cookies',
     canonical: '/cookies',
@@ -250,7 +250,6 @@ export const toolIdToSlug = {
   'pdf-editor': 'pdf-editor',
 };
 
-
 // Reverse mapping
 export const slugToToolId = Object.fromEntries(
   Object.entries(toolIdToSlug).map(([id, slug]) => [slug, id])
@@ -275,21 +274,21 @@ export const toolInfo = {
       'Upload your training DOCX file, select the modules you want to extract, and click generate. You can then copy the clean HTML or export it directly.',
     useCases: [
       {
-        title: 'Safety Training Migration',
+        title: 'Documentation Migration',
         description:
-          'Quickly migrate legacy safety manuals into modern web-based training platforms while preserving hierarchy.',
+          'Quickly migrate legacy document manuals into modern web-based platforms while preserving hierarchy.',
       },
       {
-        title: 'Industrial Onboarding',
+        title: 'Training & Onboarding',
         description:
-          'Convert technical equipment manuals into structured onboarding checklists and syllabus modules.',
+          'Convert technical manuals and guides into structured onboarding checklists and syllabus modules.',
       },
     ],
     faq: [
       {
         question: 'Does it support nested lists and complex tables?',
         answer:
-          'Yes, our neural engine is specifically tuned to recognize and preserve the complex structural hierarchies found in industrial technical documentation.',
+          'Yes, our engine is specifically tuned to recognize and preserve the complex structural hierarchies found in technical documentation.',
       },
       {
         question: 'Can I export to specific LMS formats?',
@@ -704,7 +703,7 @@ export const toolInfo = {
     description: 'Convert between audio formats',
     category: 'Media Tools',
     detailedDescription:
-      'The Audio Converter is a high-performance utility designed for safety training developers who need to re-encode audio assets for web delivery. Whether you are converting live safety recordings from WAV to compact MP3 or preparing OGG files for specialized players, our tool ensures acoustic integrity. Powered by FFmpeg WebAssembly, all processing happens locally in your browser, ensuring that your proprietary audio content never leaves your device.',
+      'The Audio Converter is a high-performance utility designed for creators and professionals who need to re-encode audio assets for web delivery. Whether you are converting voice recordings from WAV to compact MP3 or preparing OGG files for specialized players, our tool ensures acoustic integrity. Powered by FFmpeg WebAssembly, all processing happens locally in your browser, ensuring that your proprietary audio content never leaves your device.',
     benefits: [
       'High-fidelity re-encoding (MP3, WAV, AAC, OGG)',
       'Adjustable bitrate settings for file size control',
@@ -715,14 +714,14 @@ export const toolInfo = {
       'Upload your audio files. Select the target format (like MP3 or WAV) and choose a bitrate preset. Click Convert to process your files and download the results immediately.',
     useCases: [
       {
-        title: 'Podcast Distribution',
+        title: 'Podcast & Voiceover Distribution',
         description:
-          'Convert high-fidelity safety interview recordings into optimized MP3s for company-wide distribution.',
+          'Convert high-fidelity interview recordings into optimized MP3s for web and platform distribution.',
       },
       {
-        title: 'Audio Alert Integration',
+        title: 'Audio Alert & Web Integration',
         description:
-          'Convert WAV recordings of safety alerts into compact OGG files for use in web-based control dashboards.',
+          'Convert WAV recordings of alert notifications into compact OGG or AAC files for use in web applications.',
       },
     ],
     faq: [
@@ -755,14 +754,14 @@ export const toolInfo = {
       'Upload an audio file to see its waveform. Drag on the canvas to select a region. Use the sidebar controls to adjust volume, speed, fades, or reverse. Click Trim to crop or Apply Filters to process. Download your edited audio.',
     useCases: [
       {
-        title: 'Safety Training Voiceovers',
+        title: 'Voiceover & Narration Editing',
         description:
-          'Trim silence, amplify low speaker volumes, and add smooth fades to training narration clips.',
+          'Trim silence, amplify low speaker volumes, and add smooth fades to voice narration clips.',
       },
       {
-        title: 'Industrial Alert Isolation',
+        title: 'Sound Effect & Sample Isolation',
         description:
-          'Isolate warning alarms or machine sounds from long field recordings for training simulators.',
+          'Isolate specific sounds or audio segments from long field recordings for video or game projects.',
       },
     ],
     faq: [
@@ -783,25 +782,25 @@ export const toolInfo = {
     description: 'Create high-quality training GIFs',
     category: 'Media Tools',
     detailedDescription:
-      'The Video to GIF converter is specifically optimized for creating short, high-performance demonstrations for safety training modules. Designed for clips under 10 seconds, it uses advanced Lanczos scaling and palette generation to ensure that your GIFs are crisp and professional. By converting demonstration videos into lightweight GIFs, you can improve learning retention without the overhead of heavy video players.',
+      'The Video to GIF converter is specifically optimized for creating short, high-performance demonstrations for websites, documentation, and tutorials. Designed for clips under 10 seconds, it uses advanced Lanczos scaling and palette generation to ensure that your GIFs are crisp and professional. By converting demonstration videos into lightweight GIFs, you can improve engagement without the overhead of heavy video players.',
     benefits: [
-      'Optimized for 10-second high-fidelity training clips',
+      'Optimized for 10-second high-fidelity clips',
       'Advanced palette generation for vibrant color accuracy',
-      'Customizable scaling and framerate for LMS compatibility',
+      'Customizable scaling and framerate for web compatibility',
       'Privacy-first local processing via FFmpeg WASM',
     ],
     howToUse:
-      'Select a short video clip (recommend under 10 seconds). Configure your output dimensions and framerate. The tool will generate a high-quality animated GIF instantly for your training manual.',
+      'Select a short video clip (recommend under 10 seconds). Configure your output dimensions and framerate. The tool will generate a high-quality animated GIF instantly for your documentation or social media.',
     useCases: [
       {
-        title: 'SOP Visual Aids',
+        title: 'Product Walkthroughs & SOPs',
         description:
-          'Create looping visual demonstrations of repetitive industrial tasks for technical Standard Operating Procedures.',
+          'Create looping visual demonstrations of repetitive digital or physical tasks for documentation.',
       },
       {
         title: 'Email Newsletter Engagement',
         description:
-          'Embed lightweight safety clip highlights in internal email communications for higher engagement.',
+          'Embed lightweight animated clip highlights in email communications for higher engagement.',
       },
     ],
     faq: [
@@ -823,7 +822,7 @@ export const toolInfo = {
     description: 'Clean conversion of Word content',
     category: 'Content Creation',
     detailedDescription:
-      'The Word to HTML converter is an essential utility for technical writers and safety managers who need to migrate content from Microsoft Word into web-based training modules. Word exports are notoriously bloated with non-standard XML tags and thousands of lines of inline styles. This tool strips away the mess, allowing you to selectively remove empty tags, attributes, and extra spans while maintaining the structural integrity of your text.',
+      'The Word to HTML converter is an essential utility for technical writers and content managers who need to migrate content from Microsoft Word into web-based platforms. Word exports are notoriously bloated with non-standard XML tags and thousands of lines of inline styles. This tool strips away the mess, allowing you to selectively remove empty tags, attributes, and extra spans while maintaining the structural integrity of your text.',
     benefits: [
       'Strips messy Microsoft Word XML and inline styling',
       'One-click removal of empty tags and extra spans',
@@ -863,27 +862,27 @@ export const toolInfo = {
     description: 'Generate lesson quizzes from documents',
     category: 'Content Creation',
     detailedDescription:
-      'The Lesson Quiz Builder is a specialized extraction unit engineered for safety training developers and industrial educators. It utilizes advanced mapping protocols to scan your DOCX documents for "Lesson Quiz" sections, automatically identifying questions, distractor options, and correct answer markers. By automating the high-friction task of manual quiz transcription, it ensures that your assessments maintain 100% fidelity to the source material while being ready for instant deployment to your digital ecosystem.',
+      'The Lesson Quiz Builder is a specialized extraction unit engineered for educators and course creators. It utilizes advanced mapping protocols to scan your DOCX documents for "Lesson Quiz" sections, automatically identifying questions, distractor options, and correct answer markers. By automating the high-friction task of manual quiz transcription, it ensures that your assessments maintain 100% fidelity to the source material while being ready for instant deployment to your digital ecosystem.',
     benefits: [
       'Automatic detection of specialized Lesson Quiz nomenclature',
       'Neural mapping of questions to their respective options (A-D)',
       'High-precision identification of correct answer markers',
       'Removal of legacy formatting for clean web-ready output',
-      'Reduced transcription errors in high-stakes compliance testing',
+      'Reduced transcription errors in high-stakes testing',
       'Direct copy-to-clipboard functionality for rapid deployment',
     ],
     howToUse:
       '1. Prepare your training DOCX ensuring the quiz section is clearly marked. 2. Upload the document to the Lesson Quiz Builder terminal. 3. The engine will parse the content and display the identified questions. 4. Review the correct answer highlights and click "Generate HTML" to receive your clean, styled assessment code.',
     useCases: [
       {
-        title: 'Compliance Certification',
+        title: 'Course Certification & Quizzes',
         description:
-          'Quickly generate regulatory compliance quizzes for annual safety certifications and industrial permits.',
+          'Quickly generate structured quizzes for digital courses, certifications, and educational modules.',
       },
       {
         title: 'Knowledge Verification',
         description:
-          'Automate the creation of post-module knowledge checks for complex technical training courses.',
+          'Automate the creation of post-module knowledge checks for complex training courses.',
       },
     ],
     faq: [
@@ -896,7 +895,7 @@ export const toolInfo = {
       {
         question: 'Can it handle multiple-choice and true/false questions?',
         answer:
-          'Absolutely. The mapping logic is robust enough to categorize various question types commonly used in industrial education.',
+          'Absolutely. The mapping logic is robust enough to categorize various question types commonly used in education.',
       },
     ],
   },
@@ -919,14 +918,14 @@ export const toolInfo = {
       'Paste your video link from YouTube, TikTok, Instagram, Facebook, Twitter, Reddit, or Pinterest into the search box, click Fetch Video, then select your preferred Video or Audio format to download.',
     useCases: [
       {
-        title: 'Offline Safety Presentations',
+        title: 'Offline Video Presentations',
         description:
-          'Download industrial safety demonstration videos for offline training field sessions.',
+          'Download instructional videos and demonstrations for offline review and field presentations.',
       },
       {
         title: 'Audio Training Extraction',
         description:
-          'Convert instructional YouTube video lectures into MP3 podcasts for mobile review.',
+          'Convert instructional YouTube video lectures into MP3 podcasts for mobile listening.',
       },
     ],
     faq: [
@@ -963,12 +962,12 @@ export const toolInfo = {
       {
         title: 'Document & Photo Cleaning',
         description:
-          'Clean sample images, watermarked stock graphics, and stamped technical diagrams for compliance presentations.',
+          'Clean sample images, watermarked stock graphics, and stamped technical diagrams for presentations.',
       },
       {
         title: 'Product Image Touchups',
         description:
-          'Remove unwanted date stamps or copyright watermarks from industrial equipment photos.',
+          'Remove unwanted date stamps or copyright watermarks from product photos.',
       },
     ],
     faq: [
@@ -1001,9 +1000,9 @@ export const toolInfo = {
       'Upload your photo, click "Remove Background", and download your high-resolution transparent PNG file.',
     useCases: [
       {
-        title: 'Safety Equipment Catalogs',
+        title: 'E-commerce & Product Catalogs',
         description:
-          'Extract safety gear and PPE items onto clean transparent backgrounds for training manuals.',
+          'Extract product items onto clean transparent backgrounds for online stores and digital catalogs.',
       },
     ],
     faq: [
@@ -1066,7 +1065,6 @@ export const toolInfo = {
   },
 };
 
-
 // Get all tool slugs for sitemap generation
 export const getAllToolSlugs = () => Object.keys(toolMetadata);
 
@@ -1074,8 +1072,9 @@ export const getAllToolSlugs = () => Object.keys(toolMetadata);
 export const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'Content Suite',
-  description: 'Professional content generation and media processing tools',
+  name: 'All Useful Tools',
+  description:
+    'Professional online productivity and media processing utilities',
   url: 'https://hazwoper-useful-tools.vercel.app',
   logo: 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
   sameAs: [],

@@ -76,8 +76,8 @@ export function BlogSection() {
             Professional Editorial
           </h2>
           <p className="text-muted-foreground font-medium max-w-xl leading-relaxed">
-            Expert insights on HAZWOPER automation, safety technology, and
-            digital compliance strategies.
+            Expert insights on document workflows, media processing, and digital
+            productivity tools.
           </p>
         </div>
 

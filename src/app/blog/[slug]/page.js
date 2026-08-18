@@ -44,17 +44,17 @@ export async function generateMetadata({ params }) {
 
   if (!post) {
     return {
-      title: 'Article Not Found | Content Suite',
-      description: 'The requested safety training article was not found page.',
+      title: 'Article Not Found | All Useful Tools',
+      description: 'The requested article was not found.',
     };
   }
 
   return {
-    title: `${post.title} | Content Suite Neural Insights`,
+    title: `${post.title} | All Useful Tools`,
     description:
       post.description ||
-      'Safety documentation insights, training materials, and HAZWOPER/OSHA guidelines.',
-    keywords: `${post.category?.toLowerCase() || 'safety'}, hazwoper, osha guidelines, industrial training, safety tech`,
+      'Productivity insights, tutorials, and online utility guides.',
+    keywords: `${post.category?.toLowerCase() || 'utilities'}, online tools, web utilities, productivity`,
     alternates: {
       canonical: `https://hazwoper-useful-tools.vercel.app/blog/${params.slug}`,
     },

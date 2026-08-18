@@ -1,4 +1,4 @@
-﻿import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 
 // ==========================================
 // EXCEL UTILS
@@ -312,7 +312,7 @@ function generateResourceHTML(glossaryLink, resources) {
   // Determine if glossary link is internal
   const isInternalGlossary = glossaryLink
     .toLowerCase()
-    .includes('hazwoper-osha.com');
+    .includes('hazwoper-useful-tools.vercel.app');
   const glossaryRel = isInternalGlossary ? '' : ' rel="noopener noreferrer"';
 
   let html = `<style>.bg-black.rounded-md.shadow-md:hover {border-left: 4px solid #000;transform: translate(2px);transition: .1s;}.bg-yellow-400.rounded-md.shadow-md:hover {border-left: 4px solid #ffc107;transform: translate(2px);transition: .1s;}</style><div class="bg-black rounded-md shadow-md"><div class="rounded-sm bg-yellow-400 my-4 p-3 w-full"><h2 class="text-2xl leading-none m-0 flex items-center space-x-2"><i class="fa fa-book"></i><a href="${glossaryLink}" target="_blank"${glossaryRel} class="text-blue-600 hover:underline">Glossary</a></h2></div></div>\n`;
@@ -326,14 +326,16 @@ function generateResourceHTML(glossaryLink, resources) {
       const linkUrl = link.url && link.url.trim() ? link.url : '#';
       const isInternalLink = linkUrl
         .toLowerCase()
-        .includes('hazwoper-osha.com');
+        .includes('hazwoper-useful-tools.vercel.app');
       const linkRel = isInternalLink ? '' : ' rel="noopener noreferrer"';
       list += `    <li><i class="fa fa-link text-blue-600 me-2"></i><a href="${linkUrl}" target="_blank"${linkRel} class="text-blue-600 hover:underline">${linkDisplay(link)}</a></li>\n`;
     }
     for (const pdf of resource.pdfs) {
       if (!pdf.text) continue;
       const pdfUrl = pdfHref(pdf);
-      const isInternalPdf = pdfUrl.toLowerCase().includes('hazwoper-osha.com');
+      const isInternalPdf = pdfUrl
+        .toLowerCase()
+        .includes('hazwoper-useful-tools.vercel.app');
       const pdfRel = isInternalPdf ? '' : ' rel="noopener noreferrer"';
       list += `    <li><i class="fa fa-file-pdf text-red-600 me-2"></i><a href="${pdfUrl}" target="_blank"${pdfRel} class="ml-1 text-red-600 hover:underline">${pdf.text}</a></li>\n`;
     }

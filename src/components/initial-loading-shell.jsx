@@ -60,7 +60,7 @@ export function InitialLoadingShell({ isReady = false }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={BRAND_CONFIG.logo}
-              alt="Content Suite Logo"
+              alt="All Useful Tools Logo"
               width={96}
               height={96}
               fetchPriority="high"
@@ -73,7 +73,7 @@ export function InitialLoadingShell({ isReady = false }) {
         {/* Loading Text */}
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-black bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent italic tracking-tighter">
-            Content Suite
+            All Useful Tools
           </h2>
           <p className="text-sm text-foreground/70 font-bold uppercase tracking-widest animate-pulse">
             Loading Workspace

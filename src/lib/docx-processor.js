@@ -1,4 +1,4 @@
-﻿import mammoth from 'mammoth';
+import mammoth from 'mammoth';
 
 // ==========================================
 // SHARED UTILS
@@ -11,7 +11,9 @@ export function ensureProfessionalLinks(html) {
     /\<a\s+(?:[^\>]*?\s+)?href=(["'])(.*?)\1([^\>]*)\>/gi,
     (match, p1, p2, p3) => {
       let cleanP3 = p3.replace(/\s+(target|rel)=["'][^"']*?["']/gi, '').trim();
-      const isInternalLink = p2.toLowerCase().includes('hazwoper-osha.com');
+      const isInternalLink = p2
+        .toLowerCase()
+        .includes('hazwoper-useful-tools.vercel.app');
       let newTag = '\<a href="' + p2 + '" target="_blank"';
       if (!isInternalLink) {
         newTag += ' rel="noopener noreferrer"';
@@ -2679,7 +2681,7 @@ function extractExtraSections(elementsArray) {
     courseData.metaDetails = {
       onlineMetaTitle: `${courseData.courseTitle} Online | ${courseData.courseTitle} Course`,
       onlineMetaDesc: `Complete ${courseData.courseTitle} online. Learn safety procedures, regulations, and best practices.`,
-      demoMetaTitle: `Demo ${courseData.courseTitle} | HAZWOPER OSHA`,
+      demoMetaTitle: `Demo ${courseData.courseTitle} | All Useful Tools`,
       demoMetaDesc: `Preview our ${courseData.courseTitle} course. Explore regulations and safe work practices before enrolling.`,
       industry: 'General Industry',
       regulation: '29 CFR 1910',
@@ -2734,9 +2736,9 @@ export function generateIdealTrainingFormatCode(formatData) {
 }
 
 export function generateROICode(courseTitle = '') {
-  let html = `<h2 class="fs-4 text-warning">The ROI of Online Safety Training</h2>\n`;
+  let html = `<h2 class="fs-4 text-warning">The ROI of Online Training</h2>\n`;
   html += `<p>Discover the value of our efficient alternative to live training and calculate your return on investment.</p>\n`;
-  html += `<p><a href="https://hazwoper-osha.com/roi-calculator" target="_blank" rel="noopener noreferrer" class="btn btn-warning">Calculate Your ROI</a></p>`;
+  html += `<p><a href="/tools" target="_blank" rel="noopener noreferrer" class="btn btn-warning">Explore Utilities</a></p>`;
   return ensureProfessionalLinks(html);
 }
 

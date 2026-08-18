@@ -24,6 +24,7 @@ import {
   Music,
   FileType,
   AudioWaveform,
+  Target,
 } from 'lucide-react';
 import { toolIdToSlug, toolInfo } from '@/lib/seo';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +50,7 @@ const iconMap = {
   'audio-editor': AudioWaveform,
   'video-to-gif': Video,
   'word-to-html': FileType,
+  'lesson-quiz-builder': Target,
   'youtube-downloader': Video,
   'watermark-remover': Wand2,
   'bg-remover': Wand2,
@@ -74,7 +76,14 @@ const FREE_TOOL_IDS = [
 ];
 
 // Generator tools that require login + generator access
-const GENERATOR_TOOL_IDS = ['course', 'blog', 'glossary', 'resources'];
+const GENERATOR_TOOL_IDS = [
+  'course',
+  'blog',
+  'glossary',
+  'resources',
+  'lesson-quiz-builder',
+  'ai-assistant',
+];
 
 export function ToolsLanding({ user }) {
   const router = useRouter();
@@ -119,6 +128,7 @@ export function ToolsLanding({ user }) {
       'youtube-downloader',
       'watermark-remover',
       'bg-remover',
+      'pdf-editor',
     ];
     return FREE_TOOL_SLUGS.includes(tool.slug);
   };
@@ -204,8 +214,8 @@ export function ToolsLanding({ user }) {
                   </h1>
                   <p className="text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl font-medium">
                     Ready to accelerate your productivity? Explore our suite of
-                    specialized tools designed for content creators and safety
-                    professionals.
+                    specialized tools designed for creators, professionals, and
+                    developers.
                   </p>
                   <div className="flex flex-wrap gap-4">
                     <Button
@@ -446,9 +456,9 @@ export function ToolsLanding({ user }) {
                 <span className="text-primary">Professional Suite</span>
               </h2>
               <p className="text-xl text-muted-foreground max-w-xl font-medium leading-relaxed">
-                Join our network of safety professionals and content architects.
-                Synchronize your assets across devices and unlock the full
-                potential of our neural generation engine.
+                Join thousands of creators and professionals worldwide.
+                Transform your workflow with lightning-fast browser-based tools
+                and AI assistance.
               </p>
             </div>
             <Button

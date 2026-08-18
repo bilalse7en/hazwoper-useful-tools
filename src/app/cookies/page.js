@@ -1,9 +1,9 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Cookie Policy | Content Suite',
+  title: 'Cookie Policy | All Useful Tools',
   description:
-    'Cookie Policy for Content Suite - Learn about the cookies we use and how to manage your cookie preferences.',
+    'Cookie Policy for All Useful Tools - Learn about the cookies we use and how to manage your cookie preferences.',
   robots: 'index, follow',
 };
 
@@ -40,7 +40,7 @@ export default function CookiePolicy() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">How We Use Cookies</h2>
             <p>
-              Content Suite uses cookies and similar tracking technologies to
+              All Useful Tools uses cookies and similar tracking technologies to
               enhance your experience, analyze usage patterns, and serve
               relevant advertisements. Below are the categories of cookies we
               use:

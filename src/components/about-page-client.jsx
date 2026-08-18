@@ -21,13 +21,13 @@ export function AboutPageClient() {
               </Badge>
               <h1 className="text-5xl md:text-8xl font-black tracking-tighter mb-8 text-foreground leading-none">
                 Pioneering <br />
-                <span className="text-primary italic">Safety Tech.</span>
+                <span className="text-primary italic">Universal Tools.</span>
               </h1>
               <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed font-medium max-w-2xl">
-                Content Suite was born from a simple observation: the
-                world&apos;s most critical safety training is often the most
-                difficult to document. We&apos;re changing that with
-                neural-powered automation.
+                All Useful Tools was born from a simple mission: to build a
+                fast, private, browser-first workstation for document
+                management, media conversion, and content automation without
+                unnecessary subscriptions.
               </p>
             </motion.div>
           </div>
@@ -44,17 +44,16 @@ export function AboutPageClient() {
               </h2>
               <div className="space-y-6 text-muted-foreground font-medium leading-relaxed">
                 <p>
-                  Our primary objective is to empower safety professionals and
-                  educators with tools that bridge the gap between complex
-                  regulatory requirements and modern digital learning. We
-                  believe that professional training materials should be
-                  accurate, accessible, and automated.
+                  Our primary objective is to empower creators, developers,
+                  educators, and professionals with instant tools that bridge
+                  the gap between complex file formats and frictionless digital
+                  workflows. We believe online utilities should be accurate,
+                  lightning-fast, and completely private.
                 </p>
                 <p>
-                  By focusing on industry-specific standards like HAZWOPER and
-                  OSHA, we ensure that our neural engines don&apos;t just
-                  &quot;write text&quot;—they understand the structural nuances
-                  of life-saving information.
+                  By shifting compute-heavy tasks like PDF editing, media
+                  re-encoding, and OCR directly into your browser, we guarantee
+                  zero server latency and 100% data privacy.
                 </p>
               </div>
             </div>
@@ -63,8 +62,8 @@ export function AboutPageClient() {
               {[
                 { label: 'Founded', val: '2024' },
                 { label: 'Engine Accuracy', val: '99.9%' },
-                { label: 'Processed Pages', val: '500K+' },
-                { label: 'Active Nodes', val: 'Global' },
+                { label: 'Processed Operations', val: '1M+' },
+                { label: 'Active Users', val: 'Global' },
               ].map((stat, i) => (
                 <div
                   key={i}
@@ -92,17 +91,17 @@ export function AboutPageClient() {
               {[
                 {
                   title: 'Security by Design',
-                  desc: 'We prioritize local-first processing. Your technical data remains in your control, always.',
+                  desc: 'We prioritize local-first processing. Your files and data remain in your browser, always.',
                   icon: Shield,
                 },
                 {
                   title: 'Technical Excellence',
-                  desc: 'Our stack leverages the latest in WebAssembly and Neural Processing for peak performance.',
+                  desc: 'Our stack leverages the latest in WebAssembly and Web Workers for peak performance.',
                   icon: Code,
                 },
                 {
                   title: 'Accessibility First',
-                  desc: 'Every output is optimized for WCAG 2.1 compliance and SEO visibility.',
+                  desc: 'Every tool is optimized for zero-friction usability, responsive design, and SEO visibility.',
                   icon: Users,
                 },
               ].map((value, i) => (
@@ -129,12 +128,11 @@ export function AboutPageClient() {
         <div className="container mx-auto px-6 text-center">
           <div className="max-w-2xl mx-auto space-y-6">
             <Award className="w-16 h-16 text-primary mx-auto mb-8 animate-bounce" />
-            <h2 className="text-3xl font-black">Trusted by Professionals</h2>
+            <h2 className="text-3xl font-black">Trusted Worldwide</h2>
             <p className="text-muted-foreground font-medium leading-relaxed">
-              Content Suite is the preferred documentation engine for safety
-              directors, environmental consultants, and corporate compliance
-              officers worldwide. Our focus remains on the precision and
-              integrity of your technical content.
+              All Useful Tools is the preferred utility suite for developers,
+              content creators, students, and businesses worldwide. Our focus
+              remains on speed, simplicity, and data privacy.
             </p>
           </div>
         </div>
@@ -157,8 +155,8 @@ export function AboutPageClient() {
                         Decentralized Processing:{' '}
                       </span>
                       By leveraging WebAssembly (WASM), we shift heavy
-                      extraction tasks to the client side, ensuring data
-                      residency and privacy.
+                      conversion and media tasks to the client side, ensuring
+                      data privacy and zero upload latency.
                     </p>
                   </div>
                   <div className="flex gap-4">
@@ -167,11 +165,10 @@ export function AboutPageClient() {
                     </div>
                     <p className="text-sm text-muted-foreground font-medium leading-relaxed">
                       <span className="text-foreground font-black">
-                        Semantic Mapping:{' '}
+                        Universal File Standards:{' '}
                       </span>
-                      Our neural layers are trained on over 50,000 industrial
-                      safety documents to recognize specialized nomenclature and
-                      formatting patterns.
+                      Our engines support modern video, audio, image, and PDF
+                      standards for clean, cross-platform compatibility.
                     </p>
                   </div>
                   <div className="flex gap-4">
@@ -180,11 +177,10 @@ export function AboutPageClient() {
                     </div>
                     <p className="text-sm text-muted-foreground font-medium leading-relaxed">
                       <span className="text-foreground font-black">
-                        LMS Integration:{' '}
+                        Seamless Integration:{' '}
                       </span>
-                      Every output is verified against common LMS styling
-                      requirements to ensure seamless migration into platforms
-                      like Canvas, Moodle, and Blackboard.
+                      Every tool output is clean, semantically valid, and ready
+                      for instant export, copy-to-clipboard, or direct download.
                     </p>
                   </div>
                 </div>
@@ -201,8 +197,8 @@ export function AboutPageClient() {
               <p className="text-xl text-muted-foreground font-medium leading-relaxed">
                 We didn&apos;t just build a set of tools; we built a
                 professional engineering environment. Our platform is designed
-                to handle the rigors of industrial data management while
-                providing the simplicity of a modern web application.
+                to handle heavy workflows while providing the simplicity of a
+                modern web application.
               </p>
             </div>
           </div>
@@ -213,24 +209,21 @@ export function AboutPageClient() {
       <section className="py-32 border-t border-border bg-primary/5">
         <div className="container mx-auto px-6 text-center max-w-4xl space-y-12">
           <h2 className="text-3xl md:text-5xl font-black tracking-tight">
-            Our Commitment to the <br />
-            <span className="text-primary">Safety Community</span>
+            Our Commitment to <br />
+            <span className="text-primary">Universal Productivity</span>
           </h2>
           <div className="grid md:grid-cols-2 gap-12 text-left pt-12">
             <p className="text-muted-foreground font-medium leading-relaxed">
-              As we look toward the future of industrial education, Content
-              Suite remains committed to providing accessible, high-performance
-              tools for those on the front lines of safety training. We believe
-              that high-quality documentation should be an asset, not a burden,
-              for organizations striving to maintain compliance and protect
-              their workforce.
+              As we look toward the future of web applications, All Useful Tools
+              remains committed to providing accessible, high-performance tools
+              for everyone. We believe that powerful utilities should be freely
+              available and respect user privacy.
             </p>
             <p className="text-muted-foreground font-medium leading-relaxed">
-              Our roadmap includes expanded support for multi-lingual
-              extraction, advanced AI-aided content refinement, and deeper
-              integrations with global safety standards. Join the thousands of
-              professionals who have already streamlined their documentation
-              lifecycle with our ecosystem.
+              Our roadmap includes expanded format converters, advanced
+              AI-assisted enhancements, and faster processing pipelines. Join
+              the thousands of users who have streamlined their daily tasks with
+              our suite.
             </p>
           </div>
         </div>

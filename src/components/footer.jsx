@@ -93,9 +93,9 @@ export function Footer({ overrideShow = false }) {
           <div className="space-y-8">
             <BrandLogo size="sm" />
             <p className="text-sm text-muted-foreground leading-relaxed font-medium">
-              The world&apos;s most advanced content automation suite for
-              HAZWOPER professionals. Built with neural processing for
-              high-speed, secure documentation.
+              The world&apos;s most advanced all-in-one productivity and media
+              utility suite. Built with high-speed, browser-based processing for
+              seamless workflow automation.
             </p>
             <div className="flex items-center gap-6">
               <Link
@@ -254,13 +254,13 @@ export function Footer({ overrideShow = false }) {
 
         {/* Bottom Bar */}
         <div className="pt-10 border-t border-border flex flex-col md:flex-row items-center justify-between gap-6 text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">
-          <p>© {currentYear} HAZWOPER Tools Platform. Secure Cloud.</p>
+          <p>© {currentYear} All Useful Tools. All rights reserved.</p>
           <div className="flex items-center gap-8">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />{' '}
               SYSTEM ACTIVE
             </span>
-            <span>POWERED BY NEURAL FLOW AI</span>
+            <span>POWERED BY ALL USEFUL TOOLS ENGINE</span>
           </div>
         </div>
       </div>

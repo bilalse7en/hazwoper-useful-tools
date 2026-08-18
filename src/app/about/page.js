@@ -1,11 +1,11 @@
 import { AboutPageClient } from '@/components/about-page-client';
 
 export const metadata = {
-  title: 'About Content Suite | Safety Automation Technology',
+  title: 'About All Useful Tools | Online Productivity & Utility Suite',
   description:
-    'Learn about Content Suite, our mission to pioneer safety technology, and how we automate industrial safety (HAZWOPER/OSHA) documentation securely using neural engines.',
+    'Learn about All Useful Tools, our mission to build high-performance, private, browser-first tools for document management, media conversion, and content automation.',
   keywords:
-    'about Content Suite, safety technology, HAZWOPER automation, OSHA compliance, content automation, local-first safety tools',
+    'about All Useful Tools, online utilities, PDF editor, media converter, document extractor, web tools, local-first processing',
   alternates: {
     canonical: 'https://hazwoper-useful-tools.vercel.app/about',
   },

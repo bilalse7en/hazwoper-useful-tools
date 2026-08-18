@@ -172,21 +172,21 @@ export default function ToolDetailsPage({ params: paramsProp }) {
                   </h3>
                   <div className="prose prose-sm prose-invert max-w-none text-muted-foreground font-medium leading-relaxed">
                     <p>
-                      At Content Suite, we understand that technical
-                      documentation is the backbone of safety and compliance.
-                      That&apos;s why the {toolInfo[toolSlug]?.name} is built to
-                      the highest standards of digital precision. Our engineers
-                      continuously refine our extraction and conversion
-                      algorithms to adapt to the ever-evolving landscape of
-                      industrial documentation structures.
+                      At All Useful Tools, we understand that high efficiency
+                      and data privacy are the backbones of modern digital
+                      workflows. That&apos;s why the {toolInfo[toolSlug]?.name}{' '}
+                      is built to the highest standards of browser-side
+                      execution. Our engineers continuously refine our
+                      conversion and processing algorithms to ensure maximum
+                      speed, security, and fidelity.
                     </p>
                     <p>
-                      Whether you are an individual instructor or a large-scale
-                      training facility, our goal is to provide you with the
-                      most reliable, secure, and efficient tools possible. By
-                      automating the repetitive aspects of content migration, we
-                      empower you to focus on what matters most: delivering
-                      high-quality, life-saving information to your trainees.
+                      Whether you are an individual creator, developer,
+                      educator, or enterprise team, our goal is to provide you
+                      with the most reliable, secure, and fast tools possible.
+                      By automating the heavy lifting of file and document
+                      workflows, we empower you to focus on your creative and
+                      productive goals.
                     </p>
                   </div>
                 </div>

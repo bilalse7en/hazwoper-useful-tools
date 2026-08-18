@@ -27,7 +27,7 @@ export function BrandLogo({ className, size = 'md', animate = true }) {
     >
       <OptimizedGif
         src={BRAND_CONFIG.logo}
-        alt="Content Suite Logo"
+        alt="All Useful Tools Logo"
         width={sizePixels[size]}
         height={sizePixels[size]}
         priority={true}

@@ -1,4 +1,11 @@
-import { PDFDocument, rgb, degrees, StandardFonts, PDFName, PDFString } from 'pdf-lib';
+import {
+  PDFDocument,
+  rgb,
+  degrees,
+  StandardFonts,
+  PDFName,
+  PDFString,
+} from 'pdf-lib';
 
 export const PAGE_SIZES = {
   letter: { name: 'Letter (8.5" x 11")', width: 612, height: 792 },
@@ -102,68 +109,38 @@ function addPdfLinkAnnotation(pdfDoc, page, rect, url) {
 
 export function attachCoverPageLinkAnnotations(pdfDoc, page) {
   const { width: W, height: H } = page.getSize();
-  const footerH = 136;
 
   // Header Logo link
-  addPdfLinkAnnotation(pdfDoc, page, [18, H - 68, 280, H - 10], 'https://hazwoper-osha.com');
-
-  // Phone link
-  addPdfLinkAnnotation(pdfDoc, page, [440, H - 28, W - 18, H - 12], 'tel:1-866-429-6742');
+  addPdfLinkAnnotation(
+    pdfDoc,
+    page,
+    [18, H - 68, 280, H - 10],
+    'https://hazwoper-useful-tools.vercel.app'
+  );
 
   // Email link
-  addPdfLinkAnnotation(pdfDoc, page, [440, H - 50, W - 18, H - 34], 'mailto:info@hazwoper-osha.com');
+  addPdfLinkAnnotation(
+    pdfDoc,
+    page,
+    [W - 250, H - 50, W - 18, H - 34],
+    'mailto:support@hazwoper-useful-tools.com'
+  );
 
   // Website Header link
-  addPdfLinkAnnotation(pdfDoc, page, [440, H - 72, W - 18, H - 56], 'https://hazwoper-osha.com');
-
-  // QR Code link
-  const qrX = 18;
-  const qrY = 36;
-  const qrSize = 74;
-  addPdfLinkAnnotation(pdfDoc, page, [qrX - 4, qrY - 4, qrX + qrSize + 4, qrY + qrSize + 4], 'https://hazwoper-osha.com');
-
-  // Services Column 1
-  addPdfLinkAnnotation(pdfDoc, page, [114, 30, 284, footerH - 15], 'https://hazwoper-osha.com/online-courses');
-
-  // Services Column 2
-  addPdfLinkAnnotation(pdfDoc, page, [300, 30, 460, footerH - 15], 'https://hazwoper-osha.com/online-courses');
-
-  // Address block link
-  const addrX = 472;
-  addPdfLinkAnnotation(pdfDoc, page, [addrX, footerH - 55, W - 10, footerH - 10], 'https://hazwoper-osha.com/contact-us');
-
-  // Social Links (LinkedIn, Facebook, YouTube, Instagram, Twitter, Pinterest)
-  const socialY = 48;
-  const socialR = 8.5;
-  const socialStartX = 472;
-  const socialGap = 22;
-
-  // 1. LinkedIn
-  const liX = socialStartX;
-  addPdfLinkAnnotation(pdfDoc, page, [liX - socialR, socialY - socialR, liX + socialR, socialY + socialR], 'https://www.linkedin.com/company/hazwoper-osha/');
-
-  // 2. Facebook
-  const fbX = socialStartX + socialGap;
-  addPdfLinkAnnotation(pdfDoc, page, [fbX - socialR, socialY - socialR, fbX + socialR, socialY + socialR], 'https://www.facebook.com/HazwoperOsha');
-
-  // 3. YouTube
-  const ytX = socialStartX + socialGap * 2;
-  addPdfLinkAnnotation(pdfDoc, page, [ytX - socialR, socialY - socialR, ytX + socialR, socialY + socialR], 'https://www.youtube.com/@hazwoper-osha');
-
-  // 4. Instagram
-  const igX = socialStartX + socialGap * 3;
-  addPdfLinkAnnotation(pdfDoc, page, [igX - socialR, socialY - socialR, igX + socialR, socialY + socialR], 'https://www.instagram.com/hazwoper_osha_training/');
-
-  // 5. Twitter / X
-  const twX = socialStartX + socialGap * 4;
-  addPdfLinkAnnotation(pdfDoc, page, [twX - socialR, socialY - socialR, twX + socialR, socialY + socialR], 'https://twitter.com/HazwoperOsha/');
-
-  // 6. Pinterest
-  const pinX = socialStartX + socialGap * 5;
-  addPdfLinkAnnotation(pdfDoc, page, [pinX - socialR, socialY - socialR, pinX + socialR, socialY + socialR], 'https://www.pinterest.com/HazwoperOsha/');
+  addPdfLinkAnnotation(
+    pdfDoc,
+    page,
+    [W - 250, H - 72, W - 18, H - 56],
+    'https://hazwoper-useful-tools.vercel.app'
+  );
 
   // Tagline Bar link
-  addPdfLinkAnnotation(pdfDoc, page, [150, 0, 462, 22], 'https://www.hazwoper-osha.com');
+  addPdfLinkAnnotation(
+    pdfDoc,
+    page,
+    [150, 0, 462, 22],
+    'https://hazwoper-useful-tools.vercel.app'
+  );
 }
 
 /**

@@ -63,10 +63,10 @@ export function MainHeader({
           </div>
           <div className="hidden sm:flex flex-col">
             <span className="font-black text-lg tracking-tighter text-foreground uppercase leading-none">
-              Content Suite
+              All Useful Tools
             </span>
             <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
-              Enterprise
+              Utilities
             </span>
           </div>
         </div>

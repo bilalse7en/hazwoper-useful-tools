@@ -1,9 +1,9 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Terms of Service | Content Suite',
+  title: 'Terms of Service | All Useful Tools',
   description:
-    'Terms of Service for Content Suite - Read the terms and conditions for using our content generation and media processing tools.',
+    'Terms of Service for All Useful Tools - Read the terms and conditions for using our content generation and media processing tools.',
   robots: 'index, follow',
 };
 
@@ -32,7 +32,7 @@ export default function TermsOfService() {
               1. Acceptance of Terms
             </h2>
             <p>
-              Welcome to Content Suite. By accessing or using our website and
+              Welcome to All Useful Tools. By accessing or using our website and
               services, you agree to be bound by these Terms of Service
               (&quot;Terms&quot;). If you do not agree to these Terms, please do
               not use our services.
@@ -44,8 +44,8 @@ export default function TermsOfService() {
               2. Description of Services
             </h2>
             <p>
-              Content Suite provides web-based tools for content generation and
-              media processing, including but not limited to:
+              All Useful Tools provides web-based tools for content generation
+              and media processing, including but not limited to:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Web content and course material extraction from documents</li>
@@ -133,7 +133,7 @@ export default function TermsOfService() {
               5. Intellectual Property Rights
             </h2>
             <p>
-              All content, features, and functionality of Content Suite
+              All content, features, and functionality of All Useful Tools
               (including but not limited to software, design, text, graphics,
               logos) are owned by us or our licensors and are protected by
               copyright, trademark, and other intellectual property laws.
@@ -223,8 +223,8 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-semibold mb-3">10. Indemnification</h2>
             <p>
-              You agree to indemnify, defend, and hold harmless Content Suite,
-              its affiliates, and their respective officers, directors,
+              You agree to indemnify, defend, and hold harmless All Useful
+              Tools, its affiliates, and their respective officers, directors,
               employees, and agents from any claims, liabilities, damages,
               losses, costs, or expenses (including reasonable attorneys&apos;
               fees) arising from:

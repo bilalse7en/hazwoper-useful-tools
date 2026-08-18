@@ -43,16 +43,16 @@ export function ProfessionalOverview() {
           </motion.div>
 
           <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-8 leading-[1.1] text-foreground">
-            Authoritative Content <br />
-            <span className="text-primary">Generation Ecosystem</span>
+            Authoritative Utility <br />
+            <span className="text-primary">Ecosystem & Workspace</span>
           </h2>
 
           <p className="text-xl text-muted-foreground leading-relaxed font-medium">
             At the intersection of artificial intelligence and professional
-            safety standards, we provide a suite of tools engineered for the
-            rigorous demands of industrial documentation and training. Our
-            ecosystem simplifies complexity, ensuring precision in every module
-            generated.
+            productivity standards, we provide a suite of tools engineered for
+            the rigorous demands of digital documentation, media editing, and
+            content generation. Our ecosystem simplifies complexity, ensuring
+            precision in every task.
           </p>
         </div>
 
@@ -60,12 +60,12 @@ export function ProfessionalOverview() {
           {[
             {
               title: 'Proprietary Extraction Logic',
-              desc: 'Our neural-enhanced processing engines go beyond simple OCR. We analyze the semantic hierarchy of DOCX and PDF documents to identify critical module structures, learning objectives, and procedural hierarchies.',
+              desc: 'Our neural-enhanced processing engines go beyond simple OCR. We analyze the semantic hierarchy of DOCX and PDF documents to identify critical structures, learning objectives, and content blocks.',
               icon: Cpu,
             },
             {
-              title: 'HAZWOPER Alignment',
-              desc: 'Specifically tailored for safety professionals, our content generators recognize the specific structural requirements of OSHA and HAZWOPER training protocols, automating the creation of compliant training manuals.',
+              title: 'Universal Utility Alignment',
+              desc: 'Specifically tailored for digital creators and professionals, our tools handle PDF manipulation, media re-encoding, and content conversion with zero friction.',
               icon: FileCheck,
             },
             {
@@ -80,12 +80,12 @@ export function ProfessionalOverview() {
             },
             {
               title: 'Digital Transformation',
-              desc: 'We bridge the gap between legacy paper-based documentation and modern digital learning management systems. Seamlessly transition thousands of pages of safety data into clean, formatted web content.',
+              desc: 'We bridge the gap between legacy static documentation and modern digital platforms. Seamlessly transition thousands of pages of text into clean, formatted web content.',
               icon: Globe,
             },
             {
               title: 'Analytical Precision',
-              desc: 'Monitor tool performance and content accuracy through our advanced administrative telemetry. We provide real-time insights into content generation cycles and asset optimization metrics.',
+              desc: 'Monitor tool performance and content accuracy through our advanced administrative telemetry. We provide real-time insights into tool cycles and asset optimization metrics.',
               icon: BarChart,
             },
           ].map((item, i) => (
@@ -114,30 +114,27 @@ export function ProfessionalOverview() {
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <h3 className="text-3xl font-black text-foreground">
-                The Future of Professional Safety Documentation
+                The Future of Online Productivity & Content Automation
               </h3>
               <p className="text-muted-foreground leading-relaxed font-medium">
-                In today&apos;s highly regulated industrial landscape, the
-                accuracy of safety training and technical documentation is
-                paramount. Legacy systems often rely on manual data entry or
-                inefficient &quot;copy-paste&quot; workflows that are prone to
-                human error and consume hundreds of hours of professional time.
+                In today&apos;s fast-paced digital landscape, the efficiency of
+                technical workflows and content creation is paramount. Legacy
+                tools often rely on cumbersome software or inefficient
+                &quot;copy-paste&quot; methods that consume hundreds of hours of
+                valuable time.
               </p>
               <p className="text-muted-foreground leading-relaxed font-medium">
-                Our Content Suite is designed to eliminate these bottlenecks. By
-                leveraging automated extraction protocols, we allow safety
-                directors and course architects to transform static documents
-                into dynamic, web-optimized resources in seconds. This
-                isn&apos;t just about speed&mdash;it&apos;s about ensuring that
-                every safety protocol is accurately preserved and clearly
-                communicated.
+                All Useful Tools is designed to eliminate these bottlenecks. By
+                leveraging automated processing protocols, we allow creators,
+                professionals, and developers to transform documents, media, and
+                code into dynamic, web-optimized resources in seconds.
               </p>
               <ul className="space-y-4">
                 {[
-                  'Automated Syllabus and Module Mapping',
-                  'Intelligent Glossary and Terminology Extraction',
-                  'Semantic HTML5 LMS-Ready Formatting',
-                  'Secure Local Media Processing',
+                  'Automated Document and Module Mapping',
+                  'Intelligent Glossary and Resource Extraction',
+                  'Clean HTML5 and PDF Editing Tools',
+                  'Secure Local Browser Media Processing',
                 ].map((text, i) => (
                   <li
                     key={i}
@@ -164,7 +161,7 @@ export function ProfessionalOverview() {
                     <div className="h-full w-4/5 bg-primary rounded-full" />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">
-                    Neural Engine Active
+                    All Engines Active
                   </span>
                 </div>
               </div>
@@ -177,20 +174,20 @@ export function ProfessionalOverview() {
             </h3>
             <div className="max-w-3xl mx-auto">
               <p className="text-muted-foreground leading-relaxed font-medium mb-6">
-                Our platform architecture is built for the enterprise. We
-                utilize a modern stack involving Next.js, Framer Motion, and
-                Supabase to provide a high-performance, low-latency experience.
-                By shifting compute-heavy tasks like media processing to the
-                client-side using WebAssembly (FFmpeg.wasm and Tesseract.js), we
-                achieve unprecedented privacy standards without sacrificing
-                feature depth.
+                Our platform architecture is built for the modern web. We
+                utilize a cutting-edge stack involving Next.js, Framer Motion,
+                and Supabase to provide a high-performance, low-latency
+                experience. By shifting compute-heavy tasks like media
+                processing and PDF manipulation to the client-side using
+                WebAssembly (FFmpeg.wasm, PDF-lib, and Tesseract.js), we achieve
+                unprecedented privacy standards without sacrificing feature
+                depth.
               </p>
               <p className="text-muted-foreground leading-relaxed font-medium">
-                Whether you are generating a single blog post or a
-                multi-thousand-page technical manual, our infrastructure scales
-                with you. Every tool in our suite is optimized for speed,
-                reliability, and most importantly, the precision required by the
-                hazardous materials handling and safety training industries.
+                Whether you are editing a PDF, converting video clips, or
+                extracting large documents, our infrastructure scales with you.
+                Every tool in our suite is optimized for speed, reliability, and
+                precision.
               </p>
             </div>
           </div>

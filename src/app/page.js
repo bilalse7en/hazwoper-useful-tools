@@ -1,11 +1,11 @@
 import { HomePageClient } from '@/components/home-page-client';
 
 export const metadata = {
-  title: 'HAZWOPER Content Suite | Professional Generator Tools',
+  title: 'All Useful Tools | Free Online Document, Media & AI Utilities',
   description:
-    'Extract Overview, Syllabus, FAQs, Glossary, Resources, Lesson Quizzes and Blog Content from safety and technical documents. Browser-based, secure, and compliance-first.',
+    'Free online productivity and media tools: PDF Editor, Word to HTML, Video Compressor, Video to GIF, Audio Converter, Audio Editor, Image Converter, Document Extractor, OCR, and AI Assistants.',
   keywords:
-    'HAZWOPER tools, course generator, web content generator, safety training documentation, DOCX to HTML, blog generator, glossary generator, video compressor, image converter, tesseract ocr',
+    'all useful tools, pdf editor, word to html, video converter, audio converter, image converter, free online tools, document extractor, audio editor, video to gif',
   alternates: {
     canonical: 'https://hazwoper-useful-tools.vercel.app',
   },
@@ -14,19 +14,19 @@ export const metadata = {
 export default function Home() {
   return (
     <>
-      {/* Professional SEO Infrastructure without policy-violating fake aggregateRating */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'WebApplication',
-            name: 'HAZWOPER Content Suite',
+            name: 'All Useful Tools',
             url: 'https://hazwoper-useful-tools.vercel.app',
-            applicationCategory: 'BusinessApplication',
+            applicationCategory: 'ProductivityApplication',
             operatingSystem: 'Web Browser',
             offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-            description: '20+ professional tools for safety documentation, media processing, and content automation. Browser-based, privacy-first, HAZWOPER compliant.',
+            description:
+              '20+ professional tools for document management, media conversion, OCR, and content automation. Browser-based, fast, and privacy-first.',
           }),
         }}
       />
@@ -36,11 +36,11 @@ export default function Home() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
-            name: 'Content Suite',
+            name: 'All Useful Tools',
             operatingSystem: 'Web',
             applicationCategory: 'BusinessApplication',
             description:
-              'Professional automated course content generator and safety documentation tool. Engineered for HAZWOPER compliance, technical blog creation, and media asset management.',
+              'Professional automated content generator, PDF editor, and media conversion tools. Engineered for high performance, ease of use, and local privacy.',
             offers: {
               '@type': 'Offer',
               price: '0',

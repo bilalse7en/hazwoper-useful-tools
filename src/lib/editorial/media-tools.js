@@ -1,6 +1,6 @@
 export const mediaToolsEditorial = {
   'image-converter': {
-    overview: `The Image Converter is a powerful, privacy-first, browser-side tool designed to perform batch image format conversion locally using the HTML5 Canvas API and modern browser capabilities. Whether you are a web developer optimizing assets for a production site, a safety training coordinator preparing visual materials for a HAZWOPER slide deck, or a digital creator managing a portfolio, this utility provides rapid conversions between WebP, PNG, JPG, and AVIF formats without sending a single byte of your data to an external server. By processing files up to 25MB entirely on the client side, it guarantees absolute privacy for sensitive industrial site imagery or proprietary designs. The built-in quality slider allows professionals to manually balance file size and visual fidelity, making it an essential utility for modern web performance optimization and digital asset management.`,
+    overview: `The Image Converter is a powerful, privacy-first, browser-side tool designed to perform batch image format conversion locally using the HTML5 Canvas API and modern browser capabilities. Whether you are a web developer optimizing assets for a production site, a safety training coordinator preparing visual materials for a Technical slide deck, or a digital creator managing a portfolio, this utility provides rapid conversions between WebP, PNG, JPG, and AVIF formats without sending a single byte of your data to an external server. By processing files up to 25MB entirely on the client side, it guarantees absolute privacy for sensitive industrial site imagery or proprietary designs. The built-in quality slider allows professionals to manually balance file size and visual fidelity, making it an essential utility for modern web performance optimization and digital asset management.`,
     stepByStep: `1. Click the 'Upload Images' area or drag and drop your image files (up to 25MB per file) into the drop zone.
 2. Select your desired output format from the dropdown menu (e.g., WebP, PNG, JPG, AVIF).
 3. If applicable (for lossy formats like JPG, WebP, AVIF), adjust the quality slider from 1 (lowest quality, smallest size) to 100 (highest quality, largest size). A value around 75-80 is typically optimal for web delivery.
@@ -28,10 +28,10 @@ $$
 
 For example, an uncompressed $1920 \\times 1080$ RGB image (8 bits per channel, 24-bit total) requires approximately $6.22 \\text{ MB}$ of raw data. Applying a JPEG compression with a quality factor of 75 often yields a CR of 10:1 to 15:1.`,
     examples: `**Example 1: Optimizing an Incident Report Photo (JPEG to WebP)**
-Input: A 12-megapixel ($4000 \\times 3000$) JPEG photo from a HAZWOPER site inspection. Original size: 4.5 MB.
+Input: A 12-megapixel ($4000 \\times 3000$) JPEG photo from a Technical site inspection. Original size: 4.5 MB.
 Settings: Output Format = WebP, Quality = 80.
 Output: The converted WebP file is approximately 1.8 MB. 
-Result: A 60% reduction in file size (Compression Ratio ~2.5:1 against the already compressed JPEG), saving bandwidth while maintaining critical visual details required for OSHA documentation.
+Result: A 60% reduction in file size (Compression Ratio ~2.5:1 against the already compressed JPEG), saving bandwidth while maintaining critical visual details required for Quality documentation.
 
 **Example 2: Preparing a Transparent Logo (PNG to AVIF)**
 Input: A high-resolution corporate logo with a transparent background in PNG format ($2000 \\times 2000$). Original size: 2.1 MB.
@@ -46,22 +46,28 @@ Output: 10 JPG files averaging 350 KB each (Total: 3.5 MB).
 Result: Converting the flat graphical slides to a lossy format reduced the total payload by over 75%, making the slide deck much easier to email to trainees.`,
     additionalFaq: [
       {
-        question: "Does converting a low-resolution image to a higher-quality format improve its appearance?",
-        answer: "No. Converting an image cannot add detail that is not present in the original file. If you convert a heavily compressed, pixelated JPG into a lossless PNG, the resulting file will still look pixelated but will have a significantly larger file size. Format conversion only preserves existing data or compresses it further."
+        question:
+          'Does converting a low-resolution image to a higher-quality format improve its appearance?',
+        answer:
+          'No. Converting an image cannot add detail that is not present in the original file. If you convert a heavily compressed, pixelated JPG into a lossless PNG, the resulting file will still look pixelated but will have a significantly larger file size. Format conversion only preserves existing data or compresses it further.',
       },
       {
-        question: "Why does the browser tab freeze momentarily when converting very large images?",
-        answer: "The conversion process is completely client-side and relies on your device's CPU and memory via the browser. When decoding and re-encoding a massive image (e.g., a 25MB TIFF or ultra-high-res PNG), the JavaScript thread handles millions of pixels, which can temporarily max out processor utilization until the task completes."
+        question:
+          'Why does the browser tab freeze momentarily when converting very large images?',
+        answer:
+          "The conversion process is completely client-side and relies on your device's CPU and memory via the browser. When decoding and re-encoding a massive image (e.g., a 25MB TIFF or ultra-high-res PNG), the JavaScript thread handles millions of pixels, which can temporarily max out processor utilization until the task completes.",
       },
       {
-        question: "Is AVIF always better than WebP?",
-        answer: "Generally, AVIF provides superior compression efficiency compared to WebP, often yielding files 20-30% smaller at the same visual quality. However, AVIF encoding requires more computational power (making it slower to generate), and while browser support is excellent today, very old browsers may still require WebP or JPEG fallbacks."
+        question: 'Is AVIF always better than WebP?',
+        answer:
+          'Generally, AVIF provides superior compression efficiency compared to WebP, often yielding files 20-30% smaller at the same visual quality. However, AVIF encoding requires more computational power (making it slower to generate), and while browser support is excellent today, very old browsers may still require WebP or JPEG fallbacks.',
       },
       {
-        question: "How does the quality slider map to actual file sizes?",
-        answer: "The quality scale is non-linear. Dropping from 100 to 90 might halve the file size by removing completely imperceptible data. Dropping from 90 to 75 yields further significant savings with minimal visual loss. Below 50, the file size shrinks more slowly, but compression artifacts (like blockiness or color banding) become highly visible."
-      }
-    ]
+        question: 'How does the quality slider map to actual file sizes?',
+        answer:
+          'The quality scale is non-linear. Dropping from 100 to 90 might halve the file size by removing completely imperceptible data. Dropping from 90 to 75 yields further significant savings with minimal visual loss. Below 50, the file size shrinks more slowly, but compression artifacts (like blockiness or color banding) become highly visible.',
+      },
+    ],
   },
   'video-compressor': {
     overview: `The Video Compressor brings the power of server-grade video processing directly to your browser using WebAssembly (WASM) ports of the industry-standard FFmpeg library. Designed for professionals who need to reduce video file sizes without exposing sensitive footage to third-party servers, this tool is ideal for safety managers distributing site walk-throughs, educators uploading lectures, or field technicians sharing diagnostic recordings. By utilizing Constant Rate Factor (CRF) encoding, users can target a specific quality level rather than guessing bitrates, ensuring consistent visual fidelity across videos of varying complexity. The tool offers side-by-side preview estimations and selectable target profiles, making complex FFmpeg compression accessible through an intuitive client-side interface.`,
@@ -109,22 +115,30 @@ Output: A 12 MB MP4 file.
 Result: Dropping the framerate halves the temporal data required, and aggressive CRF tuning provides a massive size reduction suitable for rapid cellular network transmission from the field.`,
     additionalFaq: [
       {
-        question: "Why is the browser-based compression slower than desktop software?",
-        answer: "While WebAssembly provides near-native execution speeds, it operates within a browser sandbox and currently has limited access to hardware acceleration (like NVENC or VideoToolbox). Desktop software can utilize dedicated GPU encoder chips, whereas browser WASM mostly relies on software encoding via your CPU."
+        question:
+          'Why is the browser-based compression slower than desktop software?',
+        answer:
+          'While WebAssembly provides near-native execution speeds, it operates within a browser sandbox and currently has limited access to hardware acceleration (like NVENC or VideoToolbox). Desktop software can utilize dedicated GPU encoder chips, whereas browser WASM mostly relies on software encoding via your CPU.',
       },
       {
-        question: "What exactly does the CRF (Constant Rate Factor) number mean?",
-        answer: "CRF is a quality-control scale usually ranging from 0 to 51. A value of 0 is mathematically lossless (huge files), 18-20 is considered visually lossless, and 23 is the default for standard web video. Every +6 increase in the CRF value roughly halves the resulting video bitrate, significantly reducing file size at the cost of noticeable artifacts."
+        question:
+          'What exactly does the CRF (Constant Rate Factor) number mean?',
+        answer:
+          'CRF is a quality-control scale usually ranging from 0 to 51. A value of 0 is mathematically lossless (huge files), 18-20 is considered visually lossless, and 23 is the default for standard web video. Every +6 increase in the CRF value roughly halves the resulting video bitrate, significantly reducing file size at the cost of noticeable artifacts.',
       },
       {
-        question: "Will compressing a video alter its metadata or timestamp information?",
-        answer: "Standard FFmpeg processes typically strip non-essential metadata (like EXIF GPS tags from smartphones) unless explicitly told to map them. However, basic stream metadata like duration, framerate, and standard resolution headers are rewritten perfectly to match the new file stream."
+        question:
+          'Will compressing a video alter its metadata or timestamp information?',
+        answer:
+          'Standard FFmpeg processes typically strip non-essential metadata (like EXIF GPS tags from smartphones) unless explicitly told to map them. However, basic stream metadata like duration, framerate, and standard resolution headers are rewritten perfectly to match the new file stream.',
       },
       {
-        question: "Is there a limit to how large a video I can compress in the browser?",
-        answer: "Yes. Because WASM loads the file into the browser's memory, files larger than 1-2 GB (depending on your system's RAM and browser architecture) may cause the tab to run out of memory and crash. For multi-gigabyte files, traditional desktop software is recommended."
-      }
-    ]
+        question:
+          'Is there a limit to how large a video I can compress in the browser?',
+        answer:
+          "Yes. Because WASM loads the file into the browser's memory, files larger than 1-2 GB (depending on your system's RAM and browser architecture) may cause the tab to run out of memory and crash. For multi-gigabyte files, traditional desktop software is recommended.",
+      },
+    ],
   },
   'video-converter': {
     overview: `The Video Converter is a versatile client-side utility that transforms video formats seamlessly using an embedded WebAssembly FFmpeg engine. In industrial and technical environments, incompatible video formats are a common friction point—such as older CCTV systems exporting proprietary AVI files, or macOS devices producing MOV files that fail to play on corporate Windows machines. This tool resolves those compatibility issues without requiring software installation or risking data exposure via cloud uploads. Supporting container shifts and full transcodes between MP4, WebM, MOV, AVI, and even GIF, it allows users to modify video parameters on the fly, ensuring media is universally playable across modern browsers, presentation software, and mobile devices.`,
@@ -175,22 +189,28 @@ Output: A highly optimized WebM file ready for HTML5 video tags.
 Result: The proprietary Apple format is converted into a royalty-free, web-native format, ensuring it plays perfectly on open-source platforms and Android devices without licensing issues.`,
     additionalFaq: [
       {
-        question: "What is the difference between changing a file extension and converting the video?",
-        answer: "Renaming 'video.avi' to 'video.mp4' only changes the file name; it does not change the internal data structure (the container or codecs). A true conversion reads the source data, decodes it, and mathematically re-encodes it into the standard specifications of the new format, ensuring actual compatibility."
+        question:
+          'What is the difference between changing a file extension and converting the video?',
+        answer:
+          "Renaming 'video.avi' to 'video.mp4' only changes the file name; it does not change the internal data structure (the container or codecs). A true conversion reads the source data, decodes it, and mathematically re-encodes it into the standard specifications of the new format, ensuring actual compatibility.",
       },
       {
-        question: "Why does converting to GIF take so long and result in a larger file?",
-        answer: "The GIF format was created in the 1980s for simple graphics, not full-motion video. It only supports 256 colors per frame and uses lossless LZW compression. Modern video uses inter-frame compression (saving only the changes between frames), whereas GIF essentially saves every frame as a separate, unoptimized image, resulting in massive files for video content."
+        question:
+          'Why does converting to GIF take so long and result in a larger file?',
+        answer:
+          'The GIF format was created in the 1980s for simple graphics, not full-motion video. It only supports 256 colors per frame and uses lossless LZW compression. Modern video uses inter-frame compression (saving only the changes between frames), whereas GIF essentially saves every frame as a separate, unoptimized image, resulting in massive files for video content.',
       },
       {
-        question: "Can this tool convert videos with multiple audio tracks?",
-        answer: "By default, the client-side FFmpeg pipeline maps the primary (first) video stream and the primary audio stream to the output file. Secondary audio tracks (like director's commentary or alternate languages) and subtitle tracks are generally discarded to ensure a simplified, web-ready output."
+        question: 'Can this tool convert videos with multiple audio tracks?',
+        answer:
+          "By default, the client-side FFmpeg pipeline maps the primary (first) video stream and the primary audio stream to the output file. Secondary audio tracks (like director's commentary or alternate languages) and subtitle tracks are generally discarded to ensure a simplified, web-ready output.",
       },
       {
-        question: "Does converting a video degrade its quality?",
-        answer: "Converting between lossy formats (like MP4 to WebM) requires decoding and re-encoding, which inherently introduces some generational loss. However, by selecting a high-quality preset, this degradation is mathematically minimal and practically imperceptible to the human eye."
-      }
-    ]
+        question: 'Does converting a video degrade its quality?',
+        answer:
+          'Converting between lossy formats (like MP4 to WebM) requires decoding and re-encoding, which inherently introduces some generational loss. However, by selecting a high-quality preset, this degradation is mathematically minimal and practically imperceptible to the human eye.',
+      },
+    ],
   },
   'audio-converter': {
     overview: `The Audio Converter is a robust, privacy-focused utility built to handle client-side audio processing via FFmpeg WASM. From environmental noise monitoring data to safety briefing voiceovers, audio assets frequently require format shifts to meet specific deployment criteria. This tool facilitates seamless re-encoding between ubiquitous formats like MP3, high-fidelity WAV, efficient AAC, open-source OGG, and Apple-centric M4A. With fine-grained control over output bitrates ranging from low-bandwidth speech (64 kbps) to transparent studio quality (320 kbps), and the ability to process batches of files concurrently in the browser, professionals can standardize their audio libraries quickly and securely without utilizing cloud conversion services.`,
@@ -241,25 +261,29 @@ Output: A 14 MB AAC audio file.
 Result: The tool strips the video stream and re-encodes the audio track into a highly efficient AAC container, allowing employees to listen to the lecture on mobile devices without wasting data on video playback.`,
     additionalFaq: [
       {
-        question: "Why should I use AAC instead of MP3?",
-        answer: "Advanced Audio Coding (AAC) is the successor to MP3. It uses more advanced psychoacoustic modeling and better compression algorithms. Generally, an AAC file at 128 kbps sounds noticeably better than an MP3 file at 128 kbps, making it the preferred format for Apple ecosystems and modern web streaming."
+        question: 'Why should I use AAC instead of MP3?',
+        answer:
+          'Advanced Audio Coding (AAC) is the successor to MP3. It uses more advanced psychoacoustic modeling and better compression algorithms. Generally, an AAC file at 128 kbps sounds noticeably better than an MP3 file at 128 kbps, making it the preferred format for Apple ecosystems and modern web streaming.',
       },
       {
-        question: "Does converting audio to a lower bitrate make it quieter?",
-        answer: "No. Bitrate affects the data density and frequency resolution (clarity), not the amplitude (volume). A 64 kbps file will be just as loud as a 320 kbps file, but the 64 kbps file may sound 'muddy', lack high-end crispness, or introduce swirling digital artifacts."
+        question: 'Does converting audio to a lower bitrate make it quieter?',
+        answer:
+          "No. Bitrate affects the data density and frequency resolution (clarity), not the amplitude (volume). A 64 kbps file will be just as loud as a 320 kbps file, but the 64 kbps file may sound 'muddy', lack high-end crispness, or introduce swirling digital artifacts.",
       },
       {
-        question: "What is a sample rate, and does this tool change it?",
-        answer: "The sample rate (e.g., 44.1kHz or 48kHz) is how many times per second the audio wave is measured. Our converter maintains the sample rate of your source file by default. Changing the bitrate compresses the data within those samples, but does not alter the fundamental temporal resolution."
+        question: 'What is a sample rate, and does this tool change it?',
+        answer:
+          'The sample rate (e.g., 44.1kHz or 48kHz) is how many times per second the audio wave is measured. Our converter maintains the sample rate of your source file by default. Changing the bitrate compresses the data within those samples, but does not alter the fundamental temporal resolution.',
       },
       {
-        question: "Is OGG format universally supported?",
-        answer: "OGG (usually utilizing the Vorbis codec) is an excellent open-source format supported natively by Chrome, Firefox, and Android. However, it is famously unsupported by native iOS applications and Safari without third-party libraries, so MP3 or AAC are safer choices for universal Apple compatibility."
-      }
-    ]
+        question: 'Is OGG format universally supported?',
+        answer:
+          'OGG (usually utilizing the Vorbis codec) is an excellent open-source format supported natively by Chrome, Firefox, and Android. However, it is famously unsupported by native iOS applications and Safari without third-party libraries, so MP3 or AAC are safer choices for universal Apple compatibility.',
+      },
+    ],
   },
   'audio-editor': {
-    overview: `The Audio Editor provides a visual, interactive waveform workspace for precise, non-destructive audio manipulation directly in your web browser. Rather than relying on clunky desktop digital audio workstations (DAWs) for simple edits, safety trainers, compliance officers, and content creators can easily perform essential tasks like trimming dead air, applying fade-ins/outs, normalizing gain, adjusting playback speed, or reversing audio. Powered by the Web Audio API for playback and FFmpeg WASM for precise processing and export, it ensures that sensitive recordings—such as whistleblower interviews or confidential operational logs—never leave your local machine. You can refine your audio intuitively and export the polished result to MP3 or WAV in seconds.`,
+    overview: `The Audio Editor provides a visual, interactive waveform workspace for precise, non-destructive audio manipulation directly in your web browser. Rather than relying on clunky desktop digital audio workstations (DAWs) for simple edits, professional educators, compliance officers, and content creators can easily perform essential tasks like trimming dead air, applying fade-ins/outs, normalizing gain, adjusting playback speed, or reversing audio. Powered by the Web Audio API for playback and FFmpeg WASM for precise processing and export, it ensures that sensitive recordings—such as whistleblower interviews or confidential operational logs—never leave your local machine. You can refine your audio intuitively and export the polished result to MP3 or WAV in seconds.`,
     stepByStep: `1. Upload an audio file to generate the visual waveform.
 2. **To Trim:** Click and drag on the waveform to highlight a specific region. Click the 'Trim to Selection' button to discard the unselected audio.
 3. **To Adjust Volume:** Use the Gain slider. A value of >1 amplifies the audio, while <1 reduces it.
@@ -308,21 +332,26 @@ Output: A 20-second MP3 file.
 Result: By stretching the audio and lowering the pitch, maintenance technicians can better analyze the mechanical rhythm and acoustic anomalies of the machine, aiding in predictive maintenance and hazard identification.`,
     additionalFaq: [
       {
-        question: "Why does the audio sound distorted (clipping) after I increased the volume?",
-        answer: "Digital audio has a hard maximum limit (0 dBFS). If you apply a gain factor that pushes the amplitude of the waveform beyond this absolute ceiling, the top of the wave is mathematically 'chopped off' (clipped). This results in harsh, square-wave distortion. Always increase gain conservatively."
+        question:
+          'Why does the audio sound distorted (clipping) after I increased the volume?',
+        answer:
+          "Digital audio has a hard maximum limit (0 dBFS). If you apply a gain factor that pushes the amplitude of the waveform beyond this absolute ceiling, the top of the wave is mathematically 'chopped off' (clipped). This results in harsh, square-wave distortion. Always increase gain conservatively.",
       },
       {
-        question: "Does changing the speed also change the pitch of the voice?",
-        answer: "By default, simple resampling to change speed will also alter pitch (like a vinyl record playing slower or faster). Advanced FFmpeg filters like 'atempo' can change speed without altering pitch, but our basic editor links speed and pitch to ensure artifact-free processing for technical analysis."
+        question: 'Does changing the speed also change the pitch of the voice?',
+        answer:
+          "By default, simple resampling to change speed will also alter pitch (like a vinyl record playing slower or faster). Advanced FFmpeg filters like 'atempo' can change speed without altering pitch, but our basic editor links speed and pitch to ensure artifact-free processing for technical analysis.",
       },
       {
-        question: "Can this editor remove background noise from my recording?",
-        answer: "No. This tool provides structural edits (trimming, fading, volume) rather than spectral repair. Removing background noise (like HVAC hum or wind) requires complex AI models or phase cancellation algorithms not present in this basic waveform editor."
+        question: 'Can this editor remove background noise from my recording?',
+        answer:
+          'No. This tool provides structural edits (trimming, fading, volume) rather than spectral repair. Removing background noise (like HVAC hum or wind) requires complex AI models or phase cancellation algorithms not present in this basic waveform editor.',
       },
       {
-        question: "Is there a limit to how many edits I can apply at once?",
-        answer: "You can apply multiple edits (e.g., trim, gain boost, and fade-in) in a single operation. The interface chains these commands into a single FFmpeg filter graph, ensuring the file is only decoded and re-encoded once, which preserves maximum quality."
-      }
-    ]
-  }
+        question: 'Is there a limit to how many edits I can apply at once?',
+        answer:
+          'You can apply multiple edits (e.g., trim, gain boost, and fade-in) in a single operation. The interface chains these commands into a single FFmpeg filter graph, ensuring the file is only decoded and re-encoded once, which preserves maximum quality.',
+      },
+    ],
+  },
 };
