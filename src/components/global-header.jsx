@@ -43,7 +43,12 @@ export function GlobalHeader({ activeTab, onTabChange }) {
               <div className="lg:hidden">
                 <Sheet>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-10 w-10">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10"
+                      aria-label="Open navigation sidebar"
+                    >
                       <Menu className="h-6 w-6" />
                     </Button>
                   </SheetTrigger>
@@ -87,6 +92,7 @@ export function GlobalHeader({ activeTab, onTabChange }) {
               size="icon"
               className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary transition-colors"
               onClick={() => setThemeDialogOpen(true)}
+              aria-label="Open theme customization modal"
             >
               <Palette className="h-4 w-4" />
             </Button>
@@ -98,6 +104,7 @@ export function GlobalHeader({ activeTab, onTabChange }) {
                   size="icon"
                   className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary transition-colors relative"
                   onClick={() => router.push('/chat')}
+                  aria-label="Open chat messages"
                 >
                   <MessageCircle className="h-4 w-4" />
                   {totalUnread > 0 && (

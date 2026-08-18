@@ -158,6 +158,7 @@ export function BlogSection() {
                     </div>
                     <Link
                       href={`/blog/${post.slug}`}
+                      aria-label={`Read editorial article: ${post.title}`}
                       className="p-3 rounded-xl bg-primary/5 text-primary hover:bg-primary hover:text-white transition-all group/btn"
                     >
                       <ArrowRight className="w-4 h-4" />

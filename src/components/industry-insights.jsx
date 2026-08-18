@@ -19,7 +19,9 @@ export function IndustryInsights() {
             <div className="space-y-4">
               <h2 className="text-3xl md:text-5xl font-black tracking-tight text-foreground leading-tight">
                 Advancing{' '}
-                <span className="text-secondary">Productivity Standards</span>{' '}
+                <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary via-blue-500 to-cyan-400 font-black">
+                  Productivity Standards
+                </span>{' '}
                 <br />
                 Through Automation
               </h2>
@@ -35,10 +37,10 @@ export function IndustryInsights() {
             <div className="grid sm:grid-cols-2 gap-8">
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className="w-5 h-5 text-secondary" />
-                  <h4 className="font-bold text-foreground">
+                  <ShieldCheck className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-foreground">
                     Universal Standards
-                  </h4>
+                  </h3>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Every tool generated through our system follows modern web and
@@ -48,10 +50,10 @@ export function IndustryInsights() {
               </div>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-secondary" />
-                  <h4 className="font-bold text-foreground">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-foreground">
                     Local Data Fidelity
-                  </h4>
+                  </h3>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   We implement strict client-side processing protocols so your
@@ -61,12 +63,12 @@ export function IndustryInsights() {
               </div>
             </div>
 
-            <div className="p-6 rounded-3xl bg-secondary/5 border border-secondary/10 flex items-start gap-4">
-              <Activity className="w-6 h-6 text-secondary shrink-0 mt-1" />
+            <div className="p-6 rounded-3xl bg-primary/5 border border-primary/10 flex items-start gap-4">
+              <Activity className="w-6 h-6 text-primary shrink-0 mt-1" />
               <div>
-                <h5 className="font-black text-sm uppercase tracking-wider mb-2">
+                <h4 className="font-black text-sm uppercase tracking-wider mb-2">
                   Real-Time Processing Metrics
-                </h5>
+                </h4>
                 <p className="text-xs text-muted-foreground">
                   Our browser engines process millions of operations per second
                   to convert media, parse documents, and render PDF edits in
@@ -77,20 +79,20 @@ export function IndustryInsights() {
           </div>
 
           <div className="relative">
-            <div className="absolute -top-20 -right-20 w-80 h-80 bg-secondary/10 rounded-full blur-3xl opacity-50" />
+            <div className="absolute -top-20 -right-20 w-80 h-80 bg-primary/10 rounded-full blur-3xl opacity-50" />
             <div className="relative grid grid-cols-2 gap-4">
               <div className="space-y-4">
                 <div className="aspect-[4/5] bg-muted/30 rounded-[40px] border border-border p-8 flex flex-col justify-end">
-                  <Zap className="w-10 h-10 text-secondary mb-4" />
-                  <h5 className="font-black text-xl mb-2">Zero Latency</h5>
+                  <Zap className="w-10 h-10 text-primary mb-4" />
+                  <h4 className="font-black text-xl mb-2">Zero Latency</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed font-medium">
                     Local processing via WebAssembly ensures your data
                     conversion is instantaneous.
                   </p>
                 </div>
                 <div className="aspect-square bg-muted/30 rounded-[40px] border border-border p-8 flex flex-col justify-end">
-                  <Globe className="w-10 h-10 text-secondary mb-4" />
-                  <h5 className="font-black text-xl mb-2">Global UI</h5>
+                  <Globe className="w-10 h-10 text-primary mb-4" />
+                  <h4 className="font-black text-xl mb-2">Global UI</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed font-medium">
                     Standardized for modern web workflows worldwide.
                   </p>
@@ -98,15 +100,15 @@ export function IndustryInsights() {
               </div>
               <div className="space-y-4 pt-12">
                 <div className="aspect-square bg-muted/30 rounded-[40px] border border-border p-8 flex flex-col justify-end">
-                  <BookOpen className="w-10 h-10 text-secondary mb-4" />
-                  <h5 className="font-black text-xl mb-2">Smart Engine</h5>
+                  <BookOpen className="w-10 h-10 text-primary mb-4" />
+                  <h4 className="font-black text-xl mb-2">Smart Engine</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed font-medium">
                     Deep analysis of document structures and media codecs.
                   </p>
                 </div>
                 <div className="aspect-[4/5] bg-muted/30 rounded-[40px] border border-border p-8 flex flex-col justify-end">
-                  <ShieldCheck className="w-10 h-10 text-secondary mb-4" />
-                  <h5 className="font-black text-xl mb-2">Privacy First</h5>
+                  <ShieldCheck className="w-10 h-10 text-primary mb-4" />
+                  <h4 className="font-black text-xl mb-2">Privacy First</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed font-medium">
                     Privacy is baked into every layer of our utility ecosystem.
                   </p>

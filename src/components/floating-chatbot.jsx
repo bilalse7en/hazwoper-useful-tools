@@ -153,6 +153,7 @@ export function FloatingChatbot() {
     return (
       <button
         onClick={() => setIsOpen(true)}
+        aria-label="Open AI assistant chatbot"
         className="fixed bottom-6 right-6 h-14 w-14 rounded-2xl bg-primary text-primary-foreground shadow-2xl shadow-primary/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-[9999] group border-2 border-white/10"
       >
         <Bot className="h-7 w-7 group-hover:rotate-12 transition-transform" />
@@ -198,6 +199,11 @@ export function FloatingChatbot() {
             size="icon"
             className="h-8 w-8 rounded-lg"
             onClick={() => setIsMinimized(!isMinimized)}
+            aria-label={
+              isMinimized
+                ? 'Maximize chatbot window'
+                : 'Minimize chatbot window'
+            }
           >
             {isMinimized ? (
               <Maximize2 className="h-3.5 w-3.5" />
@@ -210,6 +216,7 @@ export function FloatingChatbot() {
             size="icon"
             className="h-8 w-8 rounded-lg hover:text-red-500"
             onClick={() => setIsOpen(false)}
+            aria-label="Close chatbot window"
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -273,6 +280,7 @@ export function FloatingChatbot() {
               <Button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
+                aria-label="Send message to AI assistant"
                 className="h-9 w-9 rounded-xl shadow-lg shadow-primary/20"
               >
                 <Send className="h-4 w-4" />

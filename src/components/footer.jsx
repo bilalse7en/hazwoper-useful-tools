@@ -100,15 +100,17 @@ export function Footer({ overrideShow = false }) {
             <div className="flex items-center gap-6">
               <Link
                 href="mailto:bilalghaffar46@gmail.com"
+                aria-label="Send email inquiry to All Useful Tools"
                 className="p-3 rounded-xl bg-card border border-border dark:border-white/5 hover:border-blue-400/50 hover:bg-muted dark:hover:bg-slate-800 transition-all group shadow-sm"
               >
-                <Mail className="w-5 h-5 text-slate-400 group-hover:text-blue-500 dark:group-hover:text-blue-400" />
+                <Mail className="w-5 h-5 text-foreground/70 group-hover:text-blue-500 dark:group-hover:text-blue-400" />
               </Link>
               <Link
-                href="#"
+                href="/"
+                aria-label="Visit All Useful Tools homepage"
                 className="p-3 rounded-xl bg-card border border-border dark:border-white/5 hover:border-green-400/50 hover:bg-muted dark:hover:bg-slate-800 transition-all group shadow-sm"
               >
-                <Globe className="w-5 h-5 text-slate-400 group-hover:text-green-500 dark:group-hover:text-green-400" />
+                <Globe className="w-5 h-5 text-foreground/70 group-hover:text-green-500 dark:group-hover:text-green-400" />
               </Link>
             </div>
           </div>
@@ -133,7 +135,7 @@ export function Footer({ overrideShow = false }) {
                     ) : (
                       <button
                         onClick={() => triggerLogin()}
-                        className="transition-colors hover:text-amber-500 opacity-70 text-left"
+                        className="transition-colors hover:text-amber-500 text-left text-foreground/80 font-medium"
                       >
                         {tool.label}
                       </button>

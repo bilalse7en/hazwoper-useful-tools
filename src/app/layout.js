@@ -36,6 +36,10 @@ export const viewport = {
 };
 
 export const metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      'https://hazwoper-useful-tools.vercel.app'
+  ),
   title: 'All Useful Tools | All-in-One Online Productivity & Media Utilities',
   description:
     'Free online productivity and media tools: PDF Editor, Word to HTML, Video Compressor, Video to GIF, Audio Converter, Audio Editor, Image Converter, OCR, and AI Assistants.',
@@ -54,7 +58,7 @@ export default function RootLayout({ children }) {
         <meta name="google-adsense-account" content="ca-pub-9874465109252768" />
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://adservice.google.com https://www.googletagservices.com https://js.puter.com https://*.google.com https://*.gstatic.com https://vercel.live https://*.vercel.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://tagmanager.google.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.puter.com wss://api.puter.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.google-analytics.com https://ep1.adtrafficquality.google https://*.vercel.com https://*.vercel.live; frame-src 'self' https://*.google.com https://*.doubleclick.net https://*.googlesyndication.com https://vercel.live; object-src 'none'; upgrade-insecure-requests;"
+          content="default-src 'self'; media-src 'self' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://adservice.google.com https://www.googletagservices.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.adtrafficquality.google https://js.puter.com https://*.google.com https://*.gstatic.com https://vercel.live https://*.vercel.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://tagmanager.google.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.puter.com wss://api.puter.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.google-analytics.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.adtrafficquality.google https://*.vercel.com https://*.vercel.live; frame-src 'self' https://*.google.com https://*.doubleclick.net https://*.googlesyndication.com https://vercel.live; object-src 'none'; upgrade-insecure-requests;"
         />
         <link
           rel="preconnect"
