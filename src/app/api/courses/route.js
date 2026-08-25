@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url || 'https://localhost');
+    const isFull = searchParams.get('full') === 'true';
+
     const supabase = await createClient();
+    const selectQuery = isFull
+      ? '*'
+      : 'id, title, slug, description, category, duration, duration_label, thumbnail, status, author, settings, updated_at';
+
     const { data, error } = await supabase
       .from('courses')
-      .select('*')
+      .select(selectQuery)
       .order('created_at', { ascending: false });
 
     if (error) {
