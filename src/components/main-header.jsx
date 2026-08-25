@@ -74,6 +74,12 @@ export function MainHeader({
         {/* Desktop Navigation Links for SEO/AdSense Persistence */}
         <nav className="hidden md:flex items-center gap-8 ml-8">
           <Link
+            href="/courses"
+            className="text-sm font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
+          >
+            Courses
+          </Link>
+          <Link
             href="/tools"
             className="text-sm font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
           >

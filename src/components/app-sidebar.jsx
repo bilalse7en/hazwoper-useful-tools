@@ -127,6 +127,7 @@ const adminNavGroups = [
     icon: ShieldCheck,
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'courses', label: 'AI Course Creator', icon: GraduationCap },
       { id: 'admin', label: 'User Roles', icon: Users },
       { id: 'media-library', label: 'Media Assets', icon: Library },
       { id: 'media', label: 'Media Monitor', icon: ImageIcon },

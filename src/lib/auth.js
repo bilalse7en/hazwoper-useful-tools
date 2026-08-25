@@ -7,6 +7,11 @@ export const ROLES = {
 
 // Map tool IDs used in the app to human-readable labels and icons for sidebar
 export const NAV_ITEMS = [
+  {
+    id: 'ai-course-creator',
+    label: 'AI Course Creator (PRO)',
+    icon: 'Sparkles',
+  },
   { id: 'web-content', label: 'Web Content Generator', icon: 'GraduationCap' },
   { id: 'blog-generator', label: 'Blog Generator', icon: 'PenTool' },
   { id: 'glossary-generator', label: 'Glossary Generator', icon: 'BookOpen' },
@@ -141,6 +146,7 @@ export function hasAccess(user, featureId, toolSettings = null) {
   // Generators are paid by default if not specified
   const isGenerator =
     [
+      'ai-course-creator',
       'course',
       'web-content',
       'blog',
@@ -154,6 +160,7 @@ export function hasAccess(user, featureId, toolSettings = null) {
       'lesson-quiz-builder',
     ].includes(featureId) ||
     [
+      'ai-course-creator',
       'course',
       'web-content',
       'blog',
@@ -169,7 +176,7 @@ export function hasAccess(user, featureId, toolSettings = null) {
 
   if (isGenerator) {
     if (!user) return false;
-    return user.has_generator_access === true;
+    return user.has_generator_access === true || user.role === 'admin';
   }
 
   return false;

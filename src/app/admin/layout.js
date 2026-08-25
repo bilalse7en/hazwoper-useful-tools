@@ -101,7 +101,9 @@ function AdminLayoutInner({ children }) {
     );
   }
 
-  const currentView = searchParams.get('view') || 'dashboard';
+  const currentView = pathname?.startsWith('/admin/courses')
+    ? 'courses'
+    : searchParams.get('view') || 'dashboard';
 
   return (
     <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px)] relative">
@@ -109,7 +111,11 @@ function AdminLayoutInner({ children }) {
       <AppSidebar
         activeTab={currentView}
         onTabChange={(tab) => {
-          router.push(`/admin?view=${tab}`);
+          if (tab === 'courses') {
+            router.push('/admin/courses');
+          } else {
+            router.push(`/admin?view=${tab}`);
+          }
         }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}

@@ -36,6 +36,14 @@ const BlogSection = dynamic(
   { ssr: true }
 );
 
+const FeaturedCoursesSection = dynamic(
+  () =>
+    import('@/components/featured-courses-section').then(
+      (mod) => mod.FeaturedCoursesSection
+    ),
+  { ssr: true }
+);
+
 export function HomePageClient() {
   const { user } = useAuth();
   const [showWelcome, setShowWelcome] = useState(false);
@@ -80,6 +88,7 @@ export function HomePageClient() {
     <>
       {showWelcome && <WelcomeScroll onComplete={handleWelcomeComplete} />}
       <ToolsLanding user={user} />
+      <FeaturedCoursesSection />
       <IndustryInsights />
       <ProfessionalOverview />
       <BlogSection />

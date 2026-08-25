@@ -27,6 +27,8 @@ import {
   Trash2,
   ArrowRight,
   Copy,
+  GraduationCap,
+  Sparkles,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -63,9 +65,36 @@ function AdminDashboard() {
   const [libraryItems, setLibraryItems] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) return JSON.parse(stored);
+      } catch {}
+    }
+    return null;
+  });
   const [historyItems, setHistoryItems] = useState([]);
   const [blogItems, setBlogItems] = useState([]);
   const [toolSettings, setToolSettings] = useState({});
+
+  const isBilalGhaffar = useMemo(() => {
+    const name = (
+      currentUser?.name ||
+      currentUser?.full_name ||
+      currentUser?.username ||
+      ''
+    ).toLowerCase();
+    const email = (currentUser?.email || '').toLowerCase();
+    return (
+      name.includes('bilal') ||
+      email.includes('bilal') ||
+      currentUser?.username === 'admin' ||
+      currentUser?.username === 'bilal' ||
+      currentUser?.is_master_admin === true ||
+      currentUser?.role === 'admin'
+    );
+  }, [currentUser]);
 
   const columnHelper = createColumnHelper();
 
@@ -171,18 +200,36 @@ function AdminDashboard() {
       header: 'User Identity',
       cell: (info) => {
         const u = info.row.original;
+        const isMaster =
+          u.role === 'admin' ||
+          (u.full_name || '').toLowerCase().includes('bilal') ||
+          (u.email || '').toLowerCase().includes('bilal') ||
+          u.username === 'admin';
+
         return (
           <div className="flex items-center gap-4">
             <AvatarItem user={u} />
             <div className="flex flex-col min-w-0">
-              <span className="font-black text-lg tracking-tight truncate leading-tight">
-                {u.full_name ||
-                  u.username ||
-                  (u.email ? u.email.split('@')[0] : 'Unknown')}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-lg tracking-tight truncate leading-tight">
+                  {u.full_name ||
+                    u.username ||
+                    (u.email ? u.email.split('@')[0] : 'Unknown')}
+                </span>
+                {isMaster && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                    👑 Master Admin • Bilal Ghaffar
+                  </span>
+                )}
+                {!isMaster && u.role === 'course_creator' && (
+                  <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                    ✨ Course Creator PRO
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                  {u.first_name} {u.last_name}
+                  {u.first_name || 'Member'} {u.last_name || ''}
                 </span>
                 <span className="w-1 h-1 rounded-full bg-border" />
                 <span className="text-[10px] font-medium text-muted-foreground truncate opacity-70 italic shadow-sm">
@@ -202,15 +249,61 @@ function AdminDashboard() {
         </code>
       ),
     }),
+    columnHelper.accessor('has_course_creator_access', {
+      id: 'course_creator_access',
+      header: 'AI Course Creator',
+      cell: (info) => {
+        const u = info.row.original;
+        const isMaster =
+          u.role === 'admin' ||
+          (u.full_name || '').toLowerCase().includes('bilal') ||
+          (u.email || '').toLowerCase().includes('bilal') ||
+          u.username === 'admin';
+        const hasAccess =
+          isMaster ||
+          u.has_course_creator_access === true ||
+          u.has_generator_access === true ||
+          u.role === 'course_creator';
+
+        return (
+          <div className="flex flex-col items-center gap-1.5">
+            <Switch
+              checked={hasAccess}
+              disabled={isMaster || !isBilalGhaffar}
+              onCheckedChange={(checked) =>
+                toggleCourseCreatorAccess(u.id, checked)
+              }
+              className="data-[state=checked]:bg-amber-500"
+            />
+            <span
+              className={cn(
+                'text-[9px] font-black uppercase tracking-widest',
+                hasAccess
+                  ? 'text-amber-500 dark:text-amber-400 font-bold'
+                  : 'text-muted-foreground opacity-50'
+              )}
+            >
+              {isMaster
+                ? 'Master All Access'
+                : hasAccess
+                  ? 'Creator Active'
+                  : 'Restricted'}
+            </span>
+          </div>
+        );
+      },
+    }),
     columnHelper.accessor('has_generator_access', {
       header: 'Generator Suite',
       cell: (info) => {
         const u = info.row.original;
-        const hasAccess = u.has_generator_access === true;
+        const isMaster = u.role === 'admin';
+        const hasAccess = isMaster || u.has_generator_access === true;
         return (
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1.5">
             <Switch
               checked={hasAccess}
+              disabled={isMaster || !isBilalGhaffar}
               onCheckedChange={(checked) =>
                 toggleGeneratorAccess(u.id, checked)
               }
@@ -232,11 +325,12 @@ function AdminDashboard() {
       header: 'AI Suite (Paid)',
       cell: (info) => {
         const u = info.row.original;
-        const hasAi = u.has_ai_access === true;
+        const hasAi = u.has_ai_access === true || u.role === 'admin';
         return (
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1.5">
             <Switch
               checked={hasAi}
+              disabled={u.role === 'admin' || !isBilalGhaffar}
               onCheckedChange={(checked) => toggleAIAccess(u.id, checked)}
               className="data-[state=checked]:bg-purple-600"
             />
@@ -253,28 +347,39 @@ function AdminDashboard() {
       },
     }),
     columnHelper.accessor('role', {
-      header: 'Escalation',
+      header: 'Role Escalation',
       cell: (info) => {
         const u = info.row.original;
-        const isAdmin = u.role === 'admin';
+        const isMasterUser =
+          (u.full_name || '').toLowerCase().includes('bilal') ||
+          (u.email || '').toLowerCase().includes('bilal') ||
+          u.username === 'admin';
+
         return (
-          <div className="flex justify-end items-center gap-4">
-            <Badge
+          <div className="flex items-center justify-end gap-2">
+            <select
+              value={u.role || 'user'}
+              disabled={isMasterUser || !isBilalGhaffar}
+              onChange={(e) => handleRoleChange(u.id, e.target.value)}
               className={cn(
-                'uppercase text-[9px] font-black px-3 py-1',
-                isAdmin
-                  ? 'bg-emerald-500/10 text-emerald-500'
-                  : 'bg-slate-500/10 text-slate-500'
+                'text-[11px] font-bold py-1 px-2.5 rounded-xl border bg-card text-foreground cursor-pointer focus:ring-2 focus:ring-amber-500 outline-none transition-all',
+                u.role === 'admin'
+                  ? 'border-emerald-500/40 text-emerald-500 font-black'
+                  : u.role === 'course_creator'
+                    ? 'border-amber-500/40 text-amber-500 font-black'
+                    : u.role === 'blog_creator'
+                      ? 'border-sky-500/40 text-sky-500'
+                      : u.role === 'content_creator'
+                        ? 'border-purple-500/40 text-purple-500'
+                        : 'border-border text-muted-foreground'
               )}
-              variant="secondary"
             >
-              {isAdmin ? 'Architect' : 'Standard'}
-            </Badge>
-            <Switch
-              checked={isAdmin}
-              onCheckedChange={(checked) => toggleAdmin(u.id, checked)}
-              className="data-[state=checked]:bg-emerald-500"
-            />
+              <option value="admin">Architect / Admin</option>
+              <option value="course_creator">AI Course Creator PRO</option>
+              <option value="blog_creator">Blog Editor</option>
+              <option value="content_creator">Content Specialist</option>
+              <option value="user">Standard User</option>
+            </select>
           </div>
         );
       },
@@ -835,30 +940,129 @@ function AdminDashboard() {
     }
   }
 
-  async function toggleAdmin(userId, isAdmin) {
-    const newRole = isAdmin ? 'admin' : 'user';
+  async function toggleCourseCreatorAccess(userId, hasAccess) {
+    if (!isBilalGhaffar) {
+      showToast(
+        'Access Denied: Only Master Administrator Bilal Ghaffar can grant or revoke AI Course Creator access.',
+        'warning'
+      );
+      return;
+    }
+
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      prev.map((u) =>
+        u.id === userId
+          ? {
+              ...u,
+              has_course_creator_access: hasAccess,
+              has_generator_access: hasAccess,
+            }
+          : u
+      )
     );
+
+    if (userId === currentUserId) {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.has_course_creator_access = hasAccess;
+          parsed.has_generator_access = hasAccess;
+          localStorage.setItem('user', JSON.stringify(parsed));
+        }
+      } catch {}
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ role: newRole })
+        .update({
+          has_generator_access: hasAccess,
+        })
         .eq('id', userId);
 
       if (error) throw error;
       showSuccess(
-        'Identity Reconfigured',
-        `Role escalated to ${newRole.toUpperCase()} for target subject.`
+        'Course Creator Clearance Updated',
+        `AI Course Creator permission ${hasAccess ? 'authorized by Master Admin Bilal Ghaffar' : 'revoked'}.`
       );
     } catch (err) {
-      console.error('Error updating role:', err);
-      showToast('Escalation Failed', 'error');
-      await fetchUsers(true); // Rollback to actual db state on error
+      console.error('Error updating course creator access:', err);
+      showToast('Course creator update failed', 'error');
+      await fetchUsers(true);
     }
   }
 
+  async function handleRoleChange(userId, newRole) {
+    if (!isBilalGhaffar) {
+      showToast(
+        'Access Denied: Only Master Administrator Bilal Ghaffar can reconfigure user roles.',
+        'warning'
+      );
+      return;
+    }
+
+    const autoGrantGenerator =
+      newRole === 'admin' || newRole === 'course_creator';
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? {
+              ...u,
+              role: newRole,
+              has_generator_access: autoGrantGenerator
+                ? true
+                : u.has_generator_access,
+              has_course_creator_access: autoGrantGenerator
+                ? true
+                : u.has_course_creator_access,
+            }
+          : u
+      )
+    );
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          role: newRole,
+          ...(autoGrantGenerator ? { has_generator_access: true } : {}),
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+      showSuccess(
+        'Role Reconfigured',
+        `User clearance upgraded to ${newRole.replace('_', ' ').toUpperCase()} by Master Admin Bilal Ghaffar.`
+      );
+    } catch (err) {
+      console.error('Error updating role:', err);
+      showToast('Role update failed', 'error');
+      await fetchUsers(true);
+    }
+  }
+
+  async function toggleAdmin(userId, isAdmin) {
+    if (!isBilalGhaffar) {
+      showToast(
+        'Access Denied: Only Master Administrator Bilal Ghaffar can grant Admin clearances.',
+        'warning'
+      );
+      return;
+    }
+    const newRole = isAdmin ? 'admin' : 'user';
+    handleRoleChange(userId, newRole);
+  }
+
   async function toggleGeneratorAccess(userId, hasAccess) {
+    if (!isBilalGhaffar) {
+      showToast(
+        'Access Denied: Only Master Administrator Bilal Ghaffar can manage Generator Suite access.',
+        'warning'
+      );
+      return;
+    }
     setUsers((prev) =>
       prev.map((u) =>
         u.id === userId ? { ...u, has_generator_access: hasAccess } : u
@@ -1023,6 +1227,42 @@ function AdminDashboard() {
                   </CardHeader>
                 </Card>
               ))}
+            </div>
+
+            {/* AI Course Creator Quick Launcher */}
+            <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border border-primary/20 rounded-[32px] p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl backdrop-blur-xl">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="p-2.5 rounded-2xl bg-primary text-primary-foreground shadow-md">
+                    <GraduationCap className="w-6 h-6" />
+                  </span>
+                  <h3 className="text-2xl font-black tracking-tight">
+                    AI Course Creator & Manager
+                  </h3>
+                  <Badge
+                    variant="secondary"
+                    className="bg-primary/10 text-primary border border-primary/20 uppercase text-[9px] font-black tracking-widest px-2 py-0.5"
+                  >
+                    Interactive LMS
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                  Generate complete 30-minute to 40-hour safety, tech, and
+                  regulatory courses with dual-pane rich text & AI image
+                  editing, free natural English TTS narration, lesson quizzes,
+                  and verified digital certificates.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  size="lg"
+                  className="rounded-2xl h-12 px-6 font-bold shadow-lg shadow-primary/25"
+                  onClick={() => router.push('/admin/courses')}
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Launch Course Creator
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

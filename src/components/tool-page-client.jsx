@@ -115,8 +115,17 @@ const PDFEditor = nextDynamic(
   { ssr: false }
 );
 
+const AICourseCreatorGenerator = nextDynamic(
+  () =>
+    import('@/components/generators/ai-course-creator-generator').then(
+      (m) => m.default || m.AICourseCreatorGenerator
+    ),
+  { ssr: false }
+);
+
 // Map slugs to components
 const toolComponents = {
+  'ai-course-creator': AICourseCreatorGenerator,
   'web-content': CourseGenerator,
   'blog-generator': BlogGenerator,
   'glossary-generator': GlossaryGenerator,

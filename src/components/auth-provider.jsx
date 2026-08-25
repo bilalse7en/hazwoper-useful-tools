@@ -275,11 +275,6 @@ export function AuthProvider({ children }) {
       };
 
       const handleBeforeUnload = () => {
-        const data = JSON.stringify({
-          is_online: false,
-          last_seen_at: new Date().toISOString(),
-        });
-        navigator.sendBeacon?.(`/api/profile?userId=${user.id}`, data);
         updateOnlineStatus(false);
       };
 

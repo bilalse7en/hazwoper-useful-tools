@@ -171,7 +171,7 @@
 .nebula .glass-toast {
   background: rgba(10, 17, 40, 0.98) !important;
   border-color: rgba(56, 189, 248, 0.8) !important;
-  box-shadow: 
+  box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.6),
     0 0 20px rgba(56, 189, 248, 0.3) !important;
   color: #ffffff !important;
@@ -797,7 +797,7 @@ ol {
 /* Premium SweetAlert2 Customizations */
 .premium-swal-popup {
   border: 1px solid rgba(var(--primary-rgb), 0.1) !important;
-  box-shadow: 
+  box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(var(--primary-rgb), 0.05) !important;
 }
@@ -862,7 +862,7 @@ ol {
   color: var(--foreground) !important;
   border-radius: 1.25rem !important;
   padding: 1rem !important;
-  box-shadow: 
+  box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.15),
     inset 0 1px 1px rgba(var(--glass-shadow-highlight), 0.1) !important;
 }
@@ -870,30 +870,61 @@ ol {
 .nebula .glass-toast {
   background: rgba(10, 17, 40, 0.9) !important;
   border-color: rgba(56, 189, 248, 0.5) !important;
-  box-shadow: 
+  box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.4),
     0 0 15px rgba(56, 189, 248, 0.2) !important;
 }
 
 /* SweetAlert Animations */
 @keyframes swalZoomIn {
-  from { opacity: 0; transform: scale(0.92); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 @keyframes swalZoomOut {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.92); }
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
 }
 @keyframes swalFadeInRight {
-  from { opacity: 0; transform: translateX(30px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 @keyframes swalFadeOutRight {
-  from { opacity: 1; transform: translateX(0); }
-  to { opacity: 0; transform: translateX(30px); }
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
 }
-.swal-zoom-in { animation: swalZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.swal-zoom-out { animation: swalZoomOut 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.swal-fade-in-right { animation: swalFadeInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.swal-fade-out-right { animation: swalFadeOutRight 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
+.swal-zoom-in {
+  animation: swalZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.swal-zoom-out {
+  animation: swalZoomOut 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.swal-fade-in-right {
+  animation: swalFadeInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.swal-fade-out-right {
+  animation: swalFadeOutRight 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

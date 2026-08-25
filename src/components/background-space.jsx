@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTheme } from 'next-themes';
-import { isLowEnd } from '@/lib/utils';
+
+// Inlined to keep this dynamic chunk self-contained (prevents Turbopack ChunkLoadError)
+function isLowEnd() {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('performance_mode') === 'true';
+}
 
 export function BackgroundSpace() {
   const canvasRef = useRef(null);

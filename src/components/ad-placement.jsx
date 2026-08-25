@@ -33,7 +33,10 @@ export function AdPlacement({ type, className }) {
       <span className="block text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 mb-1 ml-1">
         {config.label}
       </span>
-      <div style={{ minHeight: config.minHeight }} className="flex justify-center items-center">
+      <div
+        style={{ minHeight: config.minHeight }}
+        className="flex justify-center items-center"
+      >
         <AdSenseAd
           slot={config.slot}
           format={config.format}

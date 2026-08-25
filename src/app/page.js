@@ -15,7 +15,9 @@ export default function Home() {
   return (
     <>
       <script
+        id="schema-web-application"
         type="application/ld+json"
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
@@ -31,7 +33,9 @@ export default function Home() {
         }}
       />
       <script
+        id="schema-software-application"
         type="application/ld+json"
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',

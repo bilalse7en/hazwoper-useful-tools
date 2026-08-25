@@ -4,6 +4,16 @@
  */
 
 export const toolMetadata = {
+  'ai-course-creator': {
+    title:
+      'AI Course Creator - Create Professional LMS Courses | All Useful Tools',
+    description:
+      'Generate full interactive OSHA/HAZWOPER and corporate training courses with AI. Complete with modules, topics, visual canvas components, audio narration scripts, and quizzes.',
+    keywords:
+      'AI course creator, course generator, LMS course builder, HAZWOPER AI, OSHA course generator, automated course builder',
+    canonical: '/tools/ai-course-creator',
+    ogImage: '/og-web-content.png',
+  },
   'web-content': {
     title:
       'Web Content Generator - Extract Structured Web Content from Documents | All Useful Tools',
@@ -228,6 +238,7 @@ export const toolMetadata = {
 
 // Map tool IDs used in the app to URL slugs
 export const toolIdToSlug = {
+  'ai-course-creator': 'ai-course-creator',
   course: 'web-content',
   blog: 'blog-generator',
   glossary: 'glossary-generator',
@@ -257,6 +268,70 @@ export const slugToToolId = Object.fromEntries(
 
 // Tool display information
 export const toolInfo = {
+  'ai-course-creator': {
+    name: 'AI Course Creator (PRO)',
+    icon: '✨',
+    description:
+      'Enterprise-grade Multi-Agent AI Course Generator with 8K Photorealistic Canvas, Humanized Audio Narration, 15 Interactive Quiz Engines, and SCORM/LMS Export',
+    category: 'Course & Curriculum Creation',
+    detailedDescription:
+      'The AI Course Creator is an enterprise-grade curriculum engineering and LMS production platform. Powered by collaborative multi-agent artificial intelligence (Curriculum Architect, Content Specialist, Assessment Evaluator, and Voice Synthesizer), it dynamically converts any occupational safety, compliance, or technical topic into full-scale, accredited instructional courses complete with structured modules, interactive canvas components, slide-by-slide 8K photorealistic imagery, natural Web Speech narration, formative practice quizzes, and accredited final certification exams.',
+    benefits: [
+      'Multi-Agent AI Engine: 3 collaborative agents draft curriculum, design component canvases, and formulate assessments',
+      '8K Photorealistic Canvas & Watermark: Slide-by-slide high-resolution visual safety gear and worksite illustrations with custom branding',
+      'Humanized Natural TTS Narration: Natural English speech engine with 0.3s breath pauses, phonetic dictionaries, and instant play/pause/scrubber controls',
+      '15 Interactive Quiz Engines: Scenario-based questions, hazard spotter, drag & drop sequence, true/false, inspection checklist, and compulsory final exams',
+      'OSHA 29 CFR & ANSI Benchmark Alignment: Pre-configured regulatory taxonomies and pedagogical benchmarks',
+      'Instant LMS & SCORM Export: Download course bundles in SCORM 1.2 / 2004, JSON format, or printable compliance summaries',
+    ],
+    howToUse:
+      '1. Enter Course Topic & Objectives: Provide your training topic (e.g. OSHA Fall Protection, Confined Space Entry) or upload reference materials.\n2. Configure Parameters: Select target audience, regulatory standards (OSHA 29 CFR, EPA, ANSI), and custom module/lesson depth.\n3. Launch Multi-Agent AI Engine: The collaborative agents generate structured modules, interactive canvas blocks, and quiz items.\n4. Human Quality Review & Track Changes: Review the AI-generated topics with our built-in human editor review panel to accept or refine text.\n5. Customize in Visual Studio: Drag-and-drop interactive accordions, 3D flip-cards, warning callouts, and upload custom watermarked images.\n6. Publish & Deploy: Export to your LMS, download SCORM bundles, or launch directly in the accredited full-screen student player.',
+    useCases: [
+      {
+        title: 'Safety Training Automation',
+        description:
+          'Generate complete OSHA 10/30, HAZWOPER, and industrial compliance training modules in seconds with realistic visual aids.',
+      },
+      {
+        title: 'Corporate Onboarding & SOP Standardization',
+        description:
+          'Create engaging onboarding programs with interactive quizzes and audio narration for distributed enterprise workforces.',
+      },
+      {
+        title: 'Commercial LMS Course Authoring',
+        description:
+          'Rapidly build monetizable online training courses with custom certificates and verifiable seat time tracking.',
+      },
+      {
+        title: 'Vocational & Technical Education',
+        description:
+          'Build hands-on procedural sequence walkthroughs and hazard recognition challenges for trade professionals.',
+      },
+    ],
+    faq: [
+      {
+        question: 'Who has access to the AI Course Creator?',
+        answer:
+          'Access to the AI Course Creator is managed exclusively by Master Administrator Bilal Ghaffar and is granted to authorized Course Creators and PRO license holders.',
+      },
+      {
+        question:
+          'Can I export courses to standard Learning Management Systems (LMS)?',
+        answer:
+          'Yes! You can export complete course packages in SCORM 1.2, SCORM 2004, and standardized JSON format compatible with Moodle, Canvas, Blackboard, TalentLMS, and custom LMS platforms.',
+      },
+      {
+        question: 'How does the Natural Voice Narration work?',
+        answer:
+          'The built-in CourseNarrator engine synthesizes crystal-clear speech row-by-row with synchronized closed captions, 0.3s sentence breath pacing, and seamless play/pause/seeking scrubber synchronization.',
+      },
+      {
+        question: 'Does it support interactive widgets and visual components?',
+        answer:
+          'Yes! Courses support 12+ visual components including 3D Flip-Cards, Interactive Accordions, Multi-Step Workflows, Tabbed Data Panels, Comparison Matrices, and 15 Formative Quiz Engines.',
+      },
+    ],
+  },
   'web-content': {
     name: 'Web Content Generator',
     icon: '📝',

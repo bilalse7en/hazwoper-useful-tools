@@ -35,6 +35,7 @@ import { triggerLogin, hasAccess } from '@/lib/auth';
 import { useAuth } from '@/components/auth-provider';
 
 const iconMap = {
+  'ai-course-creator': Sparkles,
   course: Layout,
   blog: FileText,
   glossary: BookOpen,
@@ -77,6 +78,7 @@ const FREE_TOOL_IDS = [
 
 // Generator tools that require login + generator access
 const GENERATOR_TOOL_IDS = [
+  'ai-course-creator',
   'course',
   'blog',
   'glossary',

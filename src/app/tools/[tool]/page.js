@@ -1,5 +1,11 @@
 import { notFound } from 'next/navigation';
-import { toolMetadata, slugToToolId, toolInfo, generateToolSchema, generateBreadcrumbSchema } from '@/lib/seo';
+import {
+  toolMetadata,
+  slugToToolId,
+  toolInfo,
+  generateToolSchema,
+  generateBreadcrumbSchema,
+} from '@/lib/seo';
 import { ToolSEOContentServer } from '@/components/tool-seo-content-server';
 import { ToolPageClient } from '@/components/tool-page-client';
 import { AdPlacement } from '@/components/ad-placement';
@@ -12,7 +18,9 @@ export async function generateMetadata({ params }) {
     title: meta.title,
     description: meta.description,
     keywords: meta.keywords,
-    alternates: { canonical: `https://hazwoper-useful-tools.vercel.app${meta.canonical}` },
+    alternates: {
+      canonical: `https://hazwoper-useful-tools.vercel.app${meta.canonical}`,
+    },
     openGraph: {
       title: meta.title,
       description: meta.description,
@@ -44,12 +52,18 @@ export default async function ToolPage({ params }) {
   return (
     <>
       {toolSchema && (
-        <script type="application/ld+json"
+        <script
+          id={`schema-tool-${toolSlug}`}
+          type="application/ld+json"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(toolSchema) }}
         />
       )}
       {breadcrumbSchema && (
-        <script type="application/ld+json"
+        <script
+          id={`schema-breadcrumb-${toolSlug}`}
+          type="application/ld+json"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
         />
       )}

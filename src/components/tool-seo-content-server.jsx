@@ -92,12 +92,16 @@ export function ToolSEOContentServer({ slug }) {
     <section className="mt-16 pt-16 border-t border-border space-y-16">
       {faqSchema && (
         <script
+          id={`schema-faq-${slug}`}
           type="application/ld+json"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}
       <script
+        id={`schema-webapp-${slug}`}
         type="application/ld+json"
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(webAppSchema) }}
       />
 

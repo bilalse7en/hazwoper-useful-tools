@@ -23,6 +23,7 @@ import {
   FileImage,
   Award,
   Globe,
+  Play,
 } from 'lucide-react';
 import {
   Sheet,
@@ -47,6 +48,7 @@ import {
 import { PreviewDrawer } from '@/components/preview-drawer';
 import { ProgressButton } from '@/components/progress-button';
 import { HistoryList } from '@/components/history-list';
+import { ProfessionalCoursePlayerModal } from '@/components/professional-course-player-modal';
 import { useAuthAction } from '@/lib/use-auth-action';
 import { showToast } from '@/lib/swal';
 import { saveGeneratorState } from '@/lib/tool-history';
@@ -88,6 +90,7 @@ export function CourseGenerator() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState('');
   const [previewTitle, setPreviewTitle] = useState('');
+  const [coursePlayerModalOpen, setCoursePlayerModalOpen] = useState(false);
 
   // Auto-save helper
   const persistState = async (updates = {}) => {
@@ -435,7 +438,15 @@ Role: ${details.role || ''}`;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button
+          onClick={() => setCoursePlayerModalOpen(true)}
+          className="h-11 px-5 rounded-xl font-black uppercase tracking-wider text-[11px] gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98]"
+        >
+          <Play className="h-4 w-4 fill-slate-950" /> Interactive Course Player
+          Preview
+        </Button>
+
         <Sheet>
           <SheetTrigger asChild>
             <Button
@@ -1322,7 +1333,11 @@ Role: ${details.role || ''}`;
         data={activeView === 'faq' ? courseData?.faqData : null}
       />
 
-      {/* Notification system standardized to SweetAlert2 utility */}
+      <ProfessionalCoursePlayerModal
+        isOpen={coursePlayerModalOpen}
+        onClose={() => setCoursePlayerModalOpen(false)}
+        isAdminMode={true}
+      />
     </div>
   );
 }

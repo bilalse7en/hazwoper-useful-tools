@@ -15,12 +15,21 @@ function extractMetadata(html) {
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const title = titleMatch ? titleMatch[1].trim() : '';
 
-  const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i) ||
-                    html.match(/<meta[^>]*content=["']([^"']*)["'][^>]*name=["']description["'][^>]*>/i);
+  const descMatch =
+    html.match(
+      /<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["'][^>]*>/i
+    ) ||
+    html.match(
+      /<meta[^>]*content=["']([^"']*)["'][^>]*name=["']description["'][^>]*>/i
+    );
   const description = descMatch ? descMatch[1].trim() : '';
 
-  const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']*)["'][^>]*>/i);
-  const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["'][^>]*>/i);
+  const ogTitleMatch = html.match(
+    /<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']*)["'][^>]*>/i
+  );
+  const ogDescMatch = html.match(
+    /<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["'][^>]*>/i
+  );
 
   // Extract headings
   const headings = [];
@@ -47,7 +56,8 @@ function extractMetadata(html) {
 
   // Extract images
   const images = [];
-  const imgRegex = /<img[^>]*src=["']([^"']+)["'][^>]*alt=["']?([^"'>]*)["']?[^>]*>/gi;
+  const imgRegex =
+    /<img[^>]*src=["']([^"']+)["'][^>]*alt=["']?([^"'>]*)["']?[^>]*>/gi;
   let iMatch;
   while ((iMatch = imgRegex.exec(html)) !== null && images.length < 15) {
     const src = iMatch[1].trim();
@@ -62,7 +72,10 @@ function extractMetadata(html) {
   const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
   let pMatch;
   while ((pMatch = pRegex.exec(html)) !== null && paragraphs.length < 40) {
-    const text = pMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    const text = pMatch[1]
+      .replace(/<[^>]+>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (text && text.length > 20) {
       paragraphs.push(text);
     }
@@ -147,7 +160,10 @@ export async function POST(request) {
     const { url, format = 'json' } = await request.json();
 
     if (!url || typeof url !== 'string') {
-      return NextResponse.json({ error: 'Valid URL is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Valid URL is required' },
+        { status: 400 }
+      );
     }
 
     let targetUrl = url.trim();
@@ -163,7 +179,8 @@ export async function POST(request) {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
     });
@@ -213,7 +230,10 @@ export async function POST(request) {
   } catch (err) {
     return NextResponse.json(
       {
-        error: err.name === 'AbortError' ? 'URL request timed out' : err.message || 'Scraping failed',
+        error:
+          err.name === 'AbortError'
+            ? 'URL request timed out'
+            : err.message || 'Scraping failed',
       },
       { status: 500 }
     );
