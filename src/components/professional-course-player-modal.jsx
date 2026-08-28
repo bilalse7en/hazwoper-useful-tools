@@ -79,6 +79,72 @@ import PlayerComponentRenderer, {
 } from '@/components/player/components/PlayerComponentRenderer';
 import { serializeComponentsToHtml } from '@/lib/component-registry';
 import { getRealisticTopicPhoto } from '@/lib/se7en-ai';
+import { generateQuizQuestions, generateUUID } from '@/lib/course-generator';
+
+/**
+ * Auto-inject interactive quizzes into any course that is missing them.
+ * Ensures every non-intro lesson has a 6-question practice quiz,
+ * and every course has a compulsory final exam.
+ * Returns a new course object (does not mutate the input).
+ */
+export function ensureCourseQuizzes(course) {
+  if (!course || !course.modules) return course;
+
+  const patched = JSON.parse(JSON.stringify(course));
+  let lessonCounter = 0;
+
+  patched.modules.forEach((mod) => {
+    mod.lessons?.forEach((lesson) => {
+      const isIntro = lesson.isIntroduction || lesson.order === 0;
+      if (!isIntro) {
+        lessonCounter++;
+      }
+
+      // Skip intro lessons — they don't get quizzes
+      if (isIntro) return;
+
+      // If this non-intro lesson is missing a quiz or has no questions, inject one
+      if (
+        !lesson.quiz ||
+        !lesson.quiz.questions ||
+        lesson.quiz.questions.length === 0
+      ) {
+        const lessonLabel = lesson.title || `Lesson ${lessonCounter}`;
+        lesson.quiz = {
+          id: generateUUID(),
+          title: `${lessonLabel} Practice Quiz (6 Questions)`,
+          passingScore: 70,
+          isCompulsory: false,
+          questions: generateQuizQuestions(lessonLabel, 6),
+        };
+      }
+    });
+  });
+
+  // If the course is missing a final exam, inject one
+  if (
+    !patched.finalExam ||
+    !patched.finalExam.questions ||
+    patched.finalExam.questions.length === 0
+  ) {
+    const examCount = 25;
+    patched.finalExam = {
+      id: generateUUID(),
+      title: 'Compulsory Final Examination',
+      description: `Comprehensive final examination covering all modules in ${patched.title || 'this course'}. You must achieve a minimum passing score of 70% to unlock your verifiable Certificate of Completion.`,
+      passingScore: 70,
+      isCompulsory: true,
+      timeLimit: 3600,
+      questionCount: examCount,
+      questions: generateQuizQuestions(
+        `${patched.title || 'Course'} Final Exam`,
+        examCount
+      ),
+    };
+  }
+
+  return patched;
+}
 
 /**
  * Clean numerical prefixes, verbose AI headers, and format sober, concise TOC titles (max 6 words).
@@ -1633,45 +1699,49 @@ export function ProfessionalCoursePlayerModal({
     requiredSeatTimeSeconds - courseElapsedSeconds
   );
 
-  // Normalize course structure
+  // Normalize course structure and ensure all lessons have interactive quizzes
   const course = useMemo(() => {
+    let base;
     if (
       initialCourseData &&
       initialCourseData.modules &&
       initialCourseData.modules.length > 0
     ) {
-      return initialCourseData;
+      base = initialCourseData;
+    } else {
+      base = {
+        id: 'default_course',
+        title: 'OSHA Safety & HAZWOPER Training Program',
+        modules: [
+          {
+            id: 'm1',
+            title: 'Module 1: Safety Fundamentals',
+            lessons: [
+              {
+                id: 'l1',
+                title: 'Lesson 1: Regulatory Scope',
+                topics: [
+                  {
+                    id: 't1',
+                    title: 'Scope & Standards',
+                    content:
+                      '<p>Comprehensive regulatory standards for safety and compliance.</p>',
+                  },
+                  {
+                    id: 't2',
+                    title: 'Hazard Recognition',
+                    content:
+                      '<p>Identifying and mitigating workplace physical and chemical hazards.</p>',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
     }
-    return {
-      id: 'default_course',
-      title: 'OSHA Safety & HAZWOPER Training Program',
-      modules: [
-        {
-          id: 'm1',
-          title: 'Module 1: Safety Fundamentals',
-          lessons: [
-            {
-              id: 'l1',
-              title: 'Lesson 1: Regulatory Scope',
-              topics: [
-                {
-                  id: 't1',
-                  title: 'Scope & Standards',
-                  content:
-                    '<p>Comprehensive regulatory standards for safety and compliance.</p>',
-                },
-                {
-                  id: 't2',
-                  title: 'Hazard Recognition',
-                  content:
-                    '<p>Identifying and mitigating workplace physical and chemical hazards.</p>',
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    };
+    // Auto-inject quizzes for any lessons missing them and final exam if absent
+    return ensureCourseQuizzes(base);
   }, [initialCourseData]);
 
   // Flatten course into slides

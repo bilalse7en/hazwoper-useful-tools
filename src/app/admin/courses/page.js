@@ -89,7 +89,7 @@ import {
   importCourseJSON,
   DEFAULT_INITIAL_COURSES,
 } from '@/lib/course-storage';
-import { generateSe7enImage, callPuterAiChat } from '@/lib/se7en-ai';
+import { generateSe7enImage, callPuterAiChat, getRealisticTopicPhoto } from '@/lib/se7en-ai';
 import { stampSystemLogoOnImage } from '@/lib/watermark-util';
 import { ProfessionalCoursePlayerModal } from '@/components/professional-course-player-modal';
 import ComponentPalette from '@/components/admin/courses/content/ComponentPalette';

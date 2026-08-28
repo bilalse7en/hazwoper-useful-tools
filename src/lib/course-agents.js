@@ -1336,10 +1336,10 @@ function generateMultiTypeQuizQuestions(contextTitle, count = 6) {
   const types = [
     'multiple-choice',
     'true-false',
-    'matching',
-    'sequence',
-    'hazard-spotting',
-    'checklist',
+    'match-hazard',
+    'ordering',
+    'spot-hazard',
+    'inspection-challenge',
   ];
 
   const questions = [];
@@ -1373,11 +1373,11 @@ function generateMultiTypeQuizQuestions(contextTitle, count = 6) {
         correctAnswer: 1,
         explanation: `False. Any safety equipment exhibiting wear, defects, or failure must be immediately tagged out and removed from service permanently.`,
       });
-    } else if (qType === 'matching') {
+    } else if (qType === 'match-hazard') {
       questions.push({
         id,
-        type: 'matching',
-        typeLabel: 'Interactive Safety Term Matching',
+        type: 'match-hazard',
+        typeLabel: 'Drag & Drop — Match the Hazard',
         question: `Match the safety controls for ${contextTitle} to their proper operational definitions:`,
         pairs: [
           {
@@ -1408,11 +1408,11 @@ function generateMultiTypeQuizQuestions(contextTitle, count = 6) {
         ],
         explanation: `The Hierarchy of Controls places Engineering Controls highest, followed by Administrative Controls and Personal Protective Equipment (PPE).`,
       });
-    } else if (qType === 'sequence') {
+    } else if (qType === 'ordering') {
       questions.push({
         id,
-        type: 'sequence',
-        typeLabel: 'Procedural Sequence Order',
+        type: 'ordering',
+        typeLabel: 'Drag & Drop — Put in the Correct Order',
         question: `Arrange the mandatory procedure steps for ${contextTitle} in chronological order:`,
         sequenceItems: [
           '1. Hazard Identification & Site Survey',
@@ -1423,11 +1423,11 @@ function generateMultiTypeQuizQuestions(contextTitle, count = 6) {
         correctOrder: [0, 1, 2, 3],
         explanation: `Standard operating procedures require conducting a hazard survey before donning equipment, executing operations, and performing final decontamination.`,
       });
-    } else if (qType === 'hazard-spotting') {
+    } else if (qType === 'spot-hazard') {
       questions.push({
         id,
-        type: 'hazard-spotting',
-        typeLabel: 'Hazard Spotting Inspection',
+        type: 'spot-hazard',
+        typeLabel: 'Spot the Hazard',
         question: `Identify all critical hazards requiring immediate intervention for ${contextTitle}:`,
         hazardList: [
           {
@@ -1461,8 +1461,8 @@ function generateMultiTypeQuizQuestions(contextTitle, count = 6) {
     } else {
       questions.push({
         id,
-        type: 'checklist',
-        typeLabel: 'Pre-Task Safety Checklist',
+        type: 'inspection-challenge',
+        typeLabel: 'Inspection Challenge',
         question: `Select all verified items required prior to commencing ${contextTitle}:`,
         checklist: [
           {
