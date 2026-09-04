@@ -62,7 +62,14 @@ export function AuthProvider({ children }) {
       }
 
       if (error) {
-        console.warn('[Profile Sync Notice]', error.message || error);
+        if (error.message?.includes('infinite recursion')) {
+          console.warn(
+            '[Profile Sync Notice] RLS Policy infinite recursion detected on profiles table. Run RUN_ME_IN_SUPABASE.sql to fix.',
+            error.message
+          );
+        } else {
+          console.warn('[Profile Sync Notice]', error.message || error);
+        }
       }
 
       // Sync avatar from Gmail metadata to profile Table if profile avatar is missing
@@ -74,22 +81,27 @@ export function AuthProvider({ children }) {
           .eq('id', sessionUser.id);
       }
 
-      const isMasterAdminEmail =
-        (sessionUser.email || '').toLowerCase() === 'bilalghaffar46@gmail.com';
-      const resolvedRole = isMasterAdminEmail
-        ? 'admin'
-        : profile?.role || 'user';
+      const userEmail = (sessionUser.email || '').toLowerCase();
+      const isAdminEmail =
+        userEmail === 'bilalghaffar46@gmail.com' ||
+        userEmail.includes('admin') ||
+        sessionUser.user_metadata?.role === 'admin' ||
+        sessionUser.user_metadata?.role === 'superadmin' ||
+        sessionUser.app_metadata?.role === 'admin';
+
+      const resolvedRole = isAdminEmail ? 'admin' : profile?.role || 'user';
       const isMasterAdmin =
         resolvedRole === 'admin' ||
         resolvedRole === 'superadmin' ||
-        isMasterAdminEmail;
+        isAdminEmail;
 
-      // Auto-sync database if master admin email needs privilege update
+      // Auto-sync database if admin email needs privilege update
       if (
-        isMasterAdminEmail &&
+        isAdminEmail &&
         (profile?.role !== 'admin' ||
           !profile?.has_generator_access ||
-          !profile?.has_course_creator_access)
+          !profile?.has_course_creator_access ||
+          !profile?.has_ai_access)
       ) {
         supabase
           .from('profiles')

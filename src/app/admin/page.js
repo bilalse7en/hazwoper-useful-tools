@@ -610,6 +610,10 @@ function AdminDashboard() {
           await fetchLibraryData();
         }
 
+        if (activeView === 'permissions') {
+          await fetchUsers(false);
+        }
+
         if (activeView === 'tools') {
           await fetchToolSettings();
         }
@@ -910,11 +914,37 @@ function AdminDashboard() {
   async function fetchUsers(silent = false) {
     if (!silent) setLoading(true);
     try {
-      const { data, error } = await supabase.from('profiles').select('*');
-      if (error) throw error;
-      setUsers(data || []);
+      let { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Profiles query notice:', error.message || error);
+        if (error.message?.includes('infinite recursion')) {
+          showToast(
+            'RLS Recursion Detected: Please execute RUN_ME_IN_SUPABASE.sql in Supabase SQL Editor to display all profiles.',
+            'error'
+          );
+        }
+        const fallbackRes = await supabase
+          .from('profiles')
+          .select(
+            'id, email, username, first_name, last_name, full_name, avatar_url, role, has_generator_access, has_course_creator_access, has_ai_access, is_online'
+          );
+        if (fallbackRes.data && fallbackRes.data.length > 0) {
+          data = fallbackRes.data;
+        }
+      }
+
+      if (data && data.length > 0) {
+        setUsers(data);
+      } else if (currentUser) {
+        setUsers([currentUser]);
+      }
     } catch (err) {
-      console.error('Error fetching users:', err);
+      console.warn('Error in fetchUsers:', err?.message || err);
+      if (currentUser) setUsers([currentUser]);
     } finally {
       setLoading(false);
     }
@@ -1585,15 +1615,12 @@ function AdminDashboard() {
             />
           </div>
         ) : activeView === 'chat-monitor' ? (
-          <div className="animate-in-fade">
+          <div className="animate-in-fade space-y-8">
             <ChatModerationList
               onOpenChat={(id) => {
                 router.push(`/chat?receiver=${id}`);
               }}
             />
-          </div>
-        ) : activeView === 'permissions' ? (
-          <div className="animate-in-fade">
             <AdminChatMonitor
               adminUser={{ id: currentUserId }}
               onOpenChat={(id) => {
@@ -1602,7 +1629,9 @@ function AdminDashboard() {
             />
           </div>
         ) : (
-          <DataTable columns={userColumns} data={users} searchKey="email" />
+          <div className="space-y-8 animate-in-fade">
+            <DataTable columns={userColumns} data={users} searchKey="email" />
+          </div>
         )}
 
         <div className="p-10 rounded-[40px] bg-card/80 dark:bg-black/50 text-foreground transition-all border border-border space-y-6 shadow-2xl relative overflow-hidden group">

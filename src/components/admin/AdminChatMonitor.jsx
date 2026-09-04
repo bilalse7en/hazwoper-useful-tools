@@ -37,17 +37,20 @@ export function AdminChatMonitor({ onOpenChat, adminUser }) {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('is_online', { ascending: false })
-        .order('full_name', { ascending: true });
+      let { data, error } = await supabase.from('profiles').select('*');
+
+      if (error && (error.code === '42703' || error.code === 'PGRST204')) {
+        const fallback = await supabase
+          .from('profiles')
+          .select('id, email, username, full_name, role, avatar_url');
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error) throw error;
       setUsers(data || []);
     } catch (err) {
-      console.error('Fetch users error:', err);
-      showToast('System synchronization failure', 'error');
+      console.warn('Fetch users notice:', err?.message || err);
     } finally {
       setLoading(false);
     }
