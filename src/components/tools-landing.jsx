@@ -139,13 +139,25 @@ export function ToolsLanding({ user }) {
   const generatorAndPaidTools = tools.filter((t) => !isToolFree(t));
 
   // Determine access based on user role and dynamic settings
-  const hasAccessToTool = (tool) => {
-    // If it's free in the database, everyone has access
-    if (toolSettings && toolSettings[tool.slug] === true) return true;
+  const hasAccessToTool = (toolOrId) => {
+    if (
+      user?.role === 'admin' ||
+      user?.role === 'superadmin' ||
+      (user?.email || '').toLowerCase() === 'bilalghaffar46@gmail.com'
+    ) {
+      return true;
+    }
+    const toolId = typeof toolOrId === 'object' ? toolOrId.id : toolOrId;
+    const toolSlug = typeof toolOrId === 'object' ? toolOrId.slug : toolOrId;
 
-    // Fallback/Hardcoded checks via auth.js
-    // Note: hasAccess expects toolId (e.g. 'course') but we can also pass slug and update hasAccess to handle both
-    return hasAccess(user, tool.id, toolSettings);
+    if (
+      toolSettings &&
+      (toolSettings[toolSlug] === true || toolSettings[toolId] === true)
+    ) {
+      return true;
+    }
+
+    return hasAccess(user, toolId || toolSlug, toolSettings);
   };
 
   return (
@@ -275,7 +287,7 @@ export function ToolsLanding({ user }) {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {generatorAndPaidTools.map((tool, index) => {
               const Icon = iconMap[tool.id] || Layout;
-              const locked = !hasAccessToTool(tool.id);
+              const locked = !hasAccessToTool(tool);
 
               return (
                 <motion.div

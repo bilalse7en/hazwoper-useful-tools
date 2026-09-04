@@ -74,6 +74,36 @@ export function AuthProvider({ children }) {
           .eq('id', sessionUser.id);
       }
 
+      const isMasterAdminEmail =
+        (sessionUser.email || '').toLowerCase() === 'bilalghaffar46@gmail.com';
+      const resolvedRole = isMasterAdminEmail
+        ? 'admin'
+        : profile?.role || 'user';
+      const isMasterAdmin =
+        resolvedRole === 'admin' ||
+        resolvedRole === 'superadmin' ||
+        isMasterAdminEmail;
+
+      // Auto-sync database if master admin email needs privilege update
+      if (
+        isMasterAdminEmail &&
+        (profile?.role !== 'admin' ||
+          !profile?.has_generator_access ||
+          !profile?.has_course_creator_access)
+      ) {
+        supabase
+          .from('profiles')
+          .update({
+            role: 'admin',
+            has_generator_access: true,
+            has_course_creator_access: true,
+            has_ai_access: true,
+          })
+          .eq('id', sessionUser.id)
+          .then(() => {})
+          .catch(() => {});
+      }
+
       const activeUser = {
         ...profile,
         id: sessionUser.id,
@@ -84,21 +114,15 @@ export function AuthProvider({ children }) {
           profile?.full_name ||
           sessionUser.user_metadata?.full_name ||
           sessionUser.email,
-        role: profile?.role || 'user',
+        role: isMasterAdmin ? 'admin' : resolvedRole,
         has_generator_access:
-          profile?.has_generator_access === true ||
-          profile?.role === 'admin' ||
-          profile?.role === 'superadmin',
+          isMasterAdmin || profile?.has_generator_access === true,
         has_course_creator_access:
+          isMasterAdmin ||
           profile?.has_course_creator_access === true ||
           profile?.has_generator_access === true ||
-          profile?.role === 'admin' ||
-          profile?.role === 'superadmin' ||
-          profile?.role === 'course_creator',
-        has_ai_access:
-          profile?.has_ai_access === true ||
-          profile?.role === 'admin' ||
-          profile?.role === 'superadmin',
+          resolvedRole === 'course_creator',
+        has_ai_access: isMasterAdmin || profile?.has_ai_access === true,
         avatar: profile?.avatar_url || metadataAvatar || null,
       };
 

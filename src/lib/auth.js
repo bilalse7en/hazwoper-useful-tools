@@ -119,8 +119,13 @@ export async function authenticate(username, password) {
  * 4. User-level feature flags (has_generator_access, has_course_creator_access, has_ai_access)
  */
 export function hasAccess(user, featureId, toolSettings = null) {
-  // 1. Master & Admin Overload
-  if (user?.role === 'admin' || user?.role === 'superadmin') return true;
+  // 1. Master & Admin Overload (unlimited access to all tools)
+  const isMasterUser =
+    user?.role === 'admin' ||
+    user?.role === 'superadmin' ||
+    (user?.email || '').toLowerCase() === 'bilalghaffar46@gmail.com';
+
+  if (isMasterUser) return true;
 
   // 2. Resolve Tool ID (handles both 'course' and 'web-content')
   const { toolIdToSlug } = require('./seo');

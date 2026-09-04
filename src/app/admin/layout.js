@@ -36,7 +36,10 @@ function AdminLayoutInner({ children }) {
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
-          if (ADMIN_ROLES.includes(parsed.role)) {
+          const isMaster =
+            (parsed.email || '').toLowerCase() === 'bilalghaffar46@gmail.com' ||
+            ADMIN_ROLES.includes(parsed.role);
+          if (isMaster) {
             setUser(parsed);
             setIsChecking(false);
             return;
@@ -72,16 +75,27 @@ function AdminLayoutInner({ children }) {
           profile = fallback.data;
         }
 
-        if (profile && ADMIN_ROLES.includes(profile.role)) {
+        const isMasterAdminEmail =
+          (session.user.email || '').toLowerCase() ===
+          'bilalghaffar46@gmail.com';
+
+        if (
+          (profile && ADMIN_ROLES.includes(profile.role)) ||
+          isMasterAdminEmail
+        ) {
           const activeUser = {
-            id: profile.id,
-            email: profile.email,
-            name: profile.full_name,
-            avatar: profile.avatar_url,
-            role: profile.role,
-            has_generator_access: profile.has_generator_access,
-            has_course_creator_access: profile.has_course_creator_access,
-            has_ai_access: profile.has_ai_access,
+            id: profile?.id || session.user.id,
+            email: profile?.email || session.user.email,
+            name: profile?.full_name || 'Admin',
+            avatar: profile?.avatar_url || null,
+            role: isMasterAdminEmail ? 'admin' : profile?.role || 'admin',
+            has_generator_access: isMasterAdminEmail
+              ? true
+              : profile?.has_generator_access,
+            has_course_creator_access: isMasterAdminEmail
+              ? true
+              : profile?.has_course_creator_access,
+            has_ai_access: isMasterAdminEmail ? true : profile?.has_ai_access,
           };
           setUser(activeUser);
           localStorage.setItem('user', JSON.stringify(activeUser));

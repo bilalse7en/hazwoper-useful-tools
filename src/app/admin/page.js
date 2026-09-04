@@ -80,7 +80,12 @@ function AdminDashboard() {
 
   const isMasterAdmin = useMemo(() => {
     const role = (currentUser?.role || '').toLowerCase();
-    return role === 'admin' || role === 'superadmin';
+    const email = (currentUser?.email || '').toLowerCase();
+    return (
+      role === 'admin' ||
+      role === 'superadmin' ||
+      email === 'bilalghaffar46@gmail.com'
+    );
   }, [currentUser]);
 
   const columnHelper = createColumnHelper();
