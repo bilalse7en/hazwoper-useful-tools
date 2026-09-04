@@ -36,17 +36,17 @@ export function AuthProvider({ children }) {
       let profile = null;
       let error = null;
 
-      // Attempt primary profile fetch including has_ai_access
+      // Attempt primary profile fetch including has_ai_access and has_course_creator_access
       const res = await supabase
         .from('profiles')
         .select(
-          'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, has_ai_access, email'
+          'role, username, first_name, last_name, full_name, avatar_url, has_generator_access, has_course_creator_access, has_ai_access, email'
         )
         .eq('id', sessionUser.id)
         .maybeSingle();
 
       if (res.error) {
-        // Fallback query without has_ai_access if column is not yet created in Supabase
+        // Fallback query if some columns are not yet created in Supabase
         const fallbackRes = await supabase
           .from('profiles')
           .select(
@@ -85,8 +85,20 @@ export function AuthProvider({ children }) {
           sessionUser.user_metadata?.full_name ||
           sessionUser.email,
         role: profile?.role || 'user',
-        has_generator_access: profile?.has_generator_access === true,
-        has_ai_access: profile?.has_ai_access === true,
+        has_generator_access:
+          profile?.has_generator_access === true ||
+          profile?.role === 'admin' ||
+          profile?.role === 'superadmin',
+        has_course_creator_access:
+          profile?.has_course_creator_access === true ||
+          profile?.has_generator_access === true ||
+          profile?.role === 'admin' ||
+          profile?.role === 'superadmin' ||
+          profile?.role === 'course_creator',
+        has_ai_access:
+          profile?.has_ai_access === true ||
+          profile?.role === 'admin' ||
+          profile?.role === 'superadmin',
         avatar: profile?.avatar_url || metadataAvatar || null,
       };
 
@@ -239,19 +251,33 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let heartbeatInterval;
     let presenceChannel;
+    let canSyncDbPresence = true;
 
     if (user?.id) {
       const updateOnlineStatus = async (online = true) => {
+        if (!canSyncDbPresence) return;
         try {
-          await supabase
+          const { error } = await supabase
             .from('profiles')
             .update({
               is_online: online,
               last_seen_at: new Date().toISOString(),
             })
             .eq('id', user.id);
+
+          if (
+            error &&
+            (error.code === '42703' ||
+              error.code === 'PGRST204' ||
+              String(error.message || '').includes('does not exist') ||
+              String(error.message || '').includes('Could not find') ||
+              String(error.message || '').includes('schema cache'))
+          ) {
+            canSyncDbPresence = false;
+            return;
+          }
         } catch (err) {
-          console.warn('[Presence] Status update skipped:', err?.message);
+          canSyncDbPresence = false;
         }
       };
 
@@ -260,7 +286,7 @@ export function AuthProvider({ children }) {
 
       // Heartbeat every 30 seconds to keep last_seen_at fresh
       heartbeatInterval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
+        if (document.visibilityState === 'visible' && canSyncDbPresence) {
           updateOnlineStatus(true);
         }
       }, 30000);

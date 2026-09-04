@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -78,22 +78,9 @@ function AdminDashboard() {
   const [blogItems, setBlogItems] = useState([]);
   const [toolSettings, setToolSettings] = useState({});
 
-  const isBilalGhaffar = useMemo(() => {
-    const name = (
-      currentUser?.name ||
-      currentUser?.full_name ||
-      currentUser?.username ||
-      ''
-    ).toLowerCase();
-    const email = (currentUser?.email || '').toLowerCase();
-    return (
-      name.includes('bilal') ||
-      email.includes('bilal') ||
-      currentUser?.username === 'admin' ||
-      currentUser?.username === 'bilal' ||
-      currentUser?.is_master_admin === true ||
-      currentUser?.role === 'admin'
-    );
+  const isMasterAdmin = useMemo(() => {
+    const role = (currentUser?.role || '').toLowerCase();
+    return role === 'admin' || role === 'superadmin';
   }, [currentUser]);
 
   const columnHelper = createColumnHelper();
@@ -200,11 +187,7 @@ function AdminDashboard() {
       header: 'User Identity',
       cell: (info) => {
         const u = info.row.original;
-        const isMaster =
-          u.role === 'admin' ||
-          (u.full_name || '').toLowerCase().includes('bilal') ||
-          (u.email || '').toLowerCase().includes('bilal') ||
-          u.username === 'admin';
+        const isMaster = u.role === 'admin' || u.role === 'superadmin';
 
         return (
           <div className="flex items-center gap-4">
@@ -218,7 +201,7 @@ function AdminDashboard() {
                 </span>
                 {isMaster && (
                   <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs">
-                    👑 Master Admin • Bilal Ghaffar
+                    👑 Master Admin
                   </span>
                 )}
                 {!isMaster && u.role === 'course_creator' && (
@@ -254,11 +237,7 @@ function AdminDashboard() {
       header: 'AI Course Creator',
       cell: (info) => {
         const u = info.row.original;
-        const isMaster =
-          u.role === 'admin' ||
-          (u.full_name || '').toLowerCase().includes('bilal') ||
-          (u.email || '').toLowerCase().includes('bilal') ||
-          u.username === 'admin';
+        const isMaster = u.role === 'admin' || u.role === 'superadmin';
         const hasAccess =
           isMaster ||
           u.has_course_creator_access === true ||
@@ -269,7 +248,7 @@ function AdminDashboard() {
           <div className="flex flex-col items-center gap-1.5">
             <Switch
               checked={hasAccess}
-              disabled={isMaster || !isBilalGhaffar}
+              disabled={isMaster || !isMasterAdmin}
               onCheckedChange={(checked) =>
                 toggleCourseCreatorAccess(u.id, checked)
               }
@@ -303,7 +282,7 @@ function AdminDashboard() {
           <div className="flex flex-col items-center gap-1.5">
             <Switch
               checked={hasAccess}
-              disabled={isMaster || !isBilalGhaffar}
+              disabled={isMaster || !isMasterAdmin}
               onCheckedChange={(checked) =>
                 toggleGeneratorAccess(u.id, checked)
               }
@@ -330,7 +309,7 @@ function AdminDashboard() {
           <div className="flex flex-col items-center gap-1.5">
             <Switch
               checked={hasAi}
-              disabled={u.role === 'admin' || !isBilalGhaffar}
+              disabled={u.role === 'admin' || !isMasterAdmin}
               onCheckedChange={(checked) => toggleAIAccess(u.id, checked)}
               className="data-[state=checked]:bg-purple-600"
             />
@@ -350,16 +329,12 @@ function AdminDashboard() {
       header: 'Role Escalation',
       cell: (info) => {
         const u = info.row.original;
-        const isMasterUser =
-          (u.full_name || '').toLowerCase().includes('bilal') ||
-          (u.email || '').toLowerCase().includes('bilal') ||
-          u.username === 'admin';
 
         return (
           <div className="flex items-center justify-end gap-2">
             <select
               value={u.role || 'user'}
-              disabled={isMasterUser || !isBilalGhaffar}
+              disabled={!isMasterAdmin}
               onChange={(e) => handleRoleChange(u.id, e.target.value)}
               className={cn(
                 'text-[11px] font-bold py-1 px-2.5 rounded-xl border bg-card text-foreground cursor-pointer focus:ring-2 focus:ring-amber-500 outline-none transition-all',
@@ -941,9 +916,9 @@ function AdminDashboard() {
   }
 
   async function toggleCourseCreatorAccess(userId, hasAccess) {
-    if (!isBilalGhaffar) {
+    if (!isMasterAdmin) {
       showToast(
-        'Access Denied: Only Master Administrator Bilal Ghaffar can grant or revoke AI Course Creator access.',
+        'Access Denied: Only Master Administrators can grant or revoke AI Course Creator access.',
         'warning'
       );
       return;
@@ -977,6 +952,7 @@ function AdminDashboard() {
       const { error } = await supabase
         .from('profiles')
         .update({
+          has_course_creator_access: hasAccess,
           has_generator_access: hasAccess,
         })
         .eq('id', userId);
@@ -984,7 +960,7 @@ function AdminDashboard() {
       if (error) throw error;
       showSuccess(
         'Course Creator Clearance Updated',
-        `AI Course Creator permission ${hasAccess ? 'authorized by Master Admin Bilal Ghaffar' : 'revoked'}.`
+        `AI Course Creator permission ${hasAccess ? 'authorized by Master Admin' : 'revoked'}.`
       );
     } catch (err) {
       console.error('Error updating course creator access:', err);
@@ -994,9 +970,9 @@ function AdminDashboard() {
   }
 
   async function handleRoleChange(userId, newRole) {
-    if (!isBilalGhaffar) {
+    if (!isMasterAdmin) {
       showToast(
-        'Access Denied: Only Master Administrator Bilal Ghaffar can reconfigure user roles.',
+        'Access Denied: Only Master Administrators can reconfigure user roles.',
         'warning'
       );
       return;
@@ -1027,14 +1003,16 @@ function AdminDashboard() {
         .from('profiles')
         .update({
           role: newRole,
-          ...(autoGrantGenerator ? { has_generator_access: true } : {}),
+          ...(autoGrantGenerator
+            ? { has_generator_access: true, has_course_creator_access: true }
+            : {}),
         })
         .eq('id', userId);
 
       if (error) throw error;
       showSuccess(
         'Role Reconfigured',
-        `User clearance upgraded to ${newRole.replace('_', ' ').toUpperCase()} by Master Admin Bilal Ghaffar.`
+        `User clearance upgraded to ${newRole.replace('_', ' ').toUpperCase()} by Master Admin.`
       );
     } catch (err) {
       console.error('Error updating role:', err);
@@ -1044,9 +1022,9 @@ function AdminDashboard() {
   }
 
   async function toggleAdmin(userId, isAdmin) {
-    if (!isBilalGhaffar) {
+    if (!isMasterAdmin) {
       showToast(
-        'Access Denied: Only Master Administrator Bilal Ghaffar can grant Admin clearances.',
+        'Access Denied: Only Master Administrators can grant Admin clearances.',
         'warning'
       );
       return;
@@ -1056,9 +1034,9 @@ function AdminDashboard() {
   }
 
   async function toggleGeneratorAccess(userId, hasAccess) {
-    if (!isBilalGhaffar) {
+    if (!isMasterAdmin) {
       showToast(
-        'Access Denied: Only Master Administrator Bilal Ghaffar can manage Generator Suite access.',
+        'Access Denied: Only Master Administrators can manage Generator Suite access.',
         'warning'
       );
       return;

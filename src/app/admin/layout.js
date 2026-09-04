@@ -9,6 +9,15 @@ import { ThemeDialog } from '@/components/theme-dialog';
 import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
 
+// All roles that are allowed to access the admin panel
+const ADMIN_ROLES = [
+  'admin',
+  'superadmin',
+  'course_creator',
+  'blog_creator',
+  'content_creator',
+];
+
 function AdminLayoutInner({ children }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -22,12 +31,12 @@ function AdminLayoutInner({ children }) {
     async function verifyAccess() {
       setIsChecking(true);
 
-      // 1. Try session storage first for speed
+      // 1. Try localStorage first for speed (consistent with auth-provider)
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
-          if (parsed.role === 'admin') {
+          if (ADMIN_ROLES.includes(parsed.role)) {
             setUser(parsed);
             setIsChecking(false);
             return;
@@ -46,22 +55,36 @@ function AdminLayoutInner({ children }) {
       }
 
       try {
-        const { data: profile } = await supabase
+        let { data: profile, error: profileErr } = await supabase
           .from('profiles')
-          .select('role, id, email, full_name, avatar_url')
+          .select(
+            'role, id, email, full_name, avatar_url, has_generator_access, has_course_creator_access, has_ai_access'
+          )
           .eq('id', session.user.id)
           .single();
 
-        if (profile?.role === 'admin') {
+        if (profileErr && profileErr.code === '42703') {
+          const fallback = await supabase
+            .from('profiles')
+            .select('role, id, email, full_name, avatar_url')
+            .eq('id', session.user.id)
+            .single();
+          profile = fallback.data;
+        }
+
+        if (profile && ADMIN_ROLES.includes(profile.role)) {
           const activeUser = {
             id: profile.id,
             email: profile.email,
             name: profile.full_name,
             avatar: profile.avatar_url,
             role: profile.role,
+            has_generator_access: profile.has_generator_access,
+            has_course_creator_access: profile.has_course_creator_access,
+            has_ai_access: profile.has_ai_access,
           };
           setUser(activeUser);
-          sessionStorage.setItem('user', JSON.stringify(activeUser));
+          localStorage.setItem('user', JSON.stringify(activeUser));
           setIsChecking(false);
         } else {
           router.push('/');
@@ -78,6 +101,7 @@ function AdminLayoutInner({ children }) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    localStorage.removeItem('user');
     sessionStorage.removeItem('user');
     router.push('/');
   };

@@ -20,8 +20,11 @@ if (typeof window !== 'undefined') {
     return (
       status === 401 ||
       status === '401' ||
+      status === '42703' ||
+      status === 'PGRST204' ||
       msg.includes('unauthorized') ||
       msg.includes('invalid api key') ||
+      msg.includes('does not exist') ||
       status === 'PGRST116' ||
       status === '42501'
     );

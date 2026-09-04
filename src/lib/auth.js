@@ -1,7 +1,28 @@
 // USERS moved to server-side API
 
 export const ROLES = {
+  superadmin: ['*'],
   admin: ['*'],
+  course_creator: [
+    'ai-course-creator',
+    'course',
+    'courses',
+    'lesson-quiz-builder',
+    'web-content',
+  ],
+  blog_creator: ['blog', 'blog-generator'],
+  content_creator: [
+    'course',
+    'web-content',
+    'blog',
+    'blog-generator',
+    'glossary',
+    'glossary-generator',
+    'resources',
+    'resource-generator',
+    'document-extractor',
+    'lesson-quiz-builder',
+  ],
   user: [],
 };
 
@@ -54,7 +75,9 @@ export async function authenticate(username, password) {
       if (!error && data.user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role, username, has_generator_access')
+          .select(
+            'role, username, has_generator_access, has_course_creator_access, has_ai_access'
+          )
           .eq('id', data.user.id)
           .single();
 
@@ -64,6 +87,9 @@ export async function authenticate(username, password) {
           email: data.user.email,
           role: profile?.role || 'user',
           has_generator_access: profile?.has_generator_access || false,
+          has_course_creator_access:
+            profile?.has_course_creator_access || false,
+          has_ai_access: profile?.has_ai_access || false,
           name: profile?.username || username,
         };
       }
@@ -87,16 +113,14 @@ export async function authenticate(username, password) {
 
 /**
  * Modernized Access Control
- * 1. Admin always has access
+ * 1. Admin & Superadmin always have access
  * 2. If tool is set to FREE in database, everyone has access
- * 3. If tool is set to PAID in database:
- *    - Authenticated users with has_generator_access (PRO) get access
- *    - Admins get access
- *    - Guests/Standard users are restricted
+ * 3. Role-based granular access (Course Creator, Blog Editor, Content Specialist)
+ * 4. User-level feature flags (has_generator_access, has_course_creator_access, has_ai_access)
  */
 export function hasAccess(user, featureId, toolSettings = null) {
-  // 1. Admin Overload
-  if (user?.role === 'admin') return true;
+  // 1. Master & Admin Overload
+  if (user?.role === 'admin' || user?.role === 'superadmin') return true;
 
   // 2. Resolve Tool ID (handles both 'course' and 'web-content')
   const { toolIdToSlug } = require('./seo');
@@ -107,7 +131,7 @@ export function hasAccess(user, featureId, toolSettings = null) {
     return !!user;
   }
 
-  // 3. Database Check
+  // 3. Database Check (if explicitly overridden)
   if (toolSettings) {
     const isFree = toolSettings[slug] ?? toolSettings[featureId] ?? null;
 
@@ -117,11 +141,34 @@ export function hasAccess(user, featureId, toolSettings = null) {
     // If explicitly PAID in DB
     if (isFree === false) {
       if (!user) return false;
-      return user.has_generator_access === true || user.role === 'admin';
+      if (user.role === 'admin' || user.role === 'superadmin') return true;
+      if (
+        [
+          'ai-course-creator',
+          'course',
+          'courses',
+          'web-content',
+          'lesson-quiz-builder',
+        ].includes(slug) ||
+        [
+          'ai-course-creator',
+          'course',
+          'courses',
+          'web-content',
+          'lesson-quiz-builder',
+        ].includes(featureId)
+      ) {
+        return (
+          user.has_course_creator_access === true ||
+          user.has_generator_access === true ||
+          user.role === 'course_creator'
+        );
+      }
+      return user.has_generator_access === true;
     }
   }
 
-  // 4. Default Fallbacks (if not in DB)
+  // 4. Default Free Tools
   const defaultFreeTools = [
     'html-cleaner',
     'image-converter',
@@ -143,40 +190,77 @@ export function hasAccess(user, featureId, toolSettings = null) {
     return true;
   }
 
-  // Generators are paid by default if not specified
-  const isGenerator =
+  // 5. Course Creator Suite Access
+  const isCourseTool =
     [
       'ai-course-creator',
       'course',
+      'courses',
       'web-content',
-      'blog',
-      'blog-generator',
-      'glossary',
-      'glossary-generator',
-      'resources',
-      'resource-generator',
-      'document-extractor',
-      'ai-assistant',
       'lesson-quiz-builder',
     ].includes(featureId) ||
     [
       'ai-course-creator',
       'course',
+      'courses',
       'web-content',
-      'blog',
-      'blog-generator',
+      'lesson-quiz-builder',
+    ].includes(slug);
+
+  if (isCourseTool) {
+    if (!user) return false;
+    return (
+      user.has_course_creator_access === true ||
+      user.has_generator_access === true ||
+      user.role === 'course_creator' ||
+      user.role === 'admin' ||
+      user.role === 'superadmin'
+    );
+  }
+
+  // 6. Blog Creator Access
+  const isBlogTool =
+    ['blog', 'blog-generator'].includes(featureId) ||
+    ['blog', 'blog-generator'].includes(slug);
+
+  if (isBlogTool) {
+    if (!user) return false;
+    return (
+      user.role === 'blog_creator' ||
+      user.role === 'content_creator' ||
+      user.has_generator_access === true ||
+      user.role === 'admin' ||
+      user.role === 'superadmin'
+    );
+  }
+
+  // 7. General Generator Access
+  const isGenerator =
+    [
       'glossary',
       'glossary-generator',
       'resources',
       'resource-generator',
       'document-extractor',
       'ai-assistant',
-      'lesson-quiz-builder',
+    ].includes(featureId) ||
+    [
+      'glossary',
+      'glossary-generator',
+      'resources',
+      'resource-generator',
+      'document-extractor',
+      'ai-assistant',
     ].includes(slug);
 
   if (isGenerator) {
     if (!user) return false;
-    return user.has_generator_access === true || user.role === 'admin';
+    return (
+      user.has_generator_access === true ||
+      user.role === 'content_creator' ||
+      user.role === 'admin' ||
+      user.role === 'superadmin'
+    );
   }
 
   return false;

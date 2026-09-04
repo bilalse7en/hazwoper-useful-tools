@@ -38,13 +38,30 @@ export function ChatProvider({ children }) {
     const currentUser = userRef.current;
     try {
       const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select(
           'id, username, full_name, role, avatar_url, is_online, last_seen_at'
         )
         .or(`is_online.eq.true,last_seen_at.gt.${fiveMinsAgo}`)
         .order('full_name', { ascending: true });
+
+      // Fallback if is_online or last_seen_at columns don't exist yet (code 42703 / PGRST204)
+      if (
+        error &&
+        (error.code === '42703' ||
+          error.code === 'PGRST204' ||
+          String(error.message || '').includes('does not exist') ||
+          String(error.message || '').includes('Could not find') ||
+          String(error.message || '').includes('schema cache'))
+      ) {
+        const fallbackRes = await supabase
+          .from('profiles')
+          .select('id, username, full_name, role, avatar_url')
+          .order('full_name', { ascending: true });
+        data = fallbackRes.data;
+        error = fallbackRes.error;
+      }
 
       const userMap = new Map();
 
