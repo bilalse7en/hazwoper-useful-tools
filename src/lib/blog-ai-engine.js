@@ -498,13 +498,7 @@ EDITORIAL & DESIGN STANDARDS (MANDATORY):
    - **At Least 2 Comparative/Technical Tables** (<div class="table-container"><table class="data-table">...</table></div>).
    - **At Least 2-3 Stylized Quote Callouts** (<blockquote class="pro-quote"><p>“...”</p><cite>— Name, Title</cite></blockquote>).
    - **At Least 2 Pro-Tip Highlight Boxes** (<div class="callout-card tip"><div class="card-title">⚡ Pro-Tip / Key Standard</div><p>...</p></div>).
-3. **MANDATORY INTERACTIVE GAME SECTION AT THE END**:
-   In the final section of the article, you MUST include:
-   - An <h2> heading: "Interactive Knowledge Lab: Test Your Mastery"
-   - A dedicated interactive matching game component embedded with this EXACT data attribute:
-     <div class="interactive-matching-game" data-game='{"title": "Match the Technical Terms", "pairs": [{"term": "Term 1", "match": "Definition 1"}, {"term": "Term 2", "match": "Definition 2"}, {"term": "Term 3", "match": "Definition 3"}, {"term": "Term 4", "match": "Definition 4"}, {"term": "Term 5", "match": "Definition 5"}]}'></div>
-   - A quick interactive quiz block:
-     <div class="interactive-quiz-card" data-quiz='{"question": "Technical scenario question?", "options": ["Option A", "Option B", "Option C", "Option D"], "answer": 1, "explanation": "Why Option B is correct based on the article."}'></div>
+4. **NO interactive games inside the content**: games and FAQs are generated separately and appended by the unified blog system — do NOT include data-game/data-quiz embeds, and do NOT write an "Interactive Knowledge Lab" section.
 
 OUTPUT FORMAT SPECIFICATION:
 You must output a strictly valid JSON object (or JSON array with 1 item) with these keys:
@@ -514,7 +508,7 @@ You must output a strictly valid JSON object (or JSON array with 1 item) with th
   "slug": "url-friendly-kebab-case-slug",
   "category": "${focusedTool ? focusedTool.category : 'Industrial Excellence'}",
   "read_time": "8 min read",
-  "content": "The complete, pristine HTML body containing all headings, paragraphs, styled blockquotes, data tables, callout cards, and the interactive game embeds."
+  "content": "The complete, pristine HTML body containing all headings, paragraphs, styled blockquotes, data tables, and callout cards (no game embeds)."
 }
 
 DO NOT output markdown code fences, backticks, or conversational text. Output raw JSON only.`;
@@ -657,6 +651,22 @@ export function parseAndRepairJson(rawText) {
   }
 
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// 4b. Strip legacy inline game/quiz embeds from freshly generated content.
+// Games & FAQs now live in dedicated `games`/`faq` columns rendered by the
+// unified blog template — never duplicated inside the article body.
+// ---------------------------------------------------------------------------
+export function stripInteractiveEmbeds(html) {
+  if (!html) return html || '';
+  return html
+    .replace(/<h2>[^<]*Interactive Knowledge Lab[^<]*<\/h2>\s*/gi, '')
+    .replace(
+      /<div\s+class="(?:interactive-matching-game|interactive-quiz-card)"\s+data-(?:game|quiz)='[^']*'><\/div>\s*/gi,
+      ''
+    )
+    .trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -819,7 +829,7 @@ export function generateLocalFallbackBlog(toolSlug = 'pdf-editor') {
     slug,
     category: tool.category,
     read_time: '7 min read',
-    content,
+    content: stripInteractiveEmbeds(content),
     author: 'Se7eN Bot Autopilot',
     date: new Date().toLocaleDateString('en-US', {
       month: 'long',
@@ -845,8 +855,8 @@ export async function generateMasterBlog({
   });
 
   const userPrompt = customTopic
-    ? `Write a comprehensive, world-class blog post focusing on "${customTopic}". Target length: ~${targetWordCount} words. Include at least 2 comparison tables, 2 styled blockquotes, callout cards, and the final Interactive Knowledge Lab with drag-and-drop matching game data and quick quiz. Output raw JSON only.`
-    : `Generate an authoritative, exhaustive deep-dive blog post for the tool "${toolSlug || 'pdf-editor'}". Target length: ~${targetWordCount} words. Include comparative benchmark tables, pro-quotes, practical step-by-step guides, and the final interactive matching game lab. Output raw JSON only.`;
+    ? `Write a comprehensive, world-class blog post focusing on "${customTopic}". Target length: ~${targetWordCount} words. Include at least 2 comparison tables, 2 styled blockquotes, and callout cards. Do not include interactive games or quizzes in the content. Output raw JSON only.`
+    : `Generate an authoritative, exhaustive deep-dive blog post for the tool "${toolSlug || 'pdf-editor'}". Target length: ~${targetWordCount} words. Include comparative benchmark tables, pro-quotes, and practical step-by-step guides. Do not include interactive games or quizzes in the content. Output raw JSON only.`;
 
   try {
     const { text, modelUsed } = await callPuterAiBlogEngine(
@@ -874,7 +884,9 @@ export async function generateMasterBlog({
             ? ECOSYSTEM_KNOWLEDGE.tools[toolSlug]?.category
             : 'Industrial Excellence'),
         read_time: parsed.read_time || parsed.readTime || '8 min read',
-        content: parsed.content || parsed.suggested_content,
+        content: stripInteractiveEmbeds(
+          parsed.content || parsed.suggested_content
+        ),
         author: 'Se7eN Bot Autopilot',
         date: new Date().toLocaleDateString('en-US', {
           month: 'long',
@@ -883,39 +895,6 @@ export async function generateMasterBlog({
         }),
         modelUsed,
       };
-
-      // Ensure interactive game block exists in output
-      if (!blog.content.includes('interactive-matching-game')) {
-        const fallbackPairs = [
-          {
-            term: 'Client-Side WASM',
-            match:
-              'Near-native browser execution for heavy transcoding and PDF operations.',
-          },
-          {
-            term: 'Local-First Privacy',
-            match:
-              'Guaranteeing confidential documents never traverse remote network hops.',
-          },
-          {
-            term: 'Semantic HTML5',
-            match:
-              'Clean web standards avoiding proprietary legacy styling bloat.',
-          },
-          {
-            term: 'Deterministic Export',
-            match:
-              'Exact visual reproduction across all modern desktop and mobile browsers.',
-          },
-        ];
-        blog.content += `
-<h2>Interactive Knowledge Lab: Test Your Mastery</h2>
-<div class="interactive-matching-game" data-game='${JSON.stringify({
-          title: 'Technical Concepts Matching Challenge',
-          pairs: fallbackPairs,
-        })}'></div>
-`;
-      }
 
       // Save to Local History
       saveToLocalHistory(blog);

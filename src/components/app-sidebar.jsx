@@ -35,6 +35,7 @@ import {
   Youtube,
   Wand2,
   Globe,
+  DatabaseZap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -133,6 +134,12 @@ const adminNavGroups = [
       { id: 'media', label: 'Media Monitor', icon: ImageIcon },
       { id: 'chat-monitor', label: 'Signal Monitor', icon: Activity },
       { id: 'blogs', label: 'Editorial', icon: PenTool },
+      {
+        id: 'blog-sync',
+        label: 'Blog Sync',
+        icon: DatabaseZap,
+        href: '/admin/sync',
+      },
       { id: 'se7en-bot', label: 'AI Autopilot', icon: Bot },
       { id: 'tools', label: 'Tool Config', icon: Wrench },
       { id: 'performance', label: 'Optimization', icon: Zap },

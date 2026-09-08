@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
 import { showToast, showSuccess, showConfirm } from '@/lib/swal';
+import { syncSingleBlog } from '@/lib/blog-sync';
 import { cn } from '@/lib/utils';
 import {
   ECOSYSTEM_KNOWLEDGE,
@@ -203,23 +204,26 @@ export function PuterAgent() {
 
     try {
       // 1. Insert into main blogs table
-      const { error: insertError } = await supabase.from('blogs').insert([
-        {
-          title: blog.title,
-          description: blog.summary,
-          slug: blog.slug,
-          content: blog.suggested_content || blog.content,
-          category: blog.category || 'Industrial Excellence',
-          author: 'Se7eN Bot Autopilot',
-          date: new Date().toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-          }),
-          read_time: blog.read_time || '7 min read',
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      const { data: inserted, error: insertError } = await supabase
+        .from('blogs')
+        .insert([
+          {
+            title: blog.title,
+            description: blog.summary,
+            slug: blog.slug,
+            content: blog.suggested_content || blog.content,
+            category: blog.category || 'Industrial Excellence',
+            author: 'Se7eN Bot Autopilot',
+            date: new Date().toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+            }),
+            read_time: blog.read_time || '7 min read',
+            created_at: new Date().toISOString(),
+          },
+        ])
+        .select('id');
 
       if (insertError) {
         console.warn(
@@ -228,7 +232,23 @@ export function PuterAgent() {
         );
         showSuccess('Live simulation registered in local state.');
       } else {
-        // 2. Remove from suggestions
+        // 2. Run the unified sync so the new blog instantly gets its feature
+        //    image, 3 games and 5 FAQs (failure here never blocks publishing)
+        const newId = inserted?.[0]?.id;
+        if (newId) {
+          showToast(
+            'Generating games, FAQs & feature image in the background...',
+            'info'
+          );
+          syncSingleBlog({
+            id: newId,
+            title: blog.title,
+            category: blog.category || 'Industrial Excellence',
+            content: blog.suggested_content || blog.content,
+          }).catch(() => {});
+        }
+
+        // 3. Remove from suggestions
         if (blog.id && !blog.id.startsWith('local-temp-')) {
           await supabase.from('blog_suggestions').delete().eq('id', blog.id);
         }

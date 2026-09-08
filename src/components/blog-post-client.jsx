@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ArrowLeft,
   Clock,
@@ -16,6 +17,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InteractiveBlogRenderer } from '@/components/interactive-blog-game';
+import { BlogGamesSection } from '@/components/blog-games-section';
+import { BlogFaqSection } from '@/components/blog-faq-section';
 import { useState } from 'react';
 import { showToast } from '@/lib/swal';
 
@@ -79,6 +82,23 @@ export function BlogPostClient({ post }) {
             </div>
           </div>
         </header>
+
+        {/* Feature Image (faded/gradient treatment — title stays HTML for accuracy) */}
+        {post.image_url && (
+          <section className="container mx-auto px-6 pt-12">
+            <div className="max-w-4xl mx-auto relative aspect-video rounded-[32px] overflow-hidden shadow-2xl border border-border bg-muted/20">
+              <Image
+                src={post.image_url}
+                alt={post.title}
+                fill
+                priority
+                unoptimized
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/20 to-transparent" />
+            </div>
+          </section>
+        )}
 
         {/* Content Section */}
         <section className="container mx-auto px-6 py-16">
@@ -200,6 +220,19 @@ export function BlogPostClient({ post }) {
                 </div>
               </div>
             </aside>
+          </div>
+        </section>
+        {/* Interactive Games (exactly 3, generated from this article) */}
+        <section className="container mx-auto px-6 pb-8">
+          <div className="max-w-4xl mx-auto">
+            <BlogGamesSection games={post.games} />
+          </div>
+        </section>
+
+        {/* FAQ (exactly 5, generated from this article) */}
+        <section className="container mx-auto px-6 pb-16">
+          <div className="max-w-4xl mx-auto">
+            <BlogFaqSection faq={post.faq} title={post.title} />
           </div>
         </section>
       </main>

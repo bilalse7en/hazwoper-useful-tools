@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { recordMediaUpload } from '@/lib/media-hub';
 import { convertImage } from '@/lib/image-converter';
 import { markdownToHtml } from '@/lib/html-converter';
+import { syncSingleBlog } from '@/lib/blog-sync';
 
 export default function AdminBlogEditPage() {
   const params = useParams();
@@ -41,6 +42,7 @@ export default function AdminBlogEditPage() {
   const [generating, setGenerating] = useState(false);
   const [imageGenerating, setImageGenerating] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
+  const [originalContent, setOriginalContent] = useState(null);
   const [puterReady, setPuterReady] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -71,6 +73,7 @@ export default function AdminBlogEditPage() {
         if (data) {
           setFormData(data);
           setOriginalImageUrl(data.image_url);
+          setOriginalContent(data.content);
         }
       } catch (err) {
         showToast('Failed to retrieve editorial data.', 'error');
@@ -469,8 +472,23 @@ export default function AdminBlogEditPage() {
     try {
       console.log('Commencing Editorial Sync for ID:', id);
       if (isNew) {
-        const { error } = await supabase.from('blogs').insert([finalData]);
+        const { data: inserted, error } = await supabase
+          .from('blogs')
+          .insert([finalData])
+          .select('id');
         if (error) throw error;
+
+        // Unified sync: give the new blog its 3 games, 5 FAQs and feature
+        // image (never blocks or fails the save itself)
+        const newId = inserted?.[0]?.id;
+        if (newId) {
+          showToast(
+            'Generating games, FAQs & feature image for this sequence...',
+            'info'
+          );
+          syncSingleBlog({ ...finalData, id: newId }).catch(() => {});
+        }
+
         showSuccess('Editorial sequence initialized successfully.');
       } else {
         const { error } = await supabase
@@ -478,6 +496,18 @@ export default function AdminBlogEditPage() {
           .update(finalData)
           .eq('id', id);
         if (error) throw error;
+
+        // If the article content changed, regenerate its games/FAQs
+        const contentChanged =
+          originalContent !== null && originalContent !== formData.content;
+        if (contentChanged) {
+          showToast(
+            'Article changed — resynchronizing games & FAQs...',
+            'info'
+          );
+          syncSingleBlog({ ...finalData, id }, { force: true }).catch(() => {});
+        }
+
         showSuccess('Editorial sequence synchronized.');
       }
 
