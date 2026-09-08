@@ -40,7 +40,8 @@ async function getPost(slug) {
 }
 
 export async function generateMetadata({ params }) {
-  const post = await getPost(params.slug);
+  const { slug } = await params;
+  const post = await getPost(slug);
 
   if (!post) {
     return {
@@ -56,13 +57,14 @@ export async function generateMetadata({ params }) {
       'Productivity insights, tutorials, and online utility guides.',
     keywords: `${post.category?.toLowerCase() || 'utilities'}, online tools, web utilities, productivity`,
     alternates: {
-      canonical: `https://hazwoper-useful-tools.vercel.app/blog/${params.slug}`,
+      canonical: `https://hazwoper-useful-tools.vercel.app/blog/${slug}`,
     },
   };
 }
 
 export default async function BlogPostPage({ params }) {
-  const post = await getPost(params.slug);
+  const { slug } = await params;
+  const post = await getPost(slug);
 
   if (!post) {
     return (

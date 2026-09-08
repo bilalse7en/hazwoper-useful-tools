@@ -344,17 +344,17 @@ export function BlogGenerator() {
       }
     }
 
+    // Add pro-quote styling to blockquotes
+    tempDiv.querySelectorAll('blockquote').forEach((bq) => {
+      bq.className = 'pro-quote';
+    });
+
     // Format tables based on headings (Top vs Left)
     tempDiv.querySelectorAll('table').forEach((table) => {
       const rows = Array.from(table.querySelectorAll('tr'));
       if (rows.length === 0) return;
 
-      // Apply requested base styles directly to table as requested
-      table.className = 'table table-container';
-      table.setAttribute(
-        'style',
-        'display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap;'
-      );
+      table.className = 'data-table';
 
       // 1. Top Heading Detection
       const thead = table.querySelector('thead');
@@ -391,16 +391,55 @@ export function BlogGenerator() {
         }
       });
 
-      /* If table was inside a div.table-container, unwrap it to avoid double nesting */
+      /* Wrap in .table-container if not already wrapped */
       const parent = table.parentElement;
-      if (
-        parent &&
-        parent.tagName === 'DIV' &&
-        parent.classList.contains('table-container')
-      ) {
-        parent.replaceWith(table);
+      if (!parent || !parent.classList.contains('table-container')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-container';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
       }
     });
+
+    // Append Interactive Knowledge Lab Game if not already present
+    if (!tempDiv.querySelector('.interactive-matching-game')) {
+      const gameDiv = document.createElement('div');
+      gameDiv.className = 'interactive-matching-game';
+      const samplePairs = [
+        {
+          term: 'Local-First Execution',
+          match:
+            'Processing operations purely inside browser memory via WebAssembly.',
+        },
+        {
+          term: 'Zero Cloud Latency',
+          match:
+            'Eliminating upload and download roundtrips to remote cloud clusters.',
+        },
+        {
+          term: 'Semantic HTML5',
+          match:
+            'Clean web standards without bloated inline Microsoft Office styles.',
+        },
+        {
+          term: 'Client Sandboxing',
+          match:
+            'Isolating document memory from external telemetry and tracking.',
+        },
+      ];
+      gameDiv.setAttribute(
+        'data-game',
+        JSON.stringify({
+          title: 'Technical Mastery: Drag & Drop Matcher',
+          pairs: samplePairs,
+        })
+      );
+
+      const gameH2 = document.createElement('h2');
+      gameH2.textContent = 'Interactive Knowledge Lab: Test Your Mastery';
+      tempDiv.appendChild(gameH2);
+      tempDiv.appendChild(gameDiv);
+    }
 
     finalHTML = tempDiv.innerHTML;
 
@@ -408,21 +447,22 @@ export function BlogGenerator() {
     const fancyLine = `
 <div class="fancy-line"></div>
 <style>
-	.fancy-line { width: 60%; margin: 20px auto; border-top: 2px solid #116466; text-align: center; position: relative; }
-	.fancy-line::after { content: "✦ ✦ ✦"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: red; }
-	.table-container { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; -ms-overflow-style: -ms-autohiding-scrollbar; max-width: 850px; white-space: nowrap; margin: 2rem 0; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-	table { width: 100%; border-collapse: collapse; background: white; margin-bottom: 1rem; }
-	table tr p { margin-bottom: 0px !important; }
-	th, td { padding: 12px 15px; border: 1px solid #e5e7eb; text-align: left; }
+	.fancy-line { width: 60%; margin: 20px auto; border-top: 2px solid #3b82f6; text-align: center; position: relative; }
+	.fancy-line::after { content: "✦ ✦ ✦"; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #0f172a; padding: 0 10px; color: #3b82f6; }
+	.table-container { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 2rem 0; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15,23,42,0.6); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); }
+	table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 0 !important; }
+	th, td { padding: 12px 16px; border: 1px solid rgba(255,255,255,0.08); text-align: left; }
+	th { background: rgba(30,41,59,0.9); font-weight: 800; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.08em; }
 	.bg-warning { background-color: #ffcd05 !important; color: #1a1a1a !important; }
-	.table-stripe tr:nth-child(even), .table-warning tr:nth-child(even) { background-color: #fffde6 !important; }
-	thead th { background-color: #f3f4f6; font-weight: 700; }
+	.pro-quote { margin: 2rem 0; padding: 1.5rem 2rem; background: rgba(59,130,246,0.08); border-left: 4px solid #3b82f6; border-radius: 0 16px 16px 0; }
 </style>`;
 
     const code = finalHTML + fancyLine;
     setBlogCode(code);
     setActiveView('content');
-    showNotification('Blog code generated (FAQ removed)!');
+    showNotification(
+      'Blog code generated with interactive game & pro styling!'
+    );
     persistState({ blogCode: code, activeView: 'content' });
   };
 
