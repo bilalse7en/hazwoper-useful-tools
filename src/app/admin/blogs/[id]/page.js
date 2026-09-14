@@ -308,7 +308,7 @@ export default function AdminBlogEditPage() {
 
     try {
       // 1. Ask Puter for an optimized image prompt
-      let finalizedPrompt = `professional cinematic 8k photography, industrial safety workspace, ${formData.title}, clean minimal composition, high-end corporate aesthetic, photorealistic`;
+      let finalizedPrompt = `professional cinematic 8k photography, modern digital workspace, ${formData.title}, clean minimal composition, high-end corporate aesthetic, photorealistic`;
 
       if (puterReady && window.puter) {
         try {
@@ -345,9 +345,9 @@ export default function AdminBlogEditPage() {
           console.warn(
             `Neural Synthesis Layer 1 blocked (${response.status}). Initiating industrial failover...`
           );
-          // Failover: High-quality professional industrial safety photo
+          // Failover: High-quality professional productivity tools photo
           const failoverKeyword =
-            formData.category?.toLowerCase() || 'industrial safety';
+            formData.category?.toLowerCase() || 'modern digital workspace';
           const fallbackUrl = `https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&q=80&w=1280&h=720&sig=${Date.now()}`;
           response = await fetch(
             `/api/proxy-image?url=${encodeURIComponent(fallbackUrl)}`

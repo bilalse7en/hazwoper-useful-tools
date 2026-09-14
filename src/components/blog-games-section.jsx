@@ -91,8 +91,8 @@ function ExplanationPanel({ isCorrect, explanation }) {
       animate={{ opacity: 1, y: 0 }}
       className={`mt-6 p-4 rounded-2xl border text-xs leading-relaxed ${
         isCorrect
-          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-          : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+          ? 'tone-bg-success tone-success'
+          : 'tone-bg-warning tone-warning'
       }`}
     >
       <div className="font-bold mb-1 flex items-center gap-1.5">
@@ -134,7 +134,7 @@ export function TrueFalseGame({ data }) {
   return (
     <div className="my-8 p-6 md:p-8 rounded-[32px] bg-card/60 backdrop-blur-xl border border-primary/20 shadow-xl not-prose">
       <div className="flex items-center justify-between gap-4 mb-4">
-        <Badge className="bg-sky-500/10 text-sky-400 border-sky-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1">
+        <Badge className="bg-sky-500/10 tone-info border-sky-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1">
           True or False
         </Badge>
         {hasSubmitted && (
@@ -168,9 +168,9 @@ export function TrueFalseGame({ data }) {
           if (hasSubmitted) {
             if (isThisCorrect) {
               style =
-                'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold';
+                'bg-emerald-500/20 border-emerald-500 tone-success font-bold';
             } else if (isSelected) {
-              style = 'bg-rose-500/20 border-rose-500 text-rose-300';
+              style = 'bg-rose-500/20 border-rose-500 tone-danger';
             } else {
               style =
                 'bg-muted/20 border-border/40 text-muted-foreground opacity-50';
@@ -187,10 +187,10 @@ export function TrueFalseGame({ data }) {
             >
               {opt.label}
               {hasSubmitted && isThisCorrect && (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="tone-success w-4 h-4 shrink-0" />
               )}
               {hasSubmitted && isSelected && !isThisCorrect && (
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <AlertCircle className="tone-danger w-4 h-4 shrink-0" />
               )}
             </button>
           );
@@ -258,7 +258,7 @@ export function CorrectOrderGame({ data }) {
   return (
     <div className="my-8 p-6 md:p-8 rounded-[32px] bg-card/60 backdrop-blur-xl border border-primary/20 shadow-xl not-prose">
       <div className="flex items-center justify-between gap-4 mb-4">
-        <Badge className="bg-violet-500/10 text-violet-400 border-violet-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1">
+        <Badge className="bg-violet-500/10 tone-accent border-violet-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1">
           Sequence Challenge
         </Badge>
         <Button
@@ -301,9 +301,9 @@ export function CorrectOrderGame({ data }) {
             key={`${item}-${i}`}
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0 }}
-            className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-sm font-bold text-emerald-300 flex items-center gap-3"
+            className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-sm font-bold tone-success flex items-center gap-3"
           >
-            <span className="w-7 h-7 rounded-xl bg-emerald-500 flex items-center justify-center text-slate-950 font-black text-xs shrink-0">
+            <span className="w-7 h-7 rounded-xl bg-emerald-500 flex items-center justify-center text-white font-black text-xs shrink-0">
               {i + 1}
             </span>
             <span className="leading-snug">{item}</span>
@@ -324,7 +324,7 @@ export function CorrectOrderGame({ data }) {
               whileTap={{ scale: 0.99 }}
               className={`w-full p-4 rounded-2xl border text-left text-sm font-medium transition-all select-none ${
                 wrongPick === item
-                  ? 'bg-rose-500/20 border-rose-500/50 text-rose-300 animate-shake'
+                  ? 'bg-rose-500/20 border-rose-500/50 tone-danger animate-shake'
                   : 'bg-muted/40 hover:bg-muted/80 border-border text-foreground hover:border-primary/40'
               }`}
             >
@@ -342,7 +342,7 @@ export function CorrectOrderGame({ data }) {
             className="mt-6 p-6 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-primary/20 to-emerald-500/20 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left"
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-slate-950 font-black shrink-0 shadow-lg shadow-emerald-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white font-black shrink-0 shadow-lg shadow-emerald-500/30">
                 <Trophy className="w-6 h-6" />
               </div>
               <div>
@@ -358,7 +358,7 @@ export function CorrectOrderGame({ data }) {
             <Button
               size="sm"
               onClick={handleReset}
-              className="rounded-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 px-5"
+              className="rounded-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-5"
             >
               Play Again
             </Button>
@@ -426,7 +426,7 @@ export function GuessTermGame({ data }) {
   return (
     <div className="my-8 p-6 md:p-8 rounded-[32px] bg-card/60 backdrop-blur-xl border border-primary/20 shadow-xl not-prose">
       <div className="flex items-center justify-between gap-4 mb-4">
-        <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1">
+        <Badge className="bg-amber-500/10 tone-warning border-amber-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1">
           Guess the Term
         </Badge>
         {hasSubmitted && (
@@ -452,7 +452,7 @@ export function GuessTermGame({ data }) {
       </div>
 
       <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 text-xs text-muted-foreground leading-relaxed mb-4 flex items-start gap-2">
-        <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+        <Lightbulb className="tone-warning w-4 h-4 shrink-0 mt-0.5" />
         <span className="font-medium">{data.hint}</span>
       </div>
 
@@ -492,7 +492,7 @@ export function GuessTermGame({ data }) {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs leading-relaxed text-emerald-300"
+          className="mt-4 p-4 rounded-2xl tone-bg-success tone-success text-xs leading-relaxed"
         >
           <div className="font-bold mb-1 flex items-center gap-1.5">
             <Trophy className="w-4 h-4" /> Correct — it&apos;s &quot;{term}

@@ -14,6 +14,24 @@ import { Badge } from '@/components/ui/badge';
 import confetti from 'canvas-confetti';
 
 /**
+ * Deterministic shuffle (seeded by string). Server and client produce the
+ * exact same order, preventing hydration mismatches — unlike Math.random().
+ */
+function seededShuffle(items, seed = 'shuffle') {
+  const arr = [...items];
+  let s = 0;
+  for (let i = 0; i < seed.length; i++) {
+    s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  for (let i = arr.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    const j = s % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
  * 1. Interactive Drag-and-Drop & Click-to-Match Word Matching Game
  */
 export function DragDropMatchingGame({ data }) {
@@ -22,15 +40,21 @@ export function DragDropMatchingGame({ data }) {
     return data.pairs;
   }, [data]);
 
-  // Seed with initial shuffled arrays
+  // Seed with initial shuffled arrays (deterministic → hydration-safe)
   const [terms, setTerms] = useState(() => {
     if (!pairs.length) return [];
-    return [...pairs.map((p) => p.term)].sort(() => Math.random() - 0.5);
+    return seededShuffle(
+      pairs.map((p) => p.term),
+      (data?.title || 'terms') + '-terms'
+    );
   });
 
   const [definitions, setDefinitions] = useState(() => {
     if (!pairs.length) return [];
-    return [...pairs.map((p) => p.match)].sort(() => Math.random() - 0.5);
+    return seededShuffle(
+      pairs.map((p) => p.match),
+      (data?.title || 'terms') + '-defs'
+    );
   });
 
   const [selectedTerm, setSelectedTerm] = useState(null);
@@ -41,9 +65,19 @@ export function DragDropMatchingGame({ data }) {
 
   const handleResetGame = () => {
     if (!pairs.length) return;
-    setTerms([...pairs.map((p) => p.term)].sort(() => Math.random() - 0.5));
+    // Reset runs client-side only, so a fresh random seed is safe here
+    const seed = `${Date.now()}-${Math.random()}`;
+    setTerms(
+      seededShuffle(
+        pairs.map((p) => p.term),
+        seed + '-terms'
+      )
+    );
     setDefinitions(
-      [...pairs.map((p) => p.match)].sort(() => Math.random() - 0.5)
+      seededShuffle(
+        pairs.map((p) => p.match),
+        seed + '-defs'
+      )
     );
     setSelectedTerm(null);
     setMatchedPairs({});
@@ -201,9 +235,9 @@ export function DragDropMatchingGame({ data }) {
                   whileTap={!isMatched ? { scale: 0.98 } : {}}
                   className={`p-4 rounded-2xl border text-sm font-bold transition-all cursor-pointer select-none flex items-center justify-between ${
                     isMatched
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 opacity-60 cursor-default'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 tone-success opacity-60 cursor-default'
                       : isWrong
-                        ? 'bg-rose-500/20 border-rose-500/50 text-rose-400 animate-shake'
+                        ? 'bg-rose-500/20 border-rose-500/50 tone-danger animate-shake'
                         : isSelected
                           ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-[1.02]'
                           : 'bg-muted/40 hover:bg-muted/80 border-border text-foreground'
@@ -211,7 +245,7 @@ export function DragDropMatchingGame({ data }) {
                 >
                   <span className="leading-snug">{term}</span>
                   {isMatched && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-2" />
+                    <CheckCircle2 className="tone-success w-4 h-4 shrink-0 ml-2" />
                   )}
                 </motion.div>
               );
@@ -241,9 +275,9 @@ export function DragDropMatchingGame({ data }) {
                   whileHover={!isMatched && selectedTerm ? { scale: 1.02 } : {}}
                   className={`p-4 rounded-2xl border text-xs leading-relaxed transition-all cursor-pointer select-none flex flex-col justify-between ${
                     isMatched
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300/80 opacity-60 cursor-default'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 tone-success opacity-60 cursor-default'
                       : isWrong
-                        ? 'bg-rose-500/20 border-rose-500/50 text-rose-300 animate-shake'
+                        ? 'bg-rose-500/20 border-rose-500/50 tone-danger animate-shake'
                         : selectedTerm
                           ? 'bg-primary/5 hover:bg-primary/15 border-primary/30 text-foreground cursor-pointer hover:border-primary'
                           : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'
@@ -251,7 +285,7 @@ export function DragDropMatchingGame({ data }) {
                 >
                   <div>{def}</div>
                   {isMatched && (
-                    <div className="mt-2 pt-2 border-t border-emerald-500/20 text-[10px] font-bold text-emerald-400 flex items-center gap-1.5">
+                    <div className="mt-2 pt-2 border-t border-emerald-500/20 text-[10px] font-bold tone-success flex items-center gap-1.5">
                       <Check className="w-3 h-3" /> Matched with: {matchedTerm}
                     </div>
                   )}
@@ -272,7 +306,7 @@ export function DragDropMatchingGame({ data }) {
             className="mt-6 p-6 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-primary/20 to-emerald-500/20 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left"
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-slate-950 font-black shrink-0 shadow-lg shadow-emerald-500/30">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white font-black shrink-0 shadow-lg shadow-emerald-500/30">
                 <Trophy className="w-6 h-6" />
               </div>
               <div>
@@ -288,7 +322,7 @@ export function DragDropMatchingGame({ data }) {
             <Button
               size="sm"
               onClick={handleResetGame}
-              className="rounded-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 px-5"
+              className="rounded-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-5"
             >
               Play Again
             </Button>
@@ -329,7 +363,7 @@ export function InteractiveQuizCard({ data }) {
   return (
     <div className="my-8 p-6 md:p-8 rounded-[32px] bg-card/60 backdrop-blur-xl border border-primary/20 shadow-xl not-prose">
       <div className="flex items-center justify-between gap-4 mb-4">
-        <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1">
+        <Badge className="bg-amber-500/10 tone-warning border-amber-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1">
           Knowledge Check
         </Badge>
         {hasSubmitted && (
@@ -358,9 +392,9 @@ export function InteractiveQuizCard({ data }) {
           if (hasSubmitted) {
             if (isThisCorrect) {
               btnStyle =
-                'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold';
+                'bg-emerald-500/20 border-emerald-500 tone-success font-bold';
             } else if (isSelected) {
-              btnStyle = 'bg-rose-500/20 border-rose-500 text-rose-300';
+              btnStyle = 'bg-rose-500/20 border-rose-500 tone-danger';
             } else {
               btnStyle =
                 'bg-muted/20 border-border/40 text-muted-foreground opacity-50';
@@ -377,10 +411,10 @@ export function InteractiveQuizCard({ data }) {
             >
               <span>{opt}</span>
               {hasSubmitted && isThisCorrect && (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="tone-success w-4 h-4 shrink-0" />
               )}
               {hasSubmitted && isSelected && !isThisCorrect && (
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <AlertCircle className="tone-danger w-4 h-4 shrink-0" />
               )}
             </button>
           );
@@ -393,8 +427,8 @@ export function InteractiveQuizCard({ data }) {
           animate={{ opacity: 1, y: 0 }}
           className={`mt-6 p-4 rounded-2xl border text-xs leading-relaxed ${
             isCorrect
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+              ? 'tone-bg-success tone-success'
+              : 'tone-bg-warning tone-warning'
           }`}
         >
           <div className="font-bold mb-1 flex items-center gap-1.5">

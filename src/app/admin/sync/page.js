@@ -20,7 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/lib/supabase';
-import { showToast, showSuccess, showConfirm } from '@/lib/swal';
+import { showToast, showSuccess, showConfirm, showAlert } from '@/lib/swal';
+import { isPuterFundingError } from '@/lib/blog-ai-engine';
 import { cn } from '@/lib/utils';
 import {
   syncSingleBlog,
@@ -156,7 +157,7 @@ export default function AdminBlogSyncPage() {
     if (mode === 'force') {
       const res = await showConfirm({
         title: 'Force Resync All Blogs?',
-        text: 'Games and FAQs will be regenerated for EVERY blog and replaced with the latest valid version. Original article content is never modified. Existing feature images are kept.',
+        text: 'Every article will be AI-rewritten and its games, FAQs and feature image regenerated. Titles, slugs, authors and SEO stay untouched. Original content is kept only if a rewrite fails.',
         confirmButtonText: 'Force Resync',
         icon: 'warning',
       });
@@ -177,6 +178,8 @@ export default function AdminBlogSyncPage() {
     let failed = 0;
     let skipped = 0;
     let processed = 0;
+    let consecutiveFundingFailures = 0;
+    let abortedForFunding = false;
 
     try {
       // Target selection (idempotent gates live inside syncSingleBlog)
@@ -195,7 +198,7 @@ export default function AdminBlogSyncPage() {
 
       // Process one blog at a time (browser-side AI, safest for rate limits)
       for (const blog of targets) {
-        if (cancelRef.current) break;
+        if (cancelRef.current || abortedForFunding) break;
 
         setCurrentBlogTitle(blog.title || blog.slug);
         setBlogs((prev) =>
@@ -232,14 +235,34 @@ export default function AdminBlogSyncPage() {
         });
 
         if (result.skipped) skipped += 1;
-        else if (result.ok) succeeded += 1;
-        else failed += 1;
+        else if (result.ok) {
+          succeeded += 1;
+          consecutiveFundingFailures = 0;
+        } else {
+          failed += 1;
+          // Puter funding/permission errors fail every blog — stop the run
+          // early instead of pointlessly processing hundreds of records.
+          if (result.error && isPuterFundingError({ message: result.error })) {
+            consecutiveFundingFailures += 1;
+            if (consecutiveFundingFailures >= 3) {
+              abortedForFunding = true;
+            }
+          } else {
+            consecutiveFundingFailures = 0;
+          }
+        }
 
         processed += 1;
         setProgress({ processed, total: targets.length });
       }
 
-      if (cancelRef.current) {
+      if (abortedForFunding) {
+        showAlert(
+          'Puter AI Funding Exhausted',
+          'The sync stopped because your Puter account has no remaining funding. Upgrade at puter.com (or try a later time), then use "Retry Failed" — already-synchronized blogs are safe.',
+          'warning'
+        );
+      } else if (cancelRef.current) {
         showToast(
           `Sync cancelled — ${succeeded} completed, ${failed} failed, ${skipped} skipped.`,
           'info'
@@ -282,8 +305,8 @@ export default function AdminBlogSyncPage() {
                 Blog <span className="text-primary">Synchronization</span>
               </h1>
               <p className="text-muted-foreground font-medium text-sm">
-                Give every blog a feature image, exactly 3 AI games and exactly
-                5 AI FAQs — original articles are never modified.
+                Rewrites every article with AI and adds a feature image, exactly
+                3 games and exactly 5 FAQs — one blog at a time.
               </p>
             </div>
           </div>

@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 // 1. Comprehensive Website Ecosystem Knowledge Base
 // ---------------------------------------------------------------------------
 export const ECOSYSTEM_KNOWLEDGE = {
-  brandName: 'All Useful Tools (HAZWOPER Useful Tools)',
+  brandName: 'All Useful Tools',
   tagline:
     'High-Performance Privacy-First Digital Tools & LMS Intelligence Suite',
   overview:
@@ -506,7 +506,7 @@ You must output a strictly valid JSON object (or JSON array with 1 item) with th
   "title": "Clear, Punchy, Authority Title (e.g. 'Mastering Client-Side Document Processing: A Complete Technical Guide')",
   "summary": "150-200 character rich SEO summary explaining exactly what the reader will learn.",
   "slug": "url-friendly-kebab-case-slug",
-  "category": "${focusedTool ? focusedTool.category : 'Industrial Excellence'}",
+  "category": "${focusedTool ? focusedTool.category : 'Productivity Tools'}",
   "read_time": "8 min read",
   "content": "The complete, pristine HTML body containing all headings, paragraphs, styled blockquotes, data tables, and callout cards (no game embeds)."
 }
@@ -555,6 +555,11 @@ export async function callPuterAiBlogEngine(prompt, systemPrompt) {
         return { text, modelUsed: model };
       }
     } catch (err) {
+      // Funding/permission errors apply to the whole Puter account — trying
+      // the remaining models is pointless. Surface a clear message instead.
+      if (isPuterFundingError(err)) {
+        throw new Error(PUTER_FUNDING_MESSAGE);
+      }
       console.warn(
         `[Blog AI Engine] Model ${model} failed:`,
         err?.message || err
@@ -566,6 +571,21 @@ export async function callPuterAiBlogEngine(prompt, systemPrompt) {
   throw (
     lastError ||
     new Error('All neural models in the fallback chain were unreachable.')
+  );
+}
+
+export const PUTER_FUNDING_MESSAGE =
+  'Puter AI funding exhausted — upgrade your Puter account (puter.com) or try again later.';
+
+export function isPuterFundingError(err) {
+  const message = String(err?.message || err || '').toLowerCase();
+  return (
+    message.includes('funding') ||
+    message.includes('not enough') ||
+    message.includes('insufficient') ||
+    message.includes('low balance') ||
+    (message.includes('upgrade') && message.includes('account')) ||
+    message.includes(PUTER_FUNDING_MESSAGE.toLowerCase())
   );
 }
 
@@ -882,7 +902,7 @@ export async function generateMasterBlog({
           parsed.category ||
           (toolSlug
             ? ECOSYSTEM_KNOWLEDGE.tools[toolSlug]?.category
-            : 'Industrial Excellence'),
+            : 'Productivity Tools'),
         read_time: parsed.read_time || parsed.readTime || '8 min read',
         content: stripInteractiveEmbeds(
           parsed.content || parsed.suggested_content

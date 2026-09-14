@@ -1,6 +1,7 @@
 import { blogPosts as staticBlogs } from '@/lib/blog-data';
 import { BlogPostClient } from '@/components/blog-post-client';
 import Link from 'next/link';
+import Script from 'next/script';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -105,8 +106,10 @@ export default async function BlogPostPage({ params }) {
   return (
     <>
       {faqSchema && (
-        <script
+        <Script
+          id={`blog-faq-schema-${slug}`}
           type="application/ld+json"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}

@@ -212,7 +212,7 @@ export function PuterAgent() {
             description: blog.summary,
             slug: blog.slug,
             content: blog.suggested_content || blog.content,
-            category: blog.category || 'Industrial Excellence',
+            category: blog.category || 'Productivity Tools',
             author: 'Se7eN Bot Autopilot',
             date: new Date().toLocaleDateString('en-US', {
               month: 'long',
@@ -243,7 +243,7 @@ export function PuterAgent() {
           syncSingleBlog({
             id: newId,
             title: blog.title,
-            category: blog.category || 'Industrial Excellence',
+            category: blog.category || 'Productivity Tools',
             content: blog.suggested_content || blog.content,
           }).catch(() => {});
         }
@@ -519,7 +519,7 @@ export function PuterAgent() {
                       <CardHeader className="p-6 space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <Badge className="bg-primary/10 text-primary border-none text-[8px] font-black tracking-widest uppercase">
-                            {blog.category || 'Industrial Excellence'}
+                            {blog.category || 'Productivity Tools'}
                           </Badge>
                           <span className="text-[10px] font-mono text-muted-foreground">
                             {blog.read_time || '7 min read'}

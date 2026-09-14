@@ -928,3 +928,66 @@ ol {
 .swal-fade-out-right {
   animation: swalFadeOutRight 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ==========================================================================
+   THEME-SAFE STATUS TONES — readable text on light, dark AND nebula themes.
+   Use these instead of raw Tailwind -300/-400 status text colors, which
+   disappear on light backgrounds. Pair with /10 opacity tinted backgrounds.
+   ========================================================================== */
+.tone-success {
+  color: #047857;
+}
+.dark .tone-success,
+.nebula .tone-success {
+  color: #34d399;
+}
+.tone-warning {
+  color: #b45309;
+}
+.dark .tone-warning,
+.nebula .tone-warning {
+  color: #fbbf24;
+}
+.tone-danger {
+  color: #be123c;
+}
+.dark .tone-danger,
+.nebula .tone-danger {
+  color: #fb7185;
+}
+.tone-info {
+  color: #0369a1;
+}
+.dark .tone-info,
+.nebula .tone-info {
+  color: #38bdf8;
+}
+.tone-accent {
+  color: #6d28d9;
+}
+.dark .tone-accent,
+.nebula .tone-accent {
+  color: #a78bfa;
+}
+
+/* Tinted tone backgrounds — low opacity so they work on every theme */
+.tone-bg-success {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.tone-bg-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.tone-bg-danger {
+  background: rgba(244, 63, 94, 0.1);
+  border-color: rgba(244, 63, 94, 0.35);
+}
+.tone-bg-info {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.35);
+}
+.tone-bg-accent {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.35);
+}

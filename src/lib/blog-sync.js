@@ -1,14 +1,15 @@
 /**
  * @file blog-sync.js
- * Unified Blog Synchronization Engine for "All Useful Tools" (HAZWOPER).
+ * Unified Blog Synchronization Engine for "All Useful Tools".
  *
  * Gives EVERY blog (existing or newly generated) the same structure:
- *   Feature Image + Existing Article + Exactly 3 AI Games + Exactly 5 AI FAQs
+ *   Rewritten Article + Feature Image + Exactly 3 AI Games + Exactly 5 AI FAQs
  *
  * Key guarantees:
- *  - NEVER mutates the article `content`, title, slug, author, category,
- *    date, description or any other pre-existing field. Only touches
- *    `games`, `faq`, `image_url` (when newly generated) and sync metadata.
+ *  - During sync the article content is AI-rewritten & enhanced (same facts,
+ *    same meaning, better structure). Title, slug, author, category, date,
+ *    description and SEO stay untouched. If the rewrite fails, the original
+ *    article is preserved and sync continues.
  *  - IDEMPOTENT: re-running skips blogs already synced at CURRENT_BLOG_SYNC_VERSION.
  *    Games/FAQs are wholesale-replaced (never appended), so no duplicates.
  *  - Per-blog failure isolation: a failed blog is marked `failed` with a
@@ -22,6 +23,8 @@ import { supabase } from '@/lib/supabase';
 import {
   callPuterAiBlogEngine,
   parseAndRepairJson,
+  stripInteractiveEmbeds,
+  isPuterFundingError,
 } from '@/lib/blog-ai-engine';
 import { convertImage } from '@/lib/image-converter';
 import { recordMediaUpload } from '@/lib/media-hub';
@@ -29,7 +32,8 @@ import { recordMediaUpload } from '@/lib/media-hub';
 // ---------------------------------------------------------------------------
 // 1. Constants
 // ---------------------------------------------------------------------------
-export const CURRENT_BLOG_SYNC_VERSION = 2;
+// v3: sync now also rewrites/enhances the article content
+export const CURRENT_BLOG_SYNC_VERSION = 3;
 
 export const SYNC_STATUS = {
   PENDING: 'pending',
@@ -261,7 +265,7 @@ export function buildSyncPrompt(blog, concepts) {
   const category = blog.category || 'Technical Guide';
   const contentText = stripHtmlTags(blog.content).slice(0, MAX_CONTENT_CHARS);
 
-  return `You are the Interactive Learning Designer for the HAZWOPER / OSHA safety & productivity platform "All Useful Tools".
+  return `You are the Interactive Learning Designer for "All Useful Tools" — a free online utility platform (PDF editor, image/video converters, compressors, AI assistants, document tools, etc.) that makes everyday digital work faster and easier. All tools run privately in the browser.
 
 SOURCE ARTICLE (the ONLY source of truth — every game and FAQ must be strictly derived from it):
 TITLE: "${title}"
@@ -311,9 +315,10 @@ Return a strictly valid JSON object with EXACTLY this shape (no markdown fences,
 STRICT RULES:
 1. EXACTLY 3 games in this order: word-match (5 pairs from key article terms), multiple-choice (4 options), true-false. Optionally the system may swap multiple-choice for "correct-order" ({"items": ["Step 1...", "Step 2...", "Step 3...", "Step 4..."], "explanation": "..."}) or "guess-term" ({"term": "...", "hint": "...", "explanation": "..."}) when the article suits it better — but always EXACTLY 3 games.
 2. EXACTLY 5 FAQs. Questions must be realistic questions a reader of THIS article would ask; answers must be 2-4 sentences grounded ONLY in the article.
-3. No duplicate questions, terms or options. All strings in English. Options must not reveal the answer.
-4. For "correct-order", "items" must be listed in the CORRECT order.
-5. Output raw JSON only.`;
+3. This is a productivity/utility-tools website — NOT a regulatory or compliance website. Do NOT mention, imply or invent OSHA, HIPAA, GDPR compliance claims, safety regulations or certifications UNLESS the article itself explicitly states them. Focus on how the tool saves time, enhances work and makes tasks quick and simple.
+4. No duplicate questions, terms or options. All strings in English. Options must not reveal the answer.
+5. For "correct-order", "items" must be listed in the CORRECT order.
+6. Output raw JSON only.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -499,6 +504,9 @@ async function generateGamesAndFaq(blog, concepts) {
         `[BlogSync] AI output invalid for "${blog.title}" (attempt ${attempt + 1}).`
       );
     } catch (err) {
+      // Funding errors must abort — falling back to templates would silently
+      // produce low-quality syncs across the whole run.
+      if (isPuterFundingError(err)) throw err;
       console.warn(
         `[BlogSync] AI generation attempt ${attempt + 1} failed for "${blog.title}":`,
         err?.message || err
@@ -512,6 +520,83 @@ async function generateGamesAndFaq(blog, concepts) {
 }
 
 // ---------------------------------------------------------------------------
+// 6b. AI content rewrite — rewrite & enhance the full article, one blog at a
+// time. Preserves every fact, name, number and step; upgrades structure.
+// Returns enhanced HTML or null (original content is kept on failure).
+// ---------------------------------------------------------------------------
+function buildContentRewritePrompt(blog) {
+  const title = blog.title || 'Untitled Article';
+  const category = blog.category || 'Technical Guide';
+  const contentText = stripHtmlTags(blog.content).slice(0, MAX_CONTENT_CHARS);
+
+  return `You are the Chief Technical Editor for "All Useful Tools" — a free online utility platform (PDF editor, image/video converters, compressors, AI assistants, document tools, etc.) that makes everyday digital work faster and easier. All tools run privately in the browser.
+
+Rewrite and enhance the following blog article. This is a FULL rewrite of the article body.
+
+ORIGINAL ARTICLE:
+TITLE: "${title}"
+CATEGORY: "${category}"
+BODY:
+"""
+${contentText}
+"""
+
+REWRITE RULES (STRICT):
+1. Preserve EVERY fact, number, product/tool name, step and recommendation from the original. Never invent new facts.
+2. Same language and same overall meaning. Improve clarity, flow, headings and formatting — make it feel professionally edited, not translated.
+3. Angle: this is a productivity/utility-tools website. Emphasize how the tool saves time, simplifies work and gets tasks done quickly — do NOT add or amplify OSHA, HIPAA, GDPR, safety-regulation or compliance framing UNLESS the original article explicitly contains it (in that case keep it exactly as-is, without expanding it).
+4. Output clean semantic HTML body only: <h2>/<h3>, <p>, <ul>/<ol>, <strong>, <a> where the original had links.
+5. Where suitable include: at least one comparison/data table (<div class="table-container"><table class="data-table"><thead>...</table></div>), at least one styled quote (<blockquote class="pro-quote"><p>"..."</p><cite>— Name, Title</cite></blockquote>), and at least one pro-tip box (<div class="callout-card tip"><div class="card-title">⚡ Pro-Tip</div><p>...</p></div>).
+6. Do NOT include: <html>, <head>, <body> tags, scripts, styles, images, or any interactive games/quizzes/FAQ sections — those are generated separately.
+7. Keep a similar length to the original (±30%).
+
+OUTPUT: raw valid JSON only, no markdown fences, no commentary:
+{ "content": "<the complete rewritten HTML article body>" }`;
+}
+
+async function enhanceArticleContent(blog) {
+  const originalText = stripHtmlTags(blog.content);
+  const minLength = Math.max(300, Math.floor(originalText.length * 0.5));
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { text } = await callPuterAiBlogEngine(
+        attempt === 0
+          ? buildContentRewritePrompt(blog)
+          : `${buildContentRewritePrompt(
+              blog
+            )}\n\nIMPORTANT CORRECTION: Your previous output was invalid. Return raw JSON with a single "content" key containing the complete rewritten HTML article body.`,
+        'You are a strict JSON generator. Output raw valid JSON only — no fences, no commentary.'
+      );
+      const parsed = parseAndRepairJson(text);
+      const rawHtml =
+        typeof parsed === 'string' ? parsed : parsed?.content || null;
+      if (!rawHtml || typeof rawHtml !== 'string') {
+        console.warn(
+          `[BlogSync] Content rewrite invalid for "${blog.title}" (attempt ${attempt + 1}).`
+        );
+        continue;
+      }
+      const cleanHtml = stripInteractiveEmbeds(rawHtml);
+      if (stripHtmlTags(cleanHtml).length >= minLength) {
+        return cleanHtml;
+      }
+      console.warn(
+        `[BlogSync] Content rewrite too short for "${blog.title}" (attempt ${attempt + 1}).`
+      );
+    } catch (err) {
+      if (isPuterFundingError(err)) throw err;
+      console.warn(
+        `[BlogSync] Content rewrite attempt ${attempt + 1} failed for "${blog.title}":`,
+        err?.message || err
+      );
+    }
+  }
+
+  return null; // caller keeps the original article
+}
+
+// ---------------------------------------------------------------------------
 // 7. Feature image — reuse if valid, generate only when missing
 // ---------------------------------------------------------------------------
 export function hasValidFeatureImage(blog) {
@@ -522,7 +607,7 @@ export function hasValidFeatureImage(blog) {
 
 async function generateFeatureImage(blog) {
   const title = blog.title || 'Professional Article';
-  const category = blog.category || 'industrial safety';
+  const category = blog.category || 'modern digital workspace';
 
   // 1. Puter writes a one-sentence photography prompt (no text in image —
   //    the blog title is overlaid as HTML/CSS by the frontend for accuracy).
@@ -659,16 +744,33 @@ export async function syncSingleBlog(blog, { force = false, onUpdate } = {}) {
       .update({ sync_status: SYNC_STATUS.PROCESSING, sync_error: null })
       .eq('id', blog.id);
 
-    // 1. Analyze the existing article (never modified, only read)
-    const { concepts, text: articleText } = extractKeyConcepts(blog.content);
+    // 1. Rewrite & enhance the article content (AI). On failure the original
+    //    article is kept and sync continues — never a data loss scenario.
+    let content = blog.content;
+    try {
+      const enhanced = await enhanceArticleContent(blog);
+      if (enhanced) content = enhanced;
+    } catch (err) {
+      if (isPuterFundingError(err)) throw err;
+      console.warn(
+        `[BlogSync] Content rewrite skipped for "${blog.title}":`,
+        err?.message || err
+      );
+    }
+
+    // 2. Analyze the (possibly rewritten) article to ground games/FAQs
+    const { concepts, text: articleText } = extractKeyConcepts(content);
     if (articleText.length < 80) {
       throw new Error(
         'Article content is too short to generate meaningful games/FAQs.'
       );
     }
 
-    // 2. Generate exactly 3 games + exactly 5 FAQs from THIS article
-    const { games, faq } = await generateGamesAndFaq(blog, concepts);
+    // 3. Generate exactly 3 games + exactly 5 FAQs from THIS article
+    const { games, faq } = await generateGamesAndFaq(
+      { ...blog, content },
+      concepts
+    );
     if (!validateGames(games)) {
       throw new Error(
         'Generated games failed validation (expected 3 valid games).'
@@ -680,7 +782,7 @@ export async function syncSingleBlog(blog, { force = false, onUpdate } = {}) {
       );
     }
 
-    // 3. Feature image: reuse existing valid image, generate only if missing
+    // 4. Feature image: reuse existing valid image, generate only if missing
     let imageUrl;
     const updatePayload = {
       games,
@@ -690,6 +792,9 @@ export async function syncSingleBlog(blog, { force = false, onUpdate } = {}) {
       last_synced_at: new Date().toISOString(),
       sync_error: null,
     };
+    if (content !== blog.content) {
+      updatePayload.content = content;
+    }
     if (hasValidFeatureImage(blog)) {
       imageUrl = blog.image_url; // preserved untouched
     } else {
@@ -697,8 +802,9 @@ export async function syncSingleBlog(blog, { force = false, onUpdate } = {}) {
       updatePayload.image_url = imageUrl;
     }
 
-    // 4. Save — ONLY the generated fields + sync metadata. The article body,
-    //    title, slug, author, category, tags, dates and SEO stay untouched.
+    // 5. Save — rewritten content (when successful) + generated fields + sync
+    //    metadata. Title, slug, author, category, tags, dates and SEO stay
+    //    untouched.
     const { error: updateError } = await supabase
       .from('blogs')
       .update(updatePayload)
@@ -784,10 +890,12 @@ export async function syncAllBlogs({
     failed: 0,
     skipped: 0,
     cancelled: false,
+    aborted: false,
   };
 
   // Controlled batches: process `batchSize` blogs, brief checkpoint between
-  for (let i = 0; i < targets.length; i += batchSize) {
+  let consecutiveFundingFailures = 0;
+  outer: for (let i = 0; i < targets.length; i += batchSize) {
     if (shouldCancel?.()) {
       results.cancelled = true;
       break;
@@ -796,15 +904,31 @@ export async function syncAllBlogs({
     for (const blog of batch) {
       if (shouldCancel?.()) {
         results.cancelled = true;
-        break;
+        break outer;
       }
       const result = await syncSingleBlog(blog, {
         force: mode === 'force',
         onUpdate: (status, info) => onBlogUpdate?.(blog.id, status, info),
       });
       if (result.skipped) results.skipped += 1;
-      else if (result.ok) results.succeeded += 1;
-      else results.failed += 1;
+      else if (result.ok) {
+        results.succeeded += 1;
+        consecutiveFundingFailures = 0;
+      } else {
+        results.failed += 1;
+        // Puter funding/permission errors fail every blog — stop the run
+        // early instead of pointlessly processing hundreds of records.
+        if (result.error && isPuterFundingError({ message: result.error })) {
+          consecutiveFundingFailures += 1;
+          if (consecutiveFundingFailures >= 3) {
+            results.aborted = true;
+            results.error = result.error;
+            break outer;
+          }
+        } else {
+          consecutiveFundingFailures = 0;
+        }
+      }
       onProgress?.(i + batch.indexOf(blog) + 1, targets.length);
     }
     // Yield a moment between batches so the UI stays responsive
