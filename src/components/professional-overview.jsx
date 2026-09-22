@@ -24,39 +24,38 @@ export function ProfessionalOverview() {
   }, []);
 
   return (
-    <section className="py-32 relative overflow-hidden bg-background">
+    <section className="py-12 sm:py-16 relative overflow-hidden bg-background">
       {/* Decorative background elements */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] -mr-96 -mt-96 opacity-50" />
-      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px] -ml-72 -mb-72 opacity-50" />
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] -mr-72 -mt-72 opacity-50 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[90px] -ml-60 -mb-60 opacity-50 pointer-events-none" />
 
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="max-w-4xl mx-auto text-center mb-24">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
+        <div className="max-w-3xl mx-auto text-center mb-8 sm:mb-12">
           <motion.div
             initial={false}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-8"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 mb-4"
           >
-            <Shield className="w-4 h-4 text-primary" />
+            <Shield className="w-3.5 h-3.5 text-primary" />
             <span className="text-[10px] font-black uppercase tracking-widest text-primary">
               Industry Standard Compliance
             </span>
           </motion.div>
 
-          <h2 className="text-4xl md:text-6xl font-black tracking-tight mb-8 leading-[1.1] text-foreground">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight mb-3 leading-[1.15] text-foreground">
             Authoritative Utility <br />
-            <span className="text-primary">Ecosystem & Workspace</span>
+            <span className="text-primary">Ecosystem &amp; Workspace</span>
           </h2>
 
-          <p className="text-xl text-muted-foreground leading-relaxed font-medium">
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed font-medium">
             At the intersection of artificial intelligence and professional
             productivity standards, we provide a suite of tools engineered for
             the rigorous demands of digital documentation, media editing, and
-            content generation. Our ecosystem simplifies complexity, ensuring
-            precision in every task.
+            content generation.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12 mb-32">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 mb-12 sm:mb-16">
           {[
             {
               title: 'Proprietary Extraction Logic',
@@ -94,15 +93,15 @@ export function ProfessionalOverview() {
               initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="space-y-6 p-8 rounded-[32px] bg-card/40 backdrop-blur-xl border border-border hover:border-primary/30 transition-all group"
+              className="space-y-4 p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card/50 backdrop-blur-xl border border-border hover:border-primary/40 transition-all group"
             >
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500">
-                <item.icon className="w-7 h-7" />
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                <item.icon className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-black tracking-tight text-foreground">
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-foreground">
                 {item.title}
               </h3>
-              <p className="text-muted-foreground font-medium leading-relaxed">
+              <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed">
                 {item.desc}
               </p>
             </motion.div>
@@ -110,26 +109,26 @@ export function ProfessionalOverview() {
         </div>
 
         {/* Long Form Copy for AdSense */}
-        <div className="max-w-5xl mx-auto space-y-16 py-20 border-t border-border">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <h3 className="text-3xl font-black text-foreground">
-                The Future of Online Productivity & Content Automation
+        <div className="max-w-5xl mx-auto space-y-10 py-10 sm:py-12 border-t border-border">
+          <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div className="space-y-4">
+              <h3 className="text-xl sm:text-2xl font-black text-foreground">
+                The Future of Online Productivity &amp; Content Automation
               </h3>
-              <p className="text-muted-foreground leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium">
                 In today&apos;s fast-paced digital landscape, the efficiency of
                 technical workflows and content creation is paramount. Legacy
                 tools often rely on cumbersome software or inefficient
                 &quot;copy-paste&quot; methods that consume hundreds of hours of
                 valuable time.
               </p>
-              <p className="text-muted-foreground leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium">
                 All Useful Tools is designed to eliminate these bottlenecks. By
                 leveraging automated processing protocols, we allow creators,
                 professionals, and developers to transform documents, media, and
                 code into dynamic, web-optimized resources in seconds.
               </p>
-              <ul className="space-y-4">
+              <ul className="space-y-2.5 pt-2">
                 {[
                   'Automated Document and Module Mapping',
                   'Intelligent Glossary and Resource Extraction',
@@ -138,29 +137,29 @@ export function ProfessionalOverview() {
                 ].map((text, i) => (
                   <li
                     key={i}
-                    className="flex items-center gap-3 text-foreground font-bold"
+                    className="flex items-center gap-2.5 text-xs sm:text-sm text-foreground font-bold"
                   >
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                     {text}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="relative aspect-square rounded-[60px] bg-gradient-to-br from-primary/20 to-blue-500/20 shadow-2xl flex items-center justify-center overflow-hidden group">
+            <div className="relative aspect-square max-w-[340px] mx-auto rounded-3xl bg-gradient-to-br from-primary/20 to-blue-500/20 shadow-xl flex items-center justify-center overflow-hidden group">
               <div className="absolute inset-0 bg-grid-white/[0.05]" />
-              <Zap className="w-48 h-48 text-primary opacity-20 group-hover:scale-110 transition-transform duration-700" />
-              <div className="absolute bottom-12 left-12 right-12 p-8 bg-card/60 backdrop-blur-2xl rounded-3xl border border-border">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-black uppercase tracking-widest text-primary">
+              <Zap className="w-32 h-32 text-primary opacity-20 group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute bottom-6 left-6 right-6 p-4 bg-card/80 backdrop-blur-xl rounded-2xl border border-border shadow-md">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">
                     System Status
                   </span>
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
-                <div className="space-y-2">
-                  <div className="h-2 w-full bg-border rounded-full overflow-hidden">
+                <div className="space-y-1.5">
+                  <div className="h-1.5 w-full bg-border rounded-full overflow-hidden">
                     <div className="h-full w-4/5 bg-primary rounded-full" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">
+                  <span className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground">
                     All Engines Active
                   </span>
                 </div>
@@ -168,22 +167,19 @@ export function ProfessionalOverview() {
             </div>
           </div>
 
-          <div className="space-y-8 text-center pt-24">
-            <h3 className="text-2xl font-black text-foreground">
-              Technical Resilience & Scalability
+          <div className="space-y-4 text-center pt-8 sm:pt-10">
+            <h3 className="text-xl sm:text-2xl font-black text-foreground">
+              Technical Resilience &amp; Scalability
             </h3>
-            <div className="max-w-3xl mx-auto">
-              <p className="text-muted-foreground leading-relaxed font-medium mb-6">
-                Our platform architecture is built for the modern web. We
-                utilize a cutting-edge stack involving Next.js, Framer Motion,
-                and Supabase to provide a high-performance, low-latency
-                experience. By shifting compute-heavy tasks like media
-                processing and PDF manipulation to the client-side using
-                WebAssembly (FFmpeg.wasm, PDF-lib, and Tesseract.js), we achieve
-                unprecedented privacy standards without sacrificing feature
-                depth.
+            <div className="max-w-3xl mx-auto space-y-3">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium">
+                Our platform architecture is built for the modern web. By
+                shifting compute-heavy tasks like media processing and PDF
+                manipulation to the client-side using WebAssembly (FFmpeg.wasm,
+                PDF-lib, and Tesseract.js), we achieve unprecedented privacy
+                standards without sacrificing feature depth.
               </p>
-              <p className="text-muted-foreground leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium">
                 Whether you are editing a PDF, converting video clips, or
                 extracting large documents, our infrastructure scales with you.
                 Every tool in our suite is optimized for speed, reliability, and

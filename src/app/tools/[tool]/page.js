@@ -5,6 +5,7 @@ import {
   toolInfo,
   generateToolSchema,
   generateBreadcrumbSchema,
+  createPageMetadata,
 } from '@/lib/seo';
 import { ToolSEOContentServer } from '@/components/tool-seo-content-server';
 import { ToolPageClient } from '@/components/tool-page-client';
@@ -14,26 +15,14 @@ export async function generateMetadata({ params }) {
   const { tool } = await params;
   const meta = toolMetadata[tool];
   if (!meta) return {};
-  return {
+
+  return createPageMetadata({
     title: meta.title,
     description: meta.description,
+    path: `/tools/${tool}`,
     keywords: meta.keywords,
-    alternates: {
-      canonical: `https://hazwoper-useful-tools.vercel.app${meta.canonical}`,
-    },
-    openGraph: {
-      title: meta.title,
-      description: meta.description,
-      url: `https://hazwoper-useful-tools.vercel.app/tools/${tool}`,
-      type: 'website',
-      images: meta.ogImage ? [{ url: meta.ogImage }] : [],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: meta.title,
-      description: meta.description,
-    },
-  };
+    image: meta.ogImage,
+  });
 }
 
 export async function generateStaticParams() {
@@ -71,7 +60,9 @@ export default async function ToolPage({ params }) {
         <AdPlacement type="top-banner" className="mb-6" />
         <ToolPageClient toolSlug={toolSlug} />
         <AdPlacement type="in-content" className="my-8" />
-        <ToolSEOContentServer slug={toolSlug} />
+        <div id="documentation">
+          <ToolSEOContentServer slug={toolSlug} />
+        </div>
         <AdPlacement type="footer" className="mt-12" />
       </div>
     </>

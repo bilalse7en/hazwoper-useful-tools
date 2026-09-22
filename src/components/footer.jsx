@@ -155,6 +155,14 @@ export function Footer({ overrideShow = false }) {
             <ul className="space-y-4 text-sm text-muted-foreground font-bold">
               <li>
                 <Link
+                  href="/guides"
+                  className="hover:text-primary transition-colors flex items-center gap-2"
+                >
+                  <BookOpen className="w-4 h-4" /> Guides &amp; Manuals
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/blog"
                   className="hover:text-green-600 dark:hover:text-green-400 transition-colors flex items-center gap-2"
                 >

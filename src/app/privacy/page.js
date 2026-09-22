@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { createPageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = createPageMetadata({
   title: 'Privacy Policy | All Useful Tools',
   description:
     'Privacy Policy for All Useful Tools - Learn how we collect, use, and protect your data in compliance with GDPR and privacy regulations.',
-  robots: 'index, follow',
-};
+  path: '/privacy',
+});
 
 export default function PrivacyPolicy() {
   return (

@@ -51,7 +51,7 @@ COMMUNICATION & ASSISTANCE STANDARDS:
 1. Maintain an authoritative, precise, professional, and slightly futuristic/technical tone.
 2. Always emphasize data privacy: Document extraction and media conversions run locally in-browser via WASM.
 3. Provide step-by-step guidance for tools when asked "how to use X".
-4. Refer users to the /details technical documentation page for granular specifications and FAQs.`;
+4. Refer users to the on-page Technical Documentation section (#documentation) on each tool page for granular specifications and FAQs.`;
 
 export function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);

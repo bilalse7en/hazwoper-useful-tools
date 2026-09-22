@@ -1,57 +1,59 @@
 import { toolMetadata } from '@/lib/seo';
 import { blogPosts } from '@/lib/blog-data';
+import { guidesData } from '@/lib/guides-data';
+import { getCanonicalUrl } from '@/lib/site-config';
 
 export default async function sitemap() {
-  const baseUrl = 'https://hazwoper-useful-tools.vercel.app';
+  const currentDate = new Date().toISOString().split('T')[0];
 
-  // 1. Static Pages
-  const staticPages = [
-    '',
-    '/about',
-    '/contact',
-    '/privacy',
-    '/terms',
-    '/cookies',
-    '/disclaimer',
-    '/blog',
-    '/tools',
-  ].map((route) => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date().toISOString().split('T')[0],
-    changeFrequency: 'weekly',
-    priority: route === '' ? 1.0 : 0.8,
+  // 1. Core Public Static Pages
+  const staticRoutes = [
+    { path: '', changeFrequency: 'weekly', priority: 1.0 },
+    { path: '/tools', changeFrequency: 'weekly', priority: 0.9 },
+    { path: '/guides', changeFrequency: 'weekly', priority: 0.8 },
+    { path: '/blog', changeFrequency: 'weekly', priority: 0.7 },
+    { path: '/about', changeFrequency: 'monthly', priority: 0.8 },
+    { path: '/contact', changeFrequency: 'monthly', priority: 0.8 },
+    { path: '/privacy', changeFrequency: 'yearly', priority: 0.5 },
+    { path: '/privacy-policy', changeFrequency: 'yearly', priority: 0.5 },
+    { path: '/terms', changeFrequency: 'yearly', priority: 0.5 },
+    { path: '/disclaimer', changeFrequency: 'yearly', priority: 0.5 },
+    { path: '/cookies', changeFrequency: 'yearly', priority: 0.5 },
+  ].map((item) => ({
+    url: getCanonicalUrl(item.path),
+    lastModified: currentDate,
+    changeFrequency: item.changeFrequency,
+    priority: item.priority,
   }));
 
-  // 2. Dynamic Tool Pages & Tool Technical Details Pages
+  // 2. Interactive Tool Pages (21 tools)
   const toolSlugs = Object.keys(toolMetadata);
-  const toolPages = [];
+  const toolPages = toolSlugs.map((slug) => ({
+    url: getCanonicalUrl(`/tools/${slug}`),
+    lastModified: currentDate,
+    changeFrequency: 'weekly',
+    priority: 0.9,
+  }));
 
-  toolSlugs.forEach((slug) => {
-    // Main tool interface page
-    toolPages.push({
-      url: `${baseUrl}/tools/${slug}`,
-      lastModified: new Date().toISOString().split('T')[0],
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    });
-    // Technical documentation page (very unique/high value)
-    toolPages.push({
-      url: `${baseUrl}/tools/${slug}/details`,
-      lastModified: new Date().toISOString().split('T')[0],
-      changeFrequency: 'monthly',
-      priority: 0.9,
-    });
-  });
-
-  // 3. Dynamic Blog Post Pages
-  const blogPages = blogPosts.map((post) => ({
-    url: `${baseUrl}/blog/${post.slug}`,
-    lastModified: post.date
-      ? new Date(post.date).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0],
+  // 3. Educational Guide Pages
+  const guidePages = guidesData.map((guide) => ({
+    url: getCanonicalUrl(`/guides/${guide.slug}`),
+    lastModified: guide.dateModified
+      ? guide.dateModified.split('T')[0]
+      : currentDate,
     changeFrequency: 'monthly',
     priority: 0.8,
   }));
 
-  return [...staticPages, ...toolPages, ...blogPages];
+  // 4. Dynamic Blog Post Pages
+  const blogPages = blogPosts.map((post) => ({
+    url: getCanonicalUrl(`/blog/${post.slug}`),
+    lastModified: post.date
+      ? new Date(post.date).toISOString().split('T')[0]
+      : currentDate,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...toolPages, ...guidePages, ...blogPages];
 }

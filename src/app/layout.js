@@ -9,6 +9,8 @@ import { GlobalHeader } from '@/components/global-header';
 import { Footer } from '@/components/footer';
 import { AuthProvider } from '@/components/auth-provider';
 import { ChatProvider } from '@/components/chat-provider';
+import { SITE_CONFIG, getSiteUrl } from '@/lib/site-config';
+import { organizationSchema } from '@/lib/seo';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -36,16 +38,15 @@ export const viewport = {
 };
 
 export const metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ||
-      'https://hazwoper-useful-tools.vercel.app'
-  ),
-  title: 'All Useful Tools | All-in-One Online Productivity & Media Utilities',
-  description:
-    'Free online productivity and media tools: PDF Editor, Word to HTML, Video Compressor, Video to GIF, Audio Converter, Audio Editor, Image Converter, OCR, and AI Assistants.',
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: `${SITE_CONFIG.name} | ${SITE_CONFIG.tagline}`,
+    template: `%s | ${SITE_CONFIG.name}`,
+  },
+  description: SITE_CONFIG.description,
   keywords:
     'all useful tools, pdf editor, word to html, video converter, audio converter, image converter, free online tools, productivity suite',
-  authors: [{ name: 'All Useful Tools' }],
+  authors: [{ name: SITE_CONFIG.name }],
   other: {
     'google-adsense-account': 'ca-pub-9874465109252768',
   },
@@ -88,20 +89,7 @@ export default function RootLayout({ children }) {
           type="application/ld+json"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'Organization',
-              name: 'All Useful Tools',
-              url: 'https://hazwoper-useful-tools.vercel.app',
-              logo: 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
-              description:
-                'Professional online utilities for document management, media conversion, and content automation.',
-              contactPoint: {
-                '@type': 'ContactPoint',
-                email: 'bilalghaffar46@gmail.com',
-                contactType: 'customer service',
-              },
-            }),
+            __html: JSON.stringify(organizationSchema),
           }}
         />
         <Script

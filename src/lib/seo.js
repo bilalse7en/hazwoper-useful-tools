@@ -2,6 +2,7 @@
  * SEO Configuration for All Useful Tools
  * Centralized metadata for all tool pages
  */
+import { SITE_CONFIG, getCanonicalUrl, getSiteUrl } from '@/lib/site-config';
 
 export const toolMetadata = {
   'ai-course-creator': {
@@ -1144,17 +1145,317 @@ export const toolInfo = {
 // Get all tool slugs for sitemap generation
 export const getAllToolSlugs = () => Object.keys(toolMetadata);
 
+// Technical & Regulatory Standards References for Tools
+export const toolReferences = {
+  'ai-course-creator': [
+    {
+      title: 'ADL SCORM 1.2 & 2004 Conformance Guidelines',
+      url: 'https://adlnet.gov/projects/scorm/',
+      organization: 'Advanced Distributed Learning (ADL) Initiative',
+    },
+    {
+      title: 'IEEE 1484.12.1 Standard for Learning Object Metadata',
+      url: 'https://standards.ieee.org/ieee/1484.12.1/3342/',
+      organization: 'IEEE Standards Association',
+    },
+    {
+      title: 'W3C Web Speech API Specification',
+      url: 'https://www.w3.org/TR/speech-api/',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+  ],
+  'web-content': [
+    {
+      title: 'ECMA-376 Office Open XML File Formats',
+      url: 'https://www.ecma-international.org/publications-and-standards/standards/ecma-376/',
+      organization: 'Ecma International',
+    },
+    {
+      title: 'W3C HTML5 Semantic Elements Specification',
+      url: 'https://www.w3.org/TR/html52/semantics.html',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+    {
+      title: 'Web Content Accessibility Guidelines (WCAG) 2.1',
+      url: 'https://www.w3.org/TR/WCAG21/',
+      organization: 'W3C Web Accessibility Initiative (WAI)',
+    },
+  ],
+  'blog-generator': [
+    {
+      title: 'Google Search Central: SEO Starter Guide',
+      url: 'https://developers.google.com/search/docs/fundamentals/seo-starter-guide',
+      organization: 'Google Search Central',
+    },
+    {
+      title: 'Readability Metrics & Psycholinguistic Text Analysis',
+      url: 'https://www.w3.org/WAI/GL/low-vision-a11y-tf/wiki/Understanding_Readability',
+      organization: 'W3C Accessibility Working Group',
+    },
+  ],
+  'glossary-generator': [
+    {
+      title: 'ISO 704:2009 Terminology Work — Principles and Methods',
+      url: 'https://www.iso.org/standard/38109.html',
+      organization: 'International Organization for Standardization (ISO)',
+    },
+    {
+      title: 'W3C HTML Description List (<dl>, <dt>, <dd>) Standard',
+      url: 'https://html.spec.whatwg.org/multipage/grouping-content.html#the-dl-element',
+      organization: 'WHATWG',
+    },
+  ],
+  'resource-generator': [
+    {
+      title: 'RFC 3986: Uniform Resource Identifier (URI) Generic Syntax',
+      url: 'https://www.rfc-editor.org/rfc/rfc3986',
+      organization: 'Internet Engineering Task Force (IETF)',
+    },
+    {
+      title: 'Dublin Core Metadata Element Set, Version 1.1',
+      url: 'https://www.dublincore.org/specifications/dublin-core/dces/',
+      organization: 'Dublin Core Metadata Initiative',
+    },
+  ],
+  'html-cleaner': [
+    {
+      title: 'WHATWG HTML Living Standard: HTML Sanitization & Parsing',
+      url: 'https://html.spec.whatwg.org/multipage/parsing.html',
+      organization: 'WHATWG',
+    },
+    {
+      title: 'W3C Markup Validation Service Technical Notes',
+      url: 'https://validator.w3.org/docs/',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+  ],
+  'image-converter': [
+    {
+      title: 'W3C HTML Canvas 2D Context Specification',
+      url: 'https://www.w3.org/TR/2dcontext/',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+    {
+      title: 'WebP Image Format Specification',
+      url: 'https://developers.google.com/speed/webp/docs/compression',
+      organization: 'Google Developers',
+    },
+    {
+      title: 'AV1 Image File Format (AVIF) Specification',
+      url: 'https://aomediacodec.github.io/av1-avif/',
+      organization: 'Alliance for Open Media (AOMedia)',
+    },
+  ],
+  'video-compressor': [
+    {
+      title: 'FFmpeg Documentation and Video Codec Specifications',
+      url: 'https://ffmpeg.org/documentation.html',
+      organization: 'FFmpeg Project',
+    },
+    {
+      title: 'ISO/IEC 14496-10: Advanced Video Coding (H.264 / AVC)',
+      url: 'https://www.iso.org/standard/66069.html',
+      organization: 'International Organization for Standardization (ISO)',
+    },
+  ],
+  'ai-assistant': [
+    {
+      title: 'W3C CSS Backgrounds and Borders Module Level 3',
+      url: 'https://www.w3.org/TR/css-backgrounds-3/',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+    {
+      title: 'Attention Is All You Need (Transformer Architecture)',
+      url: 'https://arxiv.org/abs/1706.03762',
+      organization: 'Cornell University arXiv',
+    },
+  ],
+  'image-to-text': [
+    {
+      title: 'Tesseract OCR Engine Architecture & Character Recognition',
+      url: 'https://github.com/tesseract-ocr/tesseract',
+      organization: 'Open Source Community / Ray Smith',
+    },
+    {
+      title:
+        'ITU-T T.4 / T.6 Recommendations for Document Facsimile Image Encoding',
+      url: 'https://www.itu.int/rec/T-REC-T.4/en',
+      organization: 'International Telecommunication Union',
+    },
+  ],
+  'document-extractor': [
+    {
+      title: 'ISO/IEC 29500-1:2016 Office Open XML File Formats',
+      url: 'https://www.iso.org/standard/71691.html',
+      organization: 'ISO/IEC JTC 1/SC 34',
+    },
+    {
+      title: 'PKWARE .ZIP File Format Specification',
+      url: 'https://support.pkware.com/home/pkzip/developer-tools/appnote',
+      organization: 'PKWARE Inc.',
+    },
+  ],
+  'video-converter': [
+    {
+      title: 'Matroska Media Container Specifications (MKV & WebM)',
+      url: 'https://www.matroska.org/technical/specs.html',
+      organization: 'Matroska Project',
+    },
+    {
+      title: 'WebAssembly Core Specification',
+      url: 'https://www.w3.org/TR/wasm-core-1/',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+  ],
+  'audio-converter': [
+    {
+      title: 'W3C Web Audio API Recommendation',
+      url: 'https://www.w3.org/TR/webaudio/',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+    {
+      title: 'Xiph.Org FLAC (Free Lossless Audio Codec) Format',
+      url: 'https://xiph.org/flac/format.html',
+      organization: 'Xiph.Org Foundation',
+    },
+  ],
+  'audio-editor': [
+    {
+      title: 'W3C AudioContext & AudioBufferSourceNode Architecture',
+      url: 'https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode',
+      organization: 'MDN Web Docs / W3C',
+    },
+    {
+      title: 'IEC 60268 Sound System Equipment Standards',
+      url: 'https://www.iec.ch/',
+      organization: 'International Electrotechnical Commission',
+    },
+  ],
+  'video-to-gif': [
+    {
+      title: 'Graphics Interchange Format (GIF89a) Specification',
+      url: 'https://www.w3.org/Graphics/GIF/spec-gif89a.txt',
+      organization: 'CompuServe Incorporated / W3C',
+    },
+    {
+      title:
+        'Lanczos Resampling and Sinc Filtering in Discrete Signal Processing',
+      url: 'https://en.wikipedia.org/wiki/Lanczos_resampling',
+      organization: 'IEEE Signal Processing Society',
+    },
+  ],
+  'word-to-html': [
+    {
+      title: 'Microsoft Office Open XML Document Schema Documentation',
+      url: 'https://learn.microsoft.com/en-us/office/open-xml/word/overview-of-wordprocessingml',
+      organization: 'Microsoft Learn',
+    },
+    {
+      title: 'W3C XHTML & Semantic Markup Guidelines',
+      url: 'https://www.w3.org/TR/xhtml1/',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+  ],
+  'lesson-quiz-builder': [
+    {
+      title: 'IMS Global QTI (Question & Test Interoperability) 2.1 Standard',
+      url: 'https://www.imsglobal.org/question/index.html',
+      organization: '1EdTech Consortium',
+    },
+    {
+      title: 'Moodle Aiken Format Specification',
+      url: 'https://docs.moodle.org/en/Aiken_format',
+      organization: 'Moodle Docs',
+    },
+  ],
+  'youtube-downloader': [
+    {
+      title:
+        'RFC 7230: Hypertext Transfer Protocol (HTTP/1.1): Message Syntax & Routing',
+      url: 'https://www.rfc-editor.org/rfc/rfc7230',
+      organization: 'Internet Engineering Task Force (IETF)',
+    },
+    {
+      title: 'W3C Media Source Extensions (MSE) Recommendation',
+      url: 'https://www.w3.org/TR/media-source/',
+      organization: 'World Wide Web Consortium (W3C)',
+    },
+  ],
+  'watermark-remover': [
+    {
+      title: 'Image Inpainting via Navier-Stokes and Fast Marching Methods',
+      url: 'https://en.wikipedia.org/wiki/Inpainting',
+      organization: 'Computer Vision & Mathematical Imaging',
+    },
+    {
+      title: 'HTML Canvas Pixel Manipulation with ImageData',
+      url: 'https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas',
+      organization: 'MDN Web Docs',
+    },
+  ],
+  'bg-remover': [
+    {
+      title:
+        'Salient Object Detection and Semantic Segmentation via Deep Learning',
+      url: 'https://arxiv.org/abs/2005.09007',
+      organization: 'arXiv Computer Vision Foundation',
+    },
+    {
+      title: 'WebAssembly SIMD & Multithreading Capabilities',
+      url: 'https://v8.dev/features/simd',
+      organization: 'Google V8 Project',
+    },
+  ],
+  'pdf-editor': [
+    {
+      title: 'ISO 32000-1:2008 Document Management — Portable Document Format',
+      url: 'https://www.iso.org/standard/51502.html',
+      organization: 'International Organization for Standardization (ISO)',
+    },
+    {
+      title: 'Adobe PostScript & PDF Reference Manual (6th Edition)',
+      url: 'https://opensource.adobe.com/',
+      organization: 'Adobe Systems Incorporated',
+    },
+    {
+      title: 'PDF.js Mozilla Open Source PDF Rendering Engine',
+      url: 'https://mozilla.github.io/pdf.js/',
+      organization: 'Mozilla Foundation',
+    },
+  ],
+};
+
 // Structured data for organization
 export const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'All Useful Tools',
-  description:
-    'Professional online productivity and media processing utilities',
-  url: 'https://hazwoper-useful-tools.vercel.app',
+  name: SITE_CONFIG.name,
+  description: SITE_CONFIG.description,
+  url: getSiteUrl(),
   logo: 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
-  sameAs: [],
+  contactPoint: {
+    '@type': 'ContactPoint',
+    email: SITE_CONFIG.contactEmail,
+    contactType: 'customer support',
+  },
 };
+
+// Generate WebSite Schema with SearchAction
+export function generateWebSiteSchema() {
+  const baseUrl = getSiteUrl();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_CONFIG.name,
+    url: baseUrl,
+    description: SITE_CONFIG.description,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${baseUrl}/tools?q={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+  };
+}
 
 // Generate structured data for a specific tool
 export function generateToolSchema(toolSlug) {
@@ -1168,8 +1469,9 @@ export function generateToolSchema(toolSlug) {
     '@type': 'SoftwareApplication',
     name: info.name,
     description: tool.description,
-    applicationCategory: 'WebApplication',
-    operatingSystem: 'Any',
+    applicationCategory: 'ProductivityApplication',
+    operatingSystem: 'Web Browser',
+    url: getCanonicalUrl(`/tools/${toolSlug}`),
     offers: {
       '@type': 'Offer',
       price: '0',
@@ -1181,8 +1483,9 @@ export function generateToolSchema(toolSlug) {
 // Generate breadcrumb schema
 export function generateBreadcrumbSchema(toolSlug) {
   const info = toolInfo[toolSlug];
-
   if (!info) return null;
+
+  const baseUrl = getSiteUrl();
 
   return {
     '@context': 'https://schema.org',
@@ -1192,33 +1495,32 @@ export function generateBreadcrumbSchema(toolSlug) {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://hazwoper-useful-tools.vercel.app',
+        item: baseUrl,
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Tools',
-        item: 'https://hazwoper-useful-tools.vercel.app/#tools',
+        item: `${baseUrl}/tools`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: info.name,
-        item: `https://hazwoper-useful-tools.vercel.app/tools/${toolSlug}`,
+        item: getCanonicalUrl(`/tools/${toolSlug}`),
       },
     ],
   };
 }
 
 // Generate FAQ structured data for a specific tool
-export function generateFAQSchema(toolSlug) {
-  const info = toolInfo[toolSlug];
-  if (!info?.faq?.length) return null;
+export function generateFAQSchema(faqList = []) {
+  if (!faqList || faqList.length === 0) return null;
 
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: info.faq.map((item) => ({
+    mainEntity: faqList.map((item) => ({
       '@type': 'Question',
       name: item.question,
       acceptedAnswer: {
@@ -1226,5 +1528,58 @@ export function generateFAQSchema(toolSlug) {
         text: item.answer,
       },
     })),
+  };
+}
+
+// Reusable Next.js Page Metadata Helper (PRD Section 58)
+export function createPageMetadata({
+  title,
+  description,
+  path = '',
+  image,
+  keywords,
+  noindex = false,
+}) {
+  const canonicalUrl = getCanonicalUrl(path);
+  const siteUrl = getSiteUrl();
+  const pageTitle = title.includes(SITE_CONFIG.name)
+    ? title
+    : `${title} | ${SITE_CONFIG.name}`;
+  const ogImageUrl = image
+    ? image.startsWith('http')
+      ? image
+      : `${siteUrl}${image.startsWith('/') ? image : `/${image}`}`
+    : `${siteUrl}${SITE_CONFIG.defaultOgImage}`;
+
+  return {
+    title: pageTitle,
+    description: description || SITE_CONFIG.description,
+    keywords: keywords || undefined,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: pageTitle,
+      description: description || SITE_CONFIG.description,
+      url: canonicalUrl,
+      siteName: SITE_CONFIG.name,
+      type: 'website',
+      images: [{ url: ogImageUrl }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: pageTitle,
+      description: description || SITE_CONFIG.description,
+      images: [ogImageUrl],
+    },
+    robots: noindex
+      ? {
+          index: false,
+          follow: false,
+        }
+      : {
+          index: true,
+          follow: true,
+        },
   };
 }

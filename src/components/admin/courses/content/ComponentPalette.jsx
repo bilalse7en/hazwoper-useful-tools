@@ -164,7 +164,7 @@ export default function ComponentPalette({
       <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
         {filteredComponents.length === 0 ? (
           <div className="text-center p-6 text-xs text-muted-foreground">
-            No components match "{searchQuery}"
+            No components match &quot;{searchQuery}&quot;
           </div>
         ) : viewMode === 'grid' ? (
           /* 1. GRID MODE: Sleek 2-Column Icon Grid with Floating Tooltips */

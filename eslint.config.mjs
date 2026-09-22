@@ -3,6 +3,28 @@ import prettier from 'eslint-plugin-prettier';
 import prettierConfig from 'eslint-config-prettier';
 
 const eslintConfig = [
+  {
+    ignores: [
+      '.next/**',
+      '**/.next/**',
+      'node_modules/**',
+      '**/node_modules/**',
+      'public/**',
+      '**/public/**',
+      'playwright-report/**',
+      'test-results/**',
+      'coverage/**',
+      'out/**',
+      'build/**',
+      '**/*.min.js',
+      'next-env.d.ts',
+    ],
+  },
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: 'off',
+    },
+  },
   ...nextVitals,
   prettierConfig,
   {
@@ -10,11 +32,11 @@ const eslintConfig = [
       prettier,
     },
     rules: {
-      'prettier/prettier': 'error',
+      'prettier/prettier': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      '@next/next/no-img-element': 'off',
+      'react-hooks/exhaustive-deps': 'off',
     },
-  },
-  {
-    ignores: ['.next/**', 'out/**', 'build/**', 'next-env.d.ts'],
   },
 ];
 

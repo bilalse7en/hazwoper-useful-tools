@@ -29,6 +29,7 @@ import {
   Copy,
   GraduationCap,
   Sparkles,
+  Mail,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ import { toolInfo } from '@/lib/seo';
 import { PuterAgent as Se7eNBot } from '@/components/admin/puter-agent';
 import { AdminChatMonitor } from '@/components/admin/AdminChatMonitor';
 import { ChatModerationList } from '@/components/admin/ChatModerationList';
+import { InquiriesManager } from '@/components/admin/InquiriesManager';
 import { showAlert, showConfirm, showToast, showSuccess } from '@/lib/swal';
 
 const formatFileType = (type) => {
@@ -1146,44 +1148,48 @@ function AdminDashboard() {
   return (
     <>
       <InitialLoadingShell isReady={!loading} />
-      <div className="container mx-auto px-4 py-10 max-w-7xl animate-in-card space-y-8 focus:outline-none">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-border pb-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl animate-in-card space-y-6 sm:space-y-8 focus:outline-none">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5 sm:pb-6">
           <div>
-            <h1 className="text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70 capitalize">
-              {activeView === 'dashboard'
-                ? 'System Integrity'
-                : activeView === 'media'
-                  ? 'Media Monitoring'
-                  : activeView === 'blogs'
-                    ? 'Editorial Management'
-                    : activeView === 'performance'
-                      ? 'Optimization Engine'
-                      : activeView === 'media-library'
-                        ? 'Media Assets'
-                        : activeView === 'puter-agent'
-                          ? 'Neural Autopilot'
-                          : 'User Registry'}
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/80 capitalize">
+              {activeView === 'inquiries'
+                ? 'Contact Inquiries'
+                : activeView === 'dashboard'
+                  ? 'System Integrity'
+                  : activeView === 'media'
+                    ? 'Media Monitoring'
+                    : activeView === 'blogs'
+                      ? 'Editorial Management'
+                      : activeView === 'performance'
+                        ? 'Optimization Engine'
+                        : activeView === 'media-library'
+                          ? 'Media Assets'
+                          : activeView === 'puter-agent'
+                            ? 'Neural Autopilot'
+                            : 'User Registry'}
             </h1>
-            <p className="text-muted-foreground mt-1 font-medium text-sm">
-              {activeView === 'dashboard'
-                ? 'Real-time telemetry and architectural status.'
-                : activeView === 'media'
-                  ? 'Global upload tracking and artifact auditing.'
-                  : activeView === 'blogs'
-                    ? 'Manage professional insights and editorial archives.'
-                    : activeView === 'performance'
-                      ? 'Resource lifecycle management and neural cache purging.'
-                      : activeView === 'media-library'
-                        ? 'Professional high-fidelity asset management.'
-                        : activeView === 'puter-agent'
-                          ? 'Neural AI cluster for autonomous content strategy.'
-                          : 'Global user identity and permission synchronization.'}
+            <p className="text-muted-foreground mt-0.5 font-medium text-xs sm:text-sm">
+              {activeView === 'inquiries'
+                ? 'Manage incoming messages, inspect details, and dispatch AI-generated replies.'
+                : activeView === 'dashboard'
+                  ? 'Real-time telemetry and architectural status.'
+                  : activeView === 'media'
+                    ? 'Global upload tracking and artifact auditing.'
+                    : activeView === 'blogs'
+                      ? 'Manage professional insights and editorial archives.'
+                      : activeView === 'performance'
+                        ? 'Resource lifecycle management and neural cache purging.'
+                        : activeView === 'media-library'
+                          ? 'Professional high-fidelity asset management.'
+                          : activeView === 'puter-agent'
+                            ? 'Neural AI cluster for autonomous content strategy.'
+                            : 'Global user identity and permission synchronization.'}
             </p>
           </div>
           {activeView === 'blogs' && (
             <Button
               onClick={() => router.push('/admin/blogs/new')}
-              className="h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] px-6 shadow-lg shadow-primary/20"
+              className="h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-wider text-[10px] px-5 shadow-md"
             >
               Create New Sequence
             </Button>
@@ -1192,7 +1198,7 @@ function AdminDashboard() {
             <Button
               variant="outline"
               size="icon"
-              className="h-12 w-12 rounded-xl bg-card/40 border-border hover:bg-primary/5 hover:text-primary transition-all"
+              className="h-10 w-10 rounded-xl bg-card/40 border-border hover:bg-primary/5 hover:text-primary transition-all"
               onClick={() => fetchUsers()}
             >
               <RefreshCw
@@ -1202,9 +1208,11 @@ function AdminDashboard() {
           )}
         </div>
 
-        {activeView === 'dashboard' ? (
-          <div className="space-y-8 animate-in-fade">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {activeView === 'inquiries' ? (
+          <InquiriesManager currentUser={currentUser} />
+        ) : activeView === 'dashboard' ? (
+          <div className="space-y-6 sm:space-y-8 animate-in-fade">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
               {[
                 {
                   label: 'Registry Entries',
@@ -1227,14 +1235,14 @@ function AdminDashboard() {
               ].map((stat, i) => (
                 <Card
                   key={i}
-                  className="rounded-[40px] border-border shadow-2xl overflow-hidden bg-card/40 backdrop-blur-xl group hover:border-primary/20 transition-all"
+                  className="rounded-2xl sm:rounded-3xl border-border shadow-md overflow-hidden bg-card/40 backdrop-blur-xl group hover:border-primary/30 transition-all"
                 >
-                  <div className={cn('h-1.5 w-full', stat.color)} />
-                  <CardHeader className="p-8">
-                    <CardTitle className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground/60 flex items-center gap-3">
-                      <stat.icon className="w-4 h-4" /> {stat.label}
+                  <div className={cn('h-1 w-full', stat.color)} />
+                  <CardHeader className="p-5 sm:p-6">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/70 flex items-center gap-2.5">
+                      <stat.icon className="w-3.5 h-3.5" /> {stat.label}
                     </CardTitle>
-                    <div className="text-5xl font-black mt-2 tracking-tighter group-hover:scale-105 transition-transform origin-left">
+                    <div className="text-3xl sm:text-4xl font-black mt-1 tracking-tight group-hover:scale-105 transition-transform origin-left">
                       {stat.value}
                     </div>
                   </CardHeader>
@@ -1243,13 +1251,13 @@ function AdminDashboard() {
             </div>
 
             {/* AI Course Creator Quick Launcher */}
-            <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border border-primary/20 rounded-[32px] p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl backdrop-blur-xl">
-              <div className="space-y-1.5">
+            <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border border-primary/20 rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 shadow-lg backdrop-blur-xl">
+              <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="p-2.5 rounded-2xl bg-primary text-primary-foreground shadow-md">
-                    <GraduationCap className="w-6 h-6" />
+                  <span className="p-2 rounded-xl bg-primary text-primary-foreground shadow-xs">
+                    <GraduationCap className="w-5 h-5" />
                   </span>
-                  <h3 className="text-2xl font-black tracking-tight">
+                  <h3 className="text-lg sm:text-xl font-black tracking-tight">
                     AI Course Creator & Manager
                   </h3>
                   <Badge
@@ -1259,7 +1267,7 @@ function AdminDashboard() {
                     Interactive LMS
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed">
                   Generate complete 30-minute to 40-hour safety, tech, and
                   regulatory courses with dual-pane rich text & AI image
                   editing, free natural English TTS narration, lesson quizzes,
@@ -1268,8 +1276,8 @@ function AdminDashboard() {
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <Button
-                  size="lg"
-                  className="rounded-2xl h-12 px-6 font-bold shadow-lg shadow-primary/25"
+                  size="sm"
+                  className="rounded-xl h-11 px-5 font-bold shadow-md shadow-primary/20"
                   onClick={() => router.push('/admin/courses')}
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
@@ -1278,13 +1286,13 @@ function AdminDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="rounded-[40px] border-border bg-card/40 backdrop-blur-xl p-8 space-y-6">
-                <h3 className="text-xl font-black flex items-center gap-3">
-                  <RefreshCw className="w-5 h-5 text-primary" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+              <Card className="rounded-2xl sm:rounded-3xl border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 space-y-4 shadow-md">
+                <h3 className="text-base sm:text-lg font-black flex items-center gap-2.5">
+                  <RefreshCw className="w-4 h-4 text-primary" />
                   Sync Status
                 </h3>
-                <div className="space-y-4">
+                <div className="space-y-2.5">
                   {[
                     {
                       label: 'Database Connection',
@@ -1309,9 +1317,9 @@ function AdminDashboard() {
                   ].map((sys, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/30"
+                      className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/40"
                     >
-                      <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
                         {sys.label}
                       </span>
                       <Badge
@@ -1328,23 +1336,23 @@ function AdminDashboard() {
                 </div>
               </Card>
 
-              <Card className="rounded-[40px] border-black/5 dark:border-white/10 bg-slate-900 dark:bg-black text-white p-8 overflow-hidden relative group">
-                <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
-                  <Shield className="w-48 h-48" />
+              <Card className="rounded-2xl sm:rounded-3xl border-black/5 dark:border-white/10 bg-slate-900 dark:bg-black text-white p-5 sm:p-6 overflow-hidden relative group shadow-md">
+                <div className="absolute top-0 right-0 p-8 opacity-5 scale-125 rotate-12 group-hover:rotate-0 transition-transform duration-700 pointer-events-none">
+                  <Shield className="w-36 h-36" />
                 </div>
-                <div className="relative z-10 space-y-6">
-                  <h3 className="text-xl font-black flex items-center gap-3">
-                    <ShieldCheck className="w-5 h-5 text-primary" />
+                <div className="relative z-10 space-y-4">
+                  <h3 className="text-base sm:text-lg font-black flex items-center gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-primary" />
                     Security Protocol
                   </h3>
-                  <p className="text-sm text-slate-400 font-medium leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-400 font-medium leading-relaxed">
                     The intelligence suite is operating under hardened security
                     protocols. All user role escalations are logged and
                     encrypted.
                   </p>
                   <Button
                     variant="outline"
-                    className="w-full h-12 rounded-xl border-white/20 hover:bg-white/10 text-white font-black uppercase tracking-widest text-[10px]"
+                    className="w-full h-11 rounded-xl border-white/20 hover:bg-white/10 text-white font-black uppercase tracking-widest text-[10px]"
                     onClick={() => router.push('/admin?view=permissions')}
                   >
                     Review Access Records
@@ -1352,34 +1360,61 @@ function AdminDashboard() {
                 </div>
               </Card>
             </div>
+
+            {/* User Inquiries Live Table on Dashboard */}
+            <div className="space-y-4 pt-6 border-t border-border">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2.5">
+                    <Mail className="w-6 h-6 text-primary" />
+                    User Inquiries & Messages
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Live visitor submissions. Review incoming questions, edit AI
+                    replies, and dispatch email responses.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl text-xs font-bold w-fit border-primary/30 text-primary hover:bg-primary/10"
+                  onClick={() => router.push('/admin?view=inquiries')}
+                >
+                  Dedicated Inquiries Studio{' '}
+                  <ArrowRight className="ml-1.5 w-3.5 h-3.5" />
+                </Button>
+              </div>
+
+              <InquiriesManager currentUser={currentUser} />
+            </div>
           </div>
         ) : activeView === 'media' ? (
-          <div className="space-y-8 animate-in-fade">
+          <div className="space-y-6 sm:space-y-8 animate-in-fade">
             <DataTable
               columns={mediaColumns}
               data={mediaItems}
               searchKey="file_name"
             />
 
-            <Card className="rounded-[40px] shadow-2xl border-border bg-card/20 backdrop-blur-xl p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <Search className="w-5 h-5 text-muted-foreground" />
-                <h3 className="text-lg font-black uppercase tracking-widest">
+            <Card className="rounded-2xl sm:rounded-3xl shadow-md border-border bg-card/20 backdrop-blur-xl p-5 sm:p-6">
+              <div className="flex items-center gap-2.5 mb-4">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <h3 className="text-xs font-black uppercase tracking-widest text-foreground">
                   Neural History Log
                 </h3>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {historyItems.slice(0, 5).map((log) => (
                   <div
                     key={log.id}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-muted/30 border border-border/30 hover:border-primary/30 transition-all group"
+                    className="flex items-center justify-between p-3 sm:p-3.5 rounded-xl bg-muted/30 border border-border/30 hover:border-primary/30 transition-all group"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                        <ShieldCheck className="w-5 h-5" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-primary group-hover:scale-105 transition-transform shrink-0">
+                        <ShieldCheck className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-sm font-black capitalize">
+                        <p className="text-xs sm:text-sm font-black capitalize">
                           {log.tool_type.replace('_', ' ')} Execution
                         </p>
                         <p className="text-[10px] text-muted-foreground font-medium">
@@ -1394,7 +1429,7 @@ function AdminDashboard() {
                       <p className="text-[10px] font-black">
                         {new Date(log.created_at).toLocaleString()}
                       </p>
-                      <Badge className="text-[8px] bg-primary/10 text-primary border-none shadow-none mt-1">
+                      <Badge className="text-[8px] bg-primary/10 text-primary border-none shadow-none mt-0.5">
                         SECURE LOG
                       </Badge>
                     </div>
@@ -1404,7 +1439,7 @@ function AdminDashboard() {
             </Card>
           </div>
         ) : activeView === 'blogs' ? (
-          <div className="space-y-8 animate-in-fade">
+          <div className="space-y-6 sm:space-y-8 animate-in-fade">
             <DataTable
               columns={blogColumns}
               data={blogItems}
@@ -1414,12 +1449,12 @@ function AdminDashboard() {
         ) : activeView === 'se7en-bot' ? (
           <Se7eNBot />
         ) : activeView === 'performance' ? (
-          <div className="space-y-8 animate-in-fade">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <Card className="rounded-[40px] border-border bg-card/40 backdrop-blur-xl p-8 space-y-6">
+          <div className="space-y-6 sm:space-y-8 animate-in-fade">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+              <Card className="rounded-2xl sm:rounded-3xl border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 space-y-4 shadow-md">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-black flex items-center gap-3">
-                    <RefreshCw className="w-5 h-5 text-primary" />
+                  <h3 className="text-base sm:text-lg font-black flex items-center gap-2.5">
+                    <RefreshCw className="w-4 h-4 text-primary" />
                     Neural Cache Purge
                   </h3>
                   <Badge
@@ -1429,13 +1464,13 @@ function AdminDashboard() {
                     MANUALLY TRIGGERED
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed">
                   Force synchronization across all edge nodes. This will
                   invalidate all cached paths and assets.
                 </p>
-                <div className="pt-4 space-y-3">
+                <div className="pt-2 space-y-2.5">
                   <Button
-                    className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20"
+                    className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-wider text-xs shadow-md shadow-primary/20"
                     onClick={async () => {
                       showToast('Purging cache...', 'info');
                       try {
@@ -1454,7 +1489,7 @@ function AdminDashboard() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full h-14 rounded-2xl border-border hover:bg-primary/5 font-black uppercase tracking-widest text-xs"
+                    className="w-full h-11 rounded-xl border-border hover:bg-primary/5 font-black uppercase tracking-wider text-xs"
                     onClick={() => {
                       localStorage.clear();
                       showSuccess('Wiped');
@@ -1465,16 +1500,16 @@ function AdminDashboard() {
                 </div>
               </Card>
 
-              <Card className="rounded-[40px] border-black/5 dark:border-white/10 bg-slate-900 dark:bg-black text-white p-8 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
-                  <Zap className="w-48 h-48" />
+              <Card className="rounded-2xl sm:rounded-3xl border-black/5 dark:border-white/10 bg-slate-900 dark:bg-black text-white p-5 sm:p-6 relative overflow-hidden group shadow-md">
+                <div className="absolute top-0 right-0 p-8 opacity-5 scale-125 rotate-12 group-hover:rotate-0 transition-transform duration-700 pointer-events-none">
+                  <Zap className="w-36 h-36" />
                 </div>
-                <div className="relative z-10 space-y-6">
-                  <h3 className="text-xl font-black flex items-center gap-3">
-                    <ShieldCheck className="w-5 h-5 text-emerald-500" />{' '}
+                <div className="relative z-10 space-y-4">
+                  <h3 className="text-base sm:text-lg font-black flex items-center gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500" />{' '}
                     Resource Shield
                   </h3>
-                  <p className="text-sm text-slate-400 font-medium">
+                  <p className="text-xs sm:text-sm text-slate-400 font-medium">
                     Optimization credits managed via OptimizedGif Engine.
                   </p>
                   <div className="space-y-4 pt-2">
@@ -1527,19 +1562,21 @@ function AdminDashboard() {
               </Card>
             </div>
 
-            <Card className="rounded-[40px] border-border bg-card/40 backdrop-blur-xl p-10 space-y-6">
+            <Card className="rounded-2xl sm:rounded-3xl border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                  <ImageIcon className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <ImageIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black">Best Practices</h3>
-                  <p className="text-muted-foreground text-sm font-medium">
+                  <h3 className="text-lg sm:text-xl font-black">
+                    Best Practices
+                  </h3>
+                  <p className="text-muted-foreground text-xs sm:text-sm font-medium">
                     System integrity guide.
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                 {[
                   'Use OptimizedGif',
                   'Pre-Compress Media',
@@ -1547,9 +1584,9 @@ function AdminDashboard() {
                 ].map((t, i) => (
                   <div
                     key={i}
-                    className="p-6 rounded-3xl bg-muted/20 border border-border/50"
+                    className="p-4 sm:p-5 rounded-2xl bg-muted/20 border border-border/50"
                   >
-                    <h4 className="font-black text-sm uppercase tracking-widest mb-2">
+                    <h4 className="font-black text-xs uppercase tracking-widest mb-1.5">
                       {t}
                     </h4>
                     <p className="text-xs text-muted-foreground">
@@ -1561,29 +1598,29 @@ function AdminDashboard() {
             </Card>
           </div>
         ) : activeView === 'media-library' ? (
-          <div className="space-y-8 animate-in-fade">
-            <Card className="rounded-[40px] border-border bg-card/40 backdrop-blur-xl p-8 shadow-2xl overflow-hidden relative group">
+          <div className="space-y-6 sm:space-y-8 animate-in-fade">
+            <Card className="rounded-2xl sm:rounded-3xl border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 shadow-sm overflow-hidden relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
-              <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 rounded-[24px] bg-primary/10 flex items-center justify-center text-primary shadow-inner text-2xl">
+              <div className="relative flex flex-col md:flex-row items-center justify-between gap-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner text-xl">
                     <Upload />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black tracking-tight">
+                    <h3 className="text-lg sm:text-xl font-black tracking-tight">
                       Asset Integration Engine
                     </h3>
-                    <p className="text-sm text-muted-foreground font-medium max-w-md mt-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium max-w-md mt-0.5">
                       Centralized ingestion unit for professional assets.
                     </p>
                   </div>
                 </div>
                 <label className="relative cursor-pointer group/upload">
-                  <div className="h-16 px-10 rounded-[20px] bg-primary text-primary-foreground font-black uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-4 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                  <div className="h-11 px-6 rounded-xl bg-primary text-primary-foreground font-black uppercase tracking-[0.15em] text-[10px] flex items-center justify-center gap-3 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
                     {isUploading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Upload className="w-5 h-5 group-hover/upload:-translate-y-0.5 transition-transform" />
+                      <Upload className="w-4 h-4 group-hover/upload:-translate-y-0.5 transition-transform" />
                     )}
                     {isUploading ? 'Synchronizing...' : 'Import Media Artifact'}
                   </div>
@@ -1634,18 +1671,18 @@ function AdminDashboard() {
           </div>
         )}
 
-        <div className="p-10 rounded-[40px] bg-card/80 dark:bg-black/50 text-foreground transition-all border border-border space-y-6 shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
-            <Shield className="w-64 h-64" />
+        <div className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card/80 dark:bg-black/50 text-foreground transition-all border border-border space-y-4 shadow-sm relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-1000 pointer-events-none">
+            <Shield className="w-48 h-48" />
           </div>
           <div className="relative z-10">
-            <h3 className="text-2xl font-black flex items-center gap-3">
-              <code className="bg-primary/10 px-3 py-1 rounded-xl text-primary">
+            <h3 className="text-lg sm:text-xl font-black flex items-center gap-2.5">
+              <code className="bg-primary/10 px-2.5 py-0.5 rounded-lg text-primary text-xs sm:text-sm font-mono">
                 SQL
               </code>{' '}
               Override Guide
             </h3>
-            <pre className="bg-black/50 p-6 rounded-2xl mt-6 border border-white/10 font-mono text-sm overflow-x-auto">
+            <pre className="bg-black/50 p-4 sm:p-5 rounded-xl mt-3 border border-white/10 font-mono text-xs sm:text-sm overflow-x-auto">
               {`UPDATE public.profiles SET role = 'admin', has_generator_access = true WHERE email = 'architect@example.com';`}
             </pre>
           </div>

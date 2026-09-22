@@ -1,14 +1,12 @@
 import Link from 'next/link';
+import { createPageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = createPageMetadata({
   title: 'Disclaimer | All Useful Tools',
   description:
     'Disclaimer for All Useful Tools — all results, conversions, and outputs are provided for educational and informational purposes only and should be independently verified for mission-critical tasks.',
-  alternates: {
-    canonical: 'https://hazwoper-useful-tools.vercel.app/disclaimer',
-  },
-  robots: 'index, follow',
-};
+  path: '/disclaimer',
+});
 
 export default function DisclaimerPage() {
   return (

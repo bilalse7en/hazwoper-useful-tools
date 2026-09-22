@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { createPageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = createPageMetadata({
   title: 'Terms of Service | All Useful Tools',
   description:
     'Terms of Service for All Useful Tools - Read the terms and conditions for using our content generation and media processing tools.',
-  robots: 'index, follow',
-};
+  path: '/terms',
+});
 
 export default function TermsOfService() {
   return (

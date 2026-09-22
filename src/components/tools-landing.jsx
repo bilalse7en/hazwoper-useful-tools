@@ -161,98 +161,189 @@ export function ToolsLanding({ user }) {
   };
 
   return (
-    <div className="min-h-screen bg-transparent pb-20">
-      {/* Hero Section */}
-      <section className="relative pt-20 pb-32 overflow-hidden bg-background/50 dark:bg-background/40 backdrop-blur-md border-b border-border">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_50%)]" />
-        <div className="container relative mx-auto px-6">
-          <div className="max-w-3xl">
+    <div className="min-h-screen bg-transparent pb-16">
+      {/* Hero Section: Balanced 2-Column Responsive Layout */}
+      <section className="relative pt-10 sm:pt-14 md:pt-16 pb-10 sm:pb-12 overflow-hidden bg-background/50 dark:bg-background/40 backdrop-blur-md border-b border-border">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(59,130,246,0.08),transparent_55%)] pointer-events-none" />
+        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left Hero Column */}
             <motion.div
               initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
+              className="lg:col-span-7 space-y-4 text-left"
             >
               <Badge
                 variant="secondary"
-                className="mb-6 px-4 py-1.5 rounded-full bg-primary/10 text-primary border-primary/20 flex items-center gap-2 w-fit"
+                className="px-3.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-2 w-fit text-[10px] font-black uppercase tracking-widest"
               >
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-foreground opacity-80">
-                  Professional Tool Suite
-                </span>
+                <span>Professional Tool Suite</span>
               </Badge>
 
               {isGuest ? (
                 <>
-                  <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 text-foreground leading-[1.1]">
-                    Free Online
-                    <br />
-                    <span className="text-primary">Content Tools</span>
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-foreground leading-[1.12]">
+                    Free Online <br />
+                    <span className="text-primary">Content Utilities</span>
                   </h1>
-                  <p className="text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl font-medium">
-                    Professional browser-based tools including{' '}
-                    <strong>High-Quality Video to GIF</strong> (optimized for
-                    10-second clips), <strong>Batch Audio Conversion</strong>,
-                    video compression, and OCR. 100% private processing.
+                  <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl font-medium">
+                    Fast browser-based tools including{' '}
+                    <strong>PDF Editing</strong>,{' '}
+                    <strong>Audio Conversion</strong>,{' '}
+                    <strong>Video Compression</strong>, and <strong>OCR</strong>
+                    . Zero server uploads — 100% private.
                   </p>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <Button
                       size="lg"
-                      className="h-14 px-8 rounded-2xl font-bold shadow-lg shadow-primary/25 bg-primary hover:bg-primary/90 text-primary-foreground border-none"
+                      className="h-12 px-6 rounded-xl font-bold shadow-lg shadow-primary/25 bg-primary hover:bg-primary/90 text-primary-foreground border-none text-sm"
                       asChild
                     >
                       <Link href="/tools">
-                        Explore Free Hub
-                        <ArrowRight className="ml-2 w-5 h-5" />
+                        Explore All Tools
+                        <ArrowRight className="ml-2 w-4 h-4" />
                       </Link>
                     </Button>
                     <Button
                       size="lg"
                       variant="outline"
-                      className="h-14 px-8 rounded-2xl font-bold border-primary/30 hover:bg-primary/5 text-primary"
+                      className="h-12 px-6 rounded-xl font-bold border-border bg-card/60 hover:bg-muted text-foreground text-sm"
                       onClick={() => router.push('/auth?mode=login')}
                     >
-                      <LogIn className="mr-2 w-5 h-5" />
-                      Sign In for AI Access
+                      <LogIn className="mr-2 w-4 h-4 text-primary" />
+                      Sign In for AI Studio
                     </Button>
                   </div>
                 </>
               ) : (
                 <>
-                  <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 text-foreground leading-[1.1]">
-                    Welcome home,
-                    <br />
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-foreground leading-[1.12]">
+                    Welcome home, <br />
                     <span className="text-primary">
-                      {user?.name?.split(' ')[0]}
+                      {user?.name?.split(' ')[0] || 'Member'}
                     </span>
                   </h1>
-                  <p className="text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl font-medium">
-                    Ready to accelerate your productivity? Explore our suite of
-                    specialized tools designed for creators, professionals, and
-                    developers.
+                  <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl font-medium">
+                    Accelerate your workflow with our full suite of local-first
+                    conversion, media editing, and AI authoring tools.
                   </p>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <Button
                       size="lg"
-                      className="h-14 px-8 rounded-2xl font-bold shadow-lg shadow-primary/25 bg-primary hover:bg-primary/90 text-primary-foreground border-none"
+                      className="h-12 px-6 rounded-xl font-bold shadow-lg shadow-primary/25 bg-primary hover:bg-primary/90 text-primary-foreground border-none text-sm"
                       asChild
                     >
                       <Link href="/tools">
-                        Explore All Tools
-                        <ArrowRight className="ml-2 w-5 h-5" />
+                        Explore Workspace
+                        <ArrowRight className="ml-2 w-4 h-4" />
                       </Link>
                     </Button>
                     {!isAdmin && !user?.has_generator_access && (
-                      <div className="flex items-center gap-3 px-6 py-3 bg-muted/50 rounded-2xl border border-border backdrop-blur-sm">
-                        <Clock className="w-5 h-5 text-primary" />
-                        <span className="text-sm font-bold text-foreground opacity-80">
-                          Limited access enabled
-                        </span>
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/60 rounded-xl border border-border text-xs font-bold text-muted-foreground">
+                        <Clock className="w-4 h-4 text-primary" />
+                        <span>Standard Clearance Active</span>
                       </div>
                     )}
                   </div>
                 </>
               )}
+            </motion.div>
+
+            {/* Right Hero Column: Quick Launch Utility Hub (Fills blank void) */}
+            <motion.div
+              initial={false}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="lg:col-span-5"
+            >
+              <div className="rounded-3xl border border-border/80 bg-card/80 backdrop-blur-xl p-5 sm:p-6 shadow-xl space-y-4 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-36 h-36 bg-primary/10 blur-3xl -z-10" />
+
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-primary" />
+                    <span className="text-xs font-black uppercase tracking-wider text-foreground">
+                      Quick Launch Utilities
+                    </span>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] font-mono uppercase tracking-widest px-2 py-0.5"
+                  >
+                    INSTANT LOCAL
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    {
+                      name: 'PDF Editor',
+                      desc: 'Vector & Signatures',
+                      slug: 'pdf-editor',
+                      icon: FileText,
+                      badge: 'FREE',
+                    },
+                    {
+                      name: 'Audio Converter',
+                      desc: 'MP3, WAV, FLAC',
+                      slug: 'audio-converter',
+                      icon: Music,
+                      badge: 'FREE',
+                    },
+                    {
+                      name: 'Video Compressor',
+                      desc: 'WASM Bitrate Saver',
+                      slug: 'video-compressor',
+                      icon: Video,
+                      badge: 'FREE',
+                    },
+                    {
+                      name: 'Image to Text',
+                      desc: 'Local OCR Extraction',
+                      slug: 'image-to-text',
+                      icon: Wand2,
+                      badge: 'FREE',
+                    },
+                  ].map((quick, i) => (
+                    <Link
+                      key={i}
+                      href={`/tools/${quick.slug}`}
+                      className="p-3.5 rounded-2xl bg-muted/40 border border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all space-y-1 group/item"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover/item:bg-primary group-hover/item:text-primary-foreground transition-colors">
+                          <quick.icon className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                          {quick.badge}
+                        </span>
+                      </div>
+                      <p className="font-bold text-xs text-foreground group-hover/item:text-primary transition-colors truncate">
+                        {quick.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {quick.desc}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="pt-1 flex items-center justify-between text-xs text-muted-foreground border-t border-border/60">
+                  <span className="flex items-center gap-1.5 font-medium text-[11px]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    Processed locally in browser
+                  </span>
+                  <Link
+                    href="/tools"
+                    className="font-bold text-[11px] text-primary hover:underline flex items-center gap-1"
+                  >
+                    All 21 Tools
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -260,31 +351,32 @@ export function ToolsLanding({ user }) {
 
       {/* Generator Tools Section — Visible to all, but locked without access */}
       {
-        <section id="generators" className="py-24 container mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+        <section
+          id="generators"
+          className="py-12 sm:py-16 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl"
+        >
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
             <div>
-              <h2 className="text-4xl font-black mb-3 flex items-center gap-4 text-foreground">
-                <Wand2 className="w-10 h-10 text-primary" />
+              <h2 className="text-2xl sm:text-3xl font-black mb-1.5 flex items-center gap-3 text-foreground">
+                <Wand2 className="w-8 h-8 text-primary" />
                 Professional Tools
               </h2>
-              <p className="text-muted-foreground font-medium">
+              <p className="text-sm text-muted-foreground font-medium">
                 Advanced AI-powered generators and specialized utilities.
               </p>
             </div>
             {!hasGeneratorAccess && (
               <Badge
                 variant="outline"
-                className="h-11 px-5 rounded-2xl border-dashed bg-primary/10 text-primary border-primary/30 gap-3 font-black uppercase text-[10px] tracking-widest"
+                className="h-9 px-4 rounded-xl border-dashed bg-primary/10 text-primary border-primary/30 gap-2 font-black uppercase text-[9px] tracking-widest"
               >
-                <ShieldCheck className="w-5 h-5" />
-                {isGuest
-                  ? 'Login for Purchase/Access'
-                  : 'Global Access Required'}
+                <ShieldCheck className="w-4 h-4" />
+                {isGuest ? 'Login for Access' : 'Clearance Required'}
               </Badge>
             )}
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {generatorAndPaidTools.map((tool, index) => {
               const Icon = iconMap[tool.id] || Layout;
               const locked = !hasAccessToTool(tool);
@@ -299,58 +391,58 @@ export function ToolsLanding({ user }) {
                 >
                   <Card
                     className={cn(
-                      'h-full relative overflow-hidden transition-all duration-500 border-border hover:border-primary/50 rounded-[40px] shadow-2xl bg-card/40 backdrop-blur-xl hover:bg-muted/40',
-                      locked && 'opacity-80 grayscale-[0.8]'
+                      'h-full relative overflow-hidden transition-all duration-300 border-border hover:border-primary/50 rounded-2xl sm:rounded-3xl shadow-lg bg-card/60 backdrop-blur-xl hover:bg-card/90',
+                      locked && 'opacity-85'
                     )}
                   >
                     {locked ? (
-                      <div className="absolute top-8 right-8 z-20 flex flex-col items-end gap-2">
+                      <div className="absolute top-6 right-6 z-20 flex flex-col items-end gap-1.5">
                         <Badge
                           variant="secondary"
-                          className="text-[8px] bg-primary/10 text-primary border-primary/20 px-3 py-1 font-black"
+                          className="text-[8px] bg-primary/10 text-primary border-primary/20 px-2 py-0.5 font-black"
                         >
                           PAID
                         </Badge>
-                        <div className="w-12 h-12 rounded-2xl bg-white/80 dark:bg-black/40 backdrop-blur-xl flex items-center justify-center shadow-2xl border border-black/5 dark:border-white/10 group-hover:scale-110 transition-transform">
-                          <LockIcon className="w-5 h-5 text-primary" />
+                        <div className="w-9 h-9 rounded-xl bg-background/80 backdrop-blur-md flex items-center justify-center shadow-md border border-border group-hover:scale-105 transition-transform">
+                          <LockIcon className="w-4 h-4 text-primary" />
                         </div>
                       </div>
                     ) : (
-                      <div className="absolute top-8 right-8 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end gap-2">
+                      <div className="absolute top-6 right-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end gap-1.5">
                         <Badge
                           variant="outline"
-                          className="text-[8px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-3 py-1 font-black"
+                          className="text-[8px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-2 py-0.5 font-black"
                         >
                           PRO
                         </Badge>
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 backdrop-blur-xl flex items-center justify-center border border-primary/20">
-                          <Sparkles className="w-4 h-4 text-primary" />
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 backdrop-blur-md flex items-center justify-center border border-primary/20">
+                          <Sparkles className="w-3.5 h-3.5 text-primary" />
                         </div>
                       </div>
                     )}
 
-                    <CardContent className="p-8 flex flex-col h-full relative z-10">
+                    <CardContent className="p-6 flex flex-col h-full relative z-10">
                       <div
                         className={cn(
-                          'w-16 h-16 rounded-[22px] mb-6 flex items-center justify-center transition-all duration-500 shadow-lg bg-primary/10 border border-border text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:rotate-6',
-                          locked && 'bg-muted opacity-50'
+                          'w-12 h-12 rounded-xl mb-4 flex items-center justify-center transition-all duration-300 shadow-sm bg-primary/10 border border-border text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:rotate-3',
+                          locked && 'bg-muted opacity-60'
                         )}
                       >
-                        <Icon className="w-8 h-8" />
+                        <Icon className="w-6 h-6" />
                       </div>
-                      <h3 className="text-xl font-black mb-2 text-foreground tracking-tight">
+                      <h3 className="text-lg font-black mb-1.5 text-foreground tracking-tight">
                         {tool.name}
                       </h3>
-                      <p className="text-muted-foreground text-sm leading-relaxed mb-8 font-medium flex-1 line-clamp-3">
+                      <p className="text-muted-foreground text-xs leading-relaxed mb-6 font-medium flex-1 line-clamp-3">
                         {tool.description}
                       </p>
                       <Button
                         variant={locked ? 'outline' : 'default'}
                         className={cn(
-                          'w-full h-12 rounded-xl font-black text-base transition-all border-none shadow-lg',
+                          'w-full h-11 rounded-xl font-bold text-sm transition-all shadow-md',
                           locked
-                            ? 'bg-muted text-muted-foreground cursor-default'
-                            : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:scale-[1.02]'
+                            ? 'bg-muted/70 text-muted-foreground border-border cursor-default'
+                            : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20'
                         )}
                         onClick={
                           locked
@@ -362,21 +454,21 @@ export function ToolsLanding({ user }) {
                         asChild={!locked}
                       >
                         {locked ? (
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center gap-1.5 text-xs">
                             {isGuest ? 'Unlock Access' : 'Locked Tool'}
-                            <ChevronRight className="w-5 h-5 opacity-50" />
+                            <ChevronRight className="w-4 h-4 opacity-60" />
                           </span>
                         ) : (
                           <Link href={`/tools/${tool.slug}`}>
                             Start Engine
-                            <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+                            <ArrowRight className="ml-1.5 w-4 h-4 transition-transform group-hover:translate-x-1" />
                           </Link>
                         )}
                       </Button>
                     </CardContent>
 
                     {/* Decorative background accent */}
-                    <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-primary/5 rounded-full blur-[80px] group-hover:bg-primary/10 transition-colors duration-700" />
+                    <div className="absolute -bottom-16 -right-16 w-36 h-36 bg-primary/5 rounded-full blur-[60px] group-hover:bg-primary/10 transition-colors" />
                   </Card>
                 </motion.div>
               );
@@ -385,30 +477,30 @@ export function ToolsLanding({ user }) {
         </section>
       }
 
-      {/* Free / Utility Tools Section */}
+      {/* Free / Utility Tools Section: Tightened Spacing */}
       <section
         id={isGuest ? 'free-tools' : 'all-tools'}
-        className="py-24 bg-muted/20 backdrop-blur-sm border-y border-border"
+        className="py-12 sm:py-16 bg-muted/20 backdrop-blur-sm border-y border-border"
       >
-        <div className="container mx-auto px-6">
-          <div className="mb-16">
-            <h2 className="text-3xl font-black mb-3 flex items-center gap-4 text-foreground">
-              <Zap className="w-10 h-10 text-primary" />
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+          <div className="mb-8">
+            <h2 className="text-2xl sm:text-3xl font-black mb-1.5 flex items-center gap-3 text-foreground">
+              <Zap className="w-8 h-8 text-primary" />
               {isGuest ? 'Free Online Tools' : 'Essential Utilities'}
             </h2>
-            <p className="text-muted-foreground font-medium">
+            <p className="text-sm text-muted-foreground font-medium">
               {isGuest
-                ? 'Powerful browser-based tools — no account required. Process everything locally.'
+                ? 'Powerful browser-based tools — zero installation required. Process everything locally.'
                 : 'Universal tools available for all registered identity profiles.'}
             </p>
           </div>
 
           <div
             className={cn(
-              'grid gap-6',
+              'grid gap-4 sm:gap-5',
               isGuest
-                ? 'md:grid-cols-2 lg:grid-cols-4'
-                : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+                ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+                : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
             )}
           >
             {(isGuest
@@ -420,29 +512,24 @@ export function ToolsLanding({ user }) {
                 <Link key={tool.id} href={`/tools/${tool.slug}`}>
                   <motion.div
                     whileHover={
-                      mounted && isLowEnd() ? {} : { y: -8, scale: 1.02 }
+                      mounted && isLowEnd() ? {} : { y: -4, scale: 1.02 }
                     }
-                    className={cn(
-                      'p-6 bg-card/60 backdrop-blur-xl border border-border rounded-[28px] hover:border-primary/40 transition-all hover:shadow-2xl group text-center relative overflow-hidden',
-                      isGuest &&
-                        'min-h-[160px] flex flex-col items-center justify-center'
-                    )}
+                    className="p-4 sm:p-5 bg-card/70 backdrop-blur-xl border border-border/80 rounded-2xl hover:border-primary/40 transition-all hover:shadow-lg group text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[140px]"
                   >
-                    <div className="w-12 h-12 rounded-[18px] bg-primary/10 mx-auto mb-4 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 shadow-md">
-                      <Icon className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 mx-auto mb-3 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 shadow-sm">
+                      <Icon className="w-5 h-5" />
                     </div>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] block text-foreground opacity-80 group-hover:text-primary group-hover:opacity-100 transition-colors">
+                    <span className="text-[10px] font-black uppercase tracking-[0.12em] block text-foreground group-hover:text-primary transition-colors line-clamp-1">
                       {tool.name?.replace(' Generator', '')}
                     </span>
                     {isGuest && (
                       <Badge
                         variant="secondary"
-                        className="mt-3 text-[7px] bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 px-2.5 py-0.5 font-black uppercase"
+                        className="mt-2 text-[7px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.2 font-black uppercase"
                       >
                         FREE
                       </Badge>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/0 via-transparent to-primary/0 group-hover:from-primary/5 transition-all" />
                   </motion.div>
                 </Link>
               );
@@ -451,56 +538,52 @@ export function ToolsLanding({ user }) {
         </div>
       </section>
 
-      {/* Professional Call to Action */}
-      <section className="py-24 container mx-auto px-6">
-        <div className="bg-card/40 backdrop-blur-3xl border border-border rounded-[50px] p-10 md:p-20 flex flex-col md:flex-row items-center gap-16 relative overflow-hidden group shadow-2xl">
-          <div className="absolute top-0 right-0 p-32 bg-primary/5 rounded-full blur-[120px] -mr-32 -mt-32 group-hover:bg-primary/10 transition-colors" />
-          <div className="flex-1 space-y-8 relative z-10">
-            <div className="w-20 h-20 rounded-3xl bg-primary shadow-2xl shadow-primary/40 flex items-center justify-center rotate-3 group-hover:rotate-0 transition-transform duration-500">
-              <ShieldCheck className="w-12 h-12 text-primary-foreground" />
+      {/* Professional Call to Action: Balanced Cubic Layout */}
+      <section className="py-12 sm:py-16 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="bg-card/60 backdrop-blur-2xl border border-border rounded-3xl p-6 sm:p-10 md:p-12 flex flex-col md:flex-row items-center gap-8 md:gap-12 relative overflow-hidden group shadow-xl">
+          <div className="absolute top-0 right-0 p-24 bg-primary/5 rounded-full blur-[90px] -mr-24 -mt-24 pointer-events-none" />
+          <div className="flex-1 space-y-5 relative z-10 text-left">
+            <div className="w-14 h-14 rounded-2xl bg-primary shadow-xl shadow-primary/30 flex items-center justify-center text-primary-foreground">
+              <ShieldCheck className="w-8 h-8" />
             </div>
-            <div className="space-y-4">
-              <h2 className="text-4xl md:text-5xl font-black leading-tight text-foreground tracking-tight">
-                Experience the Full
-                <br />
+            <div className="space-y-2">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black leading-tight text-foreground tracking-tight">
+                Experience the Full <br />
                 <span className="text-primary">Professional Suite</span>
               </h2>
-              <p className="text-xl text-muted-foreground max-w-xl font-medium leading-relaxed">
-                Join thousands of creators and professionals worldwide.
-                Transform your workflow with lightning-fast browser-based tools
-                and AI assistance.
+              <p className="text-sm sm:text-base text-muted-foreground max-w-lg font-medium leading-relaxed">
+                Join thousands of creators and professionals. Transform your
+                digital workflow with instant local-first tools and AI
+                authoring.
               </p>
             </div>
             <Button
               size="lg"
-              className="h-16 px-10 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/40 border-none transition-all hover:scale-[1.05]"
+              className="h-12 px-7 rounded-xl font-black text-sm bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/30 border-none transition-all hover:scale-[1.02]"
               onClick={() =>
                 router.push(isGuest ? '/auth?mode=signup' : '/profile')
               }
             >
-              {isGuest ? 'Initialize Your Account' : 'Access Your Profile'}
-              <ChevronRight className="ml-2 w-5 h-5" />
+              {isGuest ? 'Initialize Account' : 'Access Your Profile'}
+              <ChevronRight className="ml-1.5 w-4 h-4" />
             </Button>
           </div>
-          <div className="relative w-full md:w-[450px] aspect-[4/3] bg-muted/50 border border-border rounded-[40px] overflow-hidden shadow-2xl group-hover:shadow-[0_0_100px_rgba(var(--primary-rgb),0.1)] transition-all">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent mix-blend-overlay" />
-            <div className="absolute inset-0 flex items-center justify-center text-9xl animate-pulse">
-              🚀
-            </div>
-            <div className="absolute bottom-8 left-8 right-8 bg-card/90 backdrop-blur-2xl border border-border p-6 rounded-3xl shadow-2xl">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-foreground font-black tracking-tight text-lg">
-                    Identity Hub
-                  </span>
-                  <span className="text-[10px] text-primary font-black uppercase tracking-widest">
-                    Active Verification Flow
-                  </span>
-                </div>
-                <Badge className="bg-primary px-4 py-1 font-black text-xs h-8 text-primary-foreground border-none">
-                  SECURE
-                </Badge>
+
+          <div className="relative w-full md:w-[360px] aspect-[4/3] bg-muted/30 border border-border/80 rounded-2xl overflow-hidden shadow-lg flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
+            <div className="text-6xl animate-pulse select-none">⚡</div>
+            <div className="absolute bottom-4 left-4 right-4 bg-card/90 backdrop-blur-xl border border-border p-3.5 rounded-xl shadow-md flex items-center justify-between">
+              <div>
+                <span className="text-foreground font-black text-xs block">
+                  Identity Desk
+                </span>
+                <span className="text-[9px] text-muted-foreground font-medium">
+                  Verified Local Processing
+                </span>
               </div>
+              <Badge className="bg-primary px-2.5 py-0.5 font-black text-[9px] text-primary-foreground border-none">
+                ACTIVE
+              </Badge>
             </div>
           </div>
         </div>

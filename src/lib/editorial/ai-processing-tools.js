@@ -1,4 +1,76 @@
 export const aiProcessingEditorial = {
+  'ai-course-creator': {
+    overview: `The AI Course Creator is an enterprise-grade curriculum engineering and LMS production platform designed to transform raw technical subject matter, standard operating procedures, and regulatory requirements into fully interactive, accredited digital learning programs. Creating professional e-learning courses has historically demanded weeks of labor from specialized instructional designers, graphic artists, voiceover talent, and courseware developers. This utility automates the end-to-end authoring pipeline through a collaborative multi-agent architecture. Specialized artificial intelligence sub-agents—including the Curriculum Architect, Content Specialist, Assessment Evaluator, and Voice Synthesizer—collaborate dynamically to construct modular lesson hierarchies, generate rich visual canvas elements (such as interactive accordions, 3D flip-cards, and warning callouts), synthesize humanized natural audio narration with breath-pause intervals, and formulate rigorous formative and evaluative assessments. The resulting courses are fully responsive, WCAG 2.1 compliant, and exportable as certified SCORM 1.2 and SCORM 2004 packages ready for instant deployment into Canvas, Moodle, Blackboard, or any modern corporate LMS.`,
+    stepByStep: `1. Define Training Parameters: Provide your primary subject topic (e.g., 'Confined Space Entry Protocols', 'Fall Protection Systems') or upload existing reference documents. Select your target learner audience (Foundational, Intermediate, Advanced) and desired module depth.
+2. Select Regulatory & Pedagogical Taxonomy: Choose the applicable standards framework (e.g., OSHA 29 CFR, ANSI/ASSP, EPA, ISO 45001) to inform curriculum objectives and hazard classifications.
+3. Launch Multi-Agent AI Engine: Initiate the generation process. The Curriculum Architect builds the structural syllabus; the Content Specialist populates each lesson with instructional narrative; the Assessment Evaluator creates question banks; and the Voice Synthesizer schedules audio narration scripts.
+4. Review via Human Editor Panel: Utilize the built-in track-changes and human review interface to accept, edit, or customize any AI-generated lesson content, ensuring full alignment with your organization's specific site procedures.
+5. Customize Component Canvases: Enhance visual engagement by adjusting interactive flashcards, safety callout blocks, table layouts, and uploading high-resolution visual assets with custom corporate branding watermarks.
+6. Publish & Deploy: Export the finalized course bundle as a standard SCORM 1.2 or 2004 zip archive, download the raw JSON schema, or launch the accredited full-screen student course player directly in your browser.
+
+Common Errors to Avoid:
+- Vague Topic Prompts: Entering an overly generic topic without specifying operational contexts (e.g., entering just 'Safety' instead of 'Industrial Forklift Inspection & Pedestrian Safety Protocols') can result in generic introductory content.
+- Bypassing the Human Quality Review: While the multi-agent engine drafts robust technical content, human oversight is essential to verify company-specific emergency phone numbers, local evacuation maps, and equipment models.
+- Overloading Single Modules: Setting module lesson counts too high can cause cognitive overload for learners. Aim for 3 to 5 focused lessons per module for optimal knowledge retention.`,
+    methodology: `The AI Course Creator operates on a multi-agent orchestration architecture designed to enforce pedagogical validity and structural consistency across large instructional curricula. Rather than relying on a single monolithic prompt, the system segregates responsibilities among specialized autonomous agents operating in sequence:
+
+1. **Curriculum Architect Agent:** Deconstructs the core subject into hierarchical Bloom's Revised Taxonomy levels (Remembering, Understanding, Applying, Analyzing, Evaluating). It computes a curriculum coverage index to guarantee balanced progression from fundamental concepts to complex hazard mitigation.
+
+- name: Bloom Cognitive Distribution Entropy
+- expression: H(X) = - \\sum_{i=1}^{n} P(x_i) \\log_2 P(x_i)
+- explanation: Measures the balanced spread of cognitive demand across modules. The engine maintains an entropy score $H(X) \\ge 2.2$ to ensure courses do not stall in passive rote memorization.
+
+2. **Content Specialist & Component Canvas Agent:** Formats lesson bodies into semantic HTML with embedded interactive canvas blocks (accordion toggles, comparison tables, warning callouts). It calculates the Flesch-Kincaid Grade Level (FKGL) to ensure reading comprehension aligns precisely with the selected learner demographic (target FKGL 8.0 - 10.5 for industrial workforces).
+
+3. **Assessment Evaluator Agent:** Formulates formative knowledge checks and compulsory final certification exams. It computes Item Difficulty Indices ($P = \\frac{R}{T}$) and Distractor Discrimination coefficients to ensure practice quizzes accurately test operational competence.
+
+4. **Voice Synthesizer & Speech Engine:** Uses the Web Speech API and neural speech markers to synthesize natural English narration. The engine algorithmically inserts micro-pauses (300ms at commas, 650ms at periods) and applies phonetic pronunciation rules for technical acronyms (e.g., 'HAZWOPER', 'IDLH', 'PEL', 'SCBA'), preventing robotic speech cadence.`,
+    examples: `Example 1: Generating a 4-Module Fall Protection Course.
+Input: Topic = "OSHA 1926 Subpart M - Fall Protection in Construction", Audience = "Field Supervisors", Depth = "Comprehensive".
+Process: The multi-agent engine drafts 4 structured modules: (1) Scope & Fall Hazard Identification, (2) Personal Fall Arrest Systems (PFAS) Engineering, (3) Guardrails & Safety Nets, and (4) Competent Person Inspection & Rescue Planning. It builds 12 interactive canvas callouts for PFAS anchor tolerances (5,000 lbs requirement) and 20 scenario-based quiz items.
+Result: A complete 45-minute e-learning course with slide narration scripts, 8K canvas visual diagrams, and an exportable SCORM 1.2 package compiled in under 60 seconds.
+
+Example 2: Chemical Hazard Communication (HazCom / GHS) Module.
+Input: Topic = "Globally Harmonized System & Chemical Safety Data Sheets (SDS)", Audience = "All Warehouse Personnel".
+Process: The engine structures 3 modules detailing the 16 standard SDS sections, GHS pictograms, and container labeling mandates. The assessment engine creates an interactive 'Hazard Spotter' quiz where learners match pictograms to chemical hazard classes (Corrosive, Flammable, Health Hazard).
+Result: Standard-compliant training module featuring interactive pictogram flip-cards and a verified 85% passing threshold final exam.
+
+Example 3: Confined Space Entry Atmospheric Testing Onboarding.
+Input: Topic = "Permit-Required Confined Spaces - Atmospheric Testing & Ventilation (29 CFR 1910.146)".
+Process: Generates step-by-step procedures for testing oxygen levels (19.5% - 23.5%), combustible gases (<10% LEL), and toxic contaminants (H2S, CO) in vertical stratification layers.
+Result: Interactive curriculum with animated timeline callouts and an audio-narrated walkthrough of four-gas detector calibration protocols.`,
+    additionalFaq: [
+      {
+        question:
+          'Are courses exported from this tool compatible with modern Learning Management Systems?',
+        answer:
+          'Yes. The AI Course Creator exports certified SCORM 1.2 and SCORM 2004 packages, as well as raw structured JSON schemas. These packages are fully compatible with Canvas, Moodle, Blackboard, Cornerstone OnDemand, TalentLMS, and any SCORM-compliant platform.',
+      },
+      {
+        question:
+          'Can I edit the lesson text, questions, and visual canvas elements after generation?',
+        answer:
+          'Absolutely. The platform features an integrated Visual Studio and human review interface. You can edit any lesson narrative, add or remove quiz questions, rearrange module order, insert custom images, and update corporate branding watermarks before exporting.',
+      },
+      {
+        question: 'How does the audio narration feature work?',
+        answer:
+          'The narration is powered by browser-native Web Speech synthesis with customizable voice accents, pitch, and speech rates. Narration scripts include automatic punctuation-aware pacing markers (0.3s to 0.7s breath pauses) to deliver natural, engaging pacing.',
+      },
+      {
+        question:
+          'Is any proprietary training material sent to public AI training repositories?',
+        answer:
+          'No. All multi-agent course synthesis occurs within isolated, session-bound runtimes. Your source manuscripts and corporate policies are never used to train public language models, ensuring strict enterprise confidentiality.',
+      },
+      {
+        question:
+          'Can students take the generated course directly without an LMS?',
+        answer:
+          'Yes. The tool includes an accredited full-screen student course player mode. You can preview, test, or launch the interactive course directly inside any modern web browser with full quiz scoring, progress tracking, and certificate generation.',
+      },
+    ],
+  },
   'ai-assistant': {
     overview: `The AI Assistant tool (Kimi AI & Neural Assistant) is a cutting-edge web utility designed to convert raw text and standard Word document content into fully formatted HTML cards featuring modern, glassmorphic layouts. In the realm of web design and content management, structuring raw text into visually appealing, interactive user interface components is traditionally a time-consuming process requiring proficient HTML, CSS, and Javascript skills. This tool fundamentally automates that transition, providing live interactive rendering that enables immediate visual feedback. It is critically important for technical content creators, front-end engineers, web designers, and operations teams who need to rapidly deploy professional-grade web assets—such as technical documentation guidelines or procedural checklists—without writing boilerplate code from scratch. By integrating context-aware suggestions and automated grammar optimization, the AI Assistant ensures that the generated text is not only beautifully presented but also structurally and syntactically flawless. Professionals benefit from a significantly reduced time-to-market for digital materials, allowing them to focus on the substantive quality of the content rather than the intricate details of responsive web design.`,
     stepByStep: `1. Prepare Your Content: Start by gathering your raw text or copying content from your Word document. Ensure that the text is logically separated into paragraphs or bullet points to help the AI understand the underlying structure.

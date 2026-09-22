@@ -35,6 +35,14 @@ const BlockedOverlay = dynamic(
   { ssr: false }
 );
 
+const InquiryReplyNotifier = dynamic(
+  () =>
+    import('@/components/inquiry-reply-notifier').then(
+      (mod) => mod.InquiryReplyNotifier
+    ),
+  { ssr: false }
+);
+
 export function ClientOverlays() {
   return (
     <>
@@ -43,6 +51,7 @@ export function ClientOverlays() {
       <EnvironmentalSetup />
       <FloatingChatbot />
       <BlockedOverlay />
+      <InquiryReplyNotifier />
     </>
   );
 }

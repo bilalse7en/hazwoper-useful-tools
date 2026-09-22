@@ -89,7 +89,11 @@ import {
   importCourseJSON,
   DEFAULT_INITIAL_COURSES,
 } from '@/lib/course-storage';
-import { generateSe7enImage, callPuterAiChat, getRealisticTopicPhoto } from '@/lib/se7en-ai';
+import {
+  generateSe7enImage,
+  callPuterAiChat,
+  getRealisticTopicPhoto,
+} from '@/lib/se7en-ai';
 import { stampSystemLogoOnImage } from '@/lib/watermark-util';
 import { ProfessionalCoursePlayerModal } from '@/components/professional-course-player-modal';
 import ComponentPalette from '@/components/admin/courses/content/ComponentPalette';
@@ -789,7 +793,57 @@ export default function AdminCoursesPage() {
   const [infoModalCourse, setInfoModalCourse] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Load courses on mount & listen to course deletion events
+  const findCourseByParam = (list, param) => {
+    if (!param || !Array.isArray(list) || list.length === 0) return null;
+
+    // 1. Direct match by numericId, string id, or slug
+    const directMatch = list.find(
+      (c) =>
+        String(c.numericId) === String(param) ||
+        String(c.id) === String(param) ||
+        String(c.slug) === String(param)
+    );
+    if (directMatch) return directMatch;
+
+    // 2. 1-based index matching (e.g. param '1' -> list[0], '2' -> list[1])
+    const num = Number(param);
+    if (!isNaN(num) && num >= 1 && num <= list.length) {
+      return list[num - 1];
+    }
+
+    return null;
+  };
+
+  const loadCourses = async () => {
+    try {
+      const data = await getAllCoursesAsync();
+      const loadedCourses = Array.isArray(data) ? data : [];
+      setCourses(loadedCourses);
+
+      // Hydrate editor state from URL if ?edit=1 or ?edit=2 is present
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editParam = urlParams.get('edit') || urlParams.get('courseId');
+        const actionParam = urlParams.get('action');
+
+        if (editParam && loadedCourses.length > 0) {
+          const found = findCourseByParam(loadedCourses, editParam);
+          if (found) {
+            setEditingCourse(found);
+            setView('editor');
+          }
+        } else if (actionParam === 'wizard') {
+          setView('wizard');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load courses', err);
+      setCourses([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load courses on mount & listen to course deletion and update events
   useEffect(() => {
     loadCourses();
@@ -854,57 +908,6 @@ export default function AdminCoursesPage() {
       };
     }
   }, []);
-
-  const findCourseByParam = (list, param) => {
-    if (!param || !Array.isArray(list) || list.length === 0) return null;
-
-    // 1. Direct match by numericId, string id, or slug
-    const directMatch = list.find(
-      (c) =>
-        String(c.numericId) === String(param) ||
-        String(c.id) === String(param) ||
-        String(c.slug) === String(param)
-    );
-    if (directMatch) return directMatch;
-
-    // 2. 1-based index matching (e.g. param '1' -> list[0], '2' -> list[1])
-    const num = Number(param);
-    if (!isNaN(num) && num >= 1 && num <= list.length) {
-      return list[num - 1];
-    }
-
-    return null;
-  };
-
-  const loadCourses = async () => {
-    try {
-      const data = await getAllCoursesAsync();
-      const loadedCourses = Array.isArray(data) ? data : [];
-      setCourses(loadedCourses);
-
-      // Hydrate editor state from URL if ?edit=1 or ?edit=2 is present
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        const editParam = urlParams.get('edit') || urlParams.get('courseId');
-        const actionParam = urlParams.get('action');
-
-        if (editParam && loadedCourses.length > 0) {
-          const found = findCourseByParam(loadedCourses, editParam);
-          if (found) {
-            setEditingCourse(found);
-            setView('editor');
-          }
-        } else if (actionParam === 'wizard') {
-          setView('wizard');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load courses', err);
-      setCourses([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleCreateNew = () => {
     setView('wizard');
@@ -1531,22 +1534,24 @@ function CourseEditor({ course, onBack, onOpenInfo, onOpenPreview }) {
   const [phoneticModalOpen, setPhoneticModalOpen] = useState(false);
 
   // Initial snapshot to accurately track unsaved changes
-  const initialSnapshotRef = useRef(JSON.stringify(course || { modules: [] }));
+  const [initialSnapshot, setInitialSnapshot] = useState(() =>
+    JSON.stringify(course || { modules: [] })
+  );
 
   useEffect(() => {
     if (course) {
       setCourseData(course);
-      initialSnapshotRef.current = JSON.stringify(course);
+      setInitialSnapshot(JSON.stringify(course));
     }
   }, [course]);
 
   const isDirty = useMemo(() => {
     try {
-      return JSON.stringify(courseData) !== initialSnapshotRef.current;
+      return JSON.stringify(courseData) !== initialSnapshot;
     } catch (e) {
       return false;
     }
-  }, [courseData]);
+  }, [courseData, initialSnapshot]);
 
   // Warn on browser tab close or reload if edits are unsaved
   useEffect(() => {
@@ -1563,7 +1568,7 @@ function CourseEditor({ course, onBack, onOpenInfo, onOpenPreview }) {
   const handleSave = (silent = false) => {
     const success = saveCourse(courseData);
     if (success) {
-      initialSnapshotRef.current = JSON.stringify(courseData);
+      setInitialSnapshot(JSON.stringify(courseData));
       if (!silent) showSuccess('Course saved locally & synchronized!');
     } else {
       if (!silent)
@@ -1586,7 +1591,7 @@ function CourseEditor({ course, onBack, onOpenInfo, onOpenPreview }) {
     const success = saveCourse(updated);
     setCourseData(updated);
     if (success) {
-      initialSnapshotRef.current = JSON.stringify(updated);
+      setInitialSnapshot(JSON.stringify(updated));
       if (newStatus === 'published') {
         showSuccess('🎉 Course published! Live in Student Player.');
       } else {
@@ -2319,7 +2324,7 @@ Include:
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {courseModules.length === 0 ? (
               <div className="text-center p-6 text-xs text-muted-foreground">
-                No modules yet. Click "+ Module" above.
+                No modules yet. Click &quot;+ Module&quot; above.
               </div>
             ) : (
               courseModules.map((module, mIdx) => {
@@ -3593,7 +3598,7 @@ function AiContentReviewPanel({
     // Rough score: % of topics with humanized changes
     return Math.min(
       100,
-      Math.round(totalCount > 0 ? totalCount * 0.94 + Math.random() * 4 : 96)
+      Math.round(totalCount > 0 ? totalCount * 0.94 + 2 : 96)
     );
   }, [totalCount]);
 

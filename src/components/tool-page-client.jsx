@@ -187,13 +187,13 @@ export function ToolPageClient({ toolSlug }) {
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <ToolBreadcrumbs slug={toolSlug} />
-          <Link
-            href={`/tools/${toolSlug}/details`}
+          <a
+            href="#documentation"
             className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline flex items-center gap-2"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            Technical Documentation
-          </Link>
+            Technical Documentation ↓
+          </a>
         </div>
         {ToolComponent === AudioHub ? (
           <AudioHub

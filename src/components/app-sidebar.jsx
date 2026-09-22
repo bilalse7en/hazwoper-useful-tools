@@ -36,6 +36,7 @@ import {
   Wand2,
   Globe,
   DatabaseZap,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -128,6 +129,7 @@ const adminNavGroups = [
     icon: ShieldCheck,
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'inquiries', label: 'Inquiries', icon: Mail },
       { id: 'courses', label: 'AI Course Creator', icon: GraduationCap },
       { id: 'admin', label: 'User Roles', icon: Users },
       { id: 'media-library', label: 'Media Assets', icon: Library },

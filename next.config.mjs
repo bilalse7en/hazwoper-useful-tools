@@ -55,6 +55,21 @@ const nextConfig = {
   },
 
   /* config options here */
+  async redirects() {
+    return [
+      {
+        source: '/tools/:tool/details',
+        destination: '/tools/:tool',
+        permanent: true,
+      },
+      {
+        source: '/privacy-policy',
+        destination: '/privacy',
+        permanent: true,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {

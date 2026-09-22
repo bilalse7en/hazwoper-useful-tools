@@ -912,7 +912,7 @@ function renderPlayerComponent(comp, state) {
           <p
             className={`text-xs md:text-sm italic leading-relaxed ${tStyle.titleColor}`}
           >
-            "{comp.props.quote}"
+            &quot;{comp.props.quote}&quot;
           </p>
           <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400 pt-1">
             <span>{comp.props.citation}</span>

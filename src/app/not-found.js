@@ -60,24 +60,24 @@ export default function NotFound() {
             </div>
           </div>
 
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-foreground -mt-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-foreground -mt-4">
             Identity Not Found
           </h2>
-          <p className="text-xl text-muted-foreground font-medium max-w-lg mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-md mx-auto leading-relaxed">
             The neural path you&apos;ve requested does not exist in our primary
             sector. It may have been relocated or purged from the registry.
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
           <Button
             size="lg"
-            className="h-16 px-10 rounded-[24px] font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/30 border-none transition-all hover:scale-105 active:scale-95 group"
+            className="h-11 px-6 rounded-xl font-black text-xs uppercase tracking-wider bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 border-none transition-all hover:scale-[1.02] active:scale-95 group"
             asChild
           >
             <Link href="/">
-              <Home className="mr-3 w-6 h-6 transition-transform group-hover:scale-110" />
+              <Home className="mr-2 w-4 h-4 transition-transform group-hover:scale-110" />
               Return to Base
             </Link>
           </Button>
@@ -85,10 +85,10 @@ export default function NotFound() {
           <Button
             variant="outline"
             size="lg"
-            className="h-16 px-10 rounded-[24px] font-black text-lg border-primary/20 hover:bg-primary/5 text-primary transition-all active:scale-95 group"
+            className="h-11 px-6 rounded-xl font-black text-xs uppercase tracking-wider border-primary/20 hover:bg-primary/5 text-primary transition-all active:scale-95 group"
             onClick={() => window.history.back()}
           >
-            <ArrowLeft className="mr-3 w-6 h-6 transition-transform group-hover:-translate-x-2" />
+            <ArrowLeft className="mr-2 w-4 h-4 transition-transform group-hover:-translate-x-1" />
             Previous Sector
           </Button>
         </div>

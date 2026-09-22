@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { createPageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = createPageMetadata({
   title: 'Cookie Policy | All Useful Tools',
   description:
     'Cookie Policy for All Useful Tools - Learn about the cookies we use and how to manage your cookie preferences.',
-  robots: 'index, follow',
-};
+  path: '/cookies',
+});
 
 export default function CookiePolicy() {
   return (

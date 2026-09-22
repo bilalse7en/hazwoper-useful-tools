@@ -292,19 +292,19 @@ export default function AdminBlogSyncPage() {
     blog.sync_version !== CURRENT_BLOG_SYNC_VERSION;
 
   return (
-    <div className="space-y-10 animate-in-fade">
+    <div className="space-y-6 sm:space-y-8 animate-in-fade">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-border pb-8">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-border pb-6">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-              <DatabaseZap className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+              <DatabaseZap className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight">
                 Blog <span className="text-primary">Synchronization</span>
               </h1>
-              <p className="text-muted-foreground font-medium text-sm">
+              <p className="text-muted-foreground font-medium text-xs sm:text-sm">
                 Rewrites every article with AI and adds a feature image, exactly
                 3 games and exactly 5 FAQs — one blog at a time.
               </p>
@@ -312,12 +312,12 @@ export default function AdminBlogSyncPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {running ? (
             <Button
               variant="outline"
               onClick={() => (cancelRef.current = true)}
-              className="h-12 px-6 rounded-2xl border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-black uppercase tracking-widest text-[10px] gap-2"
+              className="h-11 px-5 rounded-xl border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-black uppercase tracking-widest text-[10px] gap-2"
             >
               <StopCircle className="w-4 h-4" /> Cancel Sync
             </Button>
@@ -325,21 +325,21 @@ export default function AdminBlogSyncPage() {
             <>
               <Button
                 onClick={() => runSync('all')}
-                className="h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] gap-2 shadow-xl shadow-primary/20"
+                className="h-11 px-5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] gap-2 shadow-lg shadow-primary/20"
               >
                 <RefreshCw className="w-4 h-4" /> Sync All Blogs
               </Button>
               <Button
                 onClick={() => runSync('retry')}
                 variant="outline"
-                className="h-12 px-6 rounded-2xl border-border font-black uppercase tracking-widest text-[10px] gap-2"
+                className="h-11 px-5 rounded-xl border-border font-black uppercase tracking-widest text-[10px] gap-2"
               >
                 <RotateCcw className="w-4 h-4" /> Retry Failed
               </Button>
               <Button
                 onClick={() => runSync('force')}
                 variant="outline"
-                className="h-12 px-6 rounded-2xl border-amber-500/30 text-amber-400 hover:bg-amber-500/10 font-black uppercase tracking-widest text-[10px] gap-2"
+                className="h-11 px-5 rounded-xl border-amber-500/30 text-amber-400 hover:bg-amber-500/10 font-black uppercase tracking-widest text-[10px] gap-2"
               >
                 <Flame className="w-4 h-4" /> Force Resync All
               </Button>
@@ -349,7 +349,7 @@ export default function AdminBlogSyncPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {[
           {
             label: 'Total Blogs',
@@ -386,23 +386,23 @@ export default function AdminBlogSyncPage() {
           return (
             <Card
               key={stat.label}
-              className="rounded-[32px] border-border bg-card/40 backdrop-blur-xl shadow-xl"
+              className="rounded-2xl sm:rounded-3xl border-border bg-card/40 backdrop-blur-xl shadow-sm"
             >
-              <CardContent className="p-6 flex items-center justify-between gap-3">
+              <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-3">
                 <div className="space-y-1">
                   <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
                     {stat.label}
                   </p>
                   <p
                     className={cn(
-                      'text-3xl font-black tracking-tighter',
+                      'text-2xl sm:text-3xl font-black tracking-tight',
                       stat.tone
                     )}
                   >
                     {loading ? '—' : stat.value}
                   </p>
                 </div>
-                <Icon className="w-6 h-6 text-muted-foreground/40" />
+                <Icon className="w-5 h-5 text-muted-foreground/40" />
               </CardContent>
             </Card>
           );
@@ -410,11 +410,11 @@ export default function AdminBlogSyncPage() {
       </div>
 
       {/* Progress */}
-      <Card className="rounded-[32px] border-border bg-card/40 backdrop-blur-xl shadow-xl overflow-hidden relative">
+      <Card className="rounded-2xl sm:rounded-3xl border-border bg-card/40 backdrop-blur-xl shadow-sm overflow-hidden relative">
         {running && (
           <div className="h-1 w-full bg-gradient-to-r from-primary via-emerald-500 to-primary animate-pulse" />
         )}
-        <CardContent className="p-8 space-y-5">
+        <CardContent className="p-5 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
@@ -422,16 +422,16 @@ export default function AdminBlogSyncPage() {
                   ? `Synchronizing (${progress.processed} / ${progress.total})`
                   : 'Synchronization Progress'}
               </p>
-              <p className="text-2xl font-black tracking-tighter">
+              <p className="text-xl sm:text-2xl font-black tracking-tight">
                 {stats.completed} / {stats.total} blogs synchronized
               </p>
             </div>
-            <span className="text-4xl font-black tracking-tighter text-primary">
+            <span className="text-3xl sm:text-4xl font-black tracking-tight text-primary">
               {percent}%
             </span>
           </div>
 
-          <div className="relative h-3 w-full bg-muted/60 rounded-full overflow-hidden">
+          <div className="relative h-2.5 w-full bg-muted/60 rounded-full overflow-hidden">
             <div
               className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-emerald-500 rounded-full transition-all duration-500"
               style={{ width: `${percent}%` }}
@@ -448,7 +448,7 @@ export default function AdminBlogSyncPage() {
       </Card>
 
       {/* Blog List */}
-      <Card className="rounded-[40px] border-border bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <Card className="rounded-2xl sm:rounded-3xl border-border bg-card/40 backdrop-blur-xl shadow-sm overflow-hidden">
         <CardContent className="p-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-xs font-black uppercase tracking-widest text-primary">

@@ -92,7 +92,7 @@ function AuthComponent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-20 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 sm:py-14 relative overflow-hidden">
       {/* Background Ambience */}
       <div className="absolute inset-0 bg-transparent pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px]" />
@@ -105,7 +105,7 @@ function AuthComponent() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="text-center mb-10 space-y-6">
+        <div className="text-center mb-6 space-y-4">
           <div className="flex justify-center">
             <div
               className="relative group p-2 cursor-pointer"
@@ -118,24 +118,24 @@ function AuthComponent() {
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <h1 className="text-4xl font-black tracking-tighter text-foreground uppercase italic leading-none">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground uppercase italic leading-none">
               Identity Hub
             </h1>
-            <p className="text-xs font-bold text-primary uppercase tracking-[0.3em] opacity-80">
+            <p className="text-xs font-bold text-primary uppercase tracking-[0.25em] opacity-80">
               Secure Protocol Alpha-7
             </p>
           </div>
         </div>
 
-        <Card className="p-8 bg-card/60 backdrop-blur-3xl border border-border rounded-[40px] shadow-2xl relative overflow-hidden group">
+        <Card className="p-6 sm:p-8 bg-card/60 backdrop-blur-3xl border border-border rounded-2xl sm:rounded-3xl shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
 
-          <div className="flex gap-2 p-1 bg-muted/40 rounded-2xl mb-8 border border-border/50">
+          <div className="flex gap-2 p-1 bg-muted/40 rounded-xl mb-6 border border-border/50">
             <button
               onClick={() => setMode('login')}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-all',
+                'flex-1 flex items-center justify-center gap-2 h-10 rounded-lg text-xs font-black uppercase tracking-widest transition-all',
                 mode === 'login'
                   ? 'bg-card text-primary shadow-sm border border-border/50'
                   : 'text-muted-foreground hover:text-foreground'
@@ -147,7 +147,7 @@ function AuthComponent() {
             <button
               onClick={() => setMode('signup')}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-all',
+                'flex-1 flex items-center justify-center gap-2 h-10 rounded-lg text-xs font-black uppercase tracking-widest transition-all',
                 mode === 'signup'
                   ? 'bg-card text-primary shadow-sm border border-border/50'
                   : 'text-muted-foreground hover:text-foreground'
@@ -158,23 +158,23 @@ function AuthComponent() {
             </button>
           </div>
 
-          <form onSubmit={handleEmailAuth} className="space-y-5">
+          <form onSubmit={handleEmailAuth} className="space-y-4">
             <AnimatePresence mode="wait">
               {mode === 'signup' && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="space-y-2"
+                  className="space-y-1.5"
                 >
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
                     Full Identity Name
                   </label>
                   <div className="relative">
-                    <UserPlus className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="e.g. John Architect"
-                      className="pl-11 h-14 bg-muted/30 rounded-2xl border-border/40 focus:border-primary/50"
+                      className="pl-10 h-11 bg-muted/30 rounded-xl border-border/40 focus:border-primary/50 text-sm"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required={mode === 'signup'}
@@ -184,16 +184,16 @@ function AuthComponent() {
               )}
             </AnimatePresence>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
                 Email Terminal
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="email"
                   placeholder="comm-link@protocol.com"
-                  className="pl-11 h-14 bg-muted/30 rounded-2xl border-border/40 focus:border-primary/50"
+                  className="pl-10 h-11 bg-muted/30 rounded-xl border-border/40 focus:border-primary/50 text-sm"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -201,16 +201,16 @@ function AuthComponent() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
                 Access Phrase
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="password"
                   placeholder="••••••••••••"
-                  className="pl-11 h-14 bg-muted/30 rounded-2xl border-border/40 focus:border-primary/50"
+                  className="pl-10 h-11 bg-muted/30 rounded-xl border-border/40 focus:border-primary/50 text-sm"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -221,26 +221,26 @@ function AuthComponent() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-16 rounded-[22px] bg-primary text-primary-foreground font-black text-lg gap-4 shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 mt-4 group overflow-hidden relative"
+              className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-black text-sm uppercase tracking-wider gap-3 shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-95 mt-4 group overflow-hidden relative"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
               {isLoading ? (
-                <Loader2 className="w-6 h-6 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
                   {mode === 'login' ? 'Verify Identity' : 'Initialize Account'}
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </Button>
           </form>
 
-          <div className="relative my-8">
+          <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border/50"></div>
             </div>
             <div className="relative flex justify-center text-[10px] uppercase font-black">
-              <span className="bg-card px-4 text-muted-foreground tracking-[0.3em]">
+              <span className="bg-card px-3 text-muted-foreground tracking-[0.3em]">
                 OR
               </span>
             </div>
@@ -250,17 +250,17 @@ function AuthComponent() {
             variant="outline"
             onClick={handleGoogleLogin}
             disabled={isLoading}
-            className="w-full h-14 rounded-2xl border-border/60 bg-muted/20 hover:bg-muted/40 text-foreground font-bold text-sm gap-3 group relative overflow-hidden"
+            className="w-full h-11 rounded-xl border-border/60 bg-muted/20 hover:bg-muted/40 text-foreground font-bold text-xs gap-3 group relative overflow-hidden"
           >
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
-              <Chrome className="w-4 h-4" />
+            <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center group-hover:rotate-12 transition-transform">
+              <Chrome className="w-3.5 h-3.5" />
             </div>
-            Continue with Neural Google
+            Continue with Google
             <Sparkles className="w-3.5 h-3.5 text-primary opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
           </Button>
 
-          <div className="mt-8 flex items-center gap-4 p-4 rounded-2xl bg-primary/5 border border-primary/10">
-            <ShieldCheck className="w-6 h-6 text-primary shrink-0" />
+          <div className="mt-6 flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/10">
+            <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
             <p className="text-[10px] font-medium text-muted-foreground leading-relaxed">
               Your credentials are encrypted using military-grade security.
               Active session protection enabled.

@@ -551,12 +551,12 @@ export default function AdminBlogEditPage() {
             <ArrowLeft className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1" />
             Back to Registry
           </Button>
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight tracking-tighter">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight">
               {isNew ? 'Initialize' : 'Refine'}{' '}
               <span className="text-primary">Sequence</span>
             </h1>
-            <p className="text-muted-foreground font-medium text-sm">
+            <p className="text-muted-foreground font-medium text-xs sm:text-sm">
               {isNew
                 ? 'Configure a new professional insight for the global editorial archive.'
                 : `Updating registry entry for sequence ID: ${id.substring(0, 8)}`}
@@ -564,11 +564,11 @@ export default function AdminBlogEditPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Button
             onClick={handleSubmit}
             disabled={saving || generating}
-            className="h-12 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] gap-2 shadow-xl shadow-primary/20"
+            className="h-11 px-6 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] gap-2 shadow-lg shadow-primary/20"
           >
             {saving ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -582,11 +582,11 @@ export default function AdminBlogEditPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-10"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8"
       >
         {/* Main Content Area */}
-        <div className="lg:col-span-2 space-y-8">
-          <Card className="rounded-[40px] shadow-2xl border-border bg-card/40 backdrop-blur-xl p-10 space-y-10">
+        <div className="lg:col-span-2 space-y-6 sm:space-y-8">
+          <Card className="rounded-2xl sm:rounded-3xl shadow-sm border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 space-y-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
@@ -646,15 +646,15 @@ export default function AdminBlogEditPage() {
                     onChange={handleChange}
                     required
                     placeholder="Construct your professional editorial content here..."
-                    rows={20}
-                    className="w-full p-8 rounded-[32px] bg-muted/30 border border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 outline-none transition-all font-mono text-sm leading-relaxed"
+                    rows={16}
+                    className="w-full p-4 sm:p-5 rounded-2xl bg-muted/30 border border-border/50 focus:border-primary/50 focus:ring-2 focus:ring-primary/10 outline-none transition-all font-mono text-xs sm:text-sm leading-relaxed"
                   />
                 </div>
               </div>
             </div>
           </Card>
 
-          <Card className="rounded-[40px] shadow-2xl border-border bg-card/40 backdrop-blur-xl p-10 space-y-6">
+          <Card className="rounded-2xl sm:rounded-3xl shadow-sm border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 space-y-4">
             <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
               <Layout className="w-4 h-4" />
               Metadata & Brief
@@ -668,27 +668,27 @@ export default function AdminBlogEditPage() {
                 value={formData.description || ''}
                 onChange={handleChange}
                 placeholder="Condensed summary for the grid view..."
-                className="w-full min-h-[120px] p-6 rounded-2xl bg-muted/30 border border-border/50 focus:border-primary/50 outline-none font-medium text-sm leading-relaxed"
+                className="w-full min-h-[100px] p-4 rounded-xl bg-muted/30 border border-border/50 focus:border-primary/50 outline-none font-medium text-xs sm:text-sm leading-relaxed"
               />
             </div>
           </Card>
         </div>
 
         {/* Sidebar Configuration */}
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Image Upload Card */}
-          <Card className="rounded-[40px] shadow-2xl border-border bg-card/40 backdrop-blur-xl p-8 space-y-6">
-            <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border pb-4">
+          <Card className="rounded-2xl sm:rounded-3xl shadow-sm border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border pb-3">
               <ImageIcon className="w-4 h-4" />
               Hero Media
             </h3>
             <div
-              className="relative group cursor-pointer aspect-video rounded-2xl bg-muted/30 border border-dashed border-border overflow-hidden flex flex-col items-center justify-center gap-3 hover:bg-muted/50 transition-all"
+              className="relative group cursor-pointer aspect-video rounded-xl bg-muted/30 border border-dashed border-border overflow-hidden flex flex-col items-center justify-center gap-2.5 hover:bg-muted/50 transition-all"
               onClick={() => !imageGenerating && fileInputRef.current?.click()}
             >
               {imageGenerating ? (
-                <div className="flex flex-col items-center gap-3 animate-pulse">
-                  <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+                <div className="flex flex-col items-center gap-2.5 animate-pulse">
+                  <RefreshCw className="w-6 h-6 animate-spin text-primary" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-primary">
                     Synthesizing...
                   </span>
@@ -709,8 +709,8 @@ export default function AdminBlogEditPage() {
                 </>
               ) : (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <Upload className="w-6 h-6" />
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <Upload className="w-5 h-5" />
                   </div>
                   <div className="text-center">
                     <p className="text-[10px] font-black uppercase tracking-widest">
@@ -744,7 +744,7 @@ export default function AdminBlogEditPage() {
               />
               {imageGenerating ? 'Drawing...' : 'Puter AI Image Synthesis'}
             </Button>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                 Or Paste Asset URL
               </label>
@@ -758,14 +758,14 @@ export default function AdminBlogEditPage() {
             </div>
           </Card>
 
-          <Card className="rounded-[40px] shadow-2xl border-border bg-card/40 backdrop-blur-xl p-8 space-y-8">
-            <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border pb-4">
+          <Card className="rounded-2xl sm:rounded-3xl shadow-sm border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 space-y-5">
+            <h3 className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2 border-b border-border pb-3">
               <Globe className="w-4 h-4" />
               Registry Config
             </h3>
 
-            <div className="space-y-6">
-              <div className="space-y-2">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   Slug (URL Path)
                 </label>
@@ -775,11 +775,11 @@ export default function AdminBlogEditPage() {
                   onChange={handleChange}
                   required
                   placeholder="e.g. online-pdf-editor-guide"
-                  className="h-12 rounded-xl bg-muted/30 border-border/50 font-mono text-xs"
+                  className="h-10 rounded-xl bg-muted/30 border-border/50 font-mono text-xs"
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   Category Segment
                 </label>
@@ -787,42 +787,42 @@ export default function AdminBlogEditPage() {
                   name="category"
                   value={formData.category || ''}
                   onChange={handleChange}
-                  className="h-12 rounded-xl bg-muted/30 border-border/50 text-xs font-bold"
+                  className="h-10 rounded-xl bg-muted/30 border-border/50 text-xs font-bold"
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground text-primary/60">
                   Target Read Time (AI Guidance)
                 </label>
                 <div className="relative">
-                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
+                  <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
                   <Input
                     name="read_time"
                     value={formData.read_time || ''}
                     onChange={handleChange}
                     placeholder="e.g. 5 min read"
-                    className="h-12 pl-12 rounded-xl bg-primary/5 border-primary/10 text-xs font-black text-primary"
+                    className="h-10 pl-10 rounded-xl bg-primary/5 border-primary/10 text-xs font-black text-primary"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   Assigned Author (Auto)
                 </label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     name="author"
                     value={formData.author || ''}
                     readOnly
-                    className="h-12 pl-12 rounded-xl bg-muted/30 border-border/50 text-xs font-bold"
+                    className="h-10 pl-10 rounded-xl bg-muted/30 border-border/50 text-xs font-bold"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   Publication Identity (Auto)
                 </label>
@@ -830,13 +830,13 @@ export default function AdminBlogEditPage() {
                   name="date"
                   value={formData.date || ''}
                   readOnly
-                  className="h-12 rounded-xl bg-muted/30 border-border/50 text-xs font-bold"
+                  className="h-10 rounded-xl bg-muted/30 border-border/50 text-xs font-bold"
                 />
               </div>
             </div>
           </Card>
 
-          <div className="p-8 rounded-[32px] bg-primary/5 border border-primary/10 space-y-4">
+          <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 space-y-2">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">
               Security Note
             </h4>
@@ -850,28 +850,28 @@ export default function AdminBlogEditPage() {
 
       {/* AI Neural Synthesis Modal */}
       {isAIModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in-fade">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in-fade">
           <div
             className="absolute inset-0 bg-background/80 backdrop-blur-md"
             onClick={() => setIsAIModalOpen(false)}
           />
-          <Card className="w-full max-w-lg relative z-10 rounded-[40px] border-border bg-card/60 backdrop-blur-2xl shadow-[0_0_100px_rgba(0,0,0,0.2)] overflow-hidden">
-            <div className="h-2 w-full bg-primary" />
-            <CardHeader className="p-10 pb-6">
-              <CardTitle className="text-3xl font-black tracking-tighter flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                  <Bot className="w-6 h-6" />
+          <Card className="w-full max-w-lg relative z-10 rounded-2xl sm:rounded-3xl border-border bg-card/90 backdrop-blur-2xl shadow-2xl overflow-hidden">
+            <div className="h-1.5 w-full bg-primary" />
+            <CardHeader className="p-6 pb-4">
+              <CardTitle className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Bot className="w-5 h-5" />
                 </div>
                 Puter AI Synthesis
               </CardTitle>
-              <p className="text-muted-foreground mt-2 font-medium">
+              <p className="text-muted-foreground text-xs sm:text-sm mt-1.5 font-medium">
                 Define your editorial parameters to ignite the generation
                 engine.
               </p>
             </CardHeader>
-            <CardContent className="p-10 pt-0 space-y-8">
-              <div className="space-y-6">
-                <div className="space-y-2">
+            <CardContent className="p-6 pt-0 space-y-5">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     Neural Synthesis Prompt
                   </label>
@@ -881,10 +881,10 @@ export default function AdminBlogEditPage() {
                     onChange={(e) =>
                       setAiInput({ ...aiInput, title: e.target.value })
                     }
-                    className="h-14 rounded-2xl bg-muted/30 border-border/50 text-base font-bold"
+                    className="h-11 rounded-xl bg-muted/30 border-border/50 text-sm font-medium"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     Target Word Count
                   </label>
@@ -894,24 +894,24 @@ export default function AdminBlogEditPage() {
                     onChange={(e) =>
                       setAiInput({ ...aiInput, wordCount: e.target.value })
                     }
-                    className="h-14 rounded-2xl bg-muted/30 border-border/50 text-base font-bold"
+                    className="h-11 rounded-xl bg-muted/30 border-border/50 text-sm font-medium"
                   />
                 </div>
               </div>
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2.5">
                 <Button
                   onClick={executeAIGeneration}
                   disabled={!aiInput.title}
-                  className="h-16 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs shadow-xl shadow-primary/20"
+                  className="h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-xs shadow-lg shadow-primary/20"
                 >
                   Ignite Synthesis Engine
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={() => setIsAIModalOpen(false)}
-                  className="h-12 rounded-xl text-muted-foreground font-black uppercase tracking-widest text-[10px]"
+                  className="h-10 rounded-xl font-bold text-xs"
                 >
-                  Abort Sequence
+                  Dismiss
                 </Button>
               </div>
             </CardContent>

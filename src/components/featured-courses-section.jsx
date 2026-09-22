@@ -93,7 +93,7 @@ export function FeaturedCoursesSection() {
     <section
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="py-24 bg-gradient-to-b from-background via-muted/10 to-background border-b border-border relative overflow-hidden"
+      className="py-12 sm:py-16 bg-gradient-to-b from-background via-muted/10 to-background border-b border-border relative overflow-hidden"
     >
       {/* Decorative Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-primary/5 rounded-full blur-[140px] pointer-events-none" />
@@ -116,7 +116,7 @@ export function FeaturedCoursesSection() {
                 </div>
                 <div>
                   <h3 className="font-bold text-base">
-                    AI Course Creator (Pro Feature)
+                    AI Course Creator Generator Pro
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     Unlock unlimited AI-generated training programs
@@ -176,14 +176,14 @@ export function FeaturedCoursesSection() {
         </div>
       )}
 
-      <div className="container mx-auto px-6 relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-3">
               <Badge
                 variant="secondary"
-                className="px-3.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 flex items-center gap-1.5 w-fit"
+                className="px-3 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 flex items-center gap-1.5 w-fit"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span className="text-[10px] font-black uppercase tracking-widest">
@@ -205,13 +205,12 @@ export function FeaturedCoursesSection() {
               )}
             </div>
 
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-foreground">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
               Best Selling <span className="text-primary">Safety Courses</span>
             </h2>
-            <p className="text-muted-foreground font-medium text-sm md:text-base mt-2 max-w-2xl">
-              Explore our 8 highest-rated OSHA-compliant programs with full
-              audio narration, 3 responsive frame layouts, knowledge quizzes,
-              and verifiable certification.
+            <p className="text-muted-foreground font-medium text-xs sm:text-sm mt-1.5 max-w-xl leading-relaxed">
+              Explore our highest-rated OSHA-compliant programs with full audio
+              narration, 3 frame layouts, and verifiable certification.
             </p>
           </div>
 

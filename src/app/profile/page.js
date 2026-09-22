@@ -256,13 +256,13 @@ export default function ProfilePage() {
   return (
     <>
       <InitialLoadingShell isReady={!loading} />
-      <div className="min-h-screen bg-transparent pb-20">
-        <div className="container mx-auto px-4 py-12 max-w-2xl animate-in-card">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+      <div className="min-h-screen bg-transparent pb-12 sm:pb-16">
+        <div className="container mx-auto px-4 py-8 sm:py-10 max-w-3xl animate-in-card">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
             <Button
               variant="ghost"
               onClick={() => router.back()}
-              className="w-full sm:w-auto justify-start sm:justify-center hover:bg-accent rounded-2xl transition-all group border border-transparent hover:border-border"
+              className="w-full sm:w-auto justify-start sm:justify-center hover:bg-accent rounded-xl transition-all group border border-transparent hover:border-border h-10 text-xs font-bold"
             >
               <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
               Back
@@ -271,7 +271,7 @@ export default function ProfilePage() {
             {user?.role === 'admin' && (
               <Button
                 onClick={() => router.push('/admin')}
-                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-[10px] h-11 px-6 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.03] active:scale-95 gap-2"
+                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-[10px] h-10 px-5 rounded-xl shadow-md shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-95 gap-2"
               >
                 <LayoutDashboard className="w-4 h-4" />
                 Admin Dashboard
@@ -279,28 +279,28 @@ export default function ProfilePage() {
             )}
           </div>
 
-          <Card className="shadow-2xl border-border overflow-hidden rounded-[40px] bg-card/40 backdrop-blur-xl">
-            <div className="h-40 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent relative">
+          <Card className="shadow-xl border-border overflow-hidden rounded-2xl sm:rounded-3xl bg-card/40 backdrop-blur-xl">
+            <div className="h-32 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent relative">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(34,197,94,0.1),transparent)]" />
             </div>
 
             <CardHeader className="space-y-1 relative pt-0">
-              <div className="flex flex-col items-center -mt-20 mb-8">
+              <div className="flex flex-col items-center -mt-16 mb-6">
                 <div className="relative group">
                   <div className="absolute -inset-2 bg-gradient-to-r from-primary via-emerald-500 to-cyan-500 rounded-full blur-xl opacity-20 group-hover:opacity-40 transition duration-1000"></div>
                   <div className="relative">
-                    <Avatar className="h-40 w-40 border-[6px] border-background shadow-2xl relative">
+                    <Avatar className="h-32 w-32 border-4 border-background shadow-xl relative">
                       <AvatarImage
                         src={avatarUrl || user?.avatar}
                         className="object-cover"
                       />
-                      <AvatarFallback className="text-5xl font-black bg-muted text-primary">
+                      <AvatarFallback className="text-4xl font-black bg-muted text-primary">
                         {firstName?.charAt(0).toUpperCase() ||
                           fullName?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <label className="absolute bottom-1 right-1 w-11 h-11 bg-primary text-white rounded-2xl flex items-center justify-center shadow-xl cursor-pointer hover:scale-110 active:scale-95 transition-all border-4 border-background">
-                      <Camera className="w-5 h-5" />
+                    <label className="absolute bottom-0 right-0 w-9 h-9 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 active:scale-95 transition-all border-2 border-background">
+                      <Camera className="w-4 h-4" />
                       <input
                         type="file"
                         className="hidden"
@@ -310,11 +310,11 @@ export default function ProfilePage() {
                     </label>
                   </div>
                 </div>
-                <h2 className="text-4xl font-black mt-6 tracking-tight text-foreground">
+                <h2 className="text-2xl sm:text-3xl font-black mt-4 tracking-tight text-foreground">
                   {fullName}
                 </h2>
-                <div className="flex items-center gap-3 mt-2">
-                  <span className="text-muted-foreground text-xs uppercase tracking-[0.3em] font-bold py-1 px-3 bg-muted rounded-full">
+                <div className="flex items-center gap-2.5 mt-1.5">
+                  <span className="text-muted-foreground text-[10px] uppercase tracking-[0.25em] font-bold py-1 px-3 bg-muted rounded-full">
                     {user?.role?.replace('_', ' ')}
                   </span>
                   {user?.has_generator_access && (
@@ -327,10 +327,10 @@ export default function ProfilePage() {
             </CardHeader>
 
             <form onSubmit={handleUpdate}>
-              <CardContent className="space-y-8 px-10">
-                <div className="grid gap-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2.5">
+              <CardContent className="space-y-6 px-6 sm:px-8">
+                <div className="grid gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
                       <Label
                         htmlFor="firstName"
                         className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1"
@@ -342,11 +342,11 @@ export default function ProfilePage() {
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         placeholder="First name"
-                        className="h-14 rounded-2xl border-primary/20 focus-visible:ring-primary bg-slate-950/40 shadow-inner font-medium"
+                        className="h-11 rounded-xl border-primary/20 focus-visible:ring-primary bg-slate-950/40 shadow-inner font-medium text-sm"
                       />
                     </div>
 
-                    <div className="space-y-2.5">
+                    <div className="space-y-1.5">
                       <Label
                         htmlFor="lastName"
                         className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1"
@@ -358,13 +358,13 @@ export default function ProfilePage() {
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         placeholder="Last name"
-                        className="h-14 rounded-2xl border-primary/20 focus-visible:ring-primary bg-slate-950/40 shadow-inner font-medium"
+                        className="h-11 rounded-xl border-primary/20 focus-visible:ring-primary bg-slate-950/40 shadow-inner font-medium text-sm"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2.5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
                       <Label
                         htmlFor="fullName"
                         className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1"
@@ -376,11 +376,11 @@ export default function ProfilePage() {
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         placeholder="Your full name"
-                        className="h-14 rounded-2xl border-primary/20 focus-visible:ring-primary bg-slate-950/40 shadow-inner font-medium"
+                        className="h-11 rounded-xl border-primary/20 focus-visible:ring-primary bg-slate-950/40 shadow-inner font-medium text-sm"
                       />
                     </div>
 
-                    <div className="space-y-2.5">
+                    <div className="space-y-1.5">
                       <Label
                         htmlFor="username"
                         className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1"
@@ -396,7 +396,7 @@ export default function ProfilePage() {
                           )
                         }
                         placeholder="username"
-                        className={`h-14 rounded-2xl border-primary/20 focus-visible:ring-primary bg-slate-950/40 shadow-inner font-medium ${suggestions.length > 0 ? 'border-amber-500/50' : ''}`}
+                        className={`h-11 rounded-xl border-primary/20 focus-visible:ring-primary bg-slate-950/40 shadow-inner font-medium text-sm ${suggestions.length > 0 ? 'border-amber-500/50' : ''}`}
                       />
                       {suggestions.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2 px-1 animate-in-fade">
@@ -411,7 +411,7 @@ export default function ProfilePage() {
                                 setUsername(suggestion);
                                 setSuggestions([]);
                               }}
-                              className="text-[10px] font-black bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full border border-amber-500/20 transition-all hover:scale-105 active:scale-95"
+                              className="text-[10px] font-black bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full border border-amber-500/20 transition-all hover:scale-105 active:scale-95"
                             >
                               {suggestion}
                             </button>
@@ -421,15 +421,15 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="p-6 rounded-3xl bg-muted/20 border border-border/40 space-y-3 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                      <UserIcon className="w-20 h-20" />
+                  <div className="p-4 sm:p-5 rounded-2xl bg-muted/20 border border-border/40 space-y-2 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                      <UserIcon className="w-16 h-16" />
                     </div>
                     <Label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-black">
                       Connected Identity
                     </Label>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-bold tracking-tight">
+                      <div className="text-xs sm:text-sm font-bold tracking-tight">
                         {user?.email}
                       </div>
                       <Badge
@@ -443,15 +443,15 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
 
-              <CardFooter className="flex gap-4 p-10 mt-4">
+              <CardFooter className="flex gap-4 px-6 sm:px-8 pb-6 sm:pb-8 pt-2">
                 <Button
                   type="submit"
                   disabled={updating}
-                  className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 relative overflow-hidden group/btn"
+                  className="w-full h-11 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-95 relative overflow-hidden group/btn"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {updating ? 'Processing...' : 'Secure Save'}
-                    {!updating && <Save className="w-5 h-5" />}
+                    {!updating && <Save className="w-4 h-4" />}
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-primary to-emerald-600 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
                 </Button>

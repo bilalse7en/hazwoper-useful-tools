@@ -4,6 +4,8 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { createPageMetadata } from '@/lib/seo';
+import { SITE_CONFIG, getSiteUrl, getCanonicalUrl } from '@/lib/site-config';
 
 async function getPost(slug) {
   try {
@@ -45,22 +47,22 @@ export async function generateMetadata({ params }) {
   const post = await getPost(slug);
 
   if (!post) {
-    return {
-      title: 'Article Not Found | All Useful Tools',
+    return createPageMetadata({
+      title: 'Article Not Found',
       description: 'The requested article was not found.',
-    };
+      path: `/blog/${slug}`,
+      noindex: true,
+    });
   }
 
-  return {
-    title: `${post.title} | All Useful Tools`,
+  return createPageMetadata({
+    title: post.title,
     description:
       post.description ||
       'Productivity insights, tutorials, and online utility guides.',
+    path: `/blog/${slug}`,
     keywords: `${post.category?.toLowerCase() || 'utilities'}, online tools, web utilities, productivity`,
-    alternates: {
-      canonical: `https://hazwoper-useful-tools.vercel.app/blog/${slug}`,
-    },
-  };
+  });
 }
 
 export default async function BlogPostPage({ params }) {
@@ -87,6 +89,33 @@ export default async function BlogPostPage({ params }) {
     );
   }
 
+  const siteUrl = getSiteUrl();
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.description,
+    author: {
+      '@type': 'Organization',
+      name: SITE_CONFIG.name,
+      url: siteUrl,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_CONFIG.name,
+      url: siteUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
+      },
+    },
+    datePublished: post.created_at || '2026-01-01',
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': getCanonicalUrl(`/blog/${slug}`),
+    },
+  };
+
   const faqSchema =
     Array.isArray(post.faq) && post.faq.length > 0
       ? {
@@ -105,6 +134,12 @@ export default async function BlogPostPage({ params }) {
 
   return (
     <>
+      <Script
+        id={`blog-article-schema-${slug}`}
+        type="application/ld+json"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
       {faqSchema && (
         <Script
           id={`blog-faq-schema-${slug}`}
