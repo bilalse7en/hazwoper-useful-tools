@@ -1,6 +1,17 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Define custom variant for dark mode child support */
 @custom-variant dark (&:is(.dark *));
 

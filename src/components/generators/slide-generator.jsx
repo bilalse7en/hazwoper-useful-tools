@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import {
   Code2,
   Sparkles,
   Plus,
-  Trash2,
+  X,
   FileText,
   Wand2,
   Presentation,
@@ -24,6 +24,8 @@ import {
   Save,
   RotateCcw,
   SlidersHorizontal,
+  BookmarkCheck,
+  FolderArchive,
 } from 'lucide-react';
 import { showToast } from '@/lib/swal';
 
@@ -171,8 +173,8 @@ function generateDefaultSummaryHtml(slide) {
 </div>`;
 }
 
-// Initial slides in the deck
-const INITIAL_SLIDES = [
+// Initial default slides in the library
+const DEFAULT_SAVED_SLIDES = [
   {
     id: 'slide-1',
     type: 'challenge',
@@ -216,33 +218,87 @@ const INITIAL_SLIDES = [
 ];
 
 export function SlideGenerator() {
-  const [slides, setSlides] = useState(INITIAL_SLIDES);
+  // All slides ever saved in library
+  const [savedSlides, setSavedSlides] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('hazwoper_saved_slides_deck');
+        if (stored) return JSON.parse(stored);
+      } catch {
+        // fallback
+      }
+    }
+    return DEFAULT_SAVED_SLIDES;
+  });
+
+  // Active slides currently open in tabs
+  const [slides, setSlides] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('hazwoper_saved_slides_deck');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0)
+            return parsed.slice(0, 2);
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return DEFAULT_SAVED_SLIDES.slice(0, 2);
+  });
+
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [viewMode, setViewMode] = useState('code'); // 'preview' | 'code'
   const [copied, setCopied] = useState(false);
   const [singlePasteText, setSinglePasteText] = useState('');
-  // Toggle for Customize detailed boxes: OFF BY DEFAULT as requested
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showSlideLibrary, setShowSlideLibrary] = useState(true);
+
+  // Sync savedSlides to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(
+          'hazwoper_saved_slides_deck',
+          JSON.stringify(savedSlides)
+        );
+      } catch {
+        // ignore
+      }
+    }
+  }, [savedSlides]);
 
   // Active slide
-  const currentSlide = slides[activeSlideIndex] || slides[0];
+  const currentSlide = slides[activeSlideIndex] || slides[0] || savedSlides[0];
 
-  // Helper to update active slide properties
+  // Helper to update active slide properties and keep savedSlides in sync
   const updateActiveSlide = (updates) => {
+    const updatedSlide = {
+      ...currentSlide,
+      ...updates,
+    };
+
     setSlides((prev) => {
       const next = [...prev];
-      if (!next[activeSlideIndex]) return prev;
-      next[activeSlideIndex] = {
-        ...next[activeSlideIndex],
-        ...updates,
-      };
+      if (next[activeSlideIndex]) {
+        next[activeSlideIndex] = updatedSlide;
+      }
       return next;
+    });
+
+    setSavedSlides((prev) => {
+      const exists = prev.some((s) => s.id === updatedSlide.id);
+      if (exists) {
+        return prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s));
+      }
+      return [...prev, updatedSlide];
     });
   };
 
   // Add a new slide to the deck with custom code & quick text support
   const handleAddNewSlide = () => {
-    const newIndex = slides.length + 1;
+    const newIndex = savedSlides.length + 1;
     const samplePoints = [
       'Donna retains final verification on all AI-assisted inventory messages.',
       'Routine email turnaround drops from 20 minutes to under 2 minutes.',
@@ -262,26 +318,46 @@ export function SlideGenerator() {
       customHtml: defaultCode,
     };
 
+    setSavedSlides((prev) => [...prev, newSlide]);
     setSlides((prev) => [...prev, newSlide]);
     setActiveSlideIndex(slides.length);
     showToast(
-      `Added ${newSlide.title}! Paste custom code or quick text to generate.`,
+      `Added ${newSlide.title} to tabs and saved in All Slides list!`,
       'success'
     );
   };
 
-  // Delete current slide
-  const handleDeleteSlide = (indexToDelete) => {
+  // Close tab (Does NOT delete permanently; stays in All Slides list)
+  const handleCloseTab = (indexToClose) => {
     if (slides.length <= 1) {
-      showToast('You must keep at least 1 slide in the deck.', 'error');
+      showToast('You must keep at least 1 slide open in tabs.', 'info');
       return;
     }
-    const newSlides = slides.filter((_, i) => i !== indexToDelete);
+    const closingSlide = slides[indexToClose];
+    const newSlides = slides.filter((_, i) => i !== indexToClose);
     setSlides(newSlides);
     setActiveSlideIndex((prev) =>
       prev >= newSlides.length ? newSlides.length - 1 : prev
     );
-    showToast('Slide removed.', 'success');
+    showToast(
+      `Closed "${closingSlide.title}" from tabs. It is saved in your All Slides list.`,
+      'info'
+    );
+  };
+
+  // Click on a slide in the All Slides List: Re-opens in tabs if not open, or switches to it
+  const handleRestoreOrSelectSlide = (targetSlide) => {
+    const existingIndex = slides.findIndex((s) => s.id === targetSlide.id);
+    if (existingIndex !== -1) {
+      // Already in tabs, switch to it
+      setActiveSlideIndex(existingIndex);
+      showToast(`Switched to "${targetSlide.title}".`, 'success');
+    } else {
+      // Not in tabs, re-open it
+      setSlides((prev) => [...prev, targetSlide]);
+      setActiveSlideIndex(slides.length);
+      showToast(`Re-opened "${targetSlide.title}" in tabs!`, 'success');
+    }
   };
 
   // Save current slide feedback
@@ -477,6 +553,8 @@ export function SlideGenerator() {
 
   // Generate Clean HTML string for a specific slide (Zero Comments)
   const generateSlideHtml = (slide) => {
+    if (!slide) return '';
+
     if (slide.type === 'custom' || slide.type === 'summary') {
       if (slide.customHtml && slide.customHtml.trim()) {
         return stripHtmlComments(slide.customHtml.trim());
@@ -486,7 +564,7 @@ export function SlideGenerator() {
 
     if (slide.type === 'challenge') {
       const bottomBanner = slide.showBottomNote
-        ? `\n\n<div class="group/message relative z-[2] mt-[14px] overflow-hidden rounded-[19px] border border-[#b9dfd8] bg-gradient-to-br from-[#f5fbff] via-[#f7fcfb] to-[#effbf4] px-[24px] py-[19px] backdrop-blur-[4px] transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-[4px] hover:border-[#78cfc0] hover:from-[#eef9ff] hover:via-[#f5fdf9] hover:to-[#e6faef] hover:shadow-[0_12px_28px_rgba(32,95,153,0.12)] opacity-0 animate-[fadeIn_.6s_ease_forwards] [animation-delay:.3s]">
+        ? `\n\n<div class="group/message relative z-[2] mt-[14px] overflow-hidden rounded-[19px] border border-[#b9dfd8] bg-gradient-to-br from-[#f5fbff] via-[#f7fcfb] to-[#effbf4] px-[24px] py-[19px] backdrop-blur-[4px] transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-[4px] hover:border-[#78cfc0] hover:from-[#eef9ff] hover:via-[#f5fdf9] hover:to-[#e6faef] hover:shadow-[0_12px_28px_rgba(32,95,153,0.12)] animate-[fadeIn_.6s_ease_forwards] [animation-delay:.3s]">
     <div class="pointer-events-none absolute -right-[55px] -top-[55px] h-[130px] w-[130px] rounded-full bg-[#68e5ab]/10 blur-[28px] opacity-0 transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover/message:opacity-100 group-hover/message:scale-125"></div>
     <div class="pointer-events-none absolute -bottom-[60px] -left-[50px] h-[130px] w-[130px] rounded-full bg-[#38b5e4]/10 blur-[30px] opacity-0 transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover/message:opacity-100 group-hover/message:scale-125"></div>
     <div class="pointer-events-none absolute left-0 top-0 h-[50px] w-[5px] -translate-x-1/2 rounded-b-full bg-gradient-to-r from-[#38b5e4] via-[#68e5ab] to-[#38b5e4] opacity-20 transition-all duration-700 group-hover/message:w-[130px] group-hover/message:opacity-70"></div>
@@ -498,8 +576,9 @@ export function SlideGenerator() {
 </div>`
         : '';
 
-      return `<div class="flex flex-wrap gap-[22px] w-full box-border justify-center">
-    <div class="group relative flex-[1_1_520px] min-w-[480px] max-[997px]:min-w-full box-border rounded-[22px] bg-gradient-to-br from-white to-[#e8f4fd] border border-[rgba(32,95,153,0.16)] border-t-[6px] border-t-[#205f99] min-[998px]:border-t-0 min-[998px]:border-l-[6px] min-[998px]:border-l-[#205f99] shadow-[0_10px_28px_rgba(1,51,93,0.10)] overflow-hidden flex flex-col min-[998px]:flex-row transition-[border-color,box-shadow] duration-500 ease-out hover:shadow-[0_15px_36px_rgba(1,51,93,0.14)] opacity-0 animate-[fadeIn_.6s_ease_forwards] [animation-delay:.1s]">
+      return `<style>@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}</style>
+<div class="flex flex-wrap gap-[22px] w-full box-border justify-center">
+    <div class="group relative flex-[1_1_520px] min-w-[480px] max-[997px]:min-w-full box-border rounded-[22px] bg-gradient-to-br from-white to-[#e8f4fd] border border-[rgba(32,95,153,0.16)] border-t-[6px] border-t-[#205f99] min-[998px]:border-t-0 min-[998px]:border-l-[6px] min-[998px]:border-l-[#205f99] shadow-[0_10px_28px_rgba(1,51,93,0.10)] overflow-hidden flex flex-col min-[998px]:flex-row transition-[border-color,box-shadow] duration-500 ease-out hover:shadow-[0_15px_36px_rgba(1,51,93,0.14)] animate-[fadeIn_.6s_ease_forwards] [animation-delay:.1s]">
         <div class="w-full box-border p-[22px_16px] flex items-center justify-center bg-[rgba(32,95,153,0.055)] border-b border-[rgba(32,95,153,0.10)] relative min-[998px]:w-auto min-[998px]:flex-1 min-[998px]:basis-[175px] min-[998px]:min-w-[175px] min-[998px]:border-b-0 min-[998px]:border-r min-[1400px]:basis-[185px] min-[1400px]:min-w-[185px] min-[1500px]:basis-[205px] min-[1500px]:min-w-[205px] min-[1728px]:basis-[230px] min-[1728px]:min-w-[230px] min-[2400px]:basis-[270px] min-[2400px]:min-w-[270px] transition-all duration-500 group-hover:bg-[rgba(32,95,153,0.09)]">
             <div class="absolute w-[150px] h-[150px] rounded-full left-[-78px] top-1/2 -translate-y-1/10 bg-[rgba(32,95,153,0.055)] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:bg-[rgba(32,95,153,0.10)] min-[998px]:left-auto min-[998px]:right-[-90px] min-[998px]:top-auto min-[998px]:bottom-[-170px] min-[998px]:translate-y-0 min-[998px]:w-[190px] min-[998px]:h-[190px] min-[1400px]:w-[205px] min-[1400px]:h-[205px] min-[1500px]:w-[225px] min-[1500px]:h-[225px] min-[1728px]:w-[250px] min-[1728px]:h-[250px] min-[2400px]:w-[285px] min-[2400px]:h-[285px] min-[1400px]:group-hover:scale-[1.35]"></div>
             <div class="relative w-[145px] h-[145px] max-w-full shrink-0 rounded-full bg-[rgba(255,255,255,0.82)] flex items-center justify-center shadow-[0_0_0_8px_rgba(32,95,153,0.06),0_10px_22px_rgba(32,95,153,0.12)] z-[2] min-[1400px]:w-[155px] min-[1400px]:h-[155px] min-[1500px]:w-[170px] min-[1500px]:h-[170px] min-[1728px]:w-[190px] min-[1728px]:h-[190px] min-[2400px]:w-[220px] min-[2400px]:h-[220px]">
@@ -519,7 +598,7 @@ export function SlideGenerator() {
         </div>
     </div>
 
-    <div class="group relative flex-[1_1_520px] min-w-[480px] max-[997px]:min-w-full box-border rounded-[22px] bg-gradient-to-br from-white to-[#e5faec] border border-[rgba(16,185,129,0.16)] border-t-[6px] border-t-[#10b981] min-[998px]:border-t-0 min-[998px]:border-l-[6px] min-[998px]:border-l-[#10b981] shadow-[0_10px_28px_rgba(16,185,129,0.10)] overflow-hidden flex flex-col min-[998px]:flex-row transition-[border-color,box-shadow] duration-500 ease-out hover:shadow-[0_15px_36px_rgba(16,185,129,0.14)] opacity-0 animate-[fadeIn_.6s_ease_forwards] [animation-delay:.2s]">
+    <div class="group relative flex-[1_1_520px] min-w-[480px] max-[997px]:min-w-full box-border rounded-[22px] bg-gradient-to-br from-white to-[#e5faec] border border-[rgba(16,185,129,0.16)] border-t-[6px] border-t-[#10b981] min-[998px]:border-t-0 min-[998px]:border-l-[6px] min-[998px]:border-l-[#10b981] shadow-[0_10px_28px_rgba(16,185,129,0.10)] overflow-hidden flex flex-col min-[998px]:flex-row transition-[border-color,box-shadow] duration-500 ease-out hover:shadow-[0_15px_36px_rgba(16,185,129,0.14)] animate-[fadeIn_.6s_ease_forwards] [animation-delay:.2s]">
         <div class="w-full box-border p-[22px_16px] flex items-center justify-center bg-[rgba(16,185,129,0.055)] border-b border-[rgba(16,185,129,0.10)] relative min-[998px]:w-auto min-[998px]:flex-1 min-[998px]:basis-[175px] min-[998px]:min-w-[175px] min-[998px]:border-b-0 min-[998px]:border-r min-[1400px]:basis-[185px] min-[1400px]:min-w-[185px] min-[1500px]:basis-[205px] min-[1500px]:min-w-[205px] min-[1728px]:basis-[230px] min-[1728px]:min-w-[230px] min-[2400px]:basis-[270px] min-[2400px]:min-w-[270px] transition-all duration-500 group-hover:bg-[rgba(16,185,129,0.09)]">
             <div class="absolute w-[150px] h-[150px] rounded-full left-[-78px] top-1/2 -translate-y-1/10 bg-[rgba(16,185,129,0.055)] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:bg-[rgba(16,185,129,0.10)] min-[998px]:left-auto min-[998px]:right-[-90px] min-[998px]:top-[-170px] min-[998px]:bottom-auto min-[998px]:translate-y-0 min-[998px]:w-[190px] min-[998px]:h-[190px] min-[1400px]:w-[205px] min-[1400px]:h-[205px] min-[1500px]:w-[225px] min-[1500px]:h-[225px] min-[1728px]:w-[250px] min-[1728px]:h-[250px] min-[2400px]:w-[285px] min-[2400px]:h-[285px] min-[1400px]:group-hover:scale-[1.35]"></div>
             <div class="relative w-[145px] h-[145px] max-w-full shrink-0 rounded-full bg-[rgba(255,255,255,0.84)] flex items-center justify-center shadow-[0_0_0_8px_rgba(16,185,129,0.06),0_10px_22px_rgba(16,185,129,0.12)] z-[2] min-[1400px]:w-[155px] min-[1400px]:h-[155px] min-[1500px]:w-[170px] min-[1500px]:h-[170px] min-[1728px]:w-[190px] min-[1728px]:h-[190px] min-[2400px]:w-[220px] min-[2400px]:h-[220px]">
@@ -623,7 +702,7 @@ ${withHtmlRows}
     return generateSlideHtml(currentSlide);
   }, [currentSlide]);
 
-  // Combined code for all slides
+  // Combined code for all open slides
   const allSlidesCombinedCode = useMemo(() => {
     return slides.map((s) => generateSlideHtml(s)).join('\n\n');
   }, [slides]);
@@ -659,12 +738,12 @@ ${withHtmlRows}
               Dynamic Slide Generator
             </h1>
             <Badge variant="outline" className="ml-2 font-mono text-xs">
-              {slides.length} {slides.length === 1 ? 'Slide' : 'Slides'} in Deck
+              {slides.length} Open in Deck / {savedSlides.length} Saved in List
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Dynamic slide deck authoring. Fast 1-box auto-paste, instant live
-            preview, and clean zero-comment HTML export.
+            Fast 1-box auto-paste, slide vault library, instant live preview,
+            and clean zero-comment HTML export.
           </p>
         </div>
 
@@ -765,14 +844,14 @@ ${withHtmlRows}
                   </span>
                 </button>
 
-                {/* Delete slide button if deck has > 1 */}
+                {/* Close slide tab button (never deleted permanently, kept in All Slides list) */}
                 {slides.length > 1 && (
                   <button
                     type="button"
-                    title="Remove Slide"
+                    title="Close tab (Kept in All Slides list)"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteSlide(idx);
+                      handleCloseTab(idx);
                     }}
                     className={`px-2 py-2 hover:opacity-100 opacity-60 transition-opacity cursor-pointer ${
                       isActive
@@ -780,7 +859,7 @@ ${withHtmlRows}
                         : 'hover:text-red-600 text-muted-foreground'
                     }`}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -788,8 +867,22 @@ ${withHtmlRows}
           })}
         </div>
 
-        {/* SINGLE PURPOSEFUL "+ Add Slide" BUTTON */}
+        {/* Single Add Slide Button + Slide Library Toggle */}
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowSlideLibrary(!showSlideLibrary)}
+            className="h-8 gap-1.5 text-xs font-semibold"
+            title="View all saved slides. Click any slide to re-open it in tabs."
+          >
+            <FolderArchive className="w-3.5 h-3.5 text-primary" />
+            <span>All Slides List</span>
+            <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+              {savedSlides.length}
+            </Badge>
+          </Button>
+
           <Button
             size="sm"
             onClick={handleAddNewSlide}
@@ -803,6 +896,58 @@ ${withHtmlRows}
       </div>
 
       {/* ======================================================== */}
+      {/* ALL SLIDES LIST (PERMANENT VAULT - CLICK TO RE-OPEN IN TABS) */}
+      {/* ======================================================== */}
+      {showSlideLibrary && (
+        <Card className="border border-primary/20 bg-primary/[0.015] shadow-2xs">
+          <CardHeader className="py-2.5 px-4 border-b border-primary/10 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookmarkCheck className="w-4 h-4 text-primary" />
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-primary">
+                All Slides List ({savedSlides.length} Slides Saved)
+              </CardTitle>
+            </div>
+            <span className="text-[11px] text-muted-foreground">
+              Slides are never lost. Click any slide name to open it in your
+              tabs.
+            </span>
+          </CardHeader>
+          <CardContent className="p-3">
+            <div className="flex items-center flex-wrap gap-2">
+              {savedSlides.map((s) => {
+                const isOpenInTabs = slides.some(
+                  (active) => active.id === s.id
+                );
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleRestoreOrSelectSlide(s)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer shadow-2xs ${
+                      isOpenInTabs
+                        ? 'bg-card border-border hover:border-primary/50 text-foreground'
+                        : 'bg-primary/5 border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:border-primary'
+                    }`}
+                  >
+                    <span>{s.title}</span>
+                    <span
+                      className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-mono font-bold ${
+                        isOpenInTabs
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-primary/20 text-primary'
+                      }`}
+                    >
+                      {isOpenInTabs ? 'In Tabs' : '+ Re-open'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ======================================================== */}
       {/* 1-BOX QUICK TEXT TO GENERATE (ONLY QUICK BOX SHOWN BY DEFAULT) */}
       {/* ======================================================== */}
       <Card className="border border-primary/30 bg-primary/[0.02] shadow-xs">
@@ -810,21 +955,21 @@ ${withHtmlRows}
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
               <Wand2 className="w-4 h-4" />
-              Quick Text to Generate ({currentSlide.title})
+              Quick Text to Generate ({currentSlide?.title || 'Slide'})
             </CardTitle>
             <Badge
               variant="outline"
               className="text-primary border-primary/40 text-[11px]"
             >
-              Active: {currentSlide.title}
+              Active: {currentSlide?.title || 'Slide'}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="p-4 space-y-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {currentSlide.type === 'custom' || currentSlide.type === 'summary'
+            {currentSlide?.type === 'custom' || currentSlide?.type === 'summary'
               ? 'Paste your bullet points or text here to generate this slide. The content will be injected directly into the slide.'
-              : currentSlide.type === 'challenge'
+              : currentSlide?.type === 'challenge'
                 ? 'Paste your Challenge and AI Solution text here to generate the cards automatically.'
                 : 'Paste your bullet points here. The tool separates "Before AI" and "With AI", assigns points, and colors the first bold words.'}
           </p>
@@ -832,10 +977,10 @@ ${withHtmlRows}
             <Textarea
               rows={3}
               placeholder={
-                currentSlide.type === 'custom' ||
-                currentSlide.type === 'summary'
+                currentSlide?.type === 'custom' ||
+                currentSlide?.type === 'summary'
                   ? 'Paste bullet points or content text to generate this slide (e.g.,\n- Donna retains final verification on all AI replies\n- Routine response time cut by 85%\n- Consistent high quality across shifts)...'
-                  : currentSlide.type === 'challenge'
+                  : currentSlide?.type === 'challenge'
                     ? 'Paste Challenge text and How AI Can Help text here...'
                     : 'Paste Before AI points and With AI points here...'
               }
@@ -861,23 +1006,23 @@ ${withHtmlRows}
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-primary" />
-            {currentSlide.title}
+            {currentSlide?.title || 'Slide'}
           </span>
           <Badge
             variant="outline"
             className={`text-[10px] uppercase font-mono ${
-              currentSlide.type === 'challenge'
+              currentSlide?.type === 'challenge'
                 ? 'border-blue-300 text-blue-700 bg-blue-50/50'
-                : currentSlide.type === 'custom' ||
-                    currentSlide.type === 'summary'
+                : currentSlide?.type === 'custom' ||
+                    currentSlide?.type === 'summary'
                   ? 'border-purple-300 text-purple-700 bg-purple-50/50'
                   : 'border-emerald-300 text-emerald-700 bg-emerald-50/50'
             }`}
           >
-            {currentSlide.type === 'challenge'
+            {currentSlide?.type === 'challenge'
               ? 'Challenge Design'
-              : currentSlide.type === 'custom' ||
-                  currentSlide.type === 'summary'
+              : currentSlide?.type === 'custom' ||
+                  currentSlide?.type === 'summary'
                 ? 'Custom / Summary Code'
                 : 'Before vs AI Design'}
           </Badge>
@@ -885,7 +1030,7 @@ ${withHtmlRows}
 
         <div className="flex items-center gap-4">
           {/* If Before vs AI: 4 vs 5 points selector */}
-          {currentSlide.type === 'before-after' && (
+          {currentSlide?.type === 'before-after' && (
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-muted-foreground">
                 Points:
@@ -948,7 +1093,7 @@ ${withHtmlRows}
       {/* ======================================================== */}
       {/* DETAILED CUSTOMIZATION BOXES (SHOWN ONLY WHEN TOGGLE IS ON) */}
       {/* ======================================================== */}
-      {showCustomize && (
+      {showCustomize && currentSlide && (
         <Card className="border border-border/80 shadow-xs animate-in fade-in-50 duration-300">
           <CardHeader className="py-3 px-5 border-b border-border/60 bg-muted/20">
             <div className="flex items-center justify-between">
@@ -1365,14 +1510,45 @@ ${withHtmlRows}
       {/* ======================================================== */}
       {viewMode === 'preview' ? (
         <Card className="border border-border/80 shadow-md overflow-hidden">
-          <CardHeader className="py-3 px-5 bg-muted/30 border-b border-border flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Eye className="w-4 h-4 text-primary" /> Live Interactive Preview
-              — {currentSlide.title}
-            </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              Interactive Animations Active
-            </Badge>
+          <CardHeader className="py-3 px-5 bg-muted/30 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-primary" />
+              <CardTitle className="text-sm font-bold">
+                Live Interactive Preview — {currentSlide?.title || 'Slide'}
+              </CardTitle>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setViewMode('code')}
+                className="gap-1.5 h-8 text-xs cursor-pointer"
+              >
+                <Code2 className="w-3.5 h-3.5 text-emerald-600" /> View Code
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleCopyCode(false)}
+                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs cursor-pointer"
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                {copied ? 'Copied!' : 'Copy Code'}
+              </Button>
+              {slides.length > 1 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleCopyCode(true)}
+                  className="gap-1.5 h-8 text-xs border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copy All ({slides.length})
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 bg-slate-50/50">
             <div
@@ -1383,25 +1559,46 @@ ${withHtmlRows}
         </Card>
       ) : (
         <Card className="border border-border/80 shadow-md">
-          <CardHeader className="py-3 px-5 bg-muted/30 border-b border-border flex flex-row items-center justify-between">
+          <CardHeader className="py-3 px-5 bg-muted/30 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Code2 className="w-4 h-4 text-emerald-600" />
               <CardTitle className="text-sm font-bold">
-                Clean Formatted HTML (Zero Comments) — {currentSlide.title}
+                Clean Formatted HTML (Zero Comments) —{' '}
+                {currentSlide?.title || 'Slide'}
               </CardTitle>
             </div>
-            <Button
-              size="sm"
-              onClick={() => handleCopyCode(false)}
-              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white h-8"
-            >
-              {copied ? (
-                <Check className="w-3.5 h-3.5" />
-              ) : (
-                <Copy className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setViewMode('preview')}
+                className="gap-1.5 h-8 text-xs cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5 text-primary" /> Live Preview
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleCopyCode(false)}
+                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs cursor-pointer"
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                {copied ? 'Copied!' : 'Copy Code'}
+              </Button>
+              {slides.length > 1 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleCopyCode(true)}
+                  className="gap-1.5 h-8 text-xs border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copy All ({slides.length})
+                </Button>
               )}
-              {copied ? 'Copied!' : 'Copy Code'}
-            </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="relative">
