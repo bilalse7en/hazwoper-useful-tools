@@ -34,8 +34,9 @@ import {
   BookmarkCheck,
   FolderArchive,
   Layers,
+  Trash2,
 } from 'lucide-react';
-import { showToast } from '@/lib/swal';
+import { showToast, showConfirm } from '@/lib/swal';
 
 // Helper to strip HTML comments (Zero Comments requirement)
 function stripHtmlComments(html) {
@@ -668,6 +669,45 @@ export function SlideGenerator() {
     }
   };
 
+  // Delete slide permanently from the All Slides List with warning
+  const handleDeleteSlideFromList = async (slideToDelete) => {
+    if (savedSlides.length <= 1) {
+      showToast('You must keep at least 1 slide in the library.', 'warning');
+      return;
+    }
+
+    const res = await showConfirm({
+      title: 'Delete from Slide List?',
+      text: `Are you sure you want to permanently delete "${slideToDelete.title}"? This will remove it from your saved slides list.`,
+      icon: 'warning',
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (!res?.isConfirmed) return;
+
+    // Remove from savedSlides
+    const nextSaved = savedSlides.filter((s) => s.id !== slideToDelete.id);
+    setSavedSlides(nextSaved);
+
+    // If it's also open in active tabs, remove it
+    if (slides.some((s) => s.id === slideToDelete.id)) {
+      const nextOpen = slides.filter((s) => s.id !== slideToDelete.id);
+      if (nextOpen.length > 0) {
+        setSlides(nextOpen);
+        setActiveSlideIndex((prev) =>
+          prev >= nextOpen.length ? nextOpen.length - 1 : prev
+        );
+      } else {
+        // If it was the only open tab, open the first remaining saved slide
+        setSlides([nextSaved[0]]);
+        setActiveSlideIndex(0);
+      }
+    }
+
+    showToast(`Deleted "${slideToDelete.title}" from list!`, 'success');
+  };
+
   // Save current slide feedback
   const handleSaveCurrentSlide = () => {
     showToast(`Saved "${currentSlide.title}" successfully!`, 'success');
@@ -1171,8 +1211,7 @@ ${withHtmlRows}
               </CardTitle>
             </div>
             <span className="text-[11px] text-muted-foreground">
-              Slides are never lost. Click any slide name to open it in your
-              tabs.
+              Click any slide to open in tabs, or delete it from the list.
             </span>
           </CardHeader>
           <CardContent className="p-3">
@@ -1182,27 +1221,49 @@ ${withHtmlRows}
                   (active) => active.id === s.id
                 );
                 return (
-                  <button
+                  <div
                     key={s.id}
-                    type="button"
-                    onClick={() => handleRestoreOrSelectSlide(s)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all cursor-pointer shadow-2xs ${
+                    className={`group/item rounded-xl text-xs font-bold flex items-center border transition-all shadow-2xs overflow-hidden ${
                       isOpenInTabs
                         ? 'bg-card border-border hover:border-primary/50 text-foreground'
                         : 'bg-primary/5 border-dashed border-primary/40 text-primary hover:bg-primary/10 hover:border-primary'
                     }`}
                   >
-                    <span>{s.title}</span>
-                    <span
-                      className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-mono font-bold ${
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreOrSelectSlide(s)}
+                      className="px-3 py-1.5 flex items-center gap-2 cursor-pointer select-none text-left"
+                      title={
                         isOpenInTabs
-                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                          : 'bg-primary/20 text-primary'
-                      }`}
+                          ? `Switch to "${s.title}"`
+                          : `Re-open "${s.title}" in tabs`
+                      }
                     >
-                      {isOpenInTabs ? 'In Tabs' : '+ Re-open'}
-                    </span>
-                  </button>
+                      <span className="truncate max-w-[140px] sm:max-w-[200px]">
+                        {s.title}
+                      </span>
+                      <span
+                        className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-mono font-bold shrink-0 ${
+                          isOpenInTabs
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-primary/20 text-primary'
+                        }`}
+                      >
+                        {isOpenInTabs ? 'In Tabs' : '+ Re-open'}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      title={`Delete "${s.title}" from list`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSlideFromList(s);
+                      }}
+                      className="px-2 py-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-l border-border/40 shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
