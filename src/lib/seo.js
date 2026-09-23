@@ -15,6 +15,16 @@ export const toolMetadata = {
     canonical: '/tools/ai-course-creator',
     ogImage: '/og-web-content.png',
   },
+  'slide-generator': {
+    title:
+      'Slide Generator - Dynamic Presentation Slide Builder | All Useful Tools',
+    description:
+      'Create stunning Before vs With AI and Challenge slides with custom text, 4 or 5 points, unique animations, and zero-comment clean HTML.',
+    keywords:
+      'slide generator, html slides, presentation slide creator, before vs with ai, course slides',
+    canonical: '/tools/slide-generator',
+    ogImage: '/og-web-content.png',
+  },
   'web-content': {
     title:
       'Web Content Generator - Extract Structured Web Content from Documents | All Useful Tools',
@@ -260,6 +270,7 @@ export const toolIdToSlug = {
   'watermark-remover': 'watermark-remover',
   'bg-remover': 'bg-remover',
   'pdf-editor': 'pdf-editor',
+  'slide-generator': 'slide-generator',
 };
 
 // Reverse mapping
@@ -269,6 +280,35 @@ export const slugToToolId = Object.fromEntries(
 
 // Tool display information
 export const toolInfo = {
+  'slide-generator': {
+    name: 'Slide Generator',
+    icon: '📽️',
+    description:
+      'Dynamic presentation slide generator with live interactive preview, customizable points, and zero-comment clean HTML.',
+    category: 'Course & Content Creation',
+    detailedDescription:
+      'The Slide Generator is an intuitive authoring tool designed to generate clean, responsive presentation slides for courses, webinars, and LMS modules. It natively supports Before vs With AI comparison cards with per-item animations and 4 to 5 configurable points, as well as Challenge & AI Solution slides.',
+    benefits: [
+      'Zero-Comment Clean HTML: Get pure, directly embeddable HTML without junk comments',
+      'Dynamic 4 or 5 Points: Toggle points with 1-click and unique 5th icon animations',
+      'Live Visual Preview: Hover and test transitions in real time',
+      'Quick Bulk-Paste: Auto-distribute copied bullet lines directly into points',
+    ],
+    howToUse:
+      '1. Choose Slide Type (Before vs With AI or Challenge & Help).\n2. Input or bulk-paste your points.\n3. Preview the animations live.\n4. Click Copy Code for pristine, zero-comment HTML.',
+    useCases: [
+      {
+        title: 'LMS Course Slide Creation',
+        description:
+          'Quickly construct responsive comparison and solution slides.',
+      },
+      {
+        title: 'Presentation & Pitch Decks',
+        description:
+          'Produce high-converting before/after feature value propositions.',
+      },
+    ],
+  },
   'ai-course-creator': {
     name: 'AI Course Creator (PRO)',
     icon: '✨',

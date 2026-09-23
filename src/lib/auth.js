@@ -9,6 +9,8 @@ export const ROLES = {
     'courses',
     'lesson-quiz-builder',
     'web-content',
+    'slide-generator',
+    'slide',
   ],
   blog_creator: ['blog', 'blog-generator'],
   content_creator: [
@@ -22,6 +24,8 @@ export const ROLES = {
     'resource-generator',
     'document-extractor',
     'lesson-quiz-builder',
+    'slide-generator',
+    'slide',
   ],
   user: [],
 };
@@ -33,6 +37,7 @@ export const NAV_ITEMS = [
     label: 'AI Course Creator (PRO)',
     icon: 'Sparkles',
   },
+  { id: 'slide-generator', label: 'Slide Generator', icon: 'Presentation' },
   { id: 'web-content', label: 'Web Content Generator', icon: 'GraduationCap' },
   { id: 'blog-generator', label: 'Blog Generator', icon: 'PenTool' },
   { id: 'glossary-generator', label: 'Glossary Generator', icon: 'BookOpen' },
@@ -189,6 +194,8 @@ export function hasAccess(user, featureId, toolSettings = null) {
     'bg-remover',
     'pdf-editor',
     'chat',
+    'slide-generator',
+    'slide',
   ];
 
   if (defaultFreeTools.includes(featureId) || defaultFreeTools.includes(slug)) {

@@ -37,6 +37,7 @@ import {
   Globe,
   DatabaseZap,
   Mail,
+  Presentation,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +64,7 @@ const navGroups = [
       { id: 'resources', label: 'Resources', icon: FileSpreadsheet },
       { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
       { id: 'lesson-quiz-builder', label: 'Lesson Quiz', icon: Target },
+      { id: 'slide-generator', label: 'Slide', icon: Presentation },
     ],
   },
   {

@@ -123,6 +123,14 @@ const AICourseCreatorGenerator = nextDynamic(
   { ssr: false }
 );
 
+const SlideGenerator = nextDynamic(
+  () =>
+    import('@/components/generators/slide-generator').then(
+      (m) => m.default || m.SlideGenerator
+    ),
+  { ssr: false }
+);
+
 // Map slugs to components
 const toolComponents = {
   'ai-course-creator': AICourseCreatorGenerator,
@@ -146,6 +154,7 @@ const toolComponents = {
   'watermark-remover': WatermarkRemover,
   'bg-remover': BgRemover,
   'pdf-editor': PDFEditor,
+  'slide-generator': SlideGenerator,
 };
 
 export function ToolPageClient({ toolSlug }) {

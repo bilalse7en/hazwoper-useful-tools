@@ -55,6 +55,10 @@ export default function ToolsLayout({ children }) {
               router.push('/admin');
               return;
             }
+            if (tab === 'slide-generator' || tab === 'slide') {
+              router.push('/tools/slide-generator');
+              return;
+            }
             const nextSlug = Object.entries(slugToToolId).find(
               ([s, id]) => id === tab
             )?.[0];

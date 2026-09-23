@@ -16,3 +16,4 @@ export { YouTubeDownloader } from './youtube-downloader';
 export { WatermarkRemover } from './watermark-remover';
 export { BgRemover } from './bg-remover';
 export { PDFEditor } from './pdf-editor';
+export { SlideGenerator } from './slide-generator';
