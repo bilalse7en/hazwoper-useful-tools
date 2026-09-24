@@ -56,7 +56,7 @@ export default async function ToolPage({ params }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
         />
       )}
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="w-full min-w-0 px-2 sm:px-3 md:px-4 py-4 sm:py-6 transition-all duration-300">
         <AdPlacement type="top-banner" className="mb-6" />
         <ToolPageClient toolSlug={toolSlug} />
         <AdPlacement type="in-content" className="my-8" />

@@ -44,7 +44,7 @@ export default function ToolsLayout({ children }) {
   const isDetailsPage = pathname.endsWith('/details');
 
   return (
-    <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px)] relative">
+    <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px)] relative transition-all duration-300">
       {/* Sidebar - Hidden on details pages */}
       {!isDetailsPage && (
         <AppSidebar
@@ -69,17 +69,17 @@ export default function ToolsLayout({ children }) {
           onThemeToggle={() => setThemeDialogOpen(true)}
           user={user}
           onLogout={handleLogout}
-          className="hidden lg:block h-full relative z-30"
+          className="hidden lg:block h-full relative z-30 transition-all duration-300"
         />
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
+      <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden transition-all duration-300">
         <ScrollArea className="h-full w-full">
-          <div className="min-h-full flex flex-col">
-            <div className="flex-1">{children}</div>
+          <div className="min-h-full w-full max-w-full min-w-0 flex flex-col">
+            <div className="flex-1 w-full max-w-full min-w-0">{children}</div>
             {/* Internal Footer for Tools Dashboard */}
-            <div className="mt-auto">
+            <div className="mt-auto w-full">
               <Footer overrideShow={true} />
             </div>
           </div>

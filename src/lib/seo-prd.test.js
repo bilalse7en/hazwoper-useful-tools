@@ -59,12 +59,12 @@ describe('Page Metadata Factory (PRD Standardized Metadata)', () => {
   });
 });
 
-describe('PRD Editorial Completeness: 100% of all 21 Interactive Tools', () => {
+describe('PRD Editorial Completeness: 100% of all 22 Interactive Tools', () => {
   const allToolSlugs = Object.keys(slugToToolId);
 
-  it('has exactly 21 tools mapped in slugToToolId and toolIdToSlug', () => {
-    expect(allToolSlugs.length).toBe(21);
-    expect(Object.keys(toolIdToSlug).length).toBe(21);
+  it('has exactly 22 tools mapped in slugToToolId and toolIdToSlug', () => {
+    expect(allToolSlugs.length).toBe(22);
+    expect(Object.keys(toolIdToSlug).length).toBe(22);
   });
 
   it('provides complete editorial content for every single tool', () => {

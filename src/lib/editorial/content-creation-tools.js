@@ -320,4 +320,65 @@ Result: The output is simply <h2>Safety Rules</h2>. The tool successfully cleane
       },
     ],
   },
+  'slide-generator': {
+    overview: `The Slide Generator is a dynamic, presentation-authoring tool designed for instructional designers, educators, safety instructors, and technical trainers who need to create clean, responsive HTML slide components. Rather than relying on rigid, proprietary presentation software, this tool outputs pristine, self-contained HTML slides that integrate directly into learning management systems (LMS), web-based training modules, documentation portals, and interactive courseware. The tool supports multiple slide architectures, including modern Challenge & Solution cards, 4-to-5-point Before vs With AI comparison decks with unique micro-animations, and dynamic Custom Slide skeletons that automatically extract customizable fields from user-provided HTML templates. With its fast 1-box auto-paste parser, built-in slide vault, and strict zero-comment HTML export, instructors can assemble multi-slide presentation decks in minutes while ensuring uniform visual hierarchy and high performance across mobile and desktop devices.`,
+    stepByStep: `1. Select an existing slide from the deck tabs (such as the Challenge slide or Before vs With AI slide) or click '+ Add Slide' to create a new custom slide.
+2. If adding a new slide, select a starter skeleton (e.g., 3-Card Summary, 3-Step Process, 2-Column Highlights) or paste your own custom HTML skeleton into the code box. The tool will automatically detect customizable headings, points, and images.
+3. Use the 1-box 'Quick Text to Generate' area to paste your raw content or bullet points. The intelligent parser immediately distributes the text into the appropriate fields and applies theme-accented styling.
+4. Toggle 'Customize' ON if you want to fine-tune individual labels, titles, point counts (4 vs 5 points with 3D pop), or custom HTML markup.
+5. Switch between 'Live Preview' and 'Clean Code' in the unified output panel to inspect interactive hover animations and copy the zero-comment HTML code directly to your clipboard.
+
+Common Errors to Avoid:
+- Malformed HTML Skeletons: When providing a custom skeleton, ensure tags are properly closed so the automated DOM parser can accurately identify heading and paragraph nodes.
+- Ignoring Responsive Breakpoints: Avoid hardcoding fixed pixel widths in custom code; rely on responsive Tailwind utility classes (e.g., w-full, max-w-7xl, sm:grid-cols-2) to ensure flawless mobile presentation.
+- Overwriting Slide Library: Slides closed from active tabs remain safe in your 'All Slides List' vault. Only delete slides using the trash icon when you wish to permanently remove them.`,
+    methodology: `The Slide Generator operates on a component-driven DOM parsing and string transformation pipeline. When a slide skeleton is ingested, the engine employs the standard browser Document Object Model (DOMParser) API combined with regular expression tokenization to scan for explicit template variables (such as {{title}}, {{point_1}}) or semantic HTML element nodes (<h1-h4>, <p>, <li>, <img>).
+
+To measure the efficiency and clean-code density of the generated presentation markup, we evaluate the clean semantic ratio:
+
+- name: Clean Semantic Ratio (CSR)
+- expression: CSR = (N_semantic_bytes / N_total_bytes) * 100
+- explanation: Where N_semantic_bytes represents the size of functional semantic markup without extraneous HTML comments, and N_total_bytes is the total markup size before comment stripping.
+
+During code generation, the tool processes each point through an automated lexical highlighter: for 'With AI' points, the first bold word is dynamically styled with the exact hexadecimal theme color matching the item's custom SVG icon background. Furthermore, a strict regular expression sanitizer removes all development comments (<!-- ... -->) before code export, ensuring that third-party LMS platforms receive lean, production-ready markup without bloating web page payloads or introducing styling collisions.`,
+    examples: `Example 1: Generating a Before vs With AI Comparison Slide.
+Input: A 4-point bulleted list detailing manual compliance tracking versus automated workflow orchestration.
+Process: The user pastes the lines into the 1-box Quick Text area. The heuristic parser segments the points into 4 'Before AI' rows and 4 'With AI' rows, mapping the first bold word of each 'With AI' point to its designated icon accent color (#30b6e5, #24abb3, #19aa9f, #2ebe78).
+Result: A responsive two-column presentation card with smooth interactive hover states, expandable progress indicators, and clean zero-comment HTML ready for course embedding in under 3 seconds.
+
+Example 2: Creating a Challenge & AI Solution Slide.
+Input: A scenario description explaining that customer inventory confirmation emails are delayed, paired with an AI draft-generation solution.
+Process: The user inputs the scenario into the Challenge slide. The generator encapsulates the content into dual gradient-bordered cards with specialized SVG iconography and an optional employee oversight verification banner.
+Result: A high-contrast, professional slide that clearly visualizes the organizational problem alongside the technological remedy with smooth fadeIn animations.
+
+Example 3: Adding a Custom 3-Card Takeaway Slide via Skeleton.
+Input: An HTML skeleton representing a 3-card key takeaway layout with custom icons and summary badges.
+Process: The user clicks '+ Add Slide', chooses the 3-Card Summary starter template, and pastes 4 lines (1 headline and 3 takeaway points) into the Quick Text box.
+Result: The generator detects 4 customizable fields, maps the text into the respective card headings and descriptions, and generates a self-contained HTML slide component ready for deployment.`,
+    additionalFaq: [
+      {
+        question:
+          'Can I add multiple custom slides with different HTML structures to the same deck?',
+        answer:
+          'Yes. The Slide Generator supports adding unlimited slides to your deck. Each custom slide can have its own independent HTML skeleton, auto-detected customization fields, and quick-text mapping.',
+      },
+      {
+        question:
+          'Does the generated HTML rely on external JavaScript libraries to function in an LMS?',
+        answer:
+          'No. The generated slide HTML relies purely on self-contained Tailwind CSS utility classes and inline CSS keyframe animations. It requires zero external JavaScript scripts, ensuring 100% compatibility with Moodle, Canvas, Blackboard, WordPress, and custom learning portals.',
+      },
+      {
+        question: 'What happens when I close a slide tab in the deck?',
+        answer:
+          'Closing a slide tab removes it from your current active workspace tabs, but it is never permanently deleted. It remains safely stored in your local All Slides List vault, where you can re-open or switch to it at any time with a single click.',
+      },
+      {
+        question:
+          'How does the 1-box Quick Text parser map text to my custom slide fields?',
+        answer:
+          'The parser reads your text line by line. The first line is automatically assigned to the primary heading or title field, while subsequent lines are distributed in order across the detected paragraph, list, or card content fields.',
+      },
+    ],
+  },
 };

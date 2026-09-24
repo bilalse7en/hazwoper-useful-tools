@@ -288,8 +288,24 @@ export function AppSidebar({
                           onMouseEnter={(e) => {
                             const rect =
                               e.currentTarget.getBoundingClientRect();
+                            const dropdownWidth = 190;
+                            const safeLeft =
+                              typeof window !== 'undefined' &&
+                              rect.right + dropdownWidth > window.innerWidth
+                                ? Math.max(
+                                    8,
+                                    window.innerWidth - dropdownWidth - 8
+                                  )
+                                : rect.right;
+                            const safeTop =
+                              typeof window !== 'undefined'
+                                ? Math.max(
+                                    8,
+                                    Math.min(rect.top, window.innerHeight - 240)
+                                  )
+                                : rect.top;
+                            setHoverCoords({ top: safeTop, left: safeLeft });
                             setHoveredParent(item.id);
-                            setHoverCoords({ top: rect.top, left: rect.right });
                           }}
                           onMouseLeave={() => {
                             setHoveredParent(null);
@@ -297,12 +313,43 @@ export function AppSidebar({
                         >
                           <Button
                             variant="ghost"
+                            onClick={(e) => {
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              const dropdownWidth = 190;
+                              const safeLeft =
+                                typeof window !== 'undefined' &&
+                                rect.right + dropdownWidth > window.innerWidth
+                                  ? Math.max(
+                                      8,
+                                      window.innerWidth - dropdownWidth - 8
+                                    )
+                                  : rect.right;
+                              const safeTop =
+                                typeof window !== 'undefined'
+                                  ? Math.max(
+                                      8,
+                                      Math.min(
+                                        rect.top,
+                                        window.innerHeight - 240
+                                      )
+                                    )
+                                  : rect.top;
+                              setHoverCoords({ top: safeTop, left: safeLeft });
+                              setHoveredParent((prev) =>
+                                prev === item.id ? null : item.id
+                              );
+                            }}
                             className={cn(
                               'w-full justify-start gap-3 transition-all duration-200 relative overflow-hidden group cursor-pointer',
                               collapsed && 'justify-center px-2',
                               isAnySubActive &&
                                 'bg-primary/10 text-primary font-semibold shadow-sm',
                               !isAnySubActive &&
+                                isHovered &&
+                                'bg-accent/60 text-foreground',
+                              !isAnySubActive &&
+                                !isHovered &&
                                 'hover:bg-accent/50 hover:translate-x-1'
                             )}
                           >
@@ -318,26 +365,38 @@ export function AppSidebar({
                             />
                             {!collapsed && (
                               <>
-                                <span className="truncate">{item.label}</span>
-                                <ChevronRight className="ml-auto h-3 w-3 text-muted-foreground" />
+                                <span className="truncate flex-1 text-left">
+                                  {item.label}
+                                </span>
+                                <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                                  {isAnySubActive && (
+                                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
+                                  )}
+                                  <ChevronRight
+                                    className={cn(
+                                      'h-3.5 w-3.5 text-muted-foreground transition-transform duration-200',
+                                      isHovered && 'rotate-90 text-primary'
+                                    )}
+                                  />
+                                </div>
                               </>
-                            )}
-                            {isAnySubActive && !collapsed && (
-                              <div className="absolute animate-pulse bg-primary h-2 ml-auto right- rounded-full w-2"></div>
                             )}
                           </Button>
 
                           {/* Hover Dropdown */}
                           {isHovered && (
                             <div
-                              className="fixed z-50 bg-popover border border-border rounded-lg shadow-xl py-1 min-w-[180px] animate-in fade-in-0 skew-y-0 duration-150"
+                              className="fixed z-50 bg-popover border border-border rounded-xl shadow-xl py-1.5 min-w-[190px] animate-in fade-in-0 duration-150 before:absolute before:-left-3 before:top-0 before:bottom-0 before:w-3 before:content-['']"
                               style={{
                                 top: `${hoverCoords.top}px`,
-                                left: `${hoverCoords.left + 2}px`,
+                                left: `${hoverCoords.left}px`,
                               }}
                             >
-                              <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground border-b border-border/50">
-                                {item.label} Tools
+                              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/50 flex items-center justify-between">
+                                <span>{item.label} Tools</span>
+                                {isAnySubActive && (
+                                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                                )}
                               </div>
                               {item.subItems.map((sub) => {
                                 const SubIcon = sub.icon;
@@ -350,18 +409,18 @@ export function AppSidebar({
                                       setHoveredParent(null);
                                     }}
                                     className={cn(
-                                      'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors cursor-pointer',
+                                      'w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors cursor-pointer text-left',
                                       isSubActive
                                         ? 'bg-primary/10 text-primary font-semibold'
                                         : 'hover:bg-accent/60 text-foreground'
                                     )}
                                   >
                                     <SubIcon className="h-4 w-4 shrink-0" />
-                                    <span className="truncate text-xs">
+                                    <span className="truncate text-xs flex-1">
                                       {sub.label}
                                     </span>
                                     {isSubActive && (
-                                      <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary"></div>
+                                      <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
                                     )}
                                   </button>
                                 );
@@ -405,10 +464,14 @@ export function AppSidebar({
                           )}
                         />
                         {!collapsed && (
-                          <span className="truncate">{item.label}</span>
-                        )}
-                        {isActive && !collapsed && (
-                          <div className="absolute animate-pulse bg-primary h-2 ml-auto right- rounded-full w-2"></div>
+                          <>
+                            <span className="truncate flex-1 text-left">
+                              {item.label}
+                            </span>
+                            {isActive && (
+                              <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
+                            )}
+                          </>
                         )}
                       </Button>
                     );
