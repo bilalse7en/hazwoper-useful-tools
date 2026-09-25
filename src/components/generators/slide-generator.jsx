@@ -35,6 +35,7 @@ import {
   Layers,
   Trash2,
   Lock,
+  History,
 } from 'lucide-react';
 import { showToast, showConfirm } from '@/lib/swal';
 import { supabase } from '@/lib/supabase';
@@ -723,6 +724,280 @@ function renderCustomSkeletonHtml(skeletonHtml, fields) {
   return stripHtmlComments(output);
 }
 
+// Render Before vs With/After AI skeleton HTML dynamically, preserving all custom styles, classes, and structure
+function renderBeforeAfterSkeletonHtml(skeletonHtml, slide) {
+  if (!skeletonHtml) return '';
+  if (typeof window === 'undefined') {
+    return stripHtmlComments(skeletonHtml);
+  }
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(skeletonHtml, 'text/html');
+
+    // 1. Column Headings (h2, h3)
+    const headings = Array.from(doc.body.querySelectorAll('h2, h3'));
+    if (headings.length >= 2) {
+      if (slide.beforeTitle) {
+        headings[0].textContent = slide.beforeTitle;
+      }
+      if (slide.withTitle) {
+        headings[1].textContent = slide.withTitle;
+      }
+    } else if (headings.length === 1 && slide.beforeTitle) {
+      headings[0].textContent = slide.beforeTitle;
+    }
+
+    // 2. Locate Columns (col1: Before, col2: With/After)
+    let col1 = null;
+    let col2 = null;
+
+    const grid = doc.body.querySelector('.grid, .flex-wrap');
+    if (grid && grid.children.length >= 2) {
+      col1 = grid.children[0];
+      col2 = grid.children[1];
+    } else if (headings.length >= 2) {
+      let p1 = headings[0];
+      let p2 = headings[1];
+      while (p1 && p2 && p1.parentElement !== p2.parentElement) {
+        if (p1.parentElement) p1 = p1.parentElement;
+        if (p2.parentElement) p2 = p2.parentElement;
+      }
+      if (p1 && p2 && p1.parentElement === p2.parentElement) {
+        col1 = p1;
+        col2 = p2;
+      }
+    }
+
+    // Helper to find the card container in a column
+    const findCardContainer = (col) => {
+      if (!col) return null;
+      // Look for a flex-col container containing point items with paragraphs
+      const flexCols = Array.from(
+        col.querySelectorAll('.flex.flex-col, [class*="flex-col"]')
+      );
+      for (const fc of flexCols) {
+        if (fc.children.length >= 3 && fc.querySelector('p')) {
+          return fc;
+        }
+      }
+      // Fallback: look for parent container of paragraphs
+      const ps = Array.from(col.querySelectorAll('p'));
+      if (ps.length >= 2) {
+        let parent = ps[0].parentElement;
+        while (parent && parent !== col) {
+          if (parent.children.length >= 3) return parent;
+          parent = parent.parentElement;
+        }
+      }
+      return null;
+    };
+
+    const container1 = findCardContainer(col1);
+    const container2 = findCardContainer(col2);
+
+    const count = slide.pointCount === 4 ? 4 : 5;
+
+    // Helper to process column 1 (Before)
+    if (container1) {
+      const cards1 = Array.from(container1.children);
+      // Adjust count (4 vs 5)
+      if (count === 4 && cards1.length > 4) {
+        for (let i = 4; i < cards1.length; i++) {
+          cards1[i].remove();
+        }
+      } else if (count === 5 && cards1.length === 4) {
+        const defDoc = parser.parseFromString(
+          DEFAULT_BEFORE_AFTER_SKELETON,
+          'text/html'
+        );
+        const defCols = defDoc.body.querySelectorAll('.flex.flex-col');
+        if (defCols[0] && defCols[0].children[4]) {
+          container1.appendChild(defCols[0].children[4].cloneNode(true));
+        } else {
+          const cloned = cards1[3].cloneNode(true);
+          const img = cloned.querySelector('img');
+          if (img) {
+            img.src = BEFORE_ICONS[4] || BEFORE_ICONS[0];
+            img.setAttribute('alt', '');
+          }
+          container1.appendChild(cloned);
+        }
+      }
+
+      // Update text in each card
+      const currentCards1 = Array.from(container1.children);
+      for (let i = 0; i < count; i++) {
+        if (currentCards1[i] && slide.beforePoints?.[i] !== undefined) {
+          const p = currentCards1[i].querySelector('p');
+          if (p) {
+            p.textContent = slide.beforePoints[i];
+          }
+        }
+      }
+    } else if (col1) {
+      // Fallback if no container wrapper found
+      const ps1 = Array.from(col1.querySelectorAll('p'));
+      for (let i = 0; i < Math.min(ps1.length, count); i++) {
+        if (slide.beforePoints?.[i] !== undefined) {
+          ps1[i].textContent = slide.beforePoints[i];
+        }
+      }
+    }
+
+    // Helper to process column 2 (With / After)
+    if (container2) {
+      const cards2 = Array.from(container2.children);
+      // Adjust count (4 vs 5)
+      if (count === 4 && cards2.length > 4) {
+        for (let i = 4; i < cards2.length; i++) {
+          cards2[i].remove();
+        }
+      } else if (count === 5 && cards2.length === 4) {
+        const defDoc = parser.parseFromString(
+          DEFAULT_BEFORE_AFTER_SKELETON,
+          'text/html'
+        );
+        const defCols = defDoc.body.querySelectorAll('.flex.flex-col');
+        if (defCols[1] && defCols[1].children[4]) {
+          container2.appendChild(defCols[1].children[4].cloneNode(true));
+        } else {
+          const cloned = cards2[3].cloneNode(true);
+          const img = cloned.querySelector('img');
+          if (img) {
+            img.src = WITH_AI_CONFIGS[4].iconUrl;
+            img.setAttribute('alt', '');
+          }
+          container2.appendChild(cloned);
+        }
+      }
+
+      // Update text in each card with highlighted first word
+      const currentCards2 = Array.from(container2.children);
+      for (let i = 0; i < count; i++) {
+        if (currentCards2[i] && slide.withPoints?.[i] !== undefined) {
+          const p = currentCards2[i].querySelector('p');
+          if (p) {
+            const rawText = slide.withPoints[i];
+            const existingSpan = p.querySelector('span');
+            let color =
+              WITH_AI_CONFIGS[i % WITH_AI_CONFIGS.length]?.color || '#10b981';
+            if (existingSpan) {
+              const match = existingSpan.className.match(/text-\[([^\]]+)\]/);
+              if (match) color = match[1];
+            }
+            p.innerHTML = formatFirstWordHtml(rawText, color);
+          }
+        }
+      }
+    } else if (col2) {
+      // Fallback if no container wrapper found
+      const ps2 = Array.from(col2.querySelectorAll('p'));
+      for (let i = 0; i < Math.min(ps2.length, count); i++) {
+        if (slide.withPoints?.[i] !== undefined) {
+          const color =
+            WITH_AI_CONFIGS[i % WITH_AI_CONFIGS.length]?.color || '#10b981';
+          ps2[i].innerHTML = formatFirstWordHtml(slide.withPoints[i], color);
+        }
+      }
+    }
+
+    return stripHtmlComments(doc.body.innerHTML);
+  } catch (err) {
+    console.error('Error rendering before/after skeleton:', err);
+    return stripHtmlComments(skeletonHtml);
+  }
+}
+
+// Render Challenge & AI Help skeleton HTML dynamically, preserving all custom styles, classes, and structure
+function renderChallengeSkeletonHtml(skeletonHtml, slide) {
+  if (!skeletonHtml) return '';
+  if (typeof window === 'undefined') {
+    return stripHtmlComments(skeletonHtml);
+  }
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(skeletonHtml, 'text/html');
+
+    // 1. Headings for Challenge and AI Help
+    const headings = Array.from(doc.body.querySelectorAll('h3, h2'));
+    if (headings.length >= 2) {
+      if (slide.challengeTitle) {
+        headings[0].textContent = slide.challengeTitle;
+      }
+      if (slide.aiHelpTitle) {
+        headings[1].textContent = slide.aiHelpTitle;
+      }
+    } else if (headings.length === 1 && slide.challengeTitle) {
+      headings[0].textContent = slide.challengeTitle;
+    }
+
+    // 2. Paragraphs for Challenge text, AI Help text, and bottom disclaimer
+    const paragraphs = Array.from(doc.body.querySelectorAll('p'));
+    if (paragraphs.length >= 2) {
+      if (slide.challengeText !== undefined) {
+        paragraphs[0].textContent = slide.challengeText;
+      }
+      if (slide.aiHelpText !== undefined) {
+        paragraphs[1].textContent = slide.aiHelpText;
+      }
+      if (paragraphs[2] && slide.disclaimer !== undefined) {
+        paragraphs[2].textContent = slide.disclaimer;
+      }
+    }
+
+    // 3. Handle Bottom Note visibility
+    if (paragraphs.length >= 3) {
+      const bottomNoteCard =
+        paragraphs[2].closest(
+          '.group\\/message, [class*="group/message"], .mt-\\[14px\\]'
+        ) || paragraphs[2].parentElement;
+      if (bottomNoteCard) {
+        if (slide.showBottomNote === false) {
+          bottomNoteCard.remove();
+        }
+      }
+    } else if (
+      slide.showBottomNote !== false &&
+      paragraphs.length === 2 &&
+      slide.disclaimer
+    ) {
+      const noteHtml = `<div class="group/message relative z-[2] mt-[14px] overflow-hidden rounded-[19px] border border-[#b9dfd8] bg-gradient-to-br from-[#f5fbff] via-[#f7fcfb] to-[#effbf4] px-[24px] py-[19px] backdrop-blur-[4px] transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-[4px] hover:border-[#78cfc0] hover:from-[#eef9ff] hover:via-[#f5fdf9] hover:to-[#e6faef] hover:shadow-[0_12px_28px_rgba(32,95,153,0.12)] opacity-0 animate-[fadeIn_.6s_ease_forwards] [animation-delay:.3s]">
+    <div class="pointer-events-none absolute -right-[55px] -top-[55px] h-[130px] w-[130px] rounded-full bg-[#68e5ab]/10 blur-[28px] opacity-0 transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover/message:opacity-100 group-hover/message:scale-125"></div>
+    <div class="pointer-events-none absolute -bottom-[60px] -left-[50px] h-[130px] w-[130px] rounded-full bg-[#38b5e4]/10 blur-[30px] opacity-0 transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover/message:opacity-100 group-hover/message:scale-125"></div>
+    <div class="pointer-events-none absolute left-0 top-0 h-[50px] w-[5px] -translate-x-1/2 rounded-b-full bg-gradient-to-r from-[#38b5e4] via-[#68e5ab] to-[#38b5e4] opacity-20 transition-all duration-700 group-hover/message:w-[130px] group-hover/message:opacity-70"></div>
+    <div class="pointer-events-none absolute right-0 top-0 h-[50px] w-[5px] translate-x-1/2 rounded-b-full bg-gradient-to-r from-[#38b5e4] via-[#68e5ab] to-[#38b5e4] opacity-20 transition-all duration-700 group-hover/message:w-[130px] group-hover/message:opacity-70"></div>
+    <p class="relative z-[2] m-0 text-center text-[14px] font-medium leading-[1.7] text-[#40515d] transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover/message:text-[#263f46] min-[1400px]:text-[15px]">
+        ${slide.disclaimer}
+    </p>
+    <div class="pointer-events-none absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-[#68e5ab] to-transparent opacity-0 transition-all duration-700 group-hover/message:w-[45%] group-hover/message:opacity-80"></div>
+</div>`;
+      const tempWrapper = doc.createElement('div');
+      tempWrapper.innerHTML = noteHtml;
+      if (tempWrapper.firstElementChild) {
+        doc.body.appendChild(tempWrapper.firstElementChild);
+      }
+    }
+
+    // 4. Images
+    const images = Array.from(doc.body.querySelectorAll('img'));
+    if (images.length >= 1 && slide.challengeImage) {
+      images[0].setAttribute('src', slide.challengeImage);
+      images[0].setAttribute('alt', '');
+    }
+    if (images.length >= 2 && slide.aiHelpImage) {
+      images[1].setAttribute('src', slide.aiHelpImage);
+      images[1].setAttribute('alt', '');
+    }
+
+    return stripHtmlComments(doc.body.innerHTML);
+  } catch (err) {
+    console.error('Error rendering challenge skeleton:', err);
+    return stripHtmlComments(skeletonHtml);
+  }
+}
+
 const SLIDES_STORAGE_KEY = 'hazwoper_saved_slides_deck_v3';
 
 // Initial default slides in the library matching user's exact skeletons and content
@@ -745,6 +1020,7 @@ const DEFAULT_SAVED_SLIDES = [
     disclaimer:
       'The employee remains responsible for verifying customer-specific details and ensuring that the draft accurately reflects current organizational information.',
     skeletonHtml: DEFAULT_CHALLENGE_SKELETON,
+    skeletonHistory: [],
   },
   {
     id: 'slide-2',
@@ -768,6 +1044,7 @@ const DEFAULT_SAVED_SLIDES = [
       'Seamless real-time inventory tracking and customer notifications',
     ],
     skeletonHtml: DEFAULT_BEFORE_AFTER_SKELETON,
+    skeletonHistory: [],
   },
 ];
 
@@ -812,6 +1089,7 @@ function slideToRow(s, currentUser) {
       beforePoints: s.beforePoints,
       withPoints: s.withPoints,
       fields: s.fields,
+      skeletonHistory: s.skeletonHistory || [],
     },
     created_by: s.created_by || currentUser?.id || null,
     created_by_email: s.created_by_email || currentUser?.email || '',
@@ -873,6 +1151,8 @@ export function SlideGenerator() {
   // Edit Any Slide Skeleton Modal State
   const [editingSkeletonSlide, setEditingSkeletonSlide] = useState(null);
   const [tempSkeletonCode, setTempSkeletonCode] = useState('');
+  const [showModalHistory, setShowModalHistory] = useState(false);
+  const [showCustomizeHistory, setShowCustomizeHistory] = useState(false);
 
   // Master Admin resolution
   const isMasterAdmin = useMemo(() => {
@@ -972,9 +1252,26 @@ export function SlideGenerator() {
   const handleSaveSkeletonModal = async () => {
     if (!editingSkeletonSlide) return;
     const cleaned = stripHtmlComments(tempSkeletonCode);
+    const prevHistory = editingSkeletonSlide.skeletonHistory || [];
+    const newEntry = {
+      timestamp: new Date().toISOString(),
+      code: cleaned,
+      savedBy:
+        user?.name ||
+        user?.full_name ||
+        (user?.email ? user.email.split('@')[0] : '') ||
+        'Creator',
+      note: `Version ${prevHistory.length + 1}`,
+    };
+    const updatedHistory = [
+      newEntry,
+      ...prevHistory.filter((h) => h.code !== cleaned),
+    ].slice(0, 25);
+
     const updatedSlide = {
       ...editingSkeletonSlide,
       skeletonHtml: cleaned,
+      skeletonHistory: updatedHistory,
       isCustomEdited: true,
       created_by: editingSkeletonSlide.created_by || user?.id || null,
       created_by_name:
@@ -995,9 +1292,14 @@ export function SlideGenerator() {
     setSavedSlides((prev) =>
       prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s))
     );
-    // Mark as unsaved until explicitly saved or sync now
-    setUnsavedSlideIds((prev) => new Set(prev).add(updatedSlide.id));
+    // Mark as clean since it's already saved permanently
+    setUnsavedSlideIds((prev) => {
+      const next = new Set(prev);
+      next.delete(updatedSlide.id);
+      return next;
+    });
     setEditingSkeletonSlide(null);
+    setShowModalHistory(false);
 
     // Sync to Supabase in background
     try {
@@ -1007,36 +1309,16 @@ export function SlideGenerator() {
       // ignore
     }
 
-    showToast(`Saved skeleton code for "${updatedSlide.title}"!`, 'success');
+    showToast(
+      `Saved skeleton code for "${updatedSlide.title}" forever!`,
+      'success'
+    );
   };
 
   // Helper to update active slide properties and keep slides state reactive
   const updateActiveSlide = (updates) => {
-    const contentFieldKeys = [
-      'challengeTitle',
-      'challengeText',
-      'challengeImage',
-      'aiHelpTitle',
-      'aiHelpText',
-      'aiHelpImage',
-      'showBottomNote',
-      'disclaimer',
-      'beforeTitle',
-      'withTitle',
-      'pointCount',
-      'beforePoints',
-      'withPoints',
-      'fields',
-    ];
-    const isChangingContentFields = contentFieldKeys.some((k) =>
-      Object.prototype.hasOwnProperty.call(updates, k)
-    );
-
     const updatedSlide = {
       ...currentSlide,
-      ...(isChangingContentFields && updates.isCustomEdited === undefined
-        ? { isCustomEdited: false }
-        : {}),
       ...updates,
     };
 
@@ -1048,8 +1330,13 @@ export function SlideGenerator() {
       return next;
     });
 
-    // Mark current slide as having unsaved changes
-    setUnsavedSlideIds((prev) => new Set(prev).add(updatedSlide.id));
+    // Save slide button ONLY appears when someone changes the skeleton! If not, show "Saved"
+    if (
+      updates.skeletonHtml !== undefined &&
+      updates.skeletonHtml !== currentSlide.skeletonHtml
+    ) {
+      setUnsavedSlideIds((prev) => new Set(prev).add(updatedSlide.id));
+    }
   };
 
   // Open Add Slide Modal
@@ -1265,8 +1552,32 @@ export function SlideGenerator() {
     if (!currentSlide) return;
     setIsSaving(true);
 
+    const prevHistory = currentSlide.skeletonHistory || [];
+    const codeToSave =
+      currentSlide.skeletonHtml || generateSlideHtml(currentSlide);
+    const hasDifferentCode =
+      !prevHistory[0] || prevHistory[0].code !== codeToSave;
+    const updatedHistory = hasDifferentCode
+      ? [
+          {
+            timestamp: new Date().toISOString(),
+            code: codeToSave,
+            savedBy:
+              user?.name ||
+              user?.full_name ||
+              (user?.email ? user.email.split('@')[0] : '') ||
+              'Creator',
+            note: `Version ${prevHistory.length + 1}`,
+          },
+          ...prevHistory.filter((h) => h.code !== codeToSave),
+        ].slice(0, 25)
+      : prevHistory;
+
     const slideToSave = {
       ...currentSlide,
+      skeletonHtml: codeToSave,
+      skeletonHistory: updatedHistory,
+      isCustomEdited: true,
       created_by: currentSlide.created_by || user?.id || null,
       created_by_name:
         currentSlide.created_by_name ||
@@ -1384,7 +1695,7 @@ export function SlideGenerator() {
         }
       });
 
-      updateActiveSlide({ fields: updatedFields, isCustomEdited: false });
+      updateActiveSlide({ fields: updatedFields });
       showToast(
         `Applied quick text to ${lines.length} fields on "${currentSlide.title}"!`,
         'success'
@@ -1415,7 +1726,6 @@ export function SlideGenerator() {
         updateActiveSlide({
           challengeText: challengePart,
           aiHelpText: aiPart,
-          isCustomEdited: false,
           ...(hasNote ? { showBottomNote: true, disclaimer: noteText } : {}),
         });
         showToast('Parsed Challenge and AI Help content perfectly!', 'success');
@@ -1428,7 +1738,6 @@ export function SlideGenerator() {
         updateActiveSlide({
           challengeText: lines.slice(0, mid).join(' '),
           aiHelpText: lines.slice(mid).join(' '),
-          isCustomEdited: false,
         });
         showToast('Distributed content across Challenge & AI Help!', 'info');
       }
@@ -1506,7 +1815,6 @@ export function SlideGenerator() {
         pointCount: targetCount,
         beforePoints: finalBefore,
         withPoints: finalWith,
-        isCustomEdited: false,
       });
 
       showToast(
@@ -1521,180 +1829,33 @@ export function SlideGenerator() {
   const generateSlideHtml = (slide) => {
     if (!slide) return '';
 
-    // If slide has custom skeleton code edited directly by the user in Customize
-    if (slide.isCustomEdited && slide.skeletonHtml) {
-      return stripHtmlComments(slide.skeletonHtml);
+    if (slide.type === 'challenge') {
+      const skel = slide.skeletonHtml || DEFAULT_CHALLENGE_SKELETON;
+      return renderChallengeSkeletonHtml(skel, slide);
+    }
+
+    if (slide.type === 'before-after') {
+      const skel = slide.skeletonHtml || DEFAULT_BEFORE_AFTER_SKELETON;
+      return renderBeforeAfterSkeletonHtml(skel, slide);
     }
 
     if (slide.type === 'custom') {
-      return renderCustomSkeletonHtml(
-        slide.skeletonHtml,
-        slide.fields || extractFieldsFromSkeleton(slide.skeletonHtml || '')
-      );
-    }
-
-    if (slide.type === 'challenge') {
-      const challengeTitle = slide.challengeTitle || 'The Challenge';
-      const challengeText = slide.challengeText || '';
-      const challengeImg =
-        slide.challengeImage ||
-        'https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1789050840/the-challange.webp';
-      const aiHelpTitle = slide.aiHelpTitle || 'How AI Can Help';
-      const aiHelpText = slide.aiHelpText || '';
-      const aiHelpImg =
-        slide.aiHelpImage ||
-        'https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1789050840/how-ai-can-help.webp';
-      const disclaimer =
-        slide.disclaimer ||
-        'The employee remains responsible for verifying customer-specific details and ensuring that the draft accurately reflects current organizational information.';
-      const showBottom = slide.showBottomNote !== false;
-
-      return `<div class="flex flex-wrap gap-[22px] w-full box-border justify-center">
-    <div class="group relative flex-[1_1_520px] min-w-[480px] max-[997px]:min-w-full box-border rounded-[22px] bg-gradient-to-br from-white to-[#e8f4fd] border border-[rgba(32,95,153,0.16)] border-t-[6px] border-t-[#205f99] min-[998px]:border-t-0 min-[998px]:border-l-[6px] min-[998px]:border-l-[#205f99] shadow-[0_10px_28px_rgba(1,51,93,0.10)] overflow-hidden flex flex-col min-[998px]:flex-row transition-[border-color,box-shadow] duration-500 ease-out hover:shadow-[0_15px_36px_rgba(1,51,93,0.14)] opacity-0 animate-[fadeIn_.6s_ease_forwards] [animation-delay:.1s]">
-        <div class="w-full box-border p-[22px_16px] flex items-center justify-center bg-[rgba(32,95,153,0.055)] border-b border-[rgba(32,95,153,0.10)] relative min-[998px]:w-auto min-[998px]:flex-1 min-[998px]:basis-[175px] min-[998px]:min-w-[175px] min-[998px]:border-b-0 min-[998px]:border-r min-[1400px]:basis-[185px] min-[1400px]:min-w-[185px] min-[1500px]:basis-[205px] min-[1500px]:min-w-[205px] min-[1728px]:basis-[230px] min-[1728px]:min-w-[230px] min-[2400px]:basis-[270px] min-[2400px]:min-w-[270px] transition-all duration-500 group-hover:bg-[rgba(32,95,153,0.09)]">
-            <div class="absolute w-[150px] h-[150px] rounded-full left-[-78px] top-1/2 -translate-y-1/10 bg-[rgba(32,95,153,0.055)] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:bg-[rgba(32,95,153,0.10)] min-[998px]:left-auto min-[998px]:right-[-90px] min-[998px]:top-auto min-[998px]:bottom-[-170px] min-[998px]:translate-y-0 min-[998px]:w-[190px] min-[998px]:h-[190px] min-[1400px]:w-[205px] min-[1400px]:h-[205px] min-[1500px]:w-[225px] min-[1500px]:h-[225px] min-[1728px]:w-[250px] min-[1728px]:h-[250px] min-[2400px]:w-[285px] min-[2400px]:h-[285px] min-[1400px]:group-hover:scale-[1.35]"></div>
-            <div class="relative w-[145px] h-[145px] max-w-full shrink-0 rounded-full bg-[rgba(255,255,255,0.82)] flex items-center justify-center shadow-[0_0_0_8px_rgba(32,95,153,0.06),0_10px_22px_rgba(32,95,153,0.12)] z-[2] min-[1400px]:w-[155px] min-[1400px]:h-[155px] min-[1500px]:w-[170px] min-[1500px]:h-[170px] min-[1728px]:w-[190px] min-[1728px]:h-[190px] min-[2400px]:w-[220px] min-[2400px]:h-[220px]">
-                <div class="absolute border-2 border-[#205f99eb] border-dashed duration-[1000ms] ease-out group-hover:rotate-[100deg] group-hover:scale-[1.08] h-[118px] min-[1400px]:h-[126px] min-[1400px]:w-[126px] min-[1500px]:h-[140px] min-[1500px]:w-[140px] min-[1728px]:h-[156px] min-[1728px]:w-[156px] min-[2400px]:h-[180px] min-[2400px]:w-[180px] rounded-full transition-all w-[118px]"></div>
-                <img src="${challengeImg}" alt="" class="max-w-[112px] max-h-[112px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(32,95,153,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(32,95,153,0.42)] min-[1400px]:max-w-[120px] min-[1400px]:max-h-[120px] min-[1500px]:max-w-[132px] min-[1500px]:max-h-[132px] min-[1728px]:max-w-[148px] min-[1728px]:max-h-[148px] min-[2400px]:max-w-[172px] min-[2400px]:max-h-[172px]">
-            </div>
-        </div>
-        <div class="box-border flex flex-col min-[998px]:flex-[2_1_260px] min-[998px]:min-w-[260px] min-[998px]:p-[28px_26px_24px] p-[24px_22px_26px] relative w-full z-[2]">
-            <div class="absolute top-[25px] right-[25px] w-[8px] h-[8px] rounded-full bg-[#205f99] opacity-40 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-[1.6] group-hover:shadow-[0_0_0_5px_rgba(32,95,153,0.10)]"></div>
-            <h3 class="m-0 mb-3 text-[#205f99] font-extrabold text-[21px] leading-[1.25] uppercase tracking-[1.2px] text-center min-[998px]:text-left transition-all duration-500 group-hover:text-[#174f82]">
-                ${challengeTitle}
-            </h3>
-            <p class="leading-[1.65] mb-5 text-[#303d48] text-[15px] transition-colors duration-500 group-hover:text-[#263641]">
-                ${challengeText}
-            </p>
-            <div class="!mx-auto bg-[#205f99] h-1 min-[998px]:mx-0 mt-auto pt-0 rounded-[20px] w-12 transition-all duration-500 ease-out group-hover:w-[70px] group-hover:h-[4px]"></div>
-        </div>
-    </div>
-    <div class="group relative flex-[1_1_520px] min-w-[480px] max-[997px]:min-w-full box-border rounded-[22px] bg-gradient-to-br from-white to-[#e5faec] border border-[rgba(16,185,129,0.16)] border-t-[6px] border-t-[#10b981] min-[998px]:border-t-0 min-[998px]:border-l-[6px] min-[998px]:border-l-[#10b981] shadow-[0_10px_28px_rgba(16,185,129,0.10)] overflow-hidden flex flex-col min-[998px]:flex-row transition-[border-color,box-shadow] duration-500 ease-out hover:shadow-[0_15px_36px_rgba(16,185,129,0.14)] opacity-0 animate-[fadeIn_.6s_ease_forwards] [animation-delay:.2s]">
-        <div class="w-full box-border p-[22px_16px] flex items-center justify-center bg-[rgba(16,185,129,0.055)] border-b border-[rgba(16,185,129,0.10)] relative min-[998px]:w-auto min-[998px]:flex-1 min-[998px]:basis-[175px] min-[998px]:min-w-[175px] min-[998px]:border-b-0 min-[998px]:border-r min-[1400px]:basis-[185px] min-[1400px]:min-w-[185px] min-[1500px]:basis-[205px] min-[1500px]:min-w-[205px] min-[1728px]:basis-[230px] min-[1728px]:min-w-[230px] min-[2400px]:basis-[270px] min-[2400px]:min-w-[270px] transition-all duration-500 group-hover:bg-[rgba(16,185,129,0.09)]">
-            <div class="absolute w-[150px] h-[150px] rounded-full left-[-78px] top-1/2 -translate-y-1/10 bg-[rgba(16,185,129,0.055)] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:bg-[rgba(16,185,129,0.10)] min-[998px]:left-auto min-[998px]:right-[-90px] min-[998px]:top-[-170px] min-[998px]:bottom-auto min-[998px]:translate-y-0 min-[998px]:w-[190px] min-[998px]:h-[190px] min-[1400px]:w-[205px] min-[1400px]:h-[205px] min-[1500px]:w-[225px] min-[1500px]:h-[225px] min-[1728px]:w-[250px] min-[1728px]:h-[250px] min-[2400px]:w-[285px] min-[2400px]:h-[285px] min-[1400px]:group-hover:scale-[1.35]"></div>
-            <div class="relative w-[145px] h-[145px] max-w-full shrink-0 rounded-full bg-[rgba(255,255,255,0.84)] flex items-center justify-center shadow-[0_0_0_8px_rgba(16,185,129,0.06),0_10px_22px_rgba(16,185,129,0.12)] z-[2] min-[1400px]:w-[155px] min-[1400px]:h-[155px] min-[1500px]:w-[170px] min-[1500px]:h-[170px] min-[1728px]:w-[190px] min-[1728px]:h-[190px] min-[2400px]:w-[220px] min-[2400px]:h-[220px]">
-                <div class="absolute border-2 border-[#209967eb] border-dashed duration-[1000ms] ease-out group-hover:rotate-[100deg] group-hover:scale-[1.08] h-[118px] min-[1400px]:h-[126px] min-[1400px]:w-[126px] min-[1500px]:h-[140px] min-[1500px]:w-[140px] min-[1728px]:h-[156px] min-[1728px]:w-[156px] min-[2400px]:h-[180px] min-[2400px]:w-[180px] rounded-full transition-all w-[118px]"></div>
-                <img src="${aiHelpImg}" alt="" class="max-w-[115px] max-h-[108px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(16,185,129,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(16,185,129,0.45)] min-[1400px]:max-w-[123px] min-[1400px]:max-h-[116px] min-[1500px]:max-w-[135px] min-[1500px]:max-h-[128px] min-[1728px]:max-w-[151px] min-[1728px]:max-h-[143px] min-[2400px]:max-w-[176px] min-[2400px]:max-h-[166px]">
-            </div>
-        </div>
-        <div class="box-border flex flex-col min-[998px]:flex-[2_1_260px] min-[998px]:min-w-[260px] min-[998px]:p-[28px_26px_24px] p-[24px_22px_26px] relative w-full z-[2]">
-            <div class="absolute top-[25px] right-[25px] w-[8px] h-[8px] rounded-full bg-[#10b981] opacity-40 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-[1.6] group-hover:shadow-[0_0_0_5px_rgba(16,185,129,0.10)]"></div>
-            <h3 class="m-0 mb-3 text-[#079669] font-extrabold text-[21px] leading-[1.25] uppercase tracking-[1.2px] text-center min-[998px]:text-left transition-all duration-500 group-hover:text-[#087e5a]">
-                ${aiHelpTitle}
-            </h3>
-            <p class="leading-[1.65] mb-5 text-[#303d48] text-[15px] transition-colors duration-500 group-hover:text-[#263641]">
-                ${aiHelpText}
-            </p>
-            <div class="!mx-auto bg-[#10b981] h-1 min-[998px]:mx-0 mt-auto pt-0 rounded-[20px] w-12 transition-all duration-500 ease-out group-hover:w-[70px] group-hover:h-[4px]"></div>
-        </div>
-    </div>
-</div>${
-        showBottom
-          ? `
-<div class="group/message relative z-[2] mt-[14px] overflow-hidden rounded-[19px] border border-[#b9dfd8] bg-gradient-to-br from-[#f5fbff] via-[#f7fcfb] to-[#effbf4] px-[24px] py-[19px] backdrop-blur-[4px] transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] hover:-translate-y-[4px] hover:border-[#78cfc0] hover:from-[#eef9ff] hover:via-[#f5fdf9] hover:to-[#e6faef] hover:shadow-[0_12px_28px_rgba(32,95,153,0.12)] opacity-0 animate-[fadeIn_.6s_ease_forwards] [animation-delay:.3s]">
-    <div class="pointer-events-none absolute -right-[55px] -top-[55px] h-[130px] w-[130px] rounded-full bg-[#68e5ab]/10 blur-[28px] opacity-0 transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover/message:opacity-100 group-hover/message:scale-125"></div>
-    <div class="pointer-events-none absolute -bottom-[60px] -left-[50px] h-[130px] w-[130px] rounded-full bg-[#38b5e4]/10 blur-[30px] opacity-0 transition-all duration-700 ease-[cubic-bezier(.22,1,.36,1)] group-hover/message:opacity-100 group-hover/message:scale-125"></div>
-    <div class="pointer-events-none absolute left-0 top-0 h-[50px] w-[5px] -translate-x-1/2 rounded-b-full bg-gradient-to-r from-[#38b5e4] via-[#68e5ab] to-[#38b5e4] opacity-20 transition-all duration-700 group-hover/message:w-[130px] group-hover/message:opacity-70"></div>
-    <div class="pointer-events-none absolute right-0 top-0 h-[50px] w-[5px] translate-x-1/2 rounded-b-full bg-gradient-to-r from-[#38b5e4] via-[#68e5ab] to-[#38b5e4] opacity-20 transition-all duration-700 group-hover/message:w-[130px] group-hover/message:opacity-70"></div>
-    <p class="relative z-[2] m-0 text-center text-[14px] font-medium leading-[1.7] text-[#40515d] transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] group-hover/message:text-[#263f46] min-[1400px]:text-[15px]">
-        ${disclaimer}
-    </p>
-    <div class="pointer-events-none absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-[#68e5ab] to-transparent opacity-0 transition-all duration-700 group-hover/message:w-[45%] group-hover/message:opacity-80"></div>
-</div>`
-          : ''
-      }`;
-    }
-
-    // Before vs With AI Slide
-    const count = slide.pointCount || 5;
-    const beforeTitle = slide.beforeTitle || 'Before AI';
-    const withTitle = slide.withTitle || 'With AI';
-
-    let beforeHtmlRows = '';
-    for (let i = 0; i < count; i++) {
-      const point = slide.beforePoints?.[i] || '';
-      const iconUrl = BEFORE_ICONS[i % BEFORE_ICONS.length];
-      const is5th = i === 4;
-
-      beforeHtmlRows += `\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 rounded-[18px] p-[1.5px] bg-black/[0.06] backdrop-blur-sm transition-all duration-500 ease-out hover:bg-gradient-to-br hover:from-white/80 hover:via-white/20 hover:to-white/60 hover:-translate-y-1.5 hover:shadow-[0_10px_22px_rgba(0,0,0,0.08)]">
-\t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/90 p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_12px_rgba(0,0,0,0.05)]">
-\t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#999999]"></div>
-\t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#eeeeee] border border-[#dddddd]">
-\t\t\t\t\t\t\t\t<img src="${iconUrl}" ${is5th ? `onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai---4.webp'"` : ''} class="w-[42px] h-[42px] object-contain" alt="">
-\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t<div class="flex-1 min-w-0">
-\t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">${point}</p>
-\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t</div>
-\t\t\t\t\t</div>\n`;
-    }
-
-    let withHtmlRows = '';
-    for (let i = 0; i < count; i++) {
-      const cfg = WITH_AI_CONFIGS[i % WITH_AI_CONFIGS.length];
-      const point = slide.withPoints?.[i] || '';
-      const is5th = i === 4;
-      const formattedText = formatFirstWordHtml(point, cfg.color);
-
-      if (is5th) {
-        withHtmlRows += `\t\t\t\t\t<div class="group/pt relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 rounded-[18px] p-[1.5px] bg-[#d5eee4] backdrop-blur-sm overflow-hidden transition-all duration-500 ease-out hover:bg-gradient-to-br hover:from-white/90 hover:via-[#10b981]/30 hover:to-white/70 hover:-translate-y-2">
-\t\t\t\t\t\t<div class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 ease-out group-hover/pt:opacity-100 bg-gradient-to-br from-white/50 via-transparent to-[#10b981]/20 rounded-[18px]"></div>
-\t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
-\t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#10b981] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_12px_rgba(16,185,129,0.40)]"></div>
-\t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-700 ease-out group-hover/pt:scale-[1.20] group-hover/pt:rotate-[15deg] group-hover/pt:rounded-[22px] group-hover/pt:bg-gradient-to-br group-hover/pt:from-[#10b981] group-hover/pt:via-[#34d399] group-hover/pt:to-white group-hover/pt:border-[#10b981] group-hover/pt:shadow-[0_0_20px_rgba(16,185,129,0.35)]">
-\t\t\t\t\t\t\t\t<img src="${cfg.iconUrl}" onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/With-AI---4.webp'" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-95 group-hover/pt:-rotate-[15deg]" alt="">
-\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t<div class="flex-1 min-w-0">
-\t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">${formattedText}</p>
-\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t</div>
-\t\t\t\t\t</div>\n`;
-      } else {
-        withHtmlRows += `\t\t\t\t\t<div class="group/pt relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 rounded-[18px] p-[1.5px] bg-[#d5eee4] backdrop-blur-sm overflow-hidden transition-all duration-500 ease-out hover:bg-gradient-to-br hover:from-white/90 hover:via-[${cfg.color}]/30 hover:to-white/70 hover:-translate-y-2">
-\t\t\t\t\t\t<div class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 ease-out group-hover/pt:opacity-100 bg-gradient-to-br from-white/50 via-transparent to-[${cfg.color}]/20 rounded-[18px]"></div>
-\t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
-\t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[${cfg.color}] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_10px_rgba(48,182,229,0.35)]"></div>
-\t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-700 ease-out ${cfg.iconBoxAnimation}">
-\t\t\t\t\t\t\t\t<img src="${cfg.iconUrl}" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out ${cfg.iconImgAnimation}" alt="">
-\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t\t<div class="flex-1 min-w-0">
-\t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">${formattedText}</p>
-\t\t\t\t\t\t\t</div>
-\t\t\t\t\t\t</div>
-\t\t\t\t\t</div>\n`;
+      if (slide.skeletonHtml) {
+        return renderCustomSkeletonHtml(
+          slide.skeletonHtml,
+          slide.fields || extractFieldsFromSkeleton(slide.skeletonHtml)
+        );
       }
     }
 
-    return `<div class="w-full box-border my-[25px]">
-\t<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-7 w-full items-stretch">
-\t\t<div class="group relative w-full min-w-0 rounded-[30px] bg-gradient-to-r from-[#777777] via-[#d0d0d0] to-[#777777] p-[2px] transition-all duration-700 ease-out hover:from-[#4d4d4d] hover:via-[#eaeaea] hover:to-[#7a7a7a] hover:shadow-[0_0_24px_rgba(130,130,130,0.28)]">
-\t\t\t<div class="relative w-full h-full min-w-0 overflow-hidden rounded-[28px] bg-gradient-to-br from-[#f1f1f1] via-[#e7e7e7] to-[#d6d6d6] p-5 sm:p-7 lg:p-[30px] box-border">
-\t\t\t\t<div class="absolute bg-gradient-to-r duration-700 ease-out from-[#777777] group-hover:h-[11px] group-hover:shadow-[0_0_14px_rgba(130,130,130,0.35)] h-[7px] left-0 to-[#c8c8c8] top-0 transition-all via-[#a7a7a7] w-full z-30"></div>
-\t\t\t\t<div class="absolute -top-20 -right-20 w-[190px] h-[190px] rounded-full bg-white/40 backdrop-blur-sm transition-all duration-700 ease-out group-hover:scale-[1.5] group-hover:bg-white/60 group-hover:translate-x-2 group-hover:-translate-y-2 pointer-events-none"></div>
-\t\t\t\t<div class="absolute -bottom-[90px] -left-[90px] w-[180px] h-[180px] rounded-full bg-white/25 backdrop-blur-sm transition-all duration-700 ease-out group-hover:scale-[1.4] group-hover:bg-white/45 group-hover:-translate-x-2 group-hover:translate-y-2 pointer-events-none"></div>
-\t\t\t\t<div class="relative z-10 text-center mb-[26px] pt-1">
-\t\t\t\t\t<h2 class="m-0 text-[#222222] text-2xl sm:text-3xl font-bold tracking-tight transition-all duration-500 ease-out group-hover:tracking-wide">${beforeTitle}</h2>
-\t\t\t\t\t<div class="w-[55px] h-1 bg-[#777777] rounded-full mx-auto mt-[10px] mb-[9px] transition-all duration-500 ease-out group-hover:w-20 group-hover:bg-[#555555]"></div>
-\t\t\t\t</div>
-\t\t\t\t<div class="relative z-10 flex flex-col gap-[13px]">
-${beforeHtmlRows}\t\t\t\t</div>
-\t\t\t</div>
-\t\t</div>
-\t\t<div class="group relative w-full min-w-0 rounded-[30px] bg-gradient-to-r from-[#087443] via-[#30b6e5] to-[#19aa9f] p-[2px] transition-all duration-700 ease-out hover:from-[#30b6e5] hover:via-[#68e5ab] hover:to-[#087443] hover:shadow-[0_0_26px_rgba(48,182,229,0.28)]">
-\t\t\t<div class="relative w-full h-full min-w-0 overflow-hidden rounded-[28px] bg-gradient-to-br from-[#edf9f4] via-[#e4f6ee] to-[#d7eee4] p-5 sm:p-7 lg:p-[30px] box-border">
-\t\t\t\t<div class="absolute bg-gradient-to-r duration-700 ease-out from-[#087443] group-hover:h-[11px] group-hover:shadow-[0_0_16px_rgba(48,182,229,0.35)] h-[7px] left-0 to-[#19aa9f] top-0 transition-all via-[#30b6e5] w-full z-30"></div>
-\t\t\t\t<div class="-right-20 -top-20 absolute backdrop-blur-sm bg-white/35 duration-700 ease-out group-hover:-translate-y-2 group-hover:bg-white/68 group-hover:scale-[1.5] group-hover:translate-x-2 h-[190px] pointer-events-none rounded-full transition-all w-[190px]"></div>
-\t\t\t\t<div class="absolute -bottom-[90px] -left-[90px] w-[180px] h-[180px] rounded-full bg-white/35 backdrop-blur-sm transition-all duration-700 ease-out group-hover:scale-[1.4] group-hover:bg-white/35 group-hover:-translate-x-2 group-hover:translate-y-2 pointer-events-none"></div>
-\t\t\t\t<div class="relative z-10 text-center mb-[26px] pt-1">
-\t\t\t\t\t<h2 class="m-0 bg-gradient-to-r from-[#087443] via-[#30b6e5] to-[#19aa9f] bg-clip-text text-transparent text-2xl sm:text-3xl font-bold tracking-tight transition-all duration-500 ease-out group-hover:tracking-wide">${withTitle}</h2>
-\t\t\t\t\t<div class="w-[55px] h-1 rounded-full bg-gradient-to-r from-[#30b6e5] to-[#087443] mx-auto mt-[10px] mb-[9px] transition-all duration-500 ease-out group-hover:w-20"></div>
-\t\t\t\t</div>
-\t\t\t\t<div class="relative z-10 flex flex-col gap-[13px]">
-${withHtmlRows}\t\t\t\t</div>
-\t\t\t</div>
-\t\t</div>
-\t</div>
-</div>`;
+    if (slide.skeletonHtml) {
+      if (slide.fields && slide.fields.length > 0) {
+        return renderCustomSkeletonHtml(slide.skeletonHtml, slide.fields);
+      }
+      return stripHtmlComments(slide.skeletonHtml);
+    }
+
+    return '';
   };
 
   // Currently generated code for the active slide
@@ -2598,7 +2759,6 @@ ${withHtmlRows}\t\t\t\t</div>
                         updateActiveSlide({
                           skeletonHtml: raw,
                           fields: reExtracted,
-                          isCustomEdited: false,
                         });
                         showToast(
                           `Re-detected ${reExtracted.length} fields from skeleton!`,
@@ -2611,31 +2771,23 @@ ${withHtmlRows}\t\t\t\t</div>
                       <RotateCcw className="w-3 h-3" /> Re-detect Fields
                     </Button>
                   )}
+                  {/* Version History Toggle */}
                   <Button
                     size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      let resetSkel = '';
-                      if (currentSlide.type === 'challenge') {
-                        resetSkel = DEFAULT_CHALLENGE_SKELETON;
-                      } else if (currentSlide.type === 'before-after') {
-                        resetSkel = DEFAULT_BEFORE_AFTER_SKELETON;
-                      } else {
-                        resetSkel = currentSlide.skeletonHtml || '';
-                      }
-                      updateActiveSlide({
-                        skeletonHtml: resetSkel,
-                        isCustomEdited: false,
-                      });
-                      showToast(
-                        `Reset skeleton to default for "${currentSlide.title}"!`,
-                        'info'
-                      );
-                    }}
+                    variant={showCustomizeHistory ? 'default' : 'outline'}
+                    onClick={() =>
+                      setShowCustomizeHistory(!showCustomizeHistory)
+                    }
                     className="h-7 text-xs px-2.5 gap-1 cursor-pointer"
-                    title="Reset to default skeleton template"
+                    title="View and restore previous saved skeleton versions"
                   >
-                    <RotateCcw className="w-3 h-3" /> Reset Skeleton
+                    <History className="w-3 h-3" />
+                    <span>History</span>
+                    {(currentSlide.skeletonHistory?.length || 0) > 0 && (
+                      <span className="ml-0.5 text-[9px] px-1 rounded-full bg-primary/20">
+                        {currentSlide.skeletonHistory.length}
+                      </span>
+                    )}
                   </Button>
                   <Button
                     size="sm"
@@ -2659,16 +2811,50 @@ ${withHtmlRows}\t\t\t\t</div>
                   <Button
                     size="sm"
                     onClick={() => {
-                      if (!currentSlide.isCustomEdited) {
-                        updateActiveSlide({
-                          skeletonHtml: generateSlideHtml(currentSlide),
+                      const codeToSave =
+                        currentSlide.skeletonHtml ||
+                        generateSlideHtml(currentSlide);
+                      const prevHistory = currentSlide.skeletonHistory || [];
+                      const updatedHistory = [
+                        {
+                          timestamp: new Date().toISOString(),
+                          code: codeToSave,
+                          savedBy:
+                            user?.name ||
+                            user?.full_name ||
+                            (user?.email ? user.email.split('@')[0] : '') ||
+                            'Creator',
+                          note: `Version ${prevHistory.length + 1}`,
+                        },
+                        ...prevHistory.filter((h) => h.code !== codeToSave),
+                      ].slice(0, 25);
+
+                      updateActiveSlide({
+                        skeletonHtml: codeToSave,
+                        skeletonHistory: updatedHistory,
+                        isCustomEdited: true,
+                      });
+                      setUnsavedSlideIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(currentSlide.id);
+                        return next;
+                      });
+                      try {
+                        const slideForDb = {
+                          ...currentSlide,
+                          skeletonHtml: codeToSave,
+                          skeletonHistory: updatedHistory,
                           isCustomEdited: true,
-                        });
+                        };
+                        const row = slideToRow(slideForDb, user);
+                        supabase
+                          .from('slides')
+                          .upsert(row, { onConflict: 'id' })
+                          .then(() => {});
+                      } catch {
+                        // ignore
                       }
-                      showToast(
-                        'Slide skeleton saved successfully!',
-                        'success'
-                      );
+                      showToast('Slide skeleton saved forever!', 'success');
                     }}
                     className="h-7 text-xs px-3 bg-emerald-600 hover:bg-emerald-700 text-white gap-1 cursor-pointer shadow-2xs"
                   >
@@ -2676,6 +2862,86 @@ ${withHtmlRows}\t\t\t\t</div>
                   </Button>
                 </div>
               </div>
+
+              {/* Expandable Version History in Customize Panel */}
+              {showCustomizeHistory && (
+                <div className="p-3 rounded-lg border border-primary/20 bg-muted/40 space-y-2 animate-in fade-in-50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <History className="w-3.5 h-3.5 text-primary" /> Saved
+                      Skeleton Version History (
+                      {currentSlide.skeletonHistory?.length || 0})
+                    </span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer"
+                      onClick={() => setShowCustomizeHistory(false)}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Your skeleton changes are permanently saved and will never
+                    be reset. You can review and restore any previous version
+                    below:
+                  </p>
+                  {!currentSlide.skeletonHistory ||
+                  currentSlide.skeletonHistory.length === 0 ? (
+                    <div className="text-xs text-muted-foreground italic py-2">
+                      No previous versions recorded yet. A new version is saved
+                      every time you save your skeleton code.
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                      {currentSlide.skeletonHistory.map((ver, vIdx) => {
+                        const dateStr = ver.timestamp
+                          ? new Date(ver.timestamp).toLocaleString(undefined, {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })
+                          : 'Earlier version';
+                        return (
+                          <div
+                            key={ver.timestamp || vIdx}
+                            className="flex items-center justify-between p-2 rounded-md bg-card border border-border/70 text-xs"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <div className="font-semibold text-foreground truncate">
+                                {ver.note ||
+                                  `Version ${currentSlide.skeletonHistory.length - vIdx}`}
+                                <span className="text-[10px] text-muted-foreground ml-2 font-normal">
+                                  by {ver.savedBy || 'Creator'}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                {dateStr} • {ver.code?.length || 0} chars
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                updateActiveSlide({
+                                  skeletonHtml: ver.code,
+                                  isCustomEdited: true,
+                                });
+                                showToast(
+                                  `Restored skeleton version from ${dateStr}!`,
+                                  'success'
+                                );
+                              }}
+                              className="h-6 text-[11px] px-2 shrink-0 cursor-pointer"
+                            >
+                              Restore
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
               <Textarea
                 rows={10}
                 value={
@@ -2968,23 +3234,18 @@ ${withHtmlRows}\t\t\t\t</div>
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    let defaultSkel = '';
-                    if (editingSkeletonSlide.type === 'challenge') {
-                      defaultSkel = DEFAULT_CHALLENGE_SKELETON;
-                    } else if (editingSkeletonSlide.type === 'before-after') {
-                      defaultSkel = DEFAULT_BEFORE_AFTER_SKELETON;
-                    } else {
-                      defaultSkel = editingSkeletonSlide.skeletonHtml || '';
-                    }
-                    setTempSkeletonCode(defaultSkel);
-                    showToast('Reset code to default template!', 'info');
-                  }}
+                  variant={showModalHistory ? 'default' : 'outline'}
+                  onClick={() => setShowModalHistory(!showModalHistory)}
                   className="h-7 text-xs px-2.5 gap-1 cursor-pointer"
-                  title="Reset to default skeleton template"
+                  title="View and restore previous saved skeleton versions"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" /> Reset Template
+                  <History className="w-3.5 h-3.5" />
+                  <span>Version History</span>
+                  {(editingSkeletonSlide.skeletonHistory?.length || 0) > 0 && (
+                    <span className="ml-0.5 text-[9px] px-1 rounded-full bg-primary/20">
+                      {editingSkeletonSlide.skeletonHistory.length}
+                    </span>
+                  )}
                 </Button>
                 <Button
                   size="sm"
@@ -3000,6 +3261,82 @@ ${withHtmlRows}\t\t\t\t</div>
                 </Button>
               </div>
             </div>
+
+            {/* Version History in Modal */}
+            {showModalHistory && (
+              <div className="p-3 rounded-lg border border-primary/20 bg-muted/40 space-y-2 animate-in fade-in-50">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <History className="w-3.5 h-3.5 text-primary" /> Saved
+                    Skeleton Version History (
+                    {editingSkeletonSlide.skeletonHistory?.length || 0})
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer"
+                    onClick={() => setShowModalHistory(false)}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Changes saved here are preserved forever and will never be
+                  reset. You can review and restore any previous version:
+                </p>
+                {!editingSkeletonSlide.skeletonHistory ||
+                editingSkeletonSlide.skeletonHistory.length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic py-2">
+                    No previous versions recorded yet. A new version is saved
+                    every time you save your skeleton code.
+                  </div>
+                ) : (
+                  <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                    {editingSkeletonSlide.skeletonHistory.map((ver, vIdx) => {
+                      const dateStr = ver.timestamp
+                        ? new Date(ver.timestamp).toLocaleString(undefined, {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })
+                        : 'Earlier version';
+                      return (
+                        <div
+                          key={ver.timestamp || vIdx}
+                          className="flex items-center justify-between p-2 rounded-md bg-card border border-border/70 text-xs"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="font-semibold text-foreground truncate">
+                              {ver.note ||
+                                `Version ${editingSkeletonSlide.skeletonHistory.length - vIdx}`}
+                              <span className="text-[10px] text-muted-foreground ml-2 font-normal">
+                                by {ver.savedBy || 'Creator'}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {dateStr} • {ver.code?.length || 0} chars
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setTempSkeletonCode(ver.code);
+                              showToast(
+                                `Loaded skeleton version from ${dateStr} into editor!`,
+                                'success'
+                              );
+                            }}
+                            className="h-6 text-[11px] px-2 shrink-0 cursor-pointer"
+                          >
+                            Restore
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             <Textarea
               rows={14}
