@@ -56,6 +56,7 @@ const iconMap = {
   'watermark-remover': Wand2,
   'bg-remover': Wand2,
   'pdf-editor': FileText,
+  'html-design-enhancer': Sparkles,
 };
 
 // Free tools that anyone can access (even without login)
@@ -79,6 +80,7 @@ const FREE_TOOL_IDS = [
 // Generator tools that require login + generator access
 const GENERATOR_TOOL_IDS = [
   'ai-course-creator',
+  'html-design-enhancer',
   'course',
   'blog',
   'glossary',

@@ -37,6 +37,11 @@ export const NAV_ITEMS = [
     label: 'AI Course Creator (PRO)',
     icon: 'Sparkles',
   },
+  {
+    id: 'html-design-enhancer',
+    label: 'HTML Design Enhancer (PRO)',
+    icon: 'Sparkles',
+  },
   { id: 'slide-generator', label: 'Slide Generator', icon: 'Presentation' },
   { id: 'web-content', label: 'Web Content Generator', icon: 'GraduationCap' },
   { id: 'blog-generator', label: 'Blog Generator', icon: 'PenTool' },
@@ -272,6 +277,19 @@ export function hasAccess(user, featureId, toolSettings = null) {
       user.role === 'content_creator' ||
       user.role === 'admin' ||
       user.role === 'superadmin'
+    );
+  }
+
+  // 8. HTML Design Enhancer (PRO / Admin & Pro Accounts)
+  const isHtmlEnhancer =
+    featureId === 'html-design-enhancer' || slug === 'html-design-enhancer';
+  if (isHtmlEnhancer) {
+    if (!user) return false;
+    return (
+      user.role === 'admin' ||
+      user.role === 'superadmin' ||
+      user.has_generator_access === true ||
+      user.has_ai_access === true
     );
   }
 

@@ -131,6 +131,14 @@ const SlideGenerator = nextDynamic(
   { ssr: false }
 );
 
+const HtmlDesignEnhancer = nextDynamic(
+  () =>
+    import('@/components/generators/html-design-enhancer').then(
+      (m) => m.default || m.HtmlDesignEnhancer
+    ),
+  { ssr: false }
+);
+
 // Map slugs to components
 const toolComponents = {
   'ai-course-creator': AICourseCreatorGenerator,
@@ -155,6 +163,7 @@ const toolComponents = {
   'bg-remover': BgRemover,
   'pdf-editor': PDFEditor,
   'slide-generator': SlideGenerator,
+  'html-design-enhancer': HtmlDesignEnhancer,
 };
 
 export function ToolPageClient({ toolSlug }) {

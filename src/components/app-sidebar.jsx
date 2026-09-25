@@ -65,6 +65,12 @@ const navGroups = [
       { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
       { id: 'lesson-quiz-builder', label: 'Lesson Quiz', icon: Target },
       { id: 'slide-generator', label: 'Slide', icon: Presentation },
+      {
+        id: 'html-design-enhancer',
+        label: 'HTML Enhancer',
+        icon: Sparkles,
+        badge: 'PRO',
+      },
     ],
   },
   {
@@ -468,6 +474,11 @@ export function AppSidebar({
                             <span className="truncate flex-1 text-left">
                               {item.label}
                             </span>
+                            {item.badge && (
+                              <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs shrink-0">
+                                {item.badge}
+                              </span>
+                            )}
                             {isActive && (
                               <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse shrink-0" />
                             )}

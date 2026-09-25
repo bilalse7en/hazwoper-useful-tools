@@ -25,6 +25,16 @@ export const toolMetadata = {
     canonical: '/tools/slide-generator',
     ogImage: '/og-web-content.png',
   },
+  'html-design-enhancer': {
+    title:
+      'HTML Design Enhancer - 100% Free AI & Tailwind CSS Converter | All Useful Tools',
+    description:
+      'Transform any HTML code by replacing inline style attributes with 100% Tailwind CSS classes. Add unique hover animations, border shifts, and corner faded circles with Free AI.',
+    keywords:
+      'html design enhancer, tailwind css converter, inline style to tailwind, free ai html designer, hover animations, presentation slide enhancer',
+    canonical: '/tools/html-design-enhancer',
+    ogImage: '/og-web-content.png',
+  },
   'web-content': {
     title:
       'Web Content Generator - Extract Structured Web Content from Documents | All Useful Tools',
@@ -271,6 +281,7 @@ export const toolIdToSlug = {
   'bg-remover': 'bg-remover',
   'pdf-editor': 'pdf-editor',
   'slide-generator': 'slide-generator',
+  'html-design-enhancer': 'html-design-enhancer',
 };
 
 // Reverse mapping
@@ -280,6 +291,24 @@ export const slugToToolId = Object.fromEntries(
 
 // Tool display information
 export const toolInfo = {
+  'html-design-enhancer': {
+    name: 'HTML Design Enhancer',
+    icon: '✨',
+    description:
+      '100% Free AI HTML design enhancer that converts all inline style attributes to modern Tailwind CSS and adds dynamic hover animations.',
+    category: 'Design & Code Generation',
+    detailedDescription:
+      'The HTML Design Enhancer is a professional utility that inspects HTML markup, detects any style="..." attributes, and automatically replaces them with 100% equivalent Tailwind CSS classes. When enabled, it dynamically injects interactive hover animations, border movements, and ambient corner faded blur circles without ever adding raw <style> or <script> tags. Admins can finalize and publish templates for all users, and users can inject custom content via Quick Text generation.',
+    benefits: [
+      '100% Style-to-Tailwind Conversion: Eliminates all inline style="..." attributes cleanly',
+      'Zero Style & Script Tags: Guaranteed pristine, embeddable Tailwind markup',
+      'Dynamic Hover Animations & Corner Circles: Interactive border shift and floating corner glows',
+      'Configurable Animation: Option to generate static Tailwind code without hover effects',
+      'Published Admin Templates: Instant Quick Text to Generate into pre-designed community templates',
+    ],
+    howToUse:
+      '1. Paste your HTML or select a published template.\n2. Toggle "Animate on Hover" on or off according to your preference.\n3. Click "Enhance with Free AI" or "Instant Tailwind Convert".\n4. Save permanently or publish for other users.',
+  },
   'slide-generator': {
     name: 'Slide Generator',
     icon: '📽️',
