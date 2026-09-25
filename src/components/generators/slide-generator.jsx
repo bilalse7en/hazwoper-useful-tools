@@ -3203,168 +3203,180 @@ export function SlideGenerator() {
         }}
       >
         <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
-          <DialogHeader className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                <Code2 className="w-5 h-5" />
-              </span>
-              <DialogTitle className="text-lg font-black text-foreground">
-                Edit Skeleton Code &bull; {editingSkeletonSlide?.title}
-              </DialogTitle>
-            </div>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Inspect or modify the raw HTML skeleton code for this slide. Your
-              edits will be saved directly and displayed in both Live Preview
-              and Clean Code export.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">
-                Slide Type:{' '}
-                <strong className="text-foreground uppercase font-mono">
-                  {editingSkeletonSlide?.type === 'challenge'
-                    ? 'Challenge & AI Help'
-                    : editingSkeletonSlide?.type === 'custom'
-                      ? 'Custom Slide'
-                      : 'Before vs With AI'}
-                </strong>
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant={showModalHistory ? 'default' : 'outline'}
-                  onClick={() => setShowModalHistory(!showModalHistory)}
-                  className="h-7 text-xs px-2.5 gap-1 cursor-pointer"
-                  title="View and restore previous saved skeleton versions"
-                >
-                  <History className="w-3.5 h-3.5" />
-                  <span>Version History</span>
-                  {(editingSkeletonSlide.skeletonHistory?.length || 0) > 0 && (
-                    <span className="ml-0.5 text-[9px] px-1 rounded-full bg-primary/20">
-                      {editingSkeletonSlide.skeletonHistory.length}
-                    </span>
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    setTempSkeletonCode(stripHtmlComments(tempSkeletonCode));
-                    showToast('Stripped comments from code!', 'info');
-                  }}
-                  className="h-7 text-xs px-2.5 cursor-pointer"
-                  title="Remove any HTML comments"
-                >
-                  Strip Comments
-                </Button>
-              </div>
-            </div>
-
-            {/* Version History in Modal */}
-            {showModalHistory && (
-              <div className="p-3 rounded-lg border border-primary/20 bg-muted/40 space-y-2 animate-in fade-in-50">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <History className="w-3.5 h-3.5 text-primary" /> Saved
-                    Skeleton Version History (
-                    {editingSkeletonSlide.skeletonHistory?.length || 0})
+          {editingSkeletonSlide && (
+            <>
+              <DialogHeader className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                    <Code2 className="w-5 h-5" />
                   </span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer"
-                    onClick={() => setShowModalHistory(false)}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
+                  <DialogTitle className="text-lg font-black text-foreground">
+                    Edit Skeleton Code &bull; {editingSkeletonSlide.title}
+                  </DialogTitle>
                 </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Changes saved here are preserved forever and will never be
-                  reset. You can review and restore any previous version:
-                </p>
-                {!editingSkeletonSlide.skeletonHistory ||
-                editingSkeletonSlide.skeletonHistory.length === 0 ? (
-                  <div className="text-xs text-muted-foreground italic py-2">
-                    No previous versions recorded yet. A new version is saved
-                    every time you save your skeleton code.
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Inspect or modify the raw HTML skeleton code for this slide.
+                  Your edits will be saved directly and displayed in both Live
+                  Preview and Clean Code export.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Slide Type:{' '}
+                    <strong className="text-foreground uppercase font-mono">
+                      {editingSkeletonSlide.type === 'challenge'
+                        ? 'Challenge & AI Help'
+                        : editingSkeletonSlide.type === 'custom'
+                          ? 'Custom Slide'
+                          : 'Before vs With AI'}
+                    </strong>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant={showModalHistory ? 'default' : 'outline'}
+                      onClick={() => setShowModalHistory(!showModalHistory)}
+                      className="h-7 text-xs px-2.5 gap-1 cursor-pointer"
+                      title="View and restore previous saved skeleton versions"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                      <span>Version History</span>
+                      {(editingSkeletonSlide.skeletonHistory?.length || 0) >
+                        0 && (
+                        <span className="ml-0.5 text-[9px] px-1 rounded-full bg-primary/20">
+                          {editingSkeletonSlide.skeletonHistory.length}
+                        </span>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setTempSkeletonCode(
+                          stripHtmlComments(tempSkeletonCode)
+                        );
+                        showToast('Stripped comments from code!', 'info');
+                      }}
+                      className="h-7 text-xs px-2.5 cursor-pointer"
+                      title="Remove any HTML comments"
+                    >
+                      Strip Comments
+                    </Button>
                   </div>
-                ) : (
-                  <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
-                    {editingSkeletonSlide.skeletonHistory.map((ver, vIdx) => {
-                      const dateStr = ver.timestamp
-                        ? new Date(ver.timestamp).toLocaleString(undefined, {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })
-                        : 'Earlier version';
-                      return (
-                        <div
-                          key={ver.timestamp || vIdx}
-                          className="flex items-center justify-between p-2 rounded-md bg-card border border-border/70 text-xs"
-                        >
-                          <div className="min-w-0 pr-2">
-                            <div className="font-semibold text-foreground truncate">
-                              {ver.note ||
-                                `Version ${editingSkeletonSlide.skeletonHistory.length - vIdx}`}
-                              <span className="text-[10px] text-muted-foreground ml-2 font-normal">
-                                by {ver.savedBy || 'Creator'}
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-muted-foreground">
-                              {dateStr} • {ver.code?.length || 0} chars
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                              setTempSkeletonCode(ver.code);
-                              showToast(
-                                `Loaded skeleton version from ${dateStr} into editor!`,
-                                'success'
-                              );
-                            }}
-                            className="h-6 text-[11px] px-2 shrink-0 cursor-pointer"
-                          >
-                            Restore
-                          </Button>
-                        </div>
-                      );
-                    })}
+                </div>
+
+                {/* Version History in Modal */}
+                {showModalHistory && (
+                  <div className="p-3 rounded-lg border border-primary/20 bg-muted/40 space-y-2 animate-in fade-in-50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <History className="w-3.5 h-3.5 text-primary" /> Saved
+                        Skeleton Version History (
+                        {editingSkeletonSlide.skeletonHistory?.length || 0})
+                      </span>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer"
+                        onClick={() => setShowModalHistory(false)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Changes saved here are preserved forever and will never be
+                      reset. You can review and restore any previous version:
+                    </p>
+                    {!editingSkeletonSlide.skeletonHistory ||
+                    editingSkeletonSlide.skeletonHistory.length === 0 ? (
+                      <div className="text-xs text-muted-foreground italic py-2">
+                        No previous versions recorded yet. A new version is
+                        saved every time you save your skeleton code.
+                      </div>
+                    ) : (
+                      <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                        {editingSkeletonSlide.skeletonHistory.map(
+                          (ver, vIdx) => {
+                            const dateStr = ver.timestamp
+                              ? new Date(ver.timestamp).toLocaleString(
+                                  undefined,
+                                  {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short',
+                                  }
+                                )
+                              : 'Earlier version';
+                            return (
+                              <div
+                                key={ver.timestamp || vIdx}
+                                className="flex items-center justify-between p-2 rounded-md bg-card border border-border/70 text-xs"
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="font-semibold text-foreground truncate">
+                                    {ver.note ||
+                                      `Version ${editingSkeletonSlide.skeletonHistory.length - vIdx}`}
+                                    <span className="text-[10px] text-muted-foreground ml-2 font-normal">
+                                      by {ver.savedBy || 'Creator'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground">
+                                    {dateStr} • {ver.code?.length || 0} chars
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setTempSkeletonCode(ver.code);
+                                    showToast(
+                                      `Loaded skeleton version from ${dateStr} into editor!`,
+                                      'success'
+                                    );
+                                  }}
+                                  className="h-6 text-[11px] px-2 shrink-0 cursor-pointer"
+                                >
+                                  Restore
+                                </Button>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
+
+                <Textarea
+                  rows={14}
+                  value={tempSkeletonCode}
+                  onChange={(e) => setTempSkeletonCode(e.target.value)}
+                  className="font-mono text-xs bg-slate-950 text-slate-100 p-3 leading-relaxed resize-y border-border"
+                  placeholder="Paste or edit HTML skeleton code here..."
+                />
               </div>
-            )}
 
-            <Textarea
-              rows={14}
-              value={tempSkeletonCode}
-              onChange={(e) => setTempSkeletonCode(e.target.value)}
-              className="font-mono text-xs bg-slate-950 text-slate-100 p-3 leading-relaxed resize-y border-border"
-              placeholder="Paste or edit HTML skeleton code here..."
-            />
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/50 flex-col sm:flex-row">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditingSkeletonSlide(null)}
-              className="h-8 text-xs cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveSkeletonModal}
-              className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 cursor-pointer shadow-sm"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save &amp; Apply Skeleton</span>
-            </Button>
-          </DialogFooter>
+              <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/50 flex-col sm:flex-row">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingSkeletonSlide(null)}
+                  className="h-8 text-xs cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveSkeletonModal}
+                  className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save &amp; Apply Skeleton</span>
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
