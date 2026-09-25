@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -35,13 +34,11 @@ import {
   FolderArchive,
   Layers,
   Trash2,
-  HelpCircle,
-  ChevronRight,
-  ChevronLeft,
-  BookOpen,
-  Lightbulb,
+  Lock,
 } from 'lucide-react';
 import { showToast, showConfirm } from '@/lib/swal';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/auth-provider';
 
 // Helper to strip HTML comments (Zero Comments requirement)
 function stripHtmlComments(html) {
@@ -151,7 +148,7 @@ const DEFAULT_CHALLENGE_SKELETON = `<div class="flex flex-wrap gap-[22px] w-full
             <div class="absolute w-[150px] h-[150px] rounded-full left-[-78px] top-1/2 -translate-y-1/10 bg-[rgba(32,95,153,0.055)] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:bg-[rgba(32,95,153,0.10)] min-[998px]:left-auto min-[998px]:right-[-90px] min-[998px]:top-auto min-[998px]:bottom-[-170px] min-[998px]:translate-y-0 min-[998px]:w-[190px] min-[998px]:h-[190px] min-[1400px]:w-[205px] min-[1400px]:h-[205px] min-[1500px]:w-[225px] min-[1500px]:h-[225px] min-[1728px]:w-[250px] min-[1728px]:h-[250px] min-[2400px]:w-[285px] min-[2400px]:h-[285px] min-[1400px]:group-hover:scale-[1.35]"></div>
             <div class="relative w-[145px] h-[145px] max-w-full shrink-0 rounded-full bg-[rgba(255,255,255,0.82)] flex items-center justify-center shadow-[0_0_0_8px_rgba(32,95,153,0.06),0_10px_22px_rgba(32,95,153,0.12)] z-[2] min-[1400px]:w-[155px] min-[1400px]:h-[155px] min-[1500px]:w-[170px] min-[1500px]:h-[170px] min-[1728px]:w-[190px] min-[1728px]:h-[190px] min-[2400px]:w-[220px] min-[2400px]:h-[220px]">
                 <div class="absolute border-2 border-[#205f99eb] border-dashed duration-[1000ms] ease-out group-hover:rotate-[100deg] group-hover:scale-[1.08] h-[118px] min-[1400px]:h-[126px] min-[1400px]:w-[126px] min-[1500px]:h-[140px] min-[1500px]:w-[140px] min-[1728px]:h-[156px] min-[1728px]:w-[156px] min-[2400px]:h-[180px] min-[2400px]:w-[180px] rounded-full transition-all w-[118px]"></div>
-                <img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1789050840/the-challange.webp" alt="The Challenge" class="max-w-[112px] max-h-[112px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(32,95,153,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(32,95,153,0.42)] min-[1400px]:max-w-[120px] min-[1400px]:max-h-[120px] min-[1500px]:max-w-[132px] min-[1500px]:max-h-[132px] min-[1728px]:max-w-[148px] min-[1728px]:max-h-[148px] min-[2400px]:max-w-[172px] min-[2400px]:max-h-[172px]">
+                <img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1789050840/the-challange.webp" alt="" class="max-w-[112px] max-h-[112px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(32,95,153,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(32,95,153,0.42)] min-[1400px]:max-w-[120px] min-[1400px]:max-h-[120px] min-[1500px]:max-w-[132px] min-[1500px]:max-h-[132px] min-[1728px]:max-w-[148px] min-[1728px]:max-h-[148px] min-[2400px]:max-w-[172px] min-[2400px]:max-h-[172px]">
             </div>
         </div>
         <div class="box-border flex flex-col min-[998px]:flex-[2_1_260px] min-[998px]:min-w-[260px] min-[998px]:p-[28px_26px_24px] p-[24px_22px_26px] relative w-full z-[2]">
@@ -170,7 +167,7 @@ const DEFAULT_CHALLENGE_SKELETON = `<div class="flex flex-wrap gap-[22px] w-full
             <div class="absolute w-[150px] h-[150px] rounded-full left-[-78px] top-1/2 -translate-y-1/10 bg-[rgba(16,185,129,0.055)] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:bg-[rgba(16,185,129,0.10)] min-[998px]:left-auto min-[998px]:right-[-90px] min-[998px]:top-[-170px] min-[998px]:bottom-auto min-[998px]:translate-y-0 min-[998px]:w-[190px] min-[998px]:h-[190px] min-[1400px]:w-[205px] min-[1400px]:h-[205px] min-[1500px]:w-[225px] min-[1500px]:h-[225px] min-[1728px]:w-[250px] min-[1728px]:h-[250px] min-[2400px]:w-[285px] min-[2400px]:h-[285px] min-[1400px]:group-hover:scale-[1.35]"></div>
             <div class="relative w-[145px] h-[145px] max-w-full shrink-0 rounded-full bg-[rgba(255,255,255,0.84)] flex items-center justify-center shadow-[0_0_0_8px_rgba(16,185,129,0.06),0_10px_22px_rgba(16,185,129,0.12)] z-[2] min-[1400px]:w-[155px] min-[1400px]:h-[155px] min-[1500px]:w-[170px] min-[1500px]:h-[170px] min-[1728px]:w-[190px] min-[1728px]:h-[190px] min-[2400px]:w-[220px] min-[2400px]:h-[220px]">
                 <div class="absolute border-2 border-[#209967eb] border-dashed duration-[1000ms] ease-out group-hover:rotate-[100deg] group-hover:scale-[1.08] h-[118px] min-[1400px]:h-[126px] min-[1400px]:w-[126px] min-[1500px]:h-[140px] min-[1500px]:w-[140px] min-[1728px]:h-[156px] min-[1728px]:w-[156px] min-[2400px]:h-[180px] min-[2400px]:w-[180px] rounded-full transition-all w-[118px]"></div>
-                <img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1789050840/how-ai-can-help.webp" alt="How AI Can Help" class="max-w-[115px] max-h-[108px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(16,185,129,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(16,185,129,0.45)] min-[1400px]:max-w-[123px] min-[1400px]:max-h-[116px] min-[1500px]:max-w-[135px] min-[1500px]:max-h-[128px] min-[1728px]:max-w-[151px] min-[1728px]:max-h-[143px] min-[2400px]:max-w-[176px] min-[2400px]:max-h-[166px]">
+                <img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1789050840/how-ai-can-help.webp" alt="" class="max-w-[115px] max-h-[108px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(16,185,129,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(16,185,129,0.45)] min-[1400px]:max-w-[123px] min-[1400px]:max-h-[116px] min-[1500px]:max-w-[135px] min-[1500px]:max-h-[128px] min-[1728px]:max-w-[151px] min-[1728px]:max-h-[143px] min-[2400px]:max-w-[176px] min-[2400px]:max-h-[166px]">
             </div>
         </div>
         <div class="box-border flex flex-col min-[998px]:flex-[2_1_260px] min-[998px]:min-w-[260px] min-[998px]:p-[28px_26px_24px] p-[24px_22px_26px] relative w-full z-[2]">
@@ -213,7 +210,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/90 p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_12px_rgba(0,0,0,0.05)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#999999]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#eeeeee] border border-[#dddddd]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/Before-Ai--1.webp" class="w-[42px] h-[42px] object-contain" alt="Before AI 1">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/Before-Ai--1.webp" class="w-[42px] h-[42px] object-contain" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">Searching through old emails for a piece of information</p>
@@ -224,7 +221,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/90 p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_12px_rgba(0,0,0,0.05)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#999999]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#eeeeee] border border-[#dddddd]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai--2.webp" class="w-[42px] h-[42px] object-contain" alt="Before AI 2">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai--2.webp" class="w-[42px] h-[42px] object-contain" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">Rewriting the same type of message over and over</p>
@@ -235,7 +232,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/90 p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_12px_rgba(0,0,0,0.05)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#999999]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#eeeeee] border border-[#dddddd]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai--3.webp" class="w-[42px] h-[42px] object-contain" alt="Before AI 3">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai--3.webp" class="w-[42px] h-[42px] object-contain" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">Starting reports from scratch every time</p>
@@ -246,7 +243,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/90 p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_12px_rgba(0,0,0,0.05)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#999999]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#eeeeee] border border-[#dddddd]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai---4.webp" class="w-[42px] h-[42px] object-contain" alt="Before AI 4">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai---4.webp" class="w-[42px] h-[42px] object-contain" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">Organizing notes manually after a meeting</p>
@@ -257,7 +254,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/90 p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_12px_rgba(0,0,0,0.05)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#999999]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#eeeeee] border border-[#dddddd]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai--5.webp" onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai---4.webp'" class="w-[42px] h-[42px] object-contain" alt="Before AI 5">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai--5.webp" onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai---4.webp'" class="w-[42px] h-[42px] object-contain" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">Manually tracking inventory records across multiple systems</p>
@@ -282,7 +279,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#30b6e5] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_10px_rgba(48,182,229,0.35)]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-700 ease-out group-hover/pt:scale-[1.18] group-hover/pt:rotate-[360deg] group-hover/pt:rounded-[50%] group-hover/pt:bg-gradient-to-br group-hover/pt:from-[#30b6e5] group-hover/pt:to-white group-hover/pt:border-[#30b6e5] group-hover/pt:shadow-[0_0_16px_rgba(48,182,229,0.30)]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/With-AI---1.webp" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-90 group-hover/pt:-rotate-[360deg]" alt="With AI 1">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/With-AI---1.webp" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-90 group-hover/pt:-rotate-[360deg]" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words"><span class="text-[#30b6e5] font-bold">Faster</span> searching, summarizing, and writing first drafts</p>
@@ -294,7 +291,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#24abb3] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_10px_rgba(36,171,179,0.35)]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-500 ease-out group-hover/pt:-translate-y-2 group-hover/pt:scale-[1.15] group-hover/pt:bg-[#d9f4ed] group-hover/pt:border-[#24abb3] group-hover/pt:shadow-[0_10px_16px_-4px_rgba(36,171,179,0.25)]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/With-AI---2.webp" class="w-[42px] h-[42px] object-contain transition-transform duration-500 ease-out group-hover/pt:scale-110" alt="With AI 2">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/With-AI---2.webp" class="w-[42px] h-[42px] object-contain transition-transform duration-500 ease-out group-hover/pt:scale-110" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words"><span class="text-[#24abb3] font-bold">Automating</span> templated messages</p>
@@ -306,7 +303,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#19aa9f] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_10px_rgba(25,170,159,0.35)]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-700 ease-out group-hover/pt:scale-[1.15] group-hover/pt:rounded-[10px] group-hover/pt:-rotate-6 group-hover/pt:bg-[#d9f4ed] group-hover/pt:border-[#19aa9f] group-hover/pt:shadow-[0_0_16px_rgba(25,170,159,0.25)]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785078099/With-AI---3.webp" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:rotate-6" alt="With AI 3">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785078099/With-AI---3.webp" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:rotate-6" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words"><span class="text-[#19aa9f] font-bold">Instant</span> summaries of long documents</p>
@@ -318,7 +315,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#2ebe78] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_10px_rgba(46,190,120,0.35)]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-700 ease-out group-hover/pt:scale-[1.18] group-hover/pt:-rotate-[18deg] group-hover/pt:bg-gradient-to-tr group-hover/pt:from-[#2ebe78] group-hover/pt:to-white group-hover/pt:border-[#2ebe78] group-hover/pt:shadow-[0_0_18px_rgba(46,190,120,0.28)]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/With-AI---4.webp" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-90 group-hover/pt:rotate-[18deg]" alt="With AI 4">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/With-AI---4.webp" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-90 group-hover/pt:rotate-[18deg]" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words"><span class="text-[#2ebe78] font-bold">Organized</span> action items from meetings</p>
@@ -330,7 +327,7 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#10b981] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_12px_rgba(16,185,129,0.40)]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-700 ease-out group-hover/pt:scale-[1.20] group-hover/pt:rotate-[15deg] group-hover/pt:rounded-[22px] group-hover/pt:bg-gradient-to-br group-hover/pt:from-[#10b981] group-hover/pt:via-[#34d399] group-hover/pt:to-white group-hover/pt:border-[#10b981] group-hover/pt:shadow-[0_0_20px_rgba(16,185,129,0.35)]">
-\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/With-AI---5.webp" onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/With-AI---4.webp'" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-95 group-hover/pt:-rotate-[15deg]" alt="With AI 5">
+\t\t\t\t\t\t\t\t<img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/With-AI---5.webp" onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/With-AI---4.webp'" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-95 group-hover/pt:-rotate-[15deg]" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words"><span class="text-[#10b981] font-bold">Seamless</span> real-time inventory tracking and customer notifications</p>
@@ -346,9 +343,31 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 // Starter templates for custom slides
 const STARTER_TEMPLATES = [
   {
+    id: 'challenge',
+    name: 'Challenge & AI Help',
+    description: 'Dynamic 2-card Challenge & AI Help layout',
+    type: 'challenge',
+    skeleton: DEFAULT_CHALLENGE_SKELETON,
+  },
+  {
+    id: 'before-with-ai',
+    name: 'Before AI vs With AI',
+    description: '5-point comparison with 3D pop effect & color themes',
+    type: 'before-after',
+    skeleton: DEFAULT_BEFORE_AFTER_SKELETON,
+  },
+  {
+    id: 'before-after-ai',
+    name: 'Before AI vs After AI',
+    description: '5-point comparison with "After AI" branding',
+    type: 'before-after',
+    skeleton: DEFAULT_BEFORE_AFTER_SKELETON,
+  },
+  {
     id: 'summary-3',
     name: '3-Card Summary',
     description: 'Header with 3 modern takeaway cards',
+    type: 'custom',
     skeleton: `<div class="w-full box-border my-[25px]">
 \t<div class="relative w-full overflow-hidden rounded-[26px] bg-gradient-to-br from-white via-[#f7fafc] to-[#eef7f6] border border-[#205f99]/20 p-6 sm:p-8 lg:p-10 shadow-[0_10px_30px_rgba(32,95,153,0.08)]">
 \t\t<div class="text-center mb-8">
@@ -770,53 +789,61 @@ function getInitialSavedSlides() {
   return DEFAULT_SAVED_SLIDES;
 }
 
-// Interactive Tooltip Tour (Anchors to elements like a React tour library, shows 1 time per user)
-const TOOLTIP_TOUR_STEPS = [
-  {
-    targetId: 'tour-step-add-slide',
-    title: 'How to Add a New Slide',
-    subtitle: 'Custom HTML Skeletons & Starter Templates',
-    text: 'Click "+ Add Slide" to create a new slide anytime. You can paste your own custom HTML skeleton or choose from starter templates. Customizable fields are auto-detected instantly so you can customize them easily.',
-    tip: 'Click "+ Add Slide" at any time to add Comparison, Challenge, or custom HTML slides.',
-    placement: 'bottom',
-  },
-  {
-    targetId: 'tour-step-edit-skeleton',
-    title: 'How to Edit Slide Skeleton Code',
-    subtitle: 'Full Control Over Raw HTML Structure',
-    text: 'Click "Edit Skeleton" on any slide to modify its raw HTML code, adjust Tailwind styles, or reset templates anytime without losing the content you entered.',
-    tip: 'You can also edit skeletons from the All Slides list by clicking the code (< >) icon on any saved slide.',
-    placement: 'bottom',
-  },
-  {
-    targetId: 'tour-step-quickpaste',
-    title: '1-Box Quick Auto-Paste',
-    subtitle: 'Generate Slides from Unformatted Text in Seconds',
-    text: 'Paste raw bullet points or meeting notes here and click "Generate Slide". "Before AI" and "With AI" headings are automatically detected and separated into points cleanly.',
-    tip: 'No need to format beforehand—just paste your text and the generator does the work!',
-    placement: 'bottom',
-  },
-  {
-    targetId: 'tour-step-controls',
-    title: 'Customize Content & Points',
-    subtitle: 'Fine-Tune Points, Titles, & Animations',
-    text: 'Toggle "Customize" ON to adjust individual titles, points, and responsibility banners. For comparison slides, switch between 4 points and 5 points with 3D pop effect.',
-    tip: 'Turn Customize OFF for a clean, distraction-free view with just the quick paste box.',
-    placement: 'top',
-  },
-  {
-    targetId: 'tour-step-output',
-    title: 'Live Preview & Clean HTML Export',
-    subtitle: 'Zero-Comment, Production-Ready Code',
-    text: 'Switch between Live Preview and Clean Code to inspect your slide. Click "Copy Code" to export pure Tailwind HTML with zero comments and zero inline style tags.',
-    tip: 'The copied code can be pasted directly into WordPress, Elementor, or any Tailwind project.',
-    placement: 'top',
-  },
-];
+// Database mapping helpers
+function slideToRow(s, currentUser) {
+  return {
+    id: s.id,
+    title: s.title || 'Untitled Slide',
+    type: s.type || 'before-after',
+    skeleton_html: s.skeletonHtml || '',
+    is_custom_edited: Boolean(s.isCustomEdited),
+    slide_data: {
+      challengeTitle: s.challengeTitle,
+      challengeText: s.challengeText,
+      challengeImage: s.challengeImage,
+      aiHelpTitle: s.aiHelpTitle,
+      aiHelpText: s.aiHelpText,
+      aiHelpImage: s.aiHelpImage,
+      disclaimer: s.disclaimer,
+      showBottomNote: s.showBottomNote,
+      beforeTitle: s.beforeTitle,
+      withTitle: s.withTitle,
+      pointCount: s.pointCount,
+      beforePoints: s.beforePoints,
+      withPoints: s.withPoints,
+      fields: s.fields,
+    },
+    created_by: s.created_by || currentUser?.id || null,
+    created_by_email: s.created_by_email || currentUser?.email || '',
+    created_by_name:
+      s.created_by_name ||
+      currentUser?.name ||
+      currentUser?.full_name ||
+      (currentUser?.email ? currentUser.email.split('@')[0] : '') ||
+      'Creator',
+    updated_at: new Date().toISOString(),
+  };
+}
 
-const TOUR_STORAGE_KEY = 'hazwoper_slide_tooltip_tour_seen_v2';
+function rowToSlide(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    skeletonHtml: row.skeleton_html,
+    isCustomEdited: row.is_custom_edited,
+    created_by: row.created_by,
+    created_by_email: row.created_by_email,
+    created_by_name: row.created_by_name,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    ...(row.slide_data || {}),
+  };
+}
 
 export function SlideGenerator() {
+  const { user } = useAuth();
+
   // All slides ever saved in library
   const [savedSlides, setSavedSlides] = useState(() => getInitialSavedSlides());
 
@@ -832,12 +859,8 @@ export function SlideGenerator() {
   const [singlePasteText, setSinglePasteText] = useState('');
   const [showCustomize, setShowCustomize] = useState(false);
   const [showSlideLibrary, setShowSlideLibrary] = useState(true);
-
-  // Tooltip Tour State (Runs 1 time per user)
-  const [isTooltipTourActive, setIsTooltipTourActive] = useState(false);
-  const [tooltipTourStep, setTooltipTourStep] = useState(0);
-  const [tooltipCoords, setTooltipCoords] = useState(null);
-  const [spotlightRect, setSpotlightRect] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [unsavedSlideIds, setUnsavedSlideIds] = useState(() => new Set());
 
   // Add Slide Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -845,223 +868,71 @@ export function SlideGenerator() {
   const [modalSkeleton, setModalSkeleton] = useState(
     STARTER_TEMPLATES[0].skeleton
   );
-  const [selectedTemplateId, setSelectedTemplateId] = useState('summary-3');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('challenge');
 
   // Edit Any Slide Skeleton Modal State
   const [editingSkeletonSlide, setEditingSkeletonSlide] = useState(null);
   const [tempSkeletonCode, setTempSkeletonCode] = useState('');
 
-  const calculateTooltipPosition = (stepIdx, withDelay = true) => {
-    if (typeof window === 'undefined') return;
-    const stepConfig = TOOLTIP_TOUR_STEPS[stepIdx];
-    if (!stepConfig) return;
+  // Master Admin resolution
+  const isMasterAdmin = useMemo(() => {
+    if (!user) return false;
+    const email = (user.email || '').toLowerCase();
+    return (
+      user.role === 'admin' ||
+      user.role === 'superadmin' ||
+      email === 'bilalghaffar46@gmail.com' ||
+      email.includes('admin')
+    );
+  }, [user]);
 
-    const compute = () => {
-      const targetEl = document.getElementById(stepConfig.targetId);
-      if (!targetEl) return;
-      const rect = targetEl.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+  // Active slide
+  const currentSlide = slides[activeSlideIndex] || slides[0] || savedSlides[0];
 
-      // Update spotlight cutout around the target element with generous padding
-      const pad = 6;
-      const spotTop = Math.max(0, rect.top - pad);
-      const spotLeft = Math.max(0, rect.left - pad);
-      const spotWidth = Math.min(
-        viewportWidth - spotLeft,
-        rect.width + pad * 2
-      );
-      const spotHeight = Math.min(
-        viewportHeight - spotTop,
-        rect.height + pad * 2
-      );
+  // Access control for editing active slide skeleton
+  const canEditCurrentSkeleton = useMemo(() => {
+    if (!currentSlide) return false;
+    if (isMasterAdmin) return true;
+    if (!currentSlide.created_by) return isMasterAdmin;
+    return user && currentSlide.created_by === user.id;
+  }, [currentSlide, isMasterAdmin, user]);
 
-      setSpotlightRect({
-        top: spotTop,
-        left: spotLeft,
-        width: spotWidth,
-        height: spotHeight,
-      });
-
-      const tooltipWidth = Math.min(390, viewportWidth - 28);
-      const tooltipEstimatedHeight = 240;
-
-      let left = rect.left + rect.width / 2 - tooltipWidth / 2;
-      // Clamp left within viewport margins
-      left = Math.max(14, Math.min(left, viewportWidth - tooltipWidth - 14));
-
-      let top = 0;
-      let arrowPos = 'top';
-
-      const spaceBelow = viewportHeight - rect.bottom - 16;
-      const spaceAbove = rect.top - 16;
-
-      if (stepConfig.placement === 'bottom') {
-        if (
-          spaceBelow >= tooltipEstimatedHeight + 12 ||
-          spaceBelow >= spaceAbove
-        ) {
-          top = rect.bottom + 14;
-          arrowPos = 'top';
-        } else {
-          top = rect.top - tooltipEstimatedHeight - 14;
-          arrowPos = 'bottom';
-        }
-      } else {
-        if (
-          spaceAbove >= tooltipEstimatedHeight + 12 ||
-          spaceAbove >= spaceBelow
-        ) {
-          top = rect.top - tooltipEstimatedHeight - 14;
-          arrowPos = 'bottom';
-        } else {
-          top = rect.bottom + 14;
-          arrowPos = 'top';
-        }
-      }
-
-      // STRICT CLAMP: Ensure tooltip NEVER exceeds viewport boundaries (top or bottom)
-      const maxTop = Math.max(16, viewportHeight - tooltipEstimatedHeight - 16);
-      top = Math.max(16, Math.min(top, maxTop));
-
-      // Compute arrow position aligned to target center
-      const targetCenterX = rect.left + rect.width / 2;
-      const arrowLeft = Math.max(
-        24,
-        Math.min(targetCenterX - left, tooltipWidth - 24)
-      );
-
-      setTooltipCoords({
-        top: `${Math.round(top)}px`,
-        left: `${Math.round(left)}px`,
-        width: `${tooltipWidth}px`,
-        arrowPos,
-        arrowLeft: `${Math.round(arrowLeft)}px`,
-      });
-    };
-
-    // Scroll the target element to near the top of the viewport with an offset
-    const el = document.getElementById(stepConfig.targetId);
-    if (el) {
-      // Use scrollIntoView 'start' then nudge with a scroll offset for top clearance
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // After scroll settles, nudge viewport up by ~80px so element isn't hidden behind headers
-      setTimeout(() => {
-        const scrollParent =
-          document.querySelector('[data-radix-scroll-area-viewport]') ||
-          document.documentElement;
-        scrollParent.scrollBy({ top: -80, behavior: 'smooth' });
-      }, 320);
-    }
-
-    compute();
-    if (withDelay) {
-      setTimeout(compute, 200);
-      setTimeout(compute, 500);
-    }
-  };
-
-  // Check if first-time user to trigger tooltip tour 1 time only
+  // Load slides from Supabase on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    let mounted = true;
+    const loadCloudSlides = async () => {
       try {
-        const seen = localStorage.getItem(TOUR_STORAGE_KEY);
-        if (!seen) {
-          const timer = setTimeout(() => {
-            setIsTooltipTourActive(true);
-            setTooltipTourStep(0);
-            calculateTooltipPosition(0);
-          }, 700);
-          return () => clearTimeout(timer);
+        const { data, error } = await supabase
+          .from('slides')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && Array.isArray(data) && data.length > 0 && mounted) {
+          const cloudSlides = data.map(rowToSlide);
+          setSavedSlides((prevLocal) => {
+            const map = new Map();
+            // Default system slides first, then cloud slides override/append
+            prevLocal.forEach((s) => map.set(s.id, s));
+            cloudSlides.forEach((s) => map.set(s.id, s));
+            const merged = Array.from(map.values());
+            try {
+              localStorage.setItem(SLIDES_STORAGE_KEY, JSON.stringify(merged));
+            } catch {
+              // ignore
+            }
+            return merged;
+          });
         }
       } catch {
-        // ignore
+        // Fall back gracefully to localStorage
       }
-    }
-  }, []);
-
-  // Update tooltip position on resize or step change
-  useEffect(() => {
-    if (!isTooltipTourActive) return;
-    const handleReposition = () => {
-      calculateTooltipPosition(tooltipTourStep);
     };
-    calculateTooltipPosition(tooltipTourStep);
-    window.addEventListener('resize', handleReposition);
-    window.addEventListener('scroll', handleReposition, { passive: true });
+
+    loadCloudSlides();
     return () => {
-      window.removeEventListener('resize', handleReposition);
-      window.removeEventListener('scroll', handleReposition);
+      mounted = false;
     };
-  }, [isTooltipTourActive, tooltipTourStep]);
-
-  const handleDismissTooltipTour = () => {
-    setIsTooltipTourActive(false);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(TOUR_STORAGE_KEY, 'true');
-      } catch {
-        // ignore
-      }
-    }
-  };
-
-  const handleNextTooltipStep = () => {
-    if (tooltipTourStep < TOOLTIP_TOUR_STEPS.length - 1) {
-      const next = tooltipTourStep + 1;
-      setTooltipTourStep(next);
-      calculateTooltipPosition(next);
-    } else {
-      handleDismissTooltipTour();
-      showToast('Tour completed! Enjoy generating slides.', 'success');
-    }
-  };
-
-  const handlePrevTooltipStep = () => {
-    if (tooltipTourStep > 0) {
-      const prev = tooltipTourStep - 1;
-      setTooltipTourStep(prev);
-      calculateTooltipPosition(prev);
-    }
-  };
-
-  const handleRestartTooltipTour = () => {
-    setIsTooltipTourActive(true);
-    setTooltipTourStep(0);
-    setTimeout(() => calculateTooltipPosition(0), 100);
-  };
-
-  // Open Edit Skeleton modal for any slide
-  const handleOpenEditSkeleton = (targetSlide = currentSlide) => {
-    if (!targetSlide) return;
-    setEditingSkeletonSlide(targetSlide);
-    const code = targetSlide.isCustomEdited
-      ? targetSlide.skeletonHtml || ''
-      : targetSlide.skeletonHtml || generateSlideHtml(targetSlide);
-    setTempSkeletonCode(code);
-  };
-
-  // Save changes from Edit Skeleton modal
-  const handleSaveSkeletonModal = () => {
-    if (!editingSkeletonSlide) return;
-    const cleaned = stripHtmlComments(tempSkeletonCode);
-    const updatedSlide = {
-      ...editingSkeletonSlide,
-      skeletonHtml: cleaned,
-      isCustomEdited: true,
-    };
-    if (editingSkeletonSlide.type === 'custom') {
-      updatedSlide.fields = extractFieldsFromSkeleton(cleaned);
-    }
-    setSlides((prev) =>
-      prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s))
-    );
-    setSavedSlides((prev) =>
-      prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s))
-    );
-    setEditingSkeletonSlide(null);
-    showToast(`Saved skeleton code for "${updatedSlide.title}"!`, 'success');
-  };
+  }, []);
 
   // Sync savedSlides to localStorage
   useEffect(() => {
@@ -1074,12 +945,73 @@ export function SlideGenerator() {
     }
   }, [savedSlides]);
 
-  // Active slide
-  const currentSlide = slides[activeSlideIndex] || slides[0] || savedSlides[0];
+  // Open Edit Skeleton modal for any slide (Strictly Creator or Master Admin)
+  const handleOpenEditSkeleton = (targetSlide = currentSlide) => {
+    if (!targetSlide) return;
+    const isCreator =
+      user && targetSlide.created_by && targetSlide.created_by === user.id;
+    const canEdit =
+      isCreator || isMasterAdmin || (!targetSlide.created_by && isMasterAdmin);
 
-  // Helper to update active slide properties and keep savedSlides in sync
+    if (!canEdit) {
+      showToast(
+        `Only the creator (${targetSlide.created_by_name || 'author'}) or a master admin can edit this slide's skeleton.`,
+        'warning'
+      );
+      return;
+    }
+
+    setEditingSkeletonSlide(targetSlide);
+    const code = targetSlide.isCustomEdited
+      ? targetSlide.skeletonHtml || ''
+      : targetSlide.skeletonHtml || generateSlideHtml(targetSlide);
+    setTempSkeletonCode(code);
+  };
+
+  // Save changes from Edit Skeleton modal
+  const handleSaveSkeletonModal = async () => {
+    if (!editingSkeletonSlide) return;
+    const cleaned = stripHtmlComments(tempSkeletonCode);
+    const updatedSlide = {
+      ...editingSkeletonSlide,
+      skeletonHtml: cleaned,
+      isCustomEdited: true,
+      created_by: editingSkeletonSlide.created_by || user?.id || null,
+      created_by_name:
+        editingSkeletonSlide.created_by_name ||
+        user?.name ||
+        user?.full_name ||
+        (user?.email ? user.email.split('@')[0] : '') ||
+        'Creator',
+      created_by_email:
+        editingSkeletonSlide.created_by_email || user?.email || '',
+    };
+    if (editingSkeletonSlide.type === 'custom') {
+      updatedSlide.fields = extractFieldsFromSkeleton(cleaned);
+    }
+    setSlides((prev) =>
+      prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s))
+    );
+    setSavedSlides((prev) =>
+      prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s))
+    );
+    // Mark as unsaved until explicitly saved or sync now
+    setUnsavedSlideIds((prev) => new Set(prev).add(updatedSlide.id));
+    setEditingSkeletonSlide(null);
+
+    // Sync to Supabase in background
+    try {
+      const row = slideToRow(updatedSlide, user);
+      await supabase.from('slides').upsert(row, { onConflict: 'id' });
+    } catch {
+      // ignore
+    }
+
+    showToast(`Saved skeleton code for "${updatedSlide.title}"!`, 'success');
+  };
+
+  // Helper to update active slide properties and keep slides state reactive
   const updateActiveSlide = (updates) => {
-    // If user explicitly changes content fields, exit custom code override mode unless explicitly specified
     const contentFieldKeys = [
       'challengeTitle',
       'challengeText',
@@ -1116,13 +1048,8 @@ export function SlideGenerator() {
       return next;
     });
 
-    setSavedSlides((prev) => {
-      const exists = prev.some((s) => s.id === updatedSlide.id);
-      if (exists) {
-        return prev.map((s) => (s.id === updatedSlide.id ? updatedSlide : s));
-      }
-      return [...prev, updatedSlide];
-    });
+    // Mark current slide as having unsaved changes
+    setUnsavedSlideIds((prev) => new Set(prev).add(updatedSlide.id));
   };
 
   // Open Add Slide Modal
@@ -1130,7 +1057,7 @@ export function SlideGenerator() {
     const nextNum = savedSlides.length + 1;
     setModalTitle(`Slide ${nextNum}: Key Takeaways`);
     setModalSkeleton(STARTER_TEMPLATES[0].skeleton);
-    setSelectedTemplateId('summary-3');
+    setSelectedTemplateId(STARTER_TEMPLATES[0].id);
     setIsAddModalOpen(true);
   };
 
@@ -1139,35 +1066,99 @@ export function SlideGenerator() {
     return extractFieldsFromSkeleton(modalSkeleton);
   }, [modalSkeleton]);
 
-  // Confirm Add Slide with Code Skeleton
-  const handleConfirmAddSlide = () => {
+  // Confirm Add Slide with Dynamic Templates & Custom Code Skeleton
+  const handleConfirmAddSlide = async () => {
     const skeleton = modalSkeleton.trim();
     if (!skeleton) {
       showToast('Please provide an HTML code skeleton.', 'error');
       return;
     }
 
-    const fields = extractFieldsFromSkeleton(skeleton);
-    const slideTitle =
-      modalTitle.trim() || `Slide ${savedSlides.length + 1}: Custom Slide`;
-
-    const newSlide = {
+    const slideTitle = modalTitle.trim() || `Slide ${savedSlides.length + 1}`;
+    const baseMeta = {
       id: `slide-${Date.now()}`,
-      type: 'custom',
       title: slideTitle,
-      skeletonHtml: stripHtmlComments(skeleton),
-      fields: fields,
+      created_by: user?.id || null,
+      created_by_name:
+        user?.name ||
+        user?.full_name ||
+        (user?.email ? user.email.split('@')[0] : '') ||
+        'User',
+      created_by_email: user?.email || '',
     };
+
+    let newSlide;
+
+    if (selectedTemplateId === 'challenge') {
+      newSlide = {
+        ...baseMeta,
+        type: 'challenge',
+        challengeTitle: 'The Challenge',
+        challengeText:
+          'Customers expect confirmation that their inventory request was received and that action is being taken.',
+        challengeImage:
+          'https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1789050840/the-challange.webp',
+        aiHelpTitle: 'How AI Can Help',
+        aiHelpText:
+          'Extract action items automatically and communicate follow-up actions faster.',
+        aiHelpImage:
+          'https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1789050840/how-ai-can-help.webp',
+        disclaimer:
+          'The employee remains responsible for verifying customer-specific details and ensuring accuracy.',
+        showBottomNote: true,
+        skeletonHtml: DEFAULT_CHALLENGE_SKELETON,
+      };
+    } else if (
+      selectedTemplateId === 'before-with-ai' ||
+      selectedTemplateId === 'before-after-ai'
+    ) {
+      const isAfterAi = selectedTemplateId === 'before-after-ai';
+      newSlide = {
+        ...baseMeta,
+        type: 'before-after',
+        beforeTitle: 'Before AI',
+        withTitle: isAfterAi ? 'After AI' : 'With AI',
+        pointCount: 5,
+        beforePoints: [
+          'Review meeting notes manually',
+          'Identify action items individually',
+          'Create reminder emails for each participant',
+          'Spend time organizing follow-up activities',
+          'Risk missing assigned tasks',
+        ],
+        withPoints: [
+          'Extract action items automatically',
+          'Generate personalized reminders',
+          'Improve accountability',
+          'Reduce administrative effort',
+          'Communicate follow-up actions faster',
+        ],
+        skeletonHtml: DEFAULT_BEFORE_AFTER_SKELETON,
+      };
+    } else {
+      const fields = extractFieldsFromSkeleton(skeleton);
+      newSlide = {
+        ...baseMeta,
+        type: 'custom',
+        skeletonHtml: stripHtmlComments(skeleton),
+        fields: fields,
+      };
+    }
 
     setSavedSlides((prev) => [...prev, newSlide]);
     setSlides((prev) => [...prev, newSlide]);
     setActiveSlideIndex(slides.length);
     setIsAddModalOpen(false);
 
-    showToast(
-      `Created "${newSlide.title}" with ${fields.length} dynamic fields!`,
-      'success'
-    );
+    // Sync to Supabase
+    try {
+      const row = slideToRow(newSlide, user);
+      await supabase.from('slides').insert(row);
+    } catch (e) {
+      console.warn('Could not insert slide into cloud:', e);
+    }
+
+    showToast(`Created "${newSlide.title}" successfully!`, 'success');
   };
 
   // Close tab (Kept permanently in All Slides list)
@@ -1201,16 +1192,32 @@ export function SlideGenerator() {
     }
   };
 
-  // Delete slide permanently from the All Slides List with warning
+  // Delete slide permanently (Strictly Creator or Master Admin)
   const handleDeleteSlideFromList = async (slideToDelete) => {
     if (savedSlides.length <= 1) {
       showToast('You must keep at least 1 slide in the library.', 'warning');
       return;
     }
 
+    // Access control: only creator or master admin
+    const isCreator =
+      user && slideToDelete.created_by && slideToDelete.created_by === user.id;
+    const canDelete =
+      isCreator ||
+      isMasterAdmin ||
+      (!slideToDelete.created_by && isMasterAdmin);
+
+    if (!canDelete) {
+      showToast(
+        `Only the creator (${slideToDelete.created_by_name || 'author'}) or a master admin can delete this slide.`,
+        'error'
+      );
+      return;
+    }
+
     const res = await showConfirm({
       title: 'Delete from Slide List?',
-      text: `Are you sure you want to permanently delete "${slideToDelete.title}"? This will remove it from your saved slides list.`,
+      text: `Are you sure you want to permanently delete "${slideToDelete.title}"? This will remove it from the slide library.`,
       icon: 'warning',
       confirmButtonText: 'Yes, Delete',
       cancelButtonText: 'Cancel',
@@ -1231,18 +1238,79 @@ export function SlideGenerator() {
           prev >= nextOpen.length ? nextOpen.length - 1 : prev
         );
       } else {
-        // If it was the only open tab, open the first remaining saved slide
         setSlides([nextSaved[0]]);
         setActiveSlideIndex(0);
       }
     }
 
+    // Clear from unsaved tracking
+    setUnsavedSlideIds((prev) => {
+      const next = new Set(prev);
+      next.delete(slideToDelete.id);
+      return next;
+    });
+
+    // Delete from Supabase
+    try {
+      await supabase.from('slides').delete().eq('id', slideToDelete.id);
+    } catch (e) {
+      console.warn('Could not delete slide from cloud:', e);
+    }
+
     showToast(`Deleted "${slideToDelete.title}" from list!`, 'success');
   };
 
-  // Save current slide feedback
-  const handleSaveCurrentSlide = () => {
-    showToast(`Saved "${currentSlide.title}" successfully!`, 'success');
+  // Save current slide permanently to state, localStorage, and Supabase
+  const handleSaveCurrentSlide = async () => {
+    if (!currentSlide) return;
+    setIsSaving(true);
+
+    const slideToSave = {
+      ...currentSlide,
+      created_by: currentSlide.created_by || user?.id || null,
+      created_by_name:
+        currentSlide.created_by_name ||
+        user?.name ||
+        user?.full_name ||
+        (user?.email ? user.email.split('@')[0] : '') ||
+        'Creator',
+      created_by_email: currentSlide.created_by_email || user?.email || '',
+    };
+
+    // Update locally
+    setSlides((prev) =>
+      prev.map((s) => (s.id === slideToSave.id ? slideToSave : s))
+    );
+    setSavedSlides((prev) => {
+      const exists = prev.some((s) => s.id === slideToSave.id);
+      return exists
+        ? prev.map((s) => (s.id === slideToSave.id ? slideToSave : s))
+        : [...prev, slideToSave];
+    });
+
+    // Clear dirty state
+    setUnsavedSlideIds((prev) => {
+      const next = new Set(prev);
+      next.delete(slideToSave.id);
+      return next;
+    });
+
+    // Persist to Supabase
+    try {
+      const row = slideToRow(slideToSave, user);
+      const { error } = await supabase
+        .from('slides')
+        .upsert(row, { onConflict: 'id' });
+      if (error && error.code === '42P10') {
+        await supabase.from('slides').update(row).eq('id', row.id);
+      }
+    } catch (e) {
+      console.warn('Could not sync slide to cloud:', e);
+    } finally {
+      setIsSaving(false);
+    }
+
+    showToast(`Saved "${slideToSave.title}" successfully!`, 'success');
   };
 
   // 1-Box Quick Text Parser & Generator
@@ -1487,7 +1555,7 @@ export function SlideGenerator() {
             <div class="absolute w-[150px] h-[150px] rounded-full left-[-78px] top-1/2 -translate-y-1/10 bg-[rgba(32,95,153,0.055)] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:bg-[rgba(32,95,153,0.10)] min-[998px]:left-auto min-[998px]:right-[-90px] min-[998px]:top-auto min-[998px]:bottom-[-170px] min-[998px]:translate-y-0 min-[998px]:w-[190px] min-[998px]:h-[190px] min-[1400px]:w-[205px] min-[1400px]:h-[205px] min-[1500px]:w-[225px] min-[1500px]:h-[225px] min-[1728px]:w-[250px] min-[1728px]:h-[250px] min-[2400px]:w-[285px] min-[2400px]:h-[285px] min-[1400px]:group-hover:scale-[1.35]"></div>
             <div class="relative w-[145px] h-[145px] max-w-full shrink-0 rounded-full bg-[rgba(255,255,255,0.82)] flex items-center justify-center shadow-[0_0_0_8px_rgba(32,95,153,0.06),0_10px_22px_rgba(32,95,153,0.12)] z-[2] min-[1400px]:w-[155px] min-[1400px]:h-[155px] min-[1500px]:w-[170px] min-[1500px]:h-[170px] min-[1728px]:w-[190px] min-[1728px]:h-[190px] min-[2400px]:w-[220px] min-[2400px]:h-[220px]">
                 <div class="absolute border-2 border-[#205f99eb] border-dashed duration-[1000ms] ease-out group-hover:rotate-[100deg] group-hover:scale-[1.08] h-[118px] min-[1400px]:h-[126px] min-[1400px]:w-[126px] min-[1500px]:h-[140px] min-[1500px]:w-[140px] min-[1728px]:h-[156px] min-[1728px]:w-[156px] min-[2400px]:h-[180px] min-[2400px]:w-[180px] rounded-full transition-all w-[118px]"></div>
-                <img src="${challengeImg}" alt="${challengeTitle}" class="max-w-[112px] max-h-[112px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(32,95,153,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(32,95,153,0.42)] min-[1400px]:max-w-[120px] min-[1400px]:max-h-[120px] min-[1500px]:max-w-[132px] min-[1500px]:max-h-[132px] min-[1728px]:max-w-[148px] min-[1728px]:max-h-[148px] min-[2400px]:max-w-[172px] min-[2400px]:max-h-[172px]">
+                <img src="${challengeImg}" alt="" class="max-w-[112px] max-h-[112px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(32,95,153,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(32,95,153,0.42)] min-[1400px]:max-w-[120px] min-[1400px]:max-h-[120px] min-[1500px]:max-w-[132px] min-[1500px]:max-h-[132px] min-[1728px]:max-w-[148px] min-[1728px]:max-h-[148px] min-[2400px]:max-w-[172px] min-[2400px]:max-h-[172px]">
             </div>
         </div>
         <div class="box-border flex flex-col min-[998px]:flex-[2_1_260px] min-[998px]:min-w-[260px] min-[998px]:p-[28px_26px_24px] p-[24px_22px_26px] relative w-full z-[2]">
@@ -1506,7 +1574,7 @@ export function SlideGenerator() {
             <div class="absolute w-[150px] h-[150px] rounded-full left-[-78px] top-1/2 -translate-y-1/10 bg-[rgba(16,185,129,0.055)] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:bg-[rgba(16,185,129,0.10)] min-[998px]:left-auto min-[998px]:right-[-90px] min-[998px]:top-[-170px] min-[998px]:bottom-auto min-[998px]:translate-y-0 min-[998px]:w-[190px] min-[998px]:h-[190px] min-[1400px]:w-[205px] min-[1400px]:h-[205px] min-[1500px]:w-[225px] min-[1500px]:h-[225px] min-[1728px]:w-[250px] min-[1728px]:h-[250px] min-[2400px]:w-[285px] min-[2400px]:h-[285px] min-[1400px]:group-hover:scale-[1.35]"></div>
             <div class="relative w-[145px] h-[145px] max-w-full shrink-0 rounded-full bg-[rgba(255,255,255,0.84)] flex items-center justify-center shadow-[0_0_0_8px_rgba(16,185,129,0.06),0_10px_22px_rgba(16,185,129,0.12)] z-[2] min-[1400px]:w-[155px] min-[1400px]:h-[155px] min-[1500px]:w-[170px] min-[1500px]:h-[170px] min-[1728px]:w-[190px] min-[1728px]:h-[190px] min-[2400px]:w-[220px] min-[2400px]:h-[220px]">
                 <div class="absolute border-2 border-[#209967eb] border-dashed duration-[1000ms] ease-out group-hover:rotate-[100deg] group-hover:scale-[1.08] h-[118px] min-[1400px]:h-[126px] min-[1400px]:w-[126px] min-[1500px]:h-[140px] min-[1500px]:w-[140px] min-[1728px]:h-[156px] min-[1728px]:w-[156px] min-[2400px]:h-[180px] min-[2400px]:w-[180px] rounded-full transition-all w-[118px]"></div>
-                <img src="${aiHelpImg}" alt="${aiHelpTitle}" class="max-w-[115px] max-h-[108px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(16,185,129,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(16,185,129,0.45)] min-[1400px]:max-w-[123px] min-[1400px]:max-h-[116px] min-[1500px]:max-w-[135px] min-[1500px]:max-h-[128px] min-[1728px]:max-w-[151px] min-[1728px]:max-h-[143px] min-[2400px]:max-w-[176px] min-[2400px]:max-h-[166px]">
+                <img src="${aiHelpImg}" alt="" class="max-w-[115px] max-h-[108px] w-auto h-auto object-contain relative z-[2] rounded-full border-2 border-[rgba(16,185,129,0.18)] transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:border-[rgba(16,185,129,0.45)] min-[1400px]:max-w-[123px] min-[1400px]:max-h-[116px] min-[1500px]:max-w-[135px] min-[1500px]:max-h-[128px] min-[1728px]:max-w-[151px] min-[1728px]:max-h-[143px] min-[2400px]:max-w-[176px] min-[2400px]:max-h-[166px]">
             </div>
         </div>
         <div class="box-border flex flex-col min-[998px]:flex-[2_1_260px] min-[998px]:min-w-[260px] min-[998px]:p-[28px_26px_24px] p-[24px_22px_26px] relative w-full z-[2]">
@@ -1552,7 +1620,7 @@ export function SlideGenerator() {
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/90 p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_12px_rgba(0,0,0,0.05)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#999999]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#eeeeee] border border-[#dddddd]">
-\t\t\t\t\t\t\t\t<img src="${iconUrl}" ${is5th ? `onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai---4.webp'"` : ''} class="w-[42px] h-[42px] object-contain" alt="Before AI ${i + 1}">
+\t\t\t\t\t\t\t\t<img src="${iconUrl}" ${is5th ? `onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077951/Before-Ai---4.webp'"` : ''} class="w-[42px] h-[42px] object-contain" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">${point}</p>
@@ -1574,7 +1642,7 @@ export function SlideGenerator() {
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[#10b981] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_12px_rgba(16,185,129,0.40)]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-700 ease-out group-hover/pt:scale-[1.20] group-hover/pt:rotate-[15deg] group-hover/pt:rounded-[22px] group-hover/pt:bg-gradient-to-br group-hover/pt:from-[#10b981] group-hover/pt:via-[#34d399] group-hover/pt:to-white group-hover/pt:border-[#10b981] group-hover/pt:shadow-[0_0_20px_rgba(16,185,129,0.35)]">
-\t\t\t\t\t\t\t\t<img src="${cfg.iconUrl}" onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/With-AI---4.webp'" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-95 group-hover/pt:-rotate-[15deg]" alt="With AI 5">
+\t\t\t\t\t\t\t\t<img src="${cfg.iconUrl}" onerror="this.src='https://media.hazwoper-osha.com/wp-content/uploads/2026/07/1785077952/With-AI---4.webp'" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out group-hover/pt:scale-95 group-hover/pt:-rotate-[15deg]" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">${formattedText}</p>
@@ -1587,7 +1655,7 @@ export function SlideGenerator() {
 \t\t\t\t\t\t<div class="relative flex items-center gap-3 sm:gap-[15px] w-full min-w-0 bg-white/95 backdrop-blur-md p-3 sm:p-[15px] rounded-[16.5px] box-border shadow-[0_5px_14px_rgba(8,116,67,0.07)]">
 \t\t\t\t\t\t\t<div class="shrink-0 w-2 h-[46px] rounded-[10px] bg-[${cfg.color}] transition-all duration-500 ease-out group-hover/pt:h-[54px] group-hover/pt:shadow-[0_0_10px_rgba(48,182,229,0.35)]"></div>
 \t\t\t\t\t\t\t<div class="shrink-0 flex items-center justify-center w-11 h-11 sm:w-[50px] sm:h-[50px] rounded-[15px] bg-[#e9f8f4] border border-[#d1eee5] transition-all duration-700 ease-out ${cfg.iconBoxAnimation}">
-\t\t\t\t\t\t\t\t<img src="${cfg.iconUrl}" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out ${cfg.iconImgAnimation}" alt="With AI ${i + 1}">
+\t\t\t\t\t\t\t\t<img src="${cfg.iconUrl}" class="w-[42px] h-[42px] object-contain transition-transform duration-700 ease-out ${cfg.iconImgAnimation}" alt="">
 \t\t\t\t\t\t\t</div>
 \t\t\t\t\t\t\t<div class="flex-1 min-w-0">
 \t\t\t\t\t\t\t\t<p class="m-0 text-[#333333] text-base leading-relaxed break-words">${formattedText}</p>
@@ -1700,34 +1768,12 @@ ${withHtmlRows}\t\t\t\t</div>
             </p>
           </div>
         </div>
-
-        {/* Quick Tooltip Tour Trigger */}
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleRestartTooltipTour}
-            className="h-8 gap-1.5 px-3 text-xs font-semibold cursor-pointer border-primary/30 hover:bg-primary/5 text-primary shadow-2xs"
-            title="Interactive step-by-step tooltip tour"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Tour</span>
-          </Button>
-        </div>
       </div>
 
       {/* ======================================================== */}
       {/* 2. MULTI-SLIDE DECK NAVIGATION TABS & SINGLE ADD SLIDE BUTTON */}
       {/* ======================================================== */}
-      <div
-        id="tour-step-tabs"
-        className={`p-3 sm:p-3.5 rounded-2xl border bg-muted/20 flex flex-col gap-2.5 min-w-0 transition-all duration-300 ${
-          isTooltipTourActive &&
-          TOOLTIP_TOUR_STEPS[tooltipTourStep]?.targetId === 'tour-step-tabs'
-            ? 'relative z-50 ring-2 ring-primary ring-offset-1 ring-offset-background shadow-xl bg-card border-primary'
-            : 'border-border/80'
-        }`}
-      >
+      <div className="p-3 sm:p-3.5 rounded-2xl border bg-muted/20 flex flex-col gap-2.5 min-w-0 transition-all duration-300 border-border/80">
         {/* Slide Tabs: scroll horizontally so they never push action buttons off */}
         <div className="flex items-center gap-2 overflow-x-auto min-w-0 w-full no-scrollbar pb-0.5">
           {slides.map((slide, idx) => {
@@ -1811,7 +1857,6 @@ ${withHtmlRows}\t\t\t\t</div>
           </Button>
 
           <Button
-            id="tour-step-add-slide"
             size="sm"
             onClick={handleOpenAddSlideModal}
             className="h-8 gap-1.5 px-3.5 text-xs font-bold bg-primary text-primary-foreground shadow-sm hover:opacity-95 cursor-pointer shrink-0"
@@ -1845,6 +1890,17 @@ ${withHtmlRows}\t\t\t\t</div>
                 const isOpenInTabs = slides.some(
                   (active) => active.id === s.id
                 );
+                const isCreator =
+                  user && s.created_by && s.created_by === user.id;
+                const canEditSkeleton =
+                  isCreator ||
+                  isMasterAdmin ||
+                  (!s.created_by && isMasterAdmin);
+                const canDelete =
+                  isCreator ||
+                  isMasterAdmin ||
+                  (!s.created_by && isMasterAdmin);
+
                 return (
                   <div
                     key={s.id}
@@ -1864,9 +1920,14 @@ ${withHtmlRows}\t\t\t\t</div>
                           : `Re-open "${s.title}" in tabs`
                       }
                     >
-                      <span className="truncate max-w-[140px] sm:max-w-[200px]">
+                      <span className="truncate max-w-[130px] sm:max-w-[180px]">
                         {s.title}
                       </span>
+                      {s.created_by_name && (
+                        <span className="text-[8px] font-normal text-muted-foreground opacity-75 max-w-[70px] truncate hidden md:inline">
+                          by {s.created_by_name}
+                        </span>
+                      )}
                       <span
                         className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-mono font-bold shrink-0 ${
                           isOpenInTabs
@@ -1877,28 +1938,39 @@ ${withHtmlRows}\t\t\t\t</div>
                         {isOpenInTabs ? 'In Tabs' : '+ Re-open'}
                       </span>
                     </button>
-                    <button
-                      type="button"
-                      title={`Edit skeleton code for "${s.title}"`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenEditSkeleton(s);
-                      }}
-                      className="px-2 py-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer border-l border-border/40 shrink-0"
-                    >
-                      <Code2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      title={`Delete "${s.title}" from list`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSlideFromList(s);
-                      }}
-                      className="px-2 py-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-l border-border/40 shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {canEditSkeleton ? (
+                      <button
+                        type="button"
+                        title={`Edit skeleton code for "${s.title}"`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditSkeleton(s);
+                        }}
+                        className="px-2 py-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer border-l border-border/40 shrink-0"
+                      >
+                        <Code2 className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <span
+                        title={`Skeleton locked (Only ${s.created_by_name || 'creator'} or master admin can edit)`}
+                        className="px-2 py-1.5 text-muted-foreground/30 border-l border-border/40 shrink-0 cursor-not-allowed"
+                      >
+                        <Lock className="w-3 h-3" />
+                      </span>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        title={`Delete "${s.title}" from list`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSlideFromList(s);
+                        }}
+                        className="px-2 py-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer border-l border-border/40 shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -1910,16 +1982,7 @@ ${withHtmlRows}\t\t\t\t</div>
       {/* ======================================================== */}
       {/* 4. 1-BOX QUICK TEXT TO GENERATE (ONLY QUICK BOX SHOWN BY DEFAULT) */}
       {/* ======================================================== */}
-      <Card
-        id="tour-step-quickpaste"
-        className={`border bg-primary/[0.02] shadow-xs transition-all duration-300 ${
-          isTooltipTourActive &&
-          TOOLTIP_TOUR_STEPS[tooltipTourStep]?.targetId ===
-            'tour-step-quickpaste'
-            ? 'relative z-50 ring-2 ring-primary ring-offset-1 ring-offset-background shadow-xl bg-card border-primary'
-            : 'border-primary/30'
-        }`}
-      >
+      <Card className="border bg-primary/[0.02] shadow-xs transition-all duration-300 border-primary/30">
         <CardHeader className="py-3 px-4 sm:px-5 border-b border-primary/20 bg-primary/[0.04]">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
@@ -1969,15 +2032,7 @@ ${withHtmlRows}\t\t\t\t</div>
       {/* ======================================================== */}
       {/* 5. CONTROLS BAR: META & CUSTOMIZE SWITCH */}
       {/* ======================================================== */}
-      <div
-        id="tour-step-controls"
-        className={`p-3 px-4 rounded-xl border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs transition-all duration-300 ${
-          isTooltipTourActive &&
-          TOOLTIP_TOUR_STEPS[tooltipTourStep]?.targetId === 'tour-step-controls'
-            ? 'relative z-50 ring-2 ring-primary ring-offset-1 ring-offset-background shadow-xl border-primary'
-            : 'border-border/80'
-        }`}
-      >
+      <div className="p-3 px-4 rounded-xl border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs transition-all duration-300 border-border/80">
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-between sm:justify-start w-full sm:w-auto">
           <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-primary" />
@@ -2029,14 +2084,26 @@ ${withHtmlRows}\t\t\t\t</div>
 
           {/* Direct Button: Edit Skeleton Code for Active Slide */}
           <Button
-            id="tour-step-edit-skeleton"
             size="sm"
             variant="outline"
             onClick={() => handleOpenEditSkeleton(currentSlide)}
-            className="h-7 gap-1.5 px-2.5 text-xs font-bold cursor-pointer border-primary/40 hover:bg-primary/10 text-primary shadow-2xs shrink-0"
-            title="Edit HTML code skeleton of this slide"
+            disabled={!canEditCurrentSkeleton}
+            className={`h-7 gap-1.5 px-2.5 text-xs font-bold border-primary/40 text-primary shadow-2xs shrink-0 transition-opacity ${
+              canEditCurrentSkeleton
+                ? 'cursor-pointer hover:bg-primary/10'
+                : 'opacity-50 cursor-not-allowed'
+            }`}
+            title={
+              canEditCurrentSkeleton
+                ? 'Edit HTML code skeleton of this slide'
+                : `Skeleton locked (Only ${currentSlide.created_by_name || 'creator'} or master admin can edit)`
+            }
           >
-            <Code2 className="w-3.5 h-3.5" />
+            {canEditCurrentSkeleton ? (
+              <Code2 className="w-3.5 h-3.5" />
+            ) : (
+              <Lock className="w-3.5 h-3.5 opacity-70" />
+            )}
             <span>Edit Skeleton</span>
           </Button>
 
@@ -2070,14 +2137,27 @@ ${withHtmlRows}\t\t\t\t</div>
             </span>
           </button>
 
-          {/* Save Slide Button */}
-          <Button
-            size="sm"
-            onClick={handleSaveCurrentSlide}
-            className="h-7 gap-1 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs cursor-pointer shrink-0"
-          >
-            <Save className="w-3 h-3" /> Save Slide
-          </Button>
+          {/* Save Slide Button: Active when dirty, Disabled green 'Saved ✓' when clean */}
+          {unsavedSlideIds.has(currentSlide.id) ? (
+            <Button
+              size="sm"
+              onClick={handleSaveCurrentSlide}
+              disabled={isSaving}
+              className="h-7 gap-1.5 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md cursor-pointer shrink-0 animate-in fade-in transition-all"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{isSaving ? 'Saving...' : 'Save Slide'}</span>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              disabled
+              className="h-7 gap-1.5 px-3 text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 opacity-90 cursor-default shrink-0 pointer-events-none font-semibold"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Saved</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -2131,9 +2211,39 @@ ${withHtmlRows}\t\t\t\t</div>
                     />
                   </div>
                   <div className="flex-1">
-                    <Label className="text-xs text-muted-foreground">
-                      Right Column Title
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">
+                        Right Column Title
+                      </Label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateActiveSlide({ withTitle: 'With AI' })
+                          }
+                          className={`text-[9px] px-1.5 py-0.5 rounded font-bold cursor-pointer transition-colors ${
+                            (currentSlide.withTitle || 'With AI') === 'With AI'
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'bg-muted text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          With AI
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateActiveSlide({ withTitle: 'After AI' })
+                          }
+                          className={`text-[9px] px-1.5 py-0.5 rounded font-bold cursor-pointer transition-colors ${
+                            currentSlide.withTitle === 'After AI'
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'bg-muted text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          After AI
+                        </button>
+                      </div>
+                    </div>
                     <Input
                       value={currentSlide.withTitle || 'With AI'}
                       onChange={(e) =>
@@ -2340,13 +2450,22 @@ ${withHtmlRows}\t\t\t\t</div>
                         disclaimer banner to show on this slide.
                       </p>
                     </div>
-                    <Switch
+                    <button
+                      type="button"
                       id="toggle-bottom-note"
-                      checked={currentSlide.showBottomNote || false}
-                      onCheckedChange={(checked) =>
-                        updateActiveSlide({ showBottomNote: checked })
+                      onClick={() =>
+                        updateActiveSlide({
+                          showBottomNote: !currentSlide.showBottomNote,
+                        })
                       }
-                    />
+                      className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full border-2 text-xs font-bold transition-all duration-200 cursor-pointer select-none ${
+                        currentSlide.showBottomNote
+                          ? 'bg-primary border-primary text-primary-foreground shadow-sm shadow-primary/20'
+                          : 'bg-background border-border text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      <span>{currentSlide.showBottomNote ? 'ON' : 'OFF'}</span>
+                    </button>
                   </div>
 
                   {currentSlide.showBottomNote && (
@@ -2581,15 +2700,7 @@ ${withHtmlRows}\t\t\t\t</div>
       {/* ======================================================== */}
       {/* 7. UNIFIED OUTPUT SECTION: LIVE PREVIEW & CLEAN CODE */}
       {/* ======================================================== */}
-      <Card
-        id="tour-step-output"
-        className={`border shadow-md overflow-hidden transition-all duration-300 ${
-          isTooltipTourActive &&
-          TOOLTIP_TOUR_STEPS[tooltipTourStep]?.targetId === 'tour-step-output'
-            ? 'relative z-50 ring-2 ring-primary ring-offset-1 ring-offset-background shadow-xl border-primary'
-            : 'border-border/80'
-        }`}
-      >
+      <Card className="border shadow-md overflow-hidden transition-all duration-300 border-border/80">
         <CardHeader className="py-3 px-4 sm:px-5 bg-muted/30 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Left: View Mode Segmented Switcher + Active Slide Title */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -2644,14 +2755,30 @@ ${withHtmlRows}\t\t\t\t</div>
           {viewMode === 'preview' ? (
             <div className="p-2 sm:p-4 md:p-6 bg-slate-50/50 dark:bg-slate-900/30 overflow-x-auto w-full max-w-full min-w-0">
               <div
-                className="w-full min-w-0 max-w-full"
+                className="w-full min-w-0 max-w-full overflow-x-auto"
                 dangerouslySetInnerHTML={{ __html: generatedCode }}
               />
             </div>
           ) : (
             <div className="relative w-full max-w-full overflow-hidden min-w-0">
-              <pre className="p-3 sm:p-6 text-xs font-mono leading-relaxed bg-[#1e2430] text-[#e2e8f0] overflow-x-auto max-h-[550px] select-all rounded-b-xl w-full max-w-full min-w-0 block">
-                <code className="block w-full">{generatedCode}</code>
+              <pre
+                className="p-3 sm:p-5 text-xs font-mono leading-relaxed bg-[#1e2430] text-[#e2e8f0] overflow-x-auto max-h-[550px] select-all rounded-b-xl w-full max-w-full min-w-0 block whitespace-pre-wrap break-words break-all"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                <code
+                  className="block w-full whitespace-pre-wrap break-words break-all"
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {generatedCode}
+                </code>
               </pre>
             </div>
           )}
@@ -2903,176 +3030,6 @@ ${withHtmlRows}\t\t\t\t</div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* ======================================================== */}
-      {/* 10. INTERACTIVE FLOATING TOOLTIP TOUR (1-TIME PER USER) */}
-      {/* ======================================================== */}
-      {isTooltipTourActive && tooltipCoords && (
-        <div className="fixed inset-0 z-50 pointer-events-auto">
-          {/* Dynamic Spotlight Cutout: Dims rest of screen (low brightness), element shines at 100% natural brightness */}
-          {spotlightRect && (
-            <div
-              style={{
-                position: 'fixed',
-                top: `${Math.round(spotlightRect.top)}px`,
-                left: `${Math.round(spotlightRect.left)}px`,
-                width: `${Math.round(spotlightRect.width)}px`,
-                height: `${Math.round(spotlightRect.height)}px`,
-                boxShadow:
-                  '0 0 0 9999px rgba(0, 0, 0, 0.72), 0 0 25px 6px rgba(59, 130, 246, 0.55)',
-                borderRadius: '16px',
-                pointerEvents: 'none',
-              }}
-              className="z-45 transition-all duration-300 ease-out border-2 border-primary ring-2 ring-primary/40 animate-pulse"
-            />
-          )}
-
-          {/* Clickable dark backdrop (click outside to dismiss tour) */}
-          <div
-            className="fixed inset-0 z-40 cursor-pointer"
-            onClick={handleDismissTooltipTour}
-            title="Click outside to skip tour"
-          />
-
-          {/* Floating Tooltip Card */}
-          <div
-            style={{
-              position: 'fixed',
-              top: tooltipCoords.top,
-              left: tooltipCoords.left,
-              width: tooltipCoords.width,
-            }}
-            className="z-50 bg-card/95 text-card-foreground border-2 border-primary/80 dark:border-primary/60 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md p-4 sm:p-5 animate-in fade-in-50 zoom-in-95 duration-200 max-h-[min(520px,85vh)] overflow-y-auto no-scrollbar flex flex-col justify-between"
-          >
-            {/* Pointer Arrow */}
-            {tooltipCoords.arrowPos === 'top' ? (
-              <div
-                style={{ left: tooltipCoords.arrowLeft }}
-                className="absolute -top-2.5 -translate-x-1/2 w-0 h-0 border-x-[10px] border-x-transparent border-b-[10px] border-b-primary filter drop-shadow-md"
-              />
-            ) : (
-              <div
-                style={{ left: tooltipCoords.arrowLeft }}
-                className="absolute -bottom-2.5 -translate-x-1/2 w-0 h-0 border-x-[10px] border-x-transparent border-t-[10px] border-t-primary filter drop-shadow-md"
-              />
-            )}
-
-            <div>
-              {/* Header: Badge + Step Indicator + Close Button */}
-              <div className="flex items-center justify-between gap-2 mb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="p-1 rounded-lg bg-primary text-primary-foreground shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5" />
-                  </span>
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-primary font-mono bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
-                    Step {tooltipTourStep + 1} of {TOOLTIP_TOUR_STEPS.length}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDismissTooltipTour}
-                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 cursor-pointer transition-colors"
-                  title="Skip and close tour"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Title & Subtitle */}
-              <div className="mb-2">
-                <h3 className="text-sm sm:text-base font-black text-foreground tracking-tight">
-                  {TOOLTIP_TOUR_STEPS[tooltipTourStep]?.title}
-                </h3>
-                {TOOLTIP_TOUR_STEPS[tooltipTourStep]?.subtitle && (
-                  <span className="text-[11px] font-semibold text-primary block mt-0.5">
-                    {TOOLTIP_TOUR_STEPS[tooltipTourStep]?.subtitle}
-                  </span>
-                )}
-              </div>
-
-              {/* Description Text */}
-              <p className="text-xs text-muted-foreground leading-relaxed mb-3 font-normal">
-                {TOOLTIP_TOUR_STEPS[tooltipTourStep]?.text}
-              </p>
-
-              {/* Interactive Tip Box */}
-              {TOOLTIP_TOUR_STEPS[tooltipTourStep]?.tip && (
-                <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/20 text-[11px] text-foreground/90 flex items-start gap-2 mb-3">
-                  <Lightbulb className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                  <span>{TOOLTIP_TOUR_STEPS[tooltipTourStep]?.tip}</span>
-                </div>
-              )}
-            </div>
-
-            <div>
-              {/* Step Progress Dots */}
-              <div className="flex items-center gap-1.5 mb-3 pt-2 border-t border-border/40">
-                {TOOLTIP_TOUR_STEPS.map((_, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setTooltipTourStep(idx);
-                      calculateTooltipPosition(idx);
-                    }}
-                    className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                      idx === tooltipTourStep
-                        ? 'w-6 bg-primary shadow-xs'
-                        : idx < tooltipTourStep
-                          ? 'w-2 bg-primary/40 hover:bg-primary/60'
-                          : 'w-2 bg-muted hover:bg-muted-foreground/30'
-                    }`}
-                    title={`Jump to Step ${idx + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Action Buttons: Skip, Back, Next/Done */}
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={handleDismissTooltipTour}
-                  className="text-xs font-semibold text-muted-foreground hover:text-foreground underline underline-offset-2 cursor-pointer transition-colors"
-                >
-                  Skip Tour
-                </button>
-
-                <div className="flex items-center gap-2">
-                  {tooltipTourStep > 0 && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={handlePrevTooltipStep}
-                      className="h-7 px-2.5 text-xs font-semibold gap-1 cursor-pointer hover:bg-muted"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" /> Back
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleNextTooltipStep}
-                    className="h-7 px-3.5 text-xs font-bold bg-primary text-primary-foreground gap-1.5 cursor-pointer shadow-md hover:opacity-95"
-                  >
-                    {tooltipTourStep < TOOLTIP_TOUR_STEPS.length - 1 ? (
-                      <>
-                        <span>Next</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </>
-                    ) : (
-                      <>
-                        <span>Finish Tour</span>
-                        <Check className="w-3.5 h-3.5" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
