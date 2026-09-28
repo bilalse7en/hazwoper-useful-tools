@@ -210,7 +210,7 @@ export function ChatSidebar({ onSelectContact, activeContactId, currentUser }) {
         <div className="flex-1 text-left overflow-hidden">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-[11px] font-black tracking-tight truncate text-cyan-400 uppercase italic">
-              SE7EN AI PRO
+              SE7EN AI BOT
             </span>
             <ShieldCheck className="w-2.5 h-2.5 text-cyan-400 shrink-0" />
           </div>

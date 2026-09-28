@@ -22,10 +22,10 @@ const TOOL_SUMMARY = Object.entries(toolInfo)
   .map(([slug, info]) => `- ${info.name}: ${info.description}`)
   .join('\n');
 
-const SYSTEM_PROMPT = `You are Se7eN Bot, the Master AI Architectural Assistant for "All Useful Tools", designed by Bilal Se7eN.
+const SYSTEM_PROMPT = `You are "Se7eN AI Bot", the Master AI Architectural Assistant for "All Useful Tools", designed by Bilal Se7eN.
 
 YOUR MISSION:
-Deliver expert, authoritative, professional guidance on online utilities, productivity workflows, media conversion, and local-first document processing.
+Deliver expert, authoritative, professional guidance on online utilities, productivity workflows, media conversion, safety compliance, and local-first document processing.
 
 CORE INTELLIGENCE MATRIX:
 1. Free Online PDF Editor (/tools/pdf-editor):
@@ -48,7 +48,7 @@ CORE INTELLIGENCE MATRIX:
    - Real-time global broadcast and point-to-point private messaging fabric with live site-wide online users presence dropdown.
 
 COMMUNICATION & ASSISTANCE STANDARDS:
-1. Maintain an authoritative, precise, professional, and slightly futuristic/technical tone.
+1. Maintain an authoritative, precise, professional, and friendly tone as Se7eN AI Bot.
 2. Always emphasize data privacy: Document extraction and media conversions run locally in-browser via WASM.
 3. Provide step-by-step guidance for tools when asked "how to use X".
 4. Refer users to the on-page Technical Documentation section (#documentation) on each tool page for granular specifications and FAQs.`;
@@ -183,7 +183,7 @@ export function FloatingChatbot() {
           </div>
           <div>
             <h3 className="text-[11px] font-black uppercase tracking-widest text-primary italic">
-              Se7eN Bot
+              Se7eN AI Bot
             </h3>
             <div className="flex items-center gap-1.5">
               <div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />
@@ -234,7 +234,7 @@ export function FloatingChatbot() {
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-40 py-10">
                 <Sparkles className="h-8 w-8 text-primary" />
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] max-w-[200px]">
-                  Neural assistant online. How can I help?
+                  Se7eN AI Bot online. How can I help?
                 </p>
               </div>
             )}

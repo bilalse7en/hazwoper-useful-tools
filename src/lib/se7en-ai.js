@@ -8,66 +8,157 @@ export const SE7EN_LOGO_SRC =
   'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif';
 
 export const AVAILABLE_MODELS = [
-  { id: 'gpt-4o', name: 'GPT-4o', tag: 'Fast & Versatile', pro: true },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', tag: 'Ultra Fast', pro: false },
+  {
+    id: 'gpt-4o',
+    name: 'Se7eN AI Bot Ultra (Pro)',
+    tag: 'Master Intelligence & Vision',
+    pro: true,
+  },
+  {
+    id: 'gpt-4o-mini',
+    name: 'Se7eN AI Bot Turbo',
+    tag: 'High Speed & Efficiency',
+    pro: false,
+  },
   {
     id: 'claude-3-7-sonnet',
-    name: 'Claude 3.7 Sonnet',
-    tag: 'Deep Reasoning',
+    name: 'Se7eN AI Bot Deep Reasoner',
+    tag: 'Deep Reasoning & Logic',
     pro: true,
   },
   {
     id: 'deepseek-chat',
-    name: 'DeepSeek R1 / V3',
-    tag: 'Coding & Logic',
+    name: 'Se7eN AI Bot Code Architect',
+    tag: 'Code & Technical Logic',
     pro: true,
   },
   {
     id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash',
-    tag: 'High Speed',
+    name: 'Se7eN AI Bot Lightning',
+    tag: 'Ultra Low Latency',
     pro: false,
   },
   {
     id: 'mistral-large-latest',
-    name: 'Mistral Large',
-    tag: 'Technical',
+    name: 'Se7eN AI Bot Technical Master',
+    tag: 'Compliance & Standards',
     pro: false,
   },
 ];
 
+let puterLoadingPromise = null;
+
 /**
- * Robust Puter.js AI caller with automatic fallback models
+ * Ensures Puter.js SDK is loaded into window.puter in browser environments
+ */
+export function ensurePuterLoaded() {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if (window.puter?.ai?.chat) return Promise.resolve(window.puter);
+
+  if (puterLoadingPromise) return puterLoadingPromise;
+
+  puterLoadingPromise = new Promise((resolve) => {
+    // Check if script already exists in document
+    const existingScript = document.querySelector(
+      'script[src*="js.puter.com"]'
+    );
+    if (existingScript) {
+      if (window.puter?.ai?.chat) {
+        return resolve(window.puter);
+      }
+      existingScript.addEventListener('load', () => {
+        if (window.puter) window.puter.quiet = true;
+        resolve(window.puter);
+      });
+      // Timeout fallback
+      setTimeout(() => resolve(window.puter || null), 5000);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://js.puter.com/v2/';
+    script.async = true;
+    script.onload = () => {
+      if (window.puter) window.puter.quiet = true;
+      resolve(window.puter);
+    };
+    script.onerror = () => {
+      resolve(null);
+    };
+    document.head.appendChild(script);
+
+    // Timeout safety limit
+    setTimeout(() => resolve(window.puter || null), 6000);
+  });
+
+  return puterLoadingPromise;
+}
+
+/**
+ * Robust Puter.js AI caller with automatic script loading and fallback models
  */
 export async function callPuterAiChat(prompt, requestedModel = 'gpt-4o') {
-  if (typeof window === 'undefined' || !window.puter?.ai?.chat) {
-    throw new Error('Puter AI Engine is initializing. Please wait a moment.');
+  if (typeof window === 'undefined') {
+    throw new Error(
+      'Se7eN AI Bot is available in browser client environments.'
+    );
   }
 
-  const fallbackChain = [
-    requestedModel,
-    'gpt-4o',
-    'gpt-4o-mini',
-    'claude-3-7-sonnet',
-    'deepseek-chat',
-  ];
-
-  let lastError = null;
-
-  for (const model of fallbackChain) {
+  // 1. Auto-load Puter SDK if not yet ready
+  if (!window.puter?.ai?.chat) {
     try {
-      const response = await window.puter.ai.chat(prompt, { model });
-      if (typeof response === 'string') return response;
-      if (response?.message?.content) return response.message.content;
-      if (response?.text) return response.text;
-      if (response) return JSON.stringify(response, null, 2);
-    } catch (err) {
-      lastError = err;
-      console.warn(`Model ${model} failed, trying fallback...`, err?.message);
+      await ensurePuterLoaded();
+      for (let i = 0; i < 15; i++) {
+        if (window.puter?.ai?.chat) break;
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    } catch {
+      // Continue to fallback if script load failed
     }
   }
 
-  throw lastError || new Error('All AI models failed to respond.');
+  // 2. If Puter SDK is available, try model fallback chain
+  if (window.puter?.ai?.chat) {
+    const fallbackChain = [
+      requestedModel,
+      'gpt-4o',
+      'gpt-4o-mini',
+      'claude-3-7-sonnet',
+      'deepseek-chat',
+    ];
+
+    for (const model of fallbackChain) {
+      try {
+        const response = await window.puter.ai.chat(prompt, { model });
+        if (typeof response === 'string') return response;
+        if (response?.message?.content) return response.message.content;
+        if (response?.text) return response.text;
+        if (response) return JSON.stringify(response, null, 2);
+      } catch (err) {
+        console.warn(`Model ${model} failed, trying fallback...`, err?.message);
+      }
+    }
+  }
+
+  // 3. Server-side /api/chat fallback if client Puter is blocked or unavailable
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, model: requestedModel }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.text) return data.text;
+      if (data.response) return data.response;
+    }
+  } catch (serverErr) {
+    console.warn('Server fallback /api/chat error:', serverErr);
+  }
+
+  throw new Error(
+    'Se7eN AI Bot Engine is initializing. Please check connectivity and retry in a moment.'
+  );
 }
 
 const TOOL_CATALOG = Object.entries(toolInfo)
@@ -76,17 +167,18 @@ const TOOL_CATALOG = Object.entries(toolInfo)
   )
   .join('\n');
 
-export const SE7EN_SYSTEM_PROMPT = `You are "Se7eN AI", the Master Super-Intelligence and Pro AI Architect of "All Useful Tools", crafted by Bilal Se7eN.
+export const SE7EN_SYSTEM_PROMPT = `You are "Se7eN AI Bot", the Master Super-Intelligence and Pro AI Architect of "All Useful Tools", crafted by Bilal Se7eN.
 
 YOUR IDENTITY & CAPABILITIES:
-- Name: Se7eN AI
+- Name: Se7eN AI Bot
 - Master Creator: Bilal Se7eN
 - Core Superpowers:
   1. Live Web Scraping & URL Data Mining: Extract and convert content from any external web URL into clean JSON, XML, CSV, Markdown, or YAML.
   2. Exact Image & Document Enhancement: When a user gives an image to enhance or modify, PRESERVE the exact person, subject, and composition, applying sharpness, clarity, lighting, and requested adjustments to THAT SAME image.
   3. Multi-Modal Document Intelligence: Analyze uploaded images (OCR/Vision), PDFs, Word DOCX files, and Excel spreadsheets.
   4. Free HD AI Image Generation: Generate new artistic and realistic images when explicitly asked to create a new concept.
-  5. Format Chameleon: Always output clean codeblocks when asked for JSON, XML, CSV, or YAML.`;
+  5. Format Chameleon: Always output clean codeblocks when asked for JSON, XML, CSV, or YAML.
+  6. Privacy & In-Browser Execution: Local WASM and browser processing with zero data retention.`;
 
 /**
  * Enhanced Client-Side Image Processing

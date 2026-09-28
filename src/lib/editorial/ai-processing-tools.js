@@ -72,7 +72,7 @@ Result: Interactive curriculum with animated timeline callouts and an audio-narr
     ],
   },
   'ai-assistant': {
-    overview: `The AI Assistant tool (Kimi AI & Neural Assistant) is a cutting-edge web utility designed to convert raw text and standard Word document content into fully formatted HTML cards featuring modern, glassmorphic layouts. In the realm of web design and content management, structuring raw text into visually appealing, interactive user interface components is traditionally a time-consuming process requiring proficient HTML, CSS, and Javascript skills. This tool fundamentally automates that transition, providing live interactive rendering that enables immediate visual feedback. It is critically important for technical content creators, front-end engineers, web designers, and operations teams who need to rapidly deploy professional-grade web assets—such as technical documentation guidelines or procedural checklists—without writing boilerplate code from scratch. By integrating context-aware suggestions and automated grammar optimization, the AI Assistant ensures that the generated text is not only beautifully presented but also structurally and syntactically flawless. Professionals benefit from a significantly reduced time-to-market for digital materials, allowing them to focus on the substantive quality of the content rather than the intricate details of responsive web design.`,
+    overview: `The AI Assistant tool (powered by Se7eN AI Bot) is a cutting-edge web utility designed to convert raw text and standard Word document content into fully formatted HTML cards featuring modern, glassmorphic layouts. In the realm of web design and content management, structuring raw text into visually appealing, interactive user interface components is traditionally a time-consuming process requiring proficient HTML, CSS, and Javascript skills. This tool fundamentally automates that transition, providing live interactive rendering that enables immediate visual feedback. It is critically important for technical content creators, front-end engineers, web designers, and operations teams who need to rapidly deploy professional-grade web assets—such as technical documentation guidelines or procedural checklists—without writing boilerplate code from scratch. By integrating context-aware suggestions and automated grammar optimization, the AI Assistant ensures that the generated text is not only beautifully presented but also structurally and syntactically flawless. Professionals benefit from a significantly reduced time-to-market for digital materials, allowing them to focus on the substantive quality of the content rather than the intricate details of responsive web design.`,
     stepByStep: `1. Prepare Your Content: Start by gathering your raw text or copying content from your Word document. Ensure that the text is logically separated into paragraphs or bullet points to help the AI understand the underlying structure.
 2. Input the Text: Paste your unformatted text into the main input editor of the AI Assistant. 
 3. Configure Layout Options: Select the "Glassmorphic Card" preset from the layout settings. You can adjust parameters such as blur intensity, background opacity, and border radius to suit your specific aesthetic requirements.
@@ -435,6 +435,57 @@ Result: The tool accurately cuts out the barrel, even maintaining the integrity 
         question: 'Why does the tool run slower on my older computer?',
         answer:
           "Because the machine learning model runs entirely on the client side, it relies heavily on your computer's hardware, specifically the Graphics Processing Unit (GPU) via WebGL. Older machines with integrated graphics or outdated browsers may take several seconds longer to compute the segmentation compared to modern devices.",
+      },
+    ],
+  },
+  'html-design-enhancer': {
+    overview: `The HTML Design Enhancer is an intelligent layout transformation engine powered by Se7eN AI Bot designed to convert raw or poorly formatted HTML into modern, mobile-responsive, production-grade Tailwind CSS cards and UI components. Creating bespoke web layouts with subtle gradients, interactive hover elevation, and accessible contrast ratios is often time-consuming. This tool automates the process by analyzing inline CSS rules, standardizing class structures, embedding ambient glow and glassmorphic elements, and rendering interactive live previews directly in the browser with full code export capabilities.`,
+    stepByStep: `1. Input Your HTML: Paste your existing raw HTML, inline-styled markup, or component snippet into the editor.
+2. Configure Design Parameters: Select your desired theme palette, hover animation preferences, and card container styling.
+3. Launch Se7eN AI Engine: Click the enhance button to execute neural Tailwind optimization and structure cleanup.
+4. Inspect Live Preview: Toggle between desktop, tablet, and mobile viewport previews to verify responsive behavior.
+5. Export Code: Copy the finalized clean HTML or download it as a standalone bundle.
+
+Common Errors to Avoid:
+- Malformed HTML: Unclosed tags in the source markup may produce unexpected nested structures in the preview.
+- Excessively large files: Pasting entire legacy web pages with thousands of inline scripts can slow down client-side parsing.
+- Contrast conflicts: Overriding text color utilities on dark card backgrounds can impair accessibility.`,
+    methodology: `The HTML Design Enhancer uses a hybrid parsing and neural compilation pipeline:
+1. **DOM Tree Normalization & Style Extraction**: Parses legacy style attributes into structured CSS properties.
+2. **Deterministic Tailwind Mapping**: Maps RGB/HEX colors, spacing units, and typography scales to modern Tailwind CSS utility classes.
+3. **Se7eN AI Neural Enhancement**: Synthesizes responsive layouts, subtle shadow hierarchies, and modern CSS3 transitions while preserving 100% of original text content.`,
+    examples: `Example 1: Converting Legacy Table Layouts to Responsive Tailwind Grid Cards.
+Input: A legacy HTML snippet with table-based styling and fixed pixel widths.
+Process: The engine converts table cells into CSS Grid/Flexbox cards with rounded corners and responsive breakpoints.
+Result: A responsive grid of modern Tailwind cards viewable on all screen sizes.
+
+Example 2: Adding Interactive Hover Elevation and Glassmorphism.
+Input: Static unstyled <div> blocks with headings and paragraphs.
+Process: Applies glassmorphic backdrop-filter rules, ambient corner glow gradients, and subtle hover scale transitions.
+Result: A sleek, interactive presentation card set with instant copy-to-clipboard functionality.`,
+    additionalFaq: [
+      {
+        question:
+          'Does the HTML Design Enhancer require external CSS build steps?',
+        answer:
+          'No. The generated code uses standard Tailwind CSS classes compatible with Tailwind CDN or any existing Tailwind build pipeline.',
+      },
+      {
+        question: 'Is my input HTML sent to a remote server for processing?',
+        answer:
+          'All deterministic parsing and client-side enhancements run locally in your browser to ensure absolute privacy.',
+      },
+      {
+        question:
+          'Can I customize the primary theme colors used in the generated design?',
+        answer:
+          'Yes. You can choose from presets including Amber, Emerald, Sky, Purple, Ocean, and Obsidian Slate to match your brand palette.',
+      },
+      {
+        question:
+          'Does the tool preserve inline scripts and custom attributes?',
+        answer:
+          'The engine strips legacy inline style tags and unsafe scripts to generate clean, secure semantic markup while preserving your core content structure.',
       },
     ],
   },

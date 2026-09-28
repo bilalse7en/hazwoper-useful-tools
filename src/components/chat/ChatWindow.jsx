@@ -450,8 +450,8 @@ export function ChatWindow({
         if (receiverId === 'se7en-bot') {
           setReceiverProfile({
             id: 'se7en-bot',
-            full_name: 'Se7eN Bot',
-            username: 'se7en_bot',
+            full_name: 'Se7eN AI Bot',
+            username: 'se7en_ai_bot',
             role: 'admin',
             avatar_url: '/puter-bot.png',
           });
@@ -465,11 +465,11 @@ export function ChatWindow({
               {
                 id: 'se7en-welcome',
                 sender_id: 'se7en-bot',
-                text: 'Neural Link established. I am Se7eN Bot, your architectural assistant. How can I facilitate your session today?',
+                text: 'Neural Link established. I am Se7eN AI Bot, your architectural assistant. How can I facilitate your session today?',
                 created_at: new Date().toISOString(),
                 is_global: false,
                 sender: {
-                  full_name: 'Se7eN Bot',
+                  full_name: 'Se7eN AI Bot',
                   role: 'admin',
                   avatar_url: '/puter-bot.png',
                 },
@@ -604,11 +604,11 @@ export function ChatWindow({
             {
               id: 'se7en-welcome',
               sender_id: 'se7en-bot',
-              text: 'Neural Link established. I am Se7eN Bot, your architectural assistant. How can I facilitate your session today?',
+              text: 'Neural Link established. I am Se7eN AI Bot, your architectural assistant. How can I facilitate your session today?',
               created_at: new Date().toISOString(),
               is_global: false,
               sender: {
-                full_name: 'Se7eN Bot',
+                full_name: 'Se7eN AI Bot',
                 role: 'admin',
                 avatar_url: '/puter-bot.png',
               },
@@ -743,7 +743,7 @@ export function ChatWindow({
                 text: `🎨 **Generated AI Image for "${prompt}":**\n\n![Generated Image](${imgUrl})\n\n[Download HD Image](${imgUrl})`,
                 created_at: new Date().toISOString(),
                 sender: {
-                  full_name: 'Se7eN AI',
+                  full_name: 'Se7eN AI Bot',
                   role: 'admin',
                   avatar_url:
                     'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
@@ -778,7 +778,7 @@ export function ChatWindow({
             }
           }
 
-          const SYSTEM_PROMPT = `You are "Se7eN AI", the Master Super-Intelligence and Pro AI Architect of "All Useful Tools", crafted by Bilal Se7eN.
+          const SYSTEM_PROMPT = `You are "Se7eN AI Bot", the Master Super-Intelligence and Pro AI Architect of "All Useful Tools", crafted by Bilal Se7eN.
 CAPABILITIES:
 1. Live Web Scraping: When provided scraped data from URLs, extract, format, and synthesize exactly what the user needs.
 2. Formats: When requested in JSON, XML, CSV, or YAML, ALWAYS provide strictly valid codeblocks (e.g. \`\`\`json or \`\`\`xml).
@@ -809,7 +809,7 @@ CAPABILITIES:
                   JSON.stringify(response, null, 2);
           } else {
             responseText =
-              'Se7eN AI Neural Engine is active. How may I assist your architectural session?';
+              'Se7eN AI Bot Neural Engine is active. How may I assist your architectural session?';
           }
 
           const se7enMsg = {
@@ -818,7 +818,7 @@ CAPABILITIES:
             text: responseText.trim(),
             created_at: new Date().toISOString(),
             sender: {
-              full_name: 'Se7eN AI',
+              full_name: 'Se7eN AI Bot',
               role: 'admin',
               avatar_url:
                 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',
@@ -830,10 +830,10 @@ CAPABILITIES:
           const se7enMsg = {
             id: (Date.now() + 1).toString(),
             sender_id: 'se7en-bot',
-            text: `⚠️ **Se7eN AI Notice:** ${aiErr.message || 'Signal processing completed. How else may I assist?'}`,
+            text: `⚠️ **Se7eN AI Bot Notice:** ${aiErr.message || 'Signal processing completed. How else may I assist?'}`,
             created_at: new Date().toISOString(),
             sender: {
-              full_name: 'Se7eN AI',
+              full_name: 'Se7eN AI Bot',
               role: 'admin',
               avatar_url:
                 'https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif',

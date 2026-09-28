@@ -141,12 +141,12 @@ export function InquiriesManager({ currentUser, className }) {
     }
   };
 
-  // Generate AI reply using Puter AI or intelligent contextual template
+  // Generate AI reply using Se7eN AI Bot or intelligent contextual template
   const handleGenerateAIReply = async () => {
     if (!selectedInquiry) return;
     setIsGeneratingAI(true);
     try {
-      const prompt = `You are a professional customer relations specialist and technical support lead for "All Useful Tools" (an online suite of document conversion, media processing, and AI tools).
+      const prompt = `You are Se7eN AI Bot, professional customer relations specialist and technical support lead for "All Useful Tools" (an online suite of document conversion, media processing, and AI tools).
 Write a cordial, professional, and directly actionable email reply to the following user inquiry:
 
 Sender Name: ${selectedInquiry.name}

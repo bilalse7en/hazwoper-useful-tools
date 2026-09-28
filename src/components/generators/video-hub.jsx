@@ -171,16 +171,132 @@ export function VideoHub({ initialMode = 'compressor' }) {
     videoEl.src = URL.createObjectURL(newFile);
   };
 
+  const processVideoServerCompress = async () => {
+    if (!compFile) return;
+
+    setCompProgressMsg('Connecting to streaming encoder...');
+    setCompProgress(5);
+
+    const formData = new FormData();
+    formData.append('file', compFile);
+    formData.append('preset', compPreset);
+    formData.append('resolution', compResolution);
+    formData.append('duration', compDurationSec.toString());
+
+    if (compUseTargetSize && compTargetSizeMB) {
+      formData.append('targetSizeMB', compTargetSizeMB);
+    }
+
+    const response = await fetch('/api/compress-stream', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server encoder error: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'progress') {
+              setCompProgress(data.percent);
+              setCompProgressMsg(data.message || `${data.percent}%`);
+            } else if (data.type === 'complete') {
+              const binaryStr = atob(data.data);
+              const bytes = new Uint8Array(binaryStr.length);
+              for (let i = 0; i < binaryStr.length; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+              }
+              const blob = new Blob([bytes], { type: 'video/mp4' });
+              const url = URL.createObjectURL(blob);
+              let reduction = 0;
+              if (compFile.size > 0) {
+                reduction = Math.round(
+                  ((compFile.size - blob.size) / compFile.size) * 100
+                );
+              }
+              setCompProgress(100);
+              const outName = `compressed_${compFile.name.replace(/\.[^/.]+$/, '')}.mp4`;
+              setCompResult({
+                url,
+                filename: outName,
+                size: blob.size,
+                reduction: reduction > 0 ? reduction : 0,
+              });
+
+              try {
+                const { recordMediaUpload } = await import('@/lib/media-hub');
+                await recordMediaUpload({
+                  fileName: outName,
+                  fileType: 'video/mp4',
+                  fileSize: blob.size,
+                  download_url: url,
+                });
+              } catch (e) {}
+
+              await saveToolHistory({
+                toolType: 'video_compressor',
+                fileName: compFile.name,
+                fileSize: compFile.size,
+                outputFormat: 'mp4',
+                outputSize: blob.size,
+                reductionPercent: reduction > 0 ? reduction : 0,
+              });
+              setHistoryRefresh((prev) => prev + 1);
+              showSuccess('Video compressed successfully!');
+              return;
+            } else if (data.type === 'error') {
+              throw new Error(data.message || 'Compression error');
+            }
+          } catch (e) {
+            if (e.message && !e.message.includes('Unexpected end of JSON')) {
+              throw e;
+            }
+          }
+        }
+      }
+    }
+  };
+
   const processVideoCompress = async () => {
-    if (!compFile || !ffmpegLoaded) return;
+    if (!compFile) return;
 
     setCompIsProcessing(true);
     setCompProgress(0);
     setCompProgressMsg('Starting...');
 
+    const fileMB = compFile.size / (1024 * 1024);
+
+    if (!ffmpegLoaded || fileMB > 70) {
+      try {
+        await processVideoServerCompress();
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || 'Compression failed', 'error');
+      } finally {
+        setCompIsProcessing(false);
+        setCompProgressMsg('');
+      }
+      return;
+    }
+
     const ffmpeg = ffmpegRef.current;
     const progressHandler = ({ progress: prog }) => {
-      const pct = Math.round(prog * 100);
+      const pct = Math.min(95, Math.max(5, Math.round(prog * 100)));
       setCompProgress(pct);
     };
     ffmpeg.on('progress', progressHandler);
@@ -189,7 +305,7 @@ export function VideoHub({ initialMode = 'compressor' }) {
       setCompProgressMsg('Reading video source...');
       await ffmpeg.writeFile('input.mp4', await fetchFile(compFile));
 
-      setCompProgress(5);
+      setCompProgress(10);
       setCompProgressMsg('Setting parameters...');
 
       const presetObj =
@@ -206,10 +322,6 @@ export function VideoHub({ initialMode = 'compressor' }) {
         'yuv420p',
         '-movflags',
         '+faststart',
-      ];
-
-      // Audio configs
-      args.push(
         '-c:a',
         'aac',
         '-b:a',
@@ -217,8 +329,8 @@ export function VideoHub({ initialMode = 'compressor' }) {
         '-ar',
         '48000',
         '-ac',
-        '2'
-      );
+        '2',
+      ];
 
       // Target File Size Calculations
       if (compUseTargetSize && compTargetSizeMB && compDurationSec > 0) {
@@ -246,7 +358,7 @@ export function VideoHub({ initialMode = 'compressor' }) {
 
       args.push('output.mp4');
 
-      setCompProgress(10);
+      setCompProgress(20);
       setCompProgressMsg('Encoding video stream...');
       await ffmpeg.exec(args);
 
@@ -266,7 +378,7 @@ export function VideoHub({ initialMode = 'compressor' }) {
 
       setCompProgress(100);
       setCompProgressMsg('Completed');
-      const outName = `compressed_${compFile.name}`;
+      const outName = `compressed_${compFile.name.replace(/\.[^/.]+$/, '')}.mp4`;
 
       setCompResult({
         url,
@@ -275,7 +387,6 @@ export function VideoHub({ initialMode = 'compressor' }) {
         reduction: reduction > 0 ? reduction : 0,
       });
 
-      // Try file registry log
       try {
         const { recordMediaUpload } = await import('@/lib/media-hub');
         await recordMediaUpload({
@@ -296,16 +407,25 @@ export function VideoHub({ initialMode = 'compressor' }) {
       });
       setHistoryRefresh((prev) => prev + 1);
 
-      // cleanup
       try {
         await ffmpeg.deleteFile('input.mp4');
         await ffmpeg.deleteFile('output.mp4');
       } catch (e) {}
 
       showSuccess('Video compressed successfully!');
-    } catch (err) {
-      console.error(err);
-      showToast('Encoding failure. Try adjusting parameters.', 'error');
+    } catch (clientErr) {
+      console.warn(
+        'Client encoding failed, switching to server stream:',
+        clientErr
+      );
+      setCompProgressMsg('Switching to server encoder...');
+      setCompProgress(10);
+      try {
+        await processVideoServerCompress();
+      } catch (serverErr) {
+        console.error(serverErr);
+        showToast(serverErr.message || 'Compression failed', 'error');
+      }
     } finally {
       ffmpeg.off('progress', progressHandler);
       setCompIsProcessing(false);
@@ -791,123 +911,181 @@ export function VideoHub({ initialMode = 'compressor' }) {
       {activeTab === 'compressor' &&
         // COMPRESSOR MODE
         (!compFile ? (
-          <div className="flex flex-col items-center justify-center min-h-[45vh] w-full p-4">
-            <div className="text-center space-y-4 mb-8">
-              <Badge
-                variant="outline"
-                className="border-primary/20 bg-primary/5 text-primary py-1 px-4 text-[10px] font-black uppercase tracking-widest"
-              >
-                {ffmpegLoaded
-                  ? 'Video Engine Ready'
-                  : 'Initializing WebAssembly...'}
-              </Badge>
-              <h2 className="text-4xl font-black italic tracking-tighter bg-gradient-to-r from-primary via-primary/80 to-primary/50 bg-clip-text text-transparent font-orbitron">
+          <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto px-4 py-4 animate-in fade-in duration-500">
+            <div className="text-center space-y-2 mb-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-[11px] font-semibold tracking-wide">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Auto-Hybrid Compression • Instant Browser & Cloud Fallback
+              </div>
+              <h2 className="text-3xl font-extrabold italic tracking-tight bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent font-orbitron">
                 VIDEO COMPRESSOR
               </h2>
-              <p className="text-muted-foreground text-[10px] font-black tracking-[0.3em] uppercase opacity-70">
-                Compress with strict size constraints • Low Loss
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                Compress MP4, MOV, WebM with strict size targets and pristine
+                quality.
               </p>
             </div>
 
             <div
-              className="w-full max-w-4xl h-[320px] rounded-[3rem] p-1 transition-all duration-500 shadow-2xl border border-border/50 hover:border-primary/30 group bg-card/45 cursor-pointer flex flex-col items-center justify-center gap-8"
-              onClick={() => ffmpegLoaded && compFileInputRef.current?.click()}
+              className="w-full h-[240px] rounded-3xl p-1 transition-all duration-300 shadow-xl border-2 border-dashed border-border/80 hover:border-primary/50 group bg-card/60 cursor-pointer flex flex-col items-center justify-center gap-4 hover:scale-[1.01]"
+              onClick={() => compFileInputRef.current?.click()}
             >
-              <div className="p-6 rounded-[2rem] bg-gradient-to-br from-primary/10 to-transparent border border-primary/10 group-hover:scale-110 transition-all duration-500">
-                <FileVideo className="w-12 h-12 text-primary" />
+              <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 group-hover:scale-110 transition-all duration-300">
+                <FileVideo className="w-10 h-10 text-primary" />
               </div>
-              <h2 className="text-2xl font-black italic tracking-tighter font-orbitron text-center uppercase">
-                LOAD INSTANCE
-              </h2>
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-bold text-foreground">
+                  Drop your video here or{' '}
+                  <span className="text-primary underline underline-offset-4">
+                    browse
+                  </span>
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Up to 2GB • MP4, MOV, WebM, MKV, AVI
+                </p>
+              </div>
               <input
                 ref={compFileInputRef}
                 type="file"
                 accept="video/*"
                 onChange={(e) => handleCompFileChange(e.target.files[0])}
                 className="hidden"
-                disabled={!ffmpegLoaded}
               />
             </div>
           </div>
         ) : (
-          <div className="w-full max-w-[1600px] grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 bg-card/60 backdrop-blur-3xl border border-border/50 rounded-[3rem] p-6 shadow-2xl relative overflow-hidden">
-            <div className="lg:col-span-7 flex flex-col gap-6">
-              <div className="rounded-[2.5rem] bg-card/30 border border-border/50 p-6 flex flex-col gap-6">
-                <h3 className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.4em] text-muted-foreground">
-                  <LayoutGrid className="w-4 h-4 text-primary" /> Compression
-                  Source
-                </h3>
-                <div className="p-4 rounded-2xl bg-background/50 border border-border/40 flex items-center justify-between font-sans">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Video className="w-8 h-8 text-primary shrink-0" />
-                    <div>
-                      <p className="text-xs font-black truncate text-foreground max-w-[300px]">
-                        {compFile.name}
-                      </p>
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase">
-                        {formatFileSize(compFile.size)} •{' '}
-                        {compDurationSec.toFixed(1)}s
-                      </p>
+          <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 items-start p-1 animate-in fade-in duration-300">
+            {/* Left Column: Preview & Info */}
+            <div className="lg:col-span-6 flex flex-col gap-3">
+              <div className="relative w-full h-[220px] sm:h-[250px] rounded-2xl overflow-hidden bg-black/90 border border-border/60 shadow-md flex items-center justify-center">
+                <video
+                  src={compResult?.url || URL.createObjectURL(compFile)}
+                  controls
+                  className="w-full h-full object-contain"
+                />
+
+                {compIsProcessing && (
+                  <div className="absolute inset-0 z-50 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-6 space-y-3">
+                    <span className="text-3xl font-black text-primary font-orbitron tabular-nums">
+                      {Math.round(compProgress)}%
+                    </span>
+                    <p className="text-xs font-semibold text-foreground text-center">
+                      {compProgressMsg || 'Compressing video stream...'}
+                    </p>
+                    <div className="w-48 h-1.5 bg-primary/20 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${compProgress}%` }}
+                      />
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCompFile(null)}
-                    className="h-8 w-8 text-muted-foreground hover:text-red-500 rounded-full cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
+                )}
 
-                {compResult && (
-                  <div className="mt-8 p-6 rounded-[2rem] bg-emerald-500/5 border border-emerald-500/20 text-center flex flex-col items-center gap-4 animate-in zoom-in duration-500 font-sans">
-                    <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/25 rounded-full flex items-center justify-center">
-                      <Sparkles className="w-6 h-6 text-emerald-500" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-black text-emerald-500 uppercase tracking-widest">
-                        {compResult.filename}
-                      </h4>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        Size: {formatFileSize(compResult.size)} (
-                        <span className="text-emerald-500 font-black">
-                          -{compResult.reduction}%
-                        </span>
-                        )
-                      </p>
-                    </div>
-                    <video
-                      src={compResult.url}
-                      controls
-                      className="w-full max-w-md rounded-xl mt-2 outline-none border border-emerald-500/10"
-                    />
-                    <Button
-                      onClick={downloadCompResult}
-                      className="h-12 w-full max-w-sm rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-[10px] tracking-widest cursor-pointer"
-                    >
-                      <Download className="w-4 h-4 mr-2" /> Download Video
-                    </Button>
+                {compResult && !compIsProcessing && (
+                  <div className="absolute top-3 right-3 z-40">
+                    <Badge className="bg-emerald-600 text-white font-bold px-3 py-1 text-xs shadow-md border-none">
+                      -{compResult.reduction}% Smaller
+                    </Badge>
                   </div>
                 )}
               </div>
+
+              {/* File Info Card */}
+              <div className="p-3 rounded-xl bg-card/60 border border-border/50 backdrop-blur-sm flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                    <Video className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 truncate">
+                    <p className="font-bold text-foreground truncate max-w-[180px]">
+                      {compFile.name}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatFileSize(compFile.size)} •{' '}
+                      {compDurationSec.toFixed(1)}s
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {compResult && (
+                    <div className="text-right">
+                      <p className="text-[10px] text-emerald-500 uppercase font-bold">
+                        Compressed
+                      </p>
+                      <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatFileSize(compResult.size)}
+                      </p>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCompFile(null);
+                      setCompResult(null);
+                    }}
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-red-500"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            <div className="lg:col-span-5 flex flex-col gap-6">
-              <div className="p-6 rounded-[2.5rem] bg-card/40 border border-border/50 backdrop-blur-xl space-y-6">
-                <h3 className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.4em] text-muted-foreground">
-                  <Settings className="w-4 h-4" /> Parameters
-                </h3>
+            {/* Right Column: Settings */}
+            <div className="lg:col-span-6 flex flex-col gap-3">
+              <div className="p-4 rounded-2xl bg-card/60 border border-border/50 backdrop-blur-md shadow-sm space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-primary" />
+                    <span className="text-xs font-black uppercase tracking-wider text-foreground">
+                      Compression Settings
+                    </span>
+                  </div>
+                </div>
 
-                <div className="space-y-3 font-sans">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    Target Resolution
+                {/* Preset Picker */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Performance Preset
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {COMPRESSION_PRESETS.map((pr) => (
+                      <button
+                        key={pr.id}
+                        type="button"
+                        onClick={() => setCompPreset(pr.id)}
+                        disabled={compIsProcessing}
+                        className={cn(
+                          'p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5',
+                          compPreset === pr.id
+                            ? 'bg-primary/10 border-primary text-foreground shadow-sm ring-1 ring-primary/40'
+                            : 'bg-background/40 border-border/50 text-muted-foreground hover:bg-background/80'
+                        )}
+                      >
+                        <span className="text-[11px] font-bold truncate">
+                          {pr.label}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground opacity-75">
+                          {pr.crf ? `CRF ${pr.crf}` : ''}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Resolution Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Output Resolution
                   </label>
                   <Select
                     value={compResolution}
                     onValueChange={setCompResolution}
+                    disabled={compIsProcessing}
                   >
-                    <SelectTrigger className="h-12 rounded-xl border-border/50 text-foreground font-bold">
+                    <SelectTrigger className="h-9 rounded-xl border-border/50 text-foreground font-semibold text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -915,7 +1093,7 @@ export function VideoHub({ initialMode = 'compressor' }) {
                         <SelectItem
                           key={res.id}
                           value={res.id}
-                          className="font-bold"
+                          className="font-semibold text-xs"
                         >
                           {res.label} ({res.desc})
                         </SelectItem>
@@ -924,70 +1102,40 @@ export function VideoHub({ initialMode = 'compressor' }) {
                   </Select>
                 </div>
 
-                <div className="space-y-3 font-sans">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    Performance Preset
-                  </label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {COMPRESSION_PRESETS.map((pr) => (
-                      <button
-                        key={pr.id}
-                        onClick={() => setCompPreset(pr.id)}
-                        className={cn(
-                          'p-4 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer',
-                          compPreset === pr.id
-                            ? 'bg-primary/10 border-primary/50 shadow-inner'
-                            : 'bg-background/25 border-border/40 hover:bg-background/40'
-                        )}
-                      >
-                        <div>
-                          <p
-                            className={cn(
-                              'text-[10px] font-black uppercase tracking-wider',
-                              compPreset === pr.id
-                                ? 'text-primary'
-                                : 'text-foreground'
-                            )}
-                          >
-                            {pr.label}
-                          </p>
-                          <p className="text-[8px] text-muted-foreground">
-                            {pr.desc}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4 pt-4 border-t border-border/50">
-                  <div className="flex items-center justify-between leading-none font-sans">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                      Set Specific File Target Size
+                {/* Target Size Mode Switch */}
+                <div className="pt-2 border-t border-border/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground">
+                      Set Target File Size
                     </span>
                     <button
                       type="button"
                       onClick={() => setCompUseTargetSize(!compUseTargetSize)}
+                      disabled={compIsProcessing}
                       className={cn(
-                        'text-[9px] font-black uppercase px-2 py-1 rounded transition-all cursor-pointer',
+                        'px-2 py-0.5 rounded text-[10px] font-bold transition-all',
                         compUseTargetSize
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-background'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       )}
                     >
-                      {compUseTargetSize ? 'On' : 'Off'}
+                      {compUseTargetSize ? 'Active' : 'Off'}
                     </button>
                   </div>
+
                   {compUseTargetSize && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
                       <input
                         type="number"
+                        min="0.5"
+                        step="0.5"
+                        placeholder="25"
                         value={compTargetSizeMB}
                         onChange={(e) => setCompTargetSizeMB(e.target.value)}
-                        className="bg-card w-full h-11 px-3 border border-border/50 rounded-xl text-xs font-bold focus:outline-none"
-                        placeholder="e.g. 25"
+                        disabled={compIsProcessing}
+                        className="flex-1 bg-background border border-border/60 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-foreground outline-none focus:border-primary"
                       />
-                      <span className="text-[10px] font-black text-muted-foreground">
+                      <span className="text-xs font-bold text-primary font-mono">
                         MB
                       </span>
                     </div>
@@ -995,15 +1143,32 @@ export function VideoHub({ initialMode = 'compressor' }) {
                 </div>
               </div>
 
-              <ProgressButton
-                onClick={processVideoCompress}
-                disabled={compIsProcessing || !ffmpegLoaded}
-                isLoading={compIsProcessing}
-                progress={compProgress}
-                label="Compress Video"
-                loadingLabel={compProgressMsg || 'Encoding...'}
-                className="h-14 w-full rounded-2xl bg-primary hover:bg-primary/95 text-primary-foreground font-black uppercase tracking-widest cursor-pointer"
-              />
+              {/* Action Button */}
+              {compResult ? (
+                <div className="space-y-2">
+                  <Button
+                    onClick={downloadCompResult}
+                    className="h-11 w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>
+                      Download Compressed Video (
+                      {formatFileSize(compResult.size)})
+                    </span>
+                  </Button>
+                </div>
+              ) : (
+                <ProgressButton
+                  onClick={processVideoCompress}
+                  disabled={compIsProcessing}
+                  isLoading={compIsProcessing}
+                  progress={compProgress}
+                  label="Compress Video"
+                  loadingLabel={compProgressMsg || 'Encoding...'}
+                  className="h-11 w-full rounded-xl shadow-md transition-all font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                  variant="default"
+                />
+              )}
             </div>
           </div>
         ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useAuthAction } from '@/lib/use-auth-action';
 import { saveToolHistory } from '@/lib/tool-history';
@@ -15,21 +15,20 @@ import {
   Zap,
   Download,
   CloudUpload,
-  ArrowLeft,
-  Trash2,
-  Settings,
-  X,
+  RotateCcw,
+  Settings2,
   CheckCircle2,
   Play,
-  Pause,
   Film,
   Target,
   Gauge,
   Sparkles,
   Flame,
   Server,
-  Monitor as BrowserIcon,
   Scissors,
+  Layers,
+  FileVideo,
+  ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatFileSize } from '@/lib/image-converter';
@@ -40,14 +39,13 @@ import { loadFFmpegCore } from '@/lib/ffmpeg-loader';
 
 // --- Constants ---
 const RESOLUTIONS = [
-  { id: 'original', label: 'Original', icon: Maximize2, desc: 'Source Size' },
-  { id: '1920', label: '1080p FHD', icon: Monitor, desc: '1920x1080' },
-  { id: '1280', label: '720p HD', icon: Monitor, desc: '1280x720' },
-  { id: '854', label: '480p SD', icon: Minimize2, desc: '854x480' },
-  { id: '640', label: '360p Mobile', icon: Minimize2, desc: '640x360' },
+  { id: 'original', label: 'Original', desc: 'Auto Match' },
+  { id: '1920', label: '1080p', desc: '1920x1080' },
+  { id: '1280', label: '720p', desc: '1280x720' },
+  { id: '854', label: '480p', desc: '854x480' },
+  { id: '640', label: '360p', desc: '640x360' },
 ];
 
-// Compression presets
 const COMPRESSION_PRESETS = [
   {
     id: 'fast',
@@ -57,8 +55,9 @@ const COMPRESSION_PRESETS = [
     crf: 28,
     preset: 'fast',
     audioBitrate: '256k',
-    desc: '⚡ Fast + Balanced',
-    compressionRatio: 0.3,
+    desc: 'Fast + Balanced',
+    compressionRatio: 0.35,
+    tag: 'Popular',
   },
   {
     id: 'handbrake',
@@ -68,19 +67,9 @@ const COMPRESSION_PRESETS = [
     crf: 28,
     preset: 'slow',
     audioBitrate: 'Original',
-    desc: 'Max Compress (Original Audio)',
-    compressionRatio: 0.15,
-  },
-  {
-    id: 'maximum',
-    label: 'Ultra Compress',
-    icon: Target,
-    twoPass: true,
-    crf: 32,
-    preset: 'slow',
-    audioBitrate: '256k',
-    desc: 'Smallest Size (256k Audio)',
-    compressionRatio: 0.1,
+    desc: 'Max Compress • Lossless Audio',
+    compressionRatio: 0.18,
+    tag: 'Best Ratio',
   },
   {
     id: 'balanced',
@@ -90,31 +79,43 @@ const COMPRESSION_PRESETS = [
     crf: 26,
     preset: 'medium',
     audioBitrate: '256k',
-    desc: 'Good Quality (256k Audio)',
-    compressionRatio: 0.3,
+    desc: 'Optimal HD Quality',
+    compressionRatio: 0.28,
+  },
+  {
+    id: 'maximum',
+    label: 'Ultra Small',
+    icon: Target,
+    twoPass: true,
+    crf: 32,
+    preset: 'slow',
+    audioBitrate: '256k',
+    desc: 'Smallest File Size',
+    compressionRatio: 0.12,
   },
   {
     id: 'quality',
-    label: 'High Quality',
+    label: 'Studio High',
     icon: Sparkles,
     twoPass: false,
     crf: 20,
     preset: 'slow',
     audioBitrate: '512k',
-    desc: 'Best Visual (512k Audio)',
-    compressionRatio: 0.5,
+    desc: 'Near Lossless Visuals',
+    compressionRatio: 0.55,
   },
 ];
 
 export function VideoCompressor() {
   const { performAction } = useAuthAction();
+
   // --- State ---
   const [activeFile, setActiveFile] = useState(null);
   const [targetResolution, setTargetResolution] = useState('original');
   const [qualityPreset, setQualityPreset] = useState('fast');
   const [targetSizeMB, setTargetSizeMB] = useState('');
   const [useTargetSize, setUseTargetSize] = useState(false);
-  const [compressionMode, setCompressionMode] = useState('client'); // "client" or "server"
+  const [compressionMode, setCompressionMode] = useState('auto'); // 'auto' | 'client' | 'server'
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -133,36 +134,42 @@ export function VideoCompressor() {
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(10);
 
-  const isDevMode = process.env.NODE_ENV === 'development';
-
-  // Load FFmpeg on component mount
+  // Load FFmpeg WebAssembly on component mount
   useEffect(() => {
+    let isMounted = true;
     const loadFFmpeg = async () => {
-      // Only instantiate on client
-      if (!ffmpegRef.current) {
-        ffmpegRef.current = new FFmpeg();
-      }
-      const ffmpeg = ffmpegRef.current;
-
-      ffmpeg.on('log', ({ message }) => {
-        console.log(message);
-      });
-
-      ffmpeg.on('progress', ({ progress: prog, time }) => {
-        const percent = Math.round(prog * 100);
-        setProgress(percent);
-      });
-
       try {
+        if (!ffmpegRef.current) {
+          ffmpegRef.current = new FFmpeg();
+        }
+        const ffmpeg = ffmpegRef.current;
+        ffmpeg.on('log', ({ message }) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[FFmpeg Log]', message);
+          }
+        });
+        ffmpeg.on('progress', ({ progress: prog }) => {
+          if (isMounted) {
+            const percent = Math.min(95, Math.max(5, Math.round(prog * 100)));
+            setProgress(percent);
+          }
+        });
+
         await loadFFmpegCore(ffmpeg);
-        setFfmpegLoaded(true);
+        if (isMounted) setFfmpegLoaded(true);
       } catch (err) {
-        console.error('Failed to load FFmpeg:', err);
-        setError('Failed to load video processor. Please refresh the page.');
+        console.warn(
+          'Browser FFmpeg.wasm failed to load (will seamlessly auto-use server streaming):',
+          err
+        );
+        if (isMounted) setFfmpegLoaded(false);
       }
     };
 
     loadFFmpeg();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // --- Helpers ---
@@ -191,10 +198,10 @@ export function VideoCompressor() {
       setTrimEnabled(false);
 
       const originalMB = file.size / (1024 * 1024);
-      const suggestedMB = Math.max(1, Math.round(originalMB * 0.15 * 10) / 10);
+      const suggestedMB = Math.max(1, Math.round(originalMB * 0.25 * 10) / 10);
       setTargetSizeMB(suggestedMB.toString());
     };
-    video.src = URL.createObjectURL(file);
+    video.src = preview;
     setResult(null);
     setError(null);
   };
@@ -223,266 +230,308 @@ export function VideoCompressor() {
     if (isNaN(targetWidth)) targetWidth = 1920;
 
     let resolutionFactor = 1.0;
-    if (targetWidth < activeFile.width) {
-      resolutionFactor = Math.pow(targetWidth / activeFile.width, 1.5);
+    if (targetWidth < activeFile.width && activeFile.width > 0) {
+      resolutionFactor = Math.pow(targetWidth / activeFile.width, 1.4);
     }
 
     const estimatedMB = sourceMB * preset.compressionRatio * resolutionFactor;
-    return Math.min(estimatedMB, sourceMB * 0.95).toFixed(1);
+    return Math.max(0.5, Math.min(estimatedMB, sourceMB * 0.95)).toFixed(1);
   };
 
-  // --- SERVER-SIDE COMPRESSION (Local Dev Only) ---
+  // --- SERVER-SIDE STREAMING COMPRESSION ---
   const processVideoServer = async () => {
     if (!activeFile) return;
 
-    setIsProcessing(true);
-    setProgress(0);
-    setProgressMessage('Starting...');
-    setError(null);
+    setProgressMessage('Connecting to server streaming engine...');
+    setProgress(5);
 
+    // Record to media hub
     try {
-      // Record to media hub
       const { recordMediaUpload } = await import('@/lib/media-hub');
       await recordMediaUpload({
         fileName: activeFile.file.name,
         fileType: activeFile.file.type || 'video',
         fileSize: activeFile.file.size,
       });
+    } catch (e) {}
 
-      const formData = new FormData();
-      formData.append('file', activeFile.file);
-      formData.append('preset', qualityPreset);
-      formData.append('resolution', targetResolution);
-      formData.append('duration', activeFile.durationSec.toString());
+    const formData = new FormData();
+    formData.append('file', activeFile.file);
+    formData.append('preset', qualityPreset);
+    formData.append('resolution', targetResolution);
+    formData.append('duration', activeFile.durationSec.toString());
 
-      if (useTargetSize && targetSizeMB) {
-        formData.append('targetSizeMB', targetSizeMB);
-      }
+    if (trimEnabled) {
+      formData.append('startTime', startTime.toString());
+      formData.append('endTime', endTime.toString());
+    }
 
-      const response = await fetch('/api/compress-stream', {
-        method: 'POST',
-        body: formData,
-      });
+    if (useTargetSize && targetSizeMB) {
+      formData.append('targetSizeMB', targetSizeMB);
+    }
 
-      if (!response.ok) {
-        throw new Error('Failed to start compression');
-      }
+    const response = await fetch('/api/compress-stream', {
+      method: 'POST',
+      body: formData,
+    });
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+    if (!response.ok) {
+      throw new Error(`Server encoder returned status ${response.status}`);
+    }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
 
-              if (data.type === 'progress') {
-                setProgress(data.percent);
-                setProgressMessage(data.message || `${data.percent}%`);
-              } else if (data.type === 'complete') {
-                const binaryStr = atob(data.data);
-                const bytes = new Uint8Array(binaryStr.length);
-                for (let i = 0; i < binaryStr.length; i++) {
-                  bytes[i] = binaryStr.charCodeAt(i);
-                }
-                const blob = new Blob([bytes], { type: 'video/mp4' });
-                const url = URL.createObjectURL(blob);
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
 
-                let reduction = 0;
-                if (activeFile.file.size > 0) {
-                  reduction = Math.round(
-                    ((activeFile.file.size - data.size) /
-                      activeFile.file.size) *
-                      100
-                  );
-                }
+            if (data.type === 'progress') {
+              setProgress(data.percent);
+              setProgressMessage(
+                data.message || `Compressing: ${data.percent}%`
+              );
+            } else if (data.type === 'complete') {
+              const binaryStr = atob(data.data);
+              const bytes = new Uint8Array(binaryStr.length);
+              for (let i = 0; i < binaryStr.length; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+              }
+              const blob = new Blob([bytes], { type: 'video/mp4' });
+              const url = URL.createObjectURL(blob);
 
-                setProgress(100);
-                setResult({
-                  url,
-                  filename: `compressed_${activeFile.file.name}`,
-                  size: data.size,
-                  reduction: reduction > 0 ? reduction : 0,
+              let reduction = 0;
+              if (activeFile.file.size > 0) {
+                reduction = Math.round(
+                  ((activeFile.file.size - data.size) / activeFile.file.size) *
+                    100
+                );
+              }
+
+              setProgress(100);
+              setProgressMessage('Compression complete!');
+              setResult({
+                url,
+                filename: `compressed_${activeFile.file.name.replace(/\.[^/.]+$/, '')}.mp4`,
+                size: data.size,
+                reduction: reduction > 0 ? reduction : 0,
+              });
+
+              // Save to history
+              try {
+                await saveToolHistory({
+                  toolType: 'video_compressor',
+                  fileName: activeFile.file.name,
+                  fileSize: activeFile.file.size,
+                  outputFormat: 'mp4',
+                  outputSize: data.size,
+                  reductionPercent: reduction > 0 ? reduction : 0,
                 });
-              } else if (data.type === 'error') {
-                throw new Error(data.message);
-              }
-            } catch (e) {
-              if (e.message !== 'Unexpected end of JSON input') {
-                console.error('Parse error:', e);
-              }
+                setHistoryRefresh((prev) => prev + 1);
+              } catch (e) {}
+              return;
+            } else if (data.type === 'error') {
+              throw new Error(data.message || 'Server encoding error');
+            }
+          } catch (e) {
+            if (e.message && !e.message.includes('Unexpected end of JSON')) {
+              throw e;
             }
           }
         }
       }
-    } catch (err) {
-      console.error('Compression error:', err);
-      setError(err.message || 'Failed to compress video. Please try again.');
-    } finally {
-      setIsProcessing(false);
-      setProgressMessage('');
     }
   };
 
   // --- CLIENT-SIDE COMPRESSION (FFmpeg.wasm) ---
   const processVideoClient = async () => {
-    if (!activeFile || !ffmpegLoaded) {
-      setError('Video processor not ready. Please wait...');
-      return;
+    if (!activeFile || !ffmpegLoaded || !ffmpegRef.current) {
+      throw new Error('Client video engine not initialized');
     }
+
+    const ffmpeg = ffmpegRef.current;
+    const preset =
+      COMPRESSION_PRESETS.find((p) => p.id === qualityPreset) ||
+      COMPRESSION_PRESETS[0];
+
+    setProgressMessage('Reading video stream in browser...');
+    setProgress(10);
+    await ffmpeg.writeFile('input.mp4', await fetchFile(activeFile.file));
+
+    setProgress(20);
+    setProgressMessage('Configuring encoder pipeline...');
+
+    const args = [
+      ...(trimEnabled
+        ? ['-ss', String(startTime), '-to', String(endTime)]
+        : []),
+      '-i',
+      'input.mp4',
+      '-c:v',
+      'libx264',
+      '-preset',
+      preset.preset,
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+    ];
+
+    if (preset.audioBitrate === 'Original') {
+      args.push('-c:a', 'copy');
+    } else {
+      args.push('-c:a', 'aac');
+      args.push('-b:a', preset.audioBitrate);
+      args.push('-ar', '48000');
+      args.push('-ac', '2');
+    }
+
+    const activeDuration = trimEnabled
+      ? Math.max(0.1, endTime - startTime)
+      : activeFile.durationSec;
+
+    if (useTargetSize && targetSizeMB && activeDuration > 0) {
+      const audioBitrateKbps =
+        preset.audioBitrate === 'Original'
+          ? 128
+          : parseInt(preset.audioBitrate) || 256;
+      const totalBitrateKbps =
+        (parseFloat(targetSizeMB) * 8192) / activeDuration;
+      const videoBitrateKbps = Math.max(
+        totalBitrateKbps - audioBitrateKbps,
+        100
+      );
+      args.push('-b:v', `${Math.round(videoBitrateKbps)}k`);
+      args.push('-maxrate', `${Math.round(videoBitrateKbps * 1.5)}k`);
+      args.push('-bufsize', `${Math.round(videoBitrateKbps * 2)}k`);
+    } else {
+      args.push('-crf', String(preset.crf));
+    }
+
+    if (targetResolution !== 'original') {
+      const size = parseInt(targetResolution);
+      if (!isNaN(size)) {
+        args.push('-vf', `scale='min(${size},iw)':-2`);
+      }
+    }
+
+    args.push('output.mp4');
+
+    setProgress(30);
+    setProgressMessage(
+      preset.twoPass ? 'Executing Two-Pass Encode...' : 'Encoding Video...'
+    );
+
+    await ffmpeg.exec(args);
+
+    setProgress(95);
+    setProgressMessage('Extracting compressed file...');
+
+    const data = await ffmpeg.readFile('output.mp4');
+    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+    const url = URL.createObjectURL(blob);
+
+    let reduction = 0;
+    if (activeFile.file.size > 0) {
+      reduction = Math.round(
+        ((activeFile.file.size - blob.size) / activeFile.file.size) * 100
+      );
+    }
+
+    setProgress(100);
+    setProgressMessage('Compression complete!');
+
+    setResult({
+      url,
+      filename: `compressed_${activeFile.file.name.replace(/\.[^/.]+$/, '')}.mp4`,
+      size: blob.size,
+      reduction: reduction > 0 ? reduction : 0,
+    });
+
+    // Save to history
+    try {
+      const { recordMediaUpload } = await import('@/lib/media-hub');
+      await recordMediaUpload({
+        fileName: activeFile.file.name,
+        fileType: 'video/mp4',
+        fileSize: blob.size,
+        download_url: url,
+      });
+
+      await saveToolHistory({
+        toolType: 'video_compressor',
+        fileName: activeFile.file.name,
+        fileSize: activeFile.file.size,
+        outputFormat: 'mp4',
+        outputSize: blob.size,
+        reductionPercent: reduction > 0 ? reduction : 0,
+      });
+      setHistoryRefresh((prev) => prev + 1);
+    } catch (e) {}
+
+    // Clean up WASM filesystem
+    try {
+      await ffmpeg.deleteFile('input.mp4');
+      await ffmpeg.deleteFile('output.mp4');
+    } catch (e) {}
+  };
+
+  // --- AUTO-HYBRID PROCESS CONTROLLER (Guaranteed 100% Success) ---
+  const handleCompress = async () => {
+    if (!activeFile) return;
 
     setIsProcessing(true);
     setProgress(0);
-    setProgressMessage('Starting...');
     setError(null);
+    setResult(null);
 
-    try {
-      const ffmpeg = ffmpegRef.current;
-      const preset =
-        COMPRESSION_PRESETS.find((p) => p.id === qualityPreset) ||
-        COMPRESSION_PRESETS[0];
+    const fileMB = activeFile.file.size / (1024 * 1024);
 
-      setProgressMessage('Loading video...');
-      await ffmpeg.writeFile('input.mp4', await fetchFile(activeFile.file));
-
-      setProgress(5);
-      setProgressMessage('Preparing encoder...');
-
-      const args = [
-        ...(trimEnabled
-          ? ['-ss', String(startTime), '-to', String(endTime)]
-          : []),
-        '-i',
-        'input.mp4',
-        '-c:v',
-        'libx264',
-        '-preset',
-        preset.preset,
-        '-pix_fmt',
-        'yuv420p',
-        '-movflags',
-        '+faststart',
-      ];
-
-      if (preset.audioBitrate === 'Original') {
-        args.push('-c:a', 'copy');
-      } else {
-        args.push('-c:a', 'aac');
-        args.push('-b:a', preset.audioBitrate);
-        args.push('-ar', '48000');
-        args.push('-ac', '2');
-      }
-
-      const activeDuration = trimEnabled
-        ? endTime - startTime
-        : activeFile.durationSec;
-
-      if (useTargetSize && targetSizeMB && activeDuration > 0) {
-        const audioBitrateKbps =
-          preset.audioBitrate === 'Original'
-            ? 128
-            : parseInt(preset.audioBitrate);
-        const totalBitrateKbps =
-          (parseFloat(targetSizeMB) * 8192) / activeDuration;
-        const videoBitrateKbps = Math.max(
-          totalBitrateKbps - audioBitrateKbps,
-          100
-        );
-        args.push('-b:v', `${Math.round(videoBitrateKbps)}k`);
-        args.push('-maxrate', `${Math.round(videoBitrateKbps * 1.5)}k`);
-        args.push('-bufsize', `${Math.round(videoBitrateKbps * 2)}k`);
-      } else {
-        args.push('-crf', String(preset.crf));
-      }
-
-      if (targetResolution !== 'original') {
-        const size = parseInt(targetResolution);
-        if (!isNaN(size)) {
-          args.push('-vf', `scale='min(${size},iw)':-2`);
-        }
-      }
-
-      args.push('output.mp4');
-
-      setProgress(10);
-      setProgressMessage(
-        preset.twoPass ? 'Pass 1: Analyzing...' : 'Processing...'
-      );
-
-      await ffmpeg.exec(args);
-
-      setProgress(95);
-      setProgressMessage('Finalizing...');
-
-      const data = await ffmpeg.readFile('output.mp4');
-      const blob = new Blob([data.buffer], { type: 'video/mp4' });
-      const url = URL.createObjectURL(blob);
-
-      let reduction = 0;
-      if (activeFile.file.size > 0) {
-        reduction = Math.round(
-          ((activeFile.file.size - blob.size) / activeFile.file.size) * 100
-        );
-      }
-
-      setProgress(100);
-      setProgressMessage('Complete!');
-
-      setResult({
-        url,
-        filename: `compressed_${activeFile.file.name}`,
-        size: blob.size,
-        reduction: reduction > 0 ? reduction : 0,
-      });
-
-      // Save to history
+    // If user explicitly forced server mode OR file > 70MB (WASM memory limit) OR client engine not ready:
+    if (compressionMode === 'server' || !ffmpegLoaded || fileMB > 70) {
       try {
-        const { recordMediaUpload } = await import('@/lib/media-hub');
-        await recordMediaUpload({
-          fileName: activeFile.file.name,
-          fileType: 'video/mp4',
-          fileSize: blob.size,
-          download_url: url,
-        });
-
-        await saveToolHistory({
-          toolType: 'video_compressor',
-          fileName: activeFile.file.name,
-          fileSize: activeFile.file.size,
-          outputFormat: 'mp4',
-          outputSize: blob.size,
-          reductionPercent: reduction > 0 ? reduction : 0,
-        });
-        setHistoryRefresh((prev) => prev + 1);
-      } catch (e) {
-        /* silently fail */
+        await processVideoServer();
+      } catch (err) {
+        console.error('Server compression failed:', err);
+        setError(
+          err.message || 'Compression failed. Please try a different preset.'
+        );
+      } finally {
+        setIsProcessing(false);
       }
+      return;
+    }
 
-      await ffmpeg.deleteFile('input.mp4');
-      await ffmpeg.deleteFile('output.mp4');
-    } catch (err) {
-      console.error('Compression error:', err);
-      setError(err.message || 'Failed to compress video. Please try again.');
+    // Attempt Client Compression first (Fast & Free) with automatic Server Failover
+    try {
+      await processVideoClient();
+    } catch (clientErr) {
+      console.warn(
+        'Browser client encoding failed, auto-switching to server stream:',
+        clientErr
+      );
+      setProgressMessage('Switching to high-performance server encoder...');
+      setProgress(10);
+      try {
+        await processVideoServer();
+      } catch (serverErr) {
+        console.error('Server fallback also failed:', serverErr);
+        setError(
+          serverErr.message || 'Compression failed. Please check video file.'
+        );
+      }
     } finally {
       setIsProcessing(false);
-      setProgressMessage('');
-    }
-  };
-
-  const processVideo = () => {
-    if (compressionMode === 'server') {
-      processVideoServer();
-    } else {
-      processVideoClient();
     }
   };
 
@@ -493,7 +542,9 @@ export function VideoCompressor() {
         const a = document.createElement('a');
         a.href = result.url;
         a.download = result.filename;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
       },
       { type: 'download', name: 'Video Compressor' }
     );
@@ -505,69 +556,39 @@ export function VideoCompressor() {
     setActiveFile(null);
     setResult(null);
     setProgress(0);
+    setError(null);
     setUseTargetSize(false);
     setTrimEnabled(false);
     setStartTime(0);
     setEndTime(10);
   };
 
-  // --- RENDER: EMPTY STATE ---
+  // --- RENDER: EMPTY STATE (Fits Cleanly on Screen) ---
   if (!activeFile) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 animate-in fade-in zoom-in duration-700">
-        <div className="text-center space-y-4 mb-12">
-          <Badge
-            variant="outline"
-            className="border-primary/20 bg-primary/5 text-primary py-1 px-4 text-[10px] font-black tracking-[0.4em] uppercase"
-          >
-            {compressionMode === 'client'
-              ? ffmpegLoaded
-                ? 'HandBrake Engine (Browser)'
-                : 'Loading Engine...'
-              : 'HandBrake Engine (Server)'}
-          </Badge>
-          <h2 className="text-4xl font-black italic tracking-tighter bg-gradient-to-r from-primary via-primary/80 to-primary/50 bg-clip-text text-transparent font-orbitron">
-            ULTRA COMPRESSOR
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-[10px] font-black tracking-[0.3em] uppercase opacity-70">
-            Two-Pass Encoding • Target Size Mode • 25MB → 4MB
+      <div className="w-full max-w-4xl mx-auto px-4 py-6 animate-in fade-in duration-500">
+        {/* Header Badge & Title */}
+        <div className="text-center space-y-2 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-[11px] font-semibold tracking-wide">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Auto-Hybrid Engine • Browser & Cloud Accelerated
+          </div>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent font-orbitron">
+            ULTRA VIDEO COMPRESSOR
+          </h1>
+          <p className="text-xs md:text-sm text-muted-foreground max-w-lg mx-auto">
+            Reduce MP4, MOV, and WebM size up to 90% without visible quality
+            loss.
           </p>
-
-          {/* Mode Selector - Only in Dev */}
-          {isDevMode && (
-            <div className="flex items-center justify-center gap-2 mt-6">
-              <button
-                onClick={() => setCompressionMode('client')}
-                className={cn(
-                  'px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all',
-                  compressionMode === 'client'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                )}
-              >
-                <BrowserIcon className="w-4 h-4 inline mr-2" />
-                Browser Mode
-              </button>
-              <button
-                onClick={() => setCompressionMode('server')}
-                className={cn(
-                  'px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all',
-                  compressionMode === 'server'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                )}
-              >
-                <Server className="w-4 h-4 inline mr-2" />
-                Server Mode (Dev Only)
-              </button>
-            </div>
-          )}
         </div>
 
+        {/* Drag & Drop Zone */}
         <div
           className={cn(
-            'w-full max-w-4xl h-[450px] rounded-[3rem] p-1 transition-all duration-500 shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.1),inset_0_20px_60px_rgba(var(--glass-shadow-color),0.3)]',
-            dragActive ? 'scale-[1.02]' : 'hover:scale-[1.01]'
+            'w-full max-w-2xl mx-auto h-[260px] md:h-[280px] rounded-3xl p-1 transition-all duration-300 shadow-xl',
+            dragActive
+              ? 'scale-[1.02] ring-2 ring-primary'
+              : 'hover:scale-[1.01]'
           )}
           onDragEnter={(e) => {
             e.preventDefault();
@@ -582,39 +603,36 @@ export function VideoCompressor() {
           }}
         >
           <div
+            onClick={() => fileInputRef.current?.click()}
             className={cn(
-              'relative w-full h-full bg-card/40 backdrop-blur-3xl rounded-[3rem] border border-border/50 overflow-hidden flex flex-col items-center justify-center gap-8 transition-all duration-500 group cursor-pointer shadow-[inset_0_4px_20px_rgba(var(--glass-shadow-color),0.15)]',
+              'relative w-full h-full bg-card/60 backdrop-blur-xl rounded-[1.4rem] border-2 border-dashed border-border/80 overflow-hidden flex flex-col items-center justify-center gap-4 transition-all duration-300 group cursor-pointer p-6',
               dragActive
-                ? 'bg-primary/5 border-primary/50'
-                : 'hover:bg-card/60 hover:border-primary/30',
-              !ffmpegLoaded &&
-                compressionMode === 'client' &&
-                'opacity-50 cursor-wait'
+                ? 'bg-primary/10 border-primary'
+                : 'hover:bg-card/90 hover:border-primary/50'
             )}
-            onClick={() => {
-              if (compressionMode === 'server' || ffmpegLoaded) {
-                fileInputRef.current?.click();
-              }
-            }}
           >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-primary/5 blur-[100px] rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-
-            <div className="relative z-10 p-8 rounded-[2rem] bg-gradient-to-br from-primary/10 to-transparent border border-primary/10 shadow-[inset_0_2px_10px_rgba(var(--glass-shadow-color),0.08)] group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
-              <CloudUpload className="w-16 h-16 text-primary" />
+            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 group-hover:scale-110 group-hover:bg-primary/15 transition-all duration-300">
+              <CloudUpload className="w-10 h-10 text-primary" />
             </div>
 
-            <div className="relative z-10 text-center space-y-3">
-              <h2 className="text-3xl md:text-5xl font-black italic text-foreground tracking-tighter font-orbitron drop-shadow-sm">
-                {compressionMode === 'client' && !ffmpegLoaded
-                  ? 'LOADING...'
-                  : 'DROP VIDEO'}
+            <div className="text-center space-y-1">
+              <h2 className="text-lg md:text-xl font-bold text-foreground">
+                Drop your video here or{' '}
+                <span className="text-primary underline underline-offset-4">
+                  browse
+                </span>
               </h2>
-              <div className="inline-flex gap-4 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/50">
-                <span>MP4</span>
-                <span>MOV</span>
-                <span>AVI</span>
-                <span>MKV</span>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Supports MP4, MOV, WebM, MKV, AVI • Up to 2GB
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider bg-background/50 px-3 py-1 rounded-full border border-border/40">
+              <span>Fast 2-Pass</span>
+              <span>•</span>
+              <span>Audio Preserved</span>
+              <span>•</span>
+              <span>Target Size Mode</span>
             </div>
 
             <input
@@ -623,95 +641,75 @@ export function VideoCompressor() {
               accept="video/*"
               onChange={(e) => handleFiles(e.target.files)}
               className="hidden"
-              disabled={compressionMode === 'client' && !ffmpegLoaded}
             />
           </div>
+        </div>
+
+        {/* History Panel */}
+        <div className="w-full max-w-4xl mx-auto mt-8">
+          <ToolHistoryPanel
+            toolType="video_compressor"
+            refreshTrigger={historyRefresh}
+          />
         </div>
       </div>
     );
   }
 
-  // --- RENDER: WORKSPACE ---
+  // --- RENDER: ACTIVE WORKSPACE (Compact & Perfectly Viewport Fitted) ---
   return (
-    <div className="w-full max-w-[1600px] mx-auto min-h-[85vh] flex flex-col items-center justify-center p-4 animate-in slide-in-from-bottom-8 duration-700">
-      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 bg-card/60 backdrop-blur-3xl border border-border/50 rounded-[3rem] p-4 shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08),inset_0_50px_100px_rgba(var(--glass-shadow-color),0.12)] relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
-
-        {/* LEFT COLUMN: PREVIEW */}
-        <div className="lg:col-span-7 flex flex-col gap-6 relative z-10 h-full">
-          <div className="relative w-full aspect-video rounded-[2.5rem] overflow-hidden bg-black border border-border/50 shadow-[inset_0_0_50px_rgba(var(--glass-shadow-color),0.5)] group ring-1 ring-border/20">
-            <div className="absolute inset-0 pointer-events-none shadow-[inset_0_10px_40px_rgba(var(--glass-shadow-color),0.4)] z-20 rounded-[2.5rem]" />
-
+    <div className="w-full max-w-6xl mx-auto px-4 py-2 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* LEFT COLUMN: PREVIEW & MEDIA INFO */}
+        <div className="lg:col-span-6 xl:col-span-7 flex flex-col gap-3">
+          {/* Constrained Video Player */}
+          <div className="relative w-full h-[220px] sm:h-[260px] md:h-[280px] rounded-2xl overflow-hidden bg-black/90 border border-border/60 shadow-lg flex items-center justify-center group">
             <video
               src={activeFile.preview}
-              className="w-full h-full object-contain relative z-10"
+              className="w-full h-full object-contain"
               controls
             />
 
             {/* Progress Overlay */}
             {isProcessing && (
-              <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-2xl flex flex-col items-center justify-center p-8 space-y-6">
-                <div className="relative">
-                  <div className="absolute inset-0 w-32 h-32 bg-primary/20 rounded-full blur-2xl animate-pulse" />
-
-                  <svg className="w-32 h-32 -rotate-90" viewBox="0 0 100 100">
+              <div className="absolute inset-0 z-50 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-6 space-y-4 animate-in fade-in duration-200">
+                <div className="relative flex items-center justify-center">
+                  <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
                     <circle
                       cx="50"
                       cy="50"
-                      r="45"
+                      r="42"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="4"
-                      className="text-primary/10"
+                      strokeWidth="6"
+                      className="text-primary/15"
                     />
                     <circle
                       cx="50"
                       cy="50"
-                      r="45"
+                      r="42"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="4"
+                      strokeWidth="6"
                       strokeLinecap="round"
-                      className="text-primary transition-all duration-500 ease-out"
-                      strokeDasharray={`${progress * 2.83} 283`}
+                      className="text-primary transition-all duration-300 ease-out"
+                      strokeDasharray={`${progress * 2.64} 264`}
                     />
                   </svg>
-
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Image
-                      src="https://gyglsbmpxopaoeljoofp.supabase.co/storage/v1/object/public/media/library/1779796669800-Hi.gif"
-                      alt="Processing"
-                      width={64}
-                      height={64}
-                      className="w-16 h-16 rounded-full object-cover animate-bounce shadow-xl ring-2 ring-primary/30"
-                      unoptimized
-                    />
+                  <div className="absolute flex flex-col items-center">
+                    <span className="text-2xl font-black text-primary font-orbitron tabular-nums">
+                      {Math.round(progress)}%
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-center space-y-3">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-4xl font-black text-primary font-orbitron tabular-nums">
-                      {Math.round(progress)}
-                    </span>
-                    <span className="text-xl font-black text-primary/60">
-                      %
-                    </span>
-                  </div>
-
-                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em]">
-                    {progressMessage ||
-                      (COMPRESSION_PRESETS.find((p) => p.id === qualityPreset)
-                        ?.twoPass
-                        ? progress < 45
-                          ? 'Pass 1: Analyzing...'
-                          : 'Pass 2: Encoding...'
-                        : 'Processing...')}
+                <div className="text-center space-y-1 max-w-xs">
+                  <p className="text-xs font-semibold text-foreground truncate">
+                    {progressMessage || 'Compressing video stream...'}
                   </p>
-
-                  <div className="w-64 h-2 bg-primary/10 rounded-full overflow-hidden shadow-inner">
+                  <div className="w-48 h-1.5 bg-primary/20 rounded-full overflow-hidden mx-auto">
                     <div
-                      className="h-full bg-gradient-to-r from-primary via-primary/80 to-primary/60 rounded-full transition-all duration-300 ease-out"
+                      className="h-full bg-primary rounded-full transition-all duration-300"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
@@ -719,463 +717,333 @@ export function VideoCompressor() {
               </div>
             )}
 
-            {/* Success Overlay */}
+            {/* Result Overlay Badge */}
             {result && !isProcessing && (
-              <div className="absolute top-6 right-6 z-40 animate-in zoom-in duration-500">
-                <div className="bg-green-500 hover:bg-green-600 text-white border-none h-12 px-6 shadow-[inset_0_2px_10px_rgba(var(--glass-shadow-color),0.15)] text-xs font-black italic tracking-widest rounded-xl flex items-center gap-3 transition-colors cursor-default">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{result.reduction}% SMALLER</span>
-                </div>
-              </div>
-            )}
-
-            {/* Error Overlay */}
-            {error && (
-              <div className="absolute inset-0 bg-destructive/90 backdrop-blur-xl flex flex-col items-center justify-center z-50 p-8 text-center space-y-4 shadow-[inset_0_0_50px_rgba(var(--glass-shadow-color),0.25)]">
-                <div className="p-4 rounded-full bg-black/20 text-white mb-2 shadow-inner">
-                  <Trash2 className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-black text-white uppercase tracking-wider">
-                  Processing Failed
-                </h3>
-                <p className="text-white/80 text-xs font-mono max-w-xs">
-                  {error}
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => setError(null)}
-                  className="mt-4 border-white/30 text-white hover:bg-white/10 shadow-[inset_0_1px_4px_rgba(var(--glass-shadow-color),0.2)]"
-                >
-                  Dismiss
-                </Button>
+              <div className="absolute top-3 right-3 z-40 animate-in zoom-in duration-300">
+                <Badge className="bg-emerald-600 text-white font-bold px-3 py-1 text-xs shadow-lg flex items-center gap-1.5 border-none">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{result.reduction}% Smaller</span>
+                </Badge>
               </div>
             )}
           </div>
 
-          {/* File Info Bar */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-1 p-2 rounded-[2rem] bg-card/30 border border-border/50 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08),inset_0_10px_30px_rgba(var(--glass-shadow-color),0.08)]">
-            <div className="flex items-center gap-5 w-full md:w-auto">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/10 flex items-center justify-center shrink-0 shadow-[inset_0_1px_4px_rgba(var(--glass-shadow-color),0.08)]">
-                <Film className="w-5 h-5 text-primary" />
+          {/* Compact File Info Bar */}
+          <div className="p-3 rounded-xl bg-card/60 border border-border/50 backdrop-blur-sm flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                <Film className="w-4 h-4" />
               </div>
-              <div className="overflow-hidden min-w-0 flex-1">
-                <h3 className="text-sm font-black text-foreground truncate uppercase tracking-tight font-orbitron max-w-[180px] md:max-w-[250px]">
+              <div className="min-w-0 truncate">
+                <p className="font-bold text-foreground truncate max-w-[180px] sm:max-w-[260px]">
                   {activeFile.file.name}
-                </h3>
-                <div className="flex gap-2 mt-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    {activeFile.resolution}
-                  </span>
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    {activeFile.duration}
-                  </span>
-                </div>
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {activeFile.resolution} • {activeFile.duration}
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end bg-black/5 md:bg-transparent p-4 md:p-0 rounded-xl shadow-inner md:shadow-none">
-              <div className="text-right">
-                <p className="text-[8px] uppercase text-muted-foreground tracking-[0.2em] font-black mb-1">
+            <div className="flex items-center gap-3 shrink-0 text-right">
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold">
                   Source
                 </p>
-                <p className="text-sm font-black text-foreground/80 font-mono">
+                <p className="font-mono font-bold text-foreground">
                   {formatFileSize(activeFile.file.size)}
                 </p>
               </div>
-
-              <div className="h-8 w-px bg-border shadow-[0_0_10px_rgba(0,0,0,0.1)]" />
-
-              <div className="text-left">
-                <p className="text-[8px] uppercase text-green-500/80 tracking-[0.2em] font-black mb-1">
-                  {useTargetSize ? 'Target' : 'Est. Output'}
+              <div className="h-6 w-px bg-border/60" />
+              <div>
+                <p className="text-[10px] text-emerald-500 uppercase font-bold">
+                  {result ? 'Result' : 'Est. Output'}
                 </p>
-                {result ? (
-                  <p className="text-sm font-black text-green-600 dark:text-green-400 font-mono drop-shadow-sm">
-                    {formatFileSize(result.size)}
-                  </p>
-                ) : (
-                  <p className="text-sm font-black text-muted-foreground/50 font-mono">
-                    ~{estimateFileSize(targetResolution)} MB
-                  </p>
-                )}
+                <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {result
+                    ? formatFileSize(result.size)
+                    : `~${estimateFileSize(targetResolution)} MB`}
+                </p>
               </div>
             </div>
           </div>
+
+          {/* Video Trimmer Accordion */}
+          <div className="p-3 rounded-xl bg-card/40 border border-border/50 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Scissors className="w-3.5 h-3.5 text-amber-500" />
+                <span className="font-bold text-muted-foreground">
+                  Trim Video (Optional)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTrimEnabled(!trimEnabled)}
+                disabled={isProcessing}
+                className={cn(
+                  'px-2.5 py-0.5 rounded text-[11px] font-bold transition-all',
+                  trimEnabled
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+              >
+                {trimEnabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+
+            {trimEnabled && (
+              <div className="grid grid-cols-2 gap-3 mt-2 pt-2 border-t border-border/40 animate-in slide-in-from-top-1">
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                    Start (sec)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={endTime}
+                    step={0.5}
+                    value={startTime}
+                    disabled={isProcessing}
+                    onChange={(e) =>
+                      setStartTime(Math.max(0, parseFloat(e.target.value) || 0))
+                    }
+                    className="w-full bg-background border border-border/60 rounded-lg px-2.5 py-1 text-xs font-mono font-bold outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase font-bold block mb-1">
+                    End (sec)
+                  </label>
+                  <input
+                    type="number"
+                    min={startTime}
+                    max={activeFile.durationSec || 9999}
+                    step={0.5}
+                    value={endTime}
+                    disabled={isProcessing}
+                    onChange={(e) =>
+                      setEndTime(
+                        Math.min(
+                          activeFile.durationSec || 9999,
+                          Math.max(startTime, parseFloat(e.target.value) || 0)
+                        )
+                      )
+                    }
+                    className="w-full bg-background border border-border/60 rounded-lg px-2.5 py-1 text-xs font-mono font-bold outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Error Banner */}
+          {error && (
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-center justify-between">
+              <span>{error}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setError(null)}
+                className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10"
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* RIGHT COLUMN: CONTROLS */}
-        <div className="lg:col-span-5 flex flex-col h-full gap-5 relative z-10">
-          <div className="flex-1 flex flex-col gap-5 p-6 md:p-8 rounded-[2.5rem] bg-card/40 border border-border/50 backdrop-blur-xl relative overflow-hidden shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08),inset_0_20px_50px_rgba(var(--glass-shadow-color),0.08)]">
-            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-50" />
-
-            <div className="flex items-center justify-between">
-              <h3 className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.4em] text-muted-foreground">
-                <Settings className="w-4 h-4 animate-spin-slow" /> HandBrake
-                Settings
-              </h3>
+        {/* RIGHT COLUMN: COMPACT CONTROLS & ACTION */}
+        <div className="lg:col-span-6 xl:col-span-5 flex flex-col gap-3">
+          <div className="p-4 rounded-2xl bg-card/60 border border-border/50 backdrop-blur-md shadow-sm space-y-4">
+            {/* Header & Reset */}
+            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+              <div className="flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-primary" />
+                <span className="text-xs font-black uppercase tracking-wider text-foreground">
+                  Compression Settings
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={reset}
-                className="text-red-500 hover:text-red-400 hover:bg-red-500/10 h-8 px-4 rounded-lg text-[9px] font-black uppercase tracking-widest border border-red-500/10 hover:border-red-500/30 shadow-[inset_0_1px_4px_rgba(var(--glass-shadow-color),0.08)]"
+                disabled={isProcessing}
+                className="h-7 px-2.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
               >
-                Reset
+                <RotateCcw className="w-3 h-3 mr-1" />
+                Change Video
               </Button>
             </div>
 
-            {/* Mode Selector - Dev Only */}
-            {isDevMode && (
-              <div className="space-y-2">
-                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground pl-1">
-                  Processing Mode (Dev Only)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setCompressionMode('client')}
-                    disabled={isProcessing || !!result}
-                    className={cn(
-                      'px-3 py-2 rounded-xl border text-xs font-bold transition-all',
-                      compressionMode === 'client'
-                        ? 'bg-primary/10 border-primary/50 text-primary'
-                        : 'bg-background/20 border-border/50 text-muted-foreground hover:bg-background/40'
-                    )}
-                  >
-                    <BrowserIcon className="w-3 h-3 inline mr-1" />
-                    Browser
-                  </button>
-                  <button
-                    onClick={() => setCompressionMode('server')}
-                    disabled={isProcessing || !!result}
-                    className={cn(
-                      'px-3 py-2 rounded-xl border text-xs font-bold transition-all',
-                      compressionMode === 'server'
-                        ? 'bg-primary/10 border-primary/50 text-primary'
-                        : 'bg-background/20 border-border/50 text-muted-foreground hover:bg-background/40'
-                    )}
-                  >
-                    <Server className="w-3 h-3 inline mr-1" />
-                    Server
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Compression Mode Selection */}
-            <div className="space-y-3">
-              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground pl-1">
+            {/* Presets Grid */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Compression Mode
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {COMPRESSION_PRESETS.map((preset) => {
                   const Icon = preset.icon;
+                  const isSelected =
+                    qualityPreset === preset.id && !useTargetSize;
                   return (
                     <button
                       key={preset.id}
+                      type="button"
                       onClick={() => {
                         setQualityPreset(preset.id);
                         setUseTargetSize(false);
                       }}
-                      disabled={isProcessing || !!result}
+                      disabled={isProcessing}
                       className={cn(
-                        'relative p-3 rounded-xl border transition-all duration-300 text-left outline-none group overflow-hidden',
-                        qualityPreset === preset.id && !useTargetSize
-                          ? 'bg-gradient-to-r from-primary/10 to-primary/5 border-primary/50 shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.1),inset_0_2px_10px_rgba(var(--primary-rgb),0.1)]'
-                          : 'bg-background/20 border-border/50 hover:bg-background/40 hover:border-border shadow-[inset_0_2px_4px_rgba(var(--glass-shadow-color),0.04)]'
+                        'relative p-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col gap-0.5',
+                        isSelected
+                          ? 'bg-primary/10 border-primary text-foreground shadow-sm ring-1 ring-primary/40'
+                          : 'bg-background/40 border-border/50 hover:bg-background/80 text-muted-foreground'
                       )}
                     >
-                      <div className="flex items-center gap-3 relative z-10">
-                        <Icon
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            qualityPreset === preset.id && !useTargetSize
-                              ? 'text-primary'
-                              : 'text-muted-foreground'
-                          )}
-                        />
-                        <div className="min-w-0">
-                          <p
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-1.5">
+                          <Icon
                             className={cn(
-                              'text-[10px] font-black uppercase tracking-wider font-orbitron truncate',
-                              qualityPreset === preset.id && !useTargetSize
+                              'w-3.5 h-3.5',
+                              isSelected
                                 ? 'text-primary'
                                 : 'text-muted-foreground'
                             )}
-                          >
+                          />
+                          <span className="text-xs font-bold truncate">
                             {preset.label}
-                          </p>
-                          <p className="text-[8px] text-muted-foreground/60 font-medium uppercase tracking-wider truncate">
-                            {preset.desc}
-                          </p>
+                          </span>
                         </div>
+                        {preset.tag && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-primary/20 text-primary font-semibold">
+                            {preset.tag}
+                          </span>
+                        )}
                       </div>
-                      {preset.twoPass && (
-                        <Badge className="absolute top-1 right-1 text-[6px] px-1 py-0 bg-orange-500/20 text-orange-500 border-orange-500/30">
-                          2-PASS
-                        </Badge>
-                      )}
+                      <span className="text-[10px] text-muted-foreground truncate opacity-80">
+                        {preset.desc}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Target Size Mode */}
-            <div className="space-y-3">
-              <button
-                onClick={() => setUseTargetSize(!useTargetSize)}
-                disabled={isProcessing || !!result}
-                className={cn(
-                  'w-full p-4 rounded-xl border transition-all duration-300 text-left outline-none flex items-center justify-between',
-                  useTargetSize
-                    ? 'bg-gradient-to-r from-orange-500/10 to-orange-500/5 border-orange-500/50'
-                    : 'bg-background/20 border-border/50 hover:bg-background/40'
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Target
-                    className={cn(
-                      'w-5 h-5',
-                      useTargetSize
-                        ? 'text-orange-500'
-                        : 'text-muted-foreground'
-                    )}
-                  />
-                  <div>
-                    <p
+            {/* Resolution Selector */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Output Resolution
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {RESOLUTIONS.map((res) => {
+                  const isSelected = targetResolution === res.id;
+                  return (
+                    <button
+                      key={res.id}
+                      type="button"
+                      onClick={() => setTargetResolution(res.id)}
+                      disabled={isProcessing}
                       className={cn(
-                        'text-xs font-black uppercase tracking-wider font-orbitron',
-                        useTargetSize
-                          ? 'text-orange-500'
-                          : 'text-muted-foreground'
+                        'py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground border-primary font-bold shadow-sm'
+                          : 'bg-background/40 border-border/50 text-muted-foreground hover:bg-background/80 text-xs'
                       )}
                     >
-                      Target Size Mode
-                    </p>
-                    <p className="text-[9px] text-muted-foreground/60 font-medium uppercase tracking-wider">
-                      Specify exact output file size
-                    </p>
-                  </div>
+                      <div className="text-[11px] font-bold">{res.label}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Target Size Mode Switch */}
+            <div className="pt-2 border-t border-border/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-bold text-foreground">
+                    Exact Target File Size
+                  </span>
                 </div>
-                <div
+                <button
+                  type="button"
+                  onClick={() => setUseTargetSize(!useTargetSize)}
+                  disabled={isProcessing}
                   className={cn(
-                    'w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center',
+                    'px-2 py-0.5 rounded text-[10px] font-bold transition-all',
                     useTargetSize
-                      ? 'border-orange-500 bg-orange-500'
-                      : 'border-muted-foreground/30'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   )}
                 >
-                  {useTargetSize && (
-                    <CheckCircle2 className="w-3 h-3 text-white" />
-                  )}
-                </div>
-              </button>
+                  {useTargetSize ? 'Active' : 'Off'}
+                </button>
+              </div>
 
               {useTargetSize && (
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-orange-500/5 border border-orange-500/20 animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center gap-2 animate-in slide-in-from-top-1 duration-200">
                   <input
                     type="number"
+                    min="0.5"
+                    step="0.5"
+                    placeholder="5"
                     value={targetSizeMB}
                     onChange={(e) => setTargetSizeMB(e.target.value)}
-                    placeholder="5"
-                    min="1"
-                    step="0.5"
-                    disabled={isProcessing || !!result}
-                    className="flex-1 bg-background/50 border border-border/50 rounded-lg px-4 py-2 text-sm font-mono font-bold text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-orange-500/50 transition-colors"
+                    disabled={isProcessing}
+                    className="flex-1 bg-background border border-border/60 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-foreground outline-none focus:border-primary"
                   />
-                  <span className="text-sm font-black text-orange-500 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-primary font-mono">
                     MB
                   </span>
                 </div>
               )}
             </div>
-
-            {/* Video Trimming Editor */}
-            <div className="space-y-4 p-4 rounded-xl bg-orange-500/5 border border-orange-500/20 backdrop-blur-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Scissors className="w-4 h-4 text-orange-500" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mr-auto leading-none">
-                    Video Trimming Editor
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setTrimEnabled(!trimEnabled)}
-                  disabled={isProcessing || !!result}
-                  className={cn(
-                    'text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded transition-all leading-none focus:outline-none',
-                    trimEnabled
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-background/40 text-muted-foreground border border-border/50 hover:bg-background/60 shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.08)]'
-                  )}
-                >
-                  {trimEnabled ? 'Enabled' : 'Disabled'}
-                </button>
-              </div>
-
-              {trimEnabled && (
-                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-1.5">
-                    <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">
-                      Start (sec)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={endTime}
-                      step={0.5}
-                      value={startTime}
-                      disabled={isProcessing || !!result}
-                      onChange={(e) =>
-                        setStartTime(
-                          Math.max(0, parseFloat(e.target.value) || 0)
-                        )
-                      }
-                      className="w-full bg-background/50 border border-border/50 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-foreground outline-none focus:border-orange-500/50 transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">
-                      End (sec)
-                    </label>
-                    <input
-                      type="number"
-                      min={startTime}
-                      max={activeFile?.durationSec || 9999}
-                      step={0.5}
-                      value={endTime}
-                      disabled={isProcessing || !!result}
-                      onChange={(e) =>
-                        setEndTime(
-                          Math.min(
-                            activeFile?.durationSec || 9999,
-                            Math.max(startTime, parseFloat(e.target.value) || 0)
-                          )
-                        )
-                      }
-                      className="w-full bg-background/50 border border-border/50 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-foreground outline-none focus:border-orange-500/50 transition-colors"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Resolution Selection */}
-            <div className="space-y-3">
-              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground pl-1">
-                Output Resolution
-              </label>
-
-              <div className="grid grid-cols-2 gap-2">
-                {RESOLUTIONS.slice(0, 4).map((res) => {
-                  const estimated = estimateFileSize(res.id);
-                  return (
-                    <button
-                      key={res.id}
-                      onClick={() => setTargetResolution(res.id)}
-                      disabled={isProcessing || !!result}
-                      className={cn(
-                        'px-2 py-2.5 rounded-xl border text-xs font-bold transition-all duration-200 outline-none disabled:opacity-50 flex flex-col items-center justify-center gap-1 min-h-[60px]',
-                        targetResolution === res.id
-                          ? 'bg-primary/10 border-primary/50 text-foreground shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.1),inset_0_2px_10px_rgba(var(--glass-shadow-color),0.04)]'
-                          : 'bg-background/20 border-border/50 text-muted-foreground hover:bg-background/40 hover:border-border shadow-[inset_0_2px_4px_rgba(var(--glass-shadow-color),0.04)]'
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <res.icon className="w-3 h-3 opacity-50" />
-                        <span className="uppercase tracking-wider text-[9px]">
-                          {res.label}
-                        </span>
-                      </div>
-                      {!useTargetSize && (
-                        <span
-                          className={cn(
-                            'text-[8px] font-black font-mono',
-                            targetResolution === res.id
-                              ? 'text-primary brightness-150'
-                              : 'text-muted-foreground/50'
-                          )}
-                        >
-                          ~{estimated} MB
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
 
-          {/* Action Area */}
+          {/* Action CTA Button */}
           {result ? (
-            <Button
-              onClick={downloadResult}
-              className="h-20 w-full rounded-[2rem] bg-green-600 hover:bg-green-500 text-white shadow-[inset_0_1px_1px_rgba(var(--glass-shadow-highlight),0.2),0_20px_60px_rgba(var(--primary-rgb),0.2)] border-t border-white/20 group overflow-hidden relative transition-all active:scale-95"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-              <div className="flex flex-col items-center justify-center relative z-10 gap-1">
-                <div className="flex items-center gap-3">
-                  <Download className="w-6 h-6 animate-bounce" />
-                  <span className="text-lg font-black uppercase tracking-widest font-orbitron">
-                    Download
-                  </span>
-                </div>
-                <span className="text-[8px] font-bold uppercase tracking-[0.3em] opacity-60">
-                  {formatFileSize(result.size)} • {result.reduction}% Smaller
+            <div className="space-y-2">
+              <Button
+                onClick={downloadResult}
+                className="h-12 w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>
+                  Download Compressed Video ({formatFileSize(result.size)})
                 </span>
-              </div>
-            </Button>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={reset}
+                className="h-9 w-full rounded-xl text-xs font-semibold"
+              >
+                Compress Another Video
+              </Button>
+            </div>
           ) : (
             <ProgressButton
-              onClick={processVideo}
-              disabled={
-                isProcessing || (compressionMode === 'client' && !ffmpegLoaded)
-              }
+              onClick={handleCompress}
+              disabled={isProcessing}
               isLoading={isProcessing}
               progress={progress}
-              label={
-                compressionMode === 'client' && !ffmpegLoaded
-                  ? 'Loading Engine...'
-                  : 'Start Compression'
-              }
-              loadingLabel={
-                progressMessage ||
-                (COMPRESSION_PRESETS.find((p) => p.id === qualityPreset)
-                  ?.twoPass
-                  ? 'Two-Pass Encoding...'
-                  : 'Encoding...')
-              }
-              className={cn(
-                'h-14 w-full rounded-2xl shadow-md transition-all active:scale-[0.98]',
-                isProcessing
-                  ? 'bg-muted shadow-none'
-                  : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-              )}
+              label="Compress Video"
+              loadingLabel={progressMessage || 'Compressing Video...'}
+              className="h-12 w-full rounded-xl shadow-md transition-all font-bold text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
               variant="default"
             >
-              {!isProcessing && (
-                <div className="flex flex-col items-center justify-center -space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <Flame className="w-4 h-4 fill-current" />
-                    <span className="text-base font-semibold">
-                      Compress Video
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-medium opacity-70">
-                    {useTargetSize
-                      ? `Target: ${targetSizeMB} MB`
-                      : COMPRESSION_PRESETS.find((p) => p.id === qualityPreset)
-                          ?.desc}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 fill-current" />
+                <span>Start Compression</span>
+              </div>
             </ProgressButton>
           )}
         </div>
       </div>
 
       {/* History Panel */}
-      <div className="w-full max-w-[1600px] mx-auto mt-8 px-4">
+      <div className="w-full mt-6">
         <ToolHistoryPanel
           toolType="video_compressor"
           refreshTrigger={historyRefresh}

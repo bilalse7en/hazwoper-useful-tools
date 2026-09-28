@@ -686,18 +686,18 @@ export const toolInfo = {
     name: 'AI Hub',
     icon: '✨',
     description:
-      'Se7eN AI & Kimi Code Enhancer with live web scraping & JSON/XML export',
+      'Se7eN AI Bot with live web scraping, multi-modal intelligence & JSON/XML export',
     category: 'AI Tools',
     detailedDescription:
-      'AI Hub integrates Se7eN AI and Kimi Code Enhancer. Extract live web data from URLs into structured JSON or XML, analyze uploaded images and documents, generate free HD AI images, and convert raw text into 100% accurate responsive HTML cards.',
+      'AI Hub is powered by Se7eN AI Bot. Extract live web data from URLs into structured JSON or XML, analyze uploaded images and documents, generate free HD AI images, and convert raw text into 100% accurate responsive HTML cards.',
     benefits: [
       'Live web scraping & URL data extraction to JSON and XML',
       'Multi-modal image, PDF, DOCX, and Excel data extraction',
       'Free high-definition AI image generation',
-      'Kimi Code Enhancer for responsive HTML cards & layouts',
+      'Se7eN AI Bot Code Architect for responsive HTML cards & layouts',
     ],
     howToUse:
-      'Select Se7eN AI Pro or Kimi Code Enhancer. Paste any web URL, upload documents/images, or prompt for code and image generation with instant JSON, XML, or CSV export.',
+      'Select Se7eN AI Bot mode. Paste any web URL, upload documents/images, or prompt for code and image generation with instant JSON, XML, or CSV export.',
     useCases: [
       {
         title: 'Technical Summarization',

@@ -213,9 +213,30 @@ export async function POST(req) {
 
         sendProgress(5, 'File uploaded, preparing encoder...');
 
+        const startTime = formData.get('startTime');
+        const endTime = formData.get('endTime');
+
         // Build FFmpeg arguments
-        const args = [
-          '-y',
+        const args = ['-y'];
+
+        if (
+          startTime !== null &&
+          startTime !== undefined &&
+          startTime !== '' &&
+          !isNaN(parseFloat(startTime))
+        ) {
+          args.push('-ss', String(parseFloat(startTime)));
+        }
+        if (
+          endTime !== null &&
+          endTime !== undefined &&
+          endTime !== '' &&
+          !isNaN(parseFloat(endTime))
+        ) {
+          args.push('-to', String(parseFloat(endTime)));
+        }
+
+        args.push(
           '-i',
           inputPath,
           '-c:v',
@@ -225,8 +246,8 @@ export async function POST(req) {
           '-pix_fmt',
           'yuv420p',
           '-movflags',
-          '+faststart',
-        ];
+          '+faststart'
+        );
 
         // Audio handling: copy original or re-encode
         if (preset.copyAudio) {

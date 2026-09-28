@@ -229,7 +229,7 @@ export const ECOSYSTEM_KNOWLEDGE = {
       coreFeatures: [
         'Live Web Scraping & URL mining into structured JSON, XML, CSV, and YAML',
         'Multi-modal document and image inspection with OCR and adaptive canvas sharpening',
-        'Integrated Claude 3.7 Sonnet, GPT-4o, DeepSeek R1, and Gemini 1.5 Flash models',
+        'Powered by Se7eN AI Bot with multi-modal neural reasoning',
       ],
       keyTerms: [
         {
@@ -468,8 +468,8 @@ export function buildMasterSystemPrompt({
     ? ECOSYSTEM_KNOWLEDGE.tools[selectedToolSlug]
     : null;
 
-  return `You are "Se7eN Bot Autopilot", the Chief Technical Editor & AI Architect for "${ECOSYSTEM_KNOWLEDGE.brandName}".
-You write with the analytical depth, precision, structural elegance, and zero-fluff authority of Claude 3.7 Sonnet.
+  return `You are "Se7eN AI Bot Autopilot", the Chief Technical Editor & AI Architect for "${ECOSYSTEM_KNOWLEDGE.brandName}".
+You write with analytical depth, precision, structural elegance, and zero-fluff authority.
 
 OBJECTIVE:
 Generate an exhaustive, highly engaging, beautifully formatted blog post that provides immense practical value to engineers, compliance managers, course creators, and productivity professionals.

@@ -282,7 +282,7 @@ export default function AdminBlogEditPage() {
         title: data.title || aiInput.title,
         description:
           data.summary ||
-          'Professional editorial sequence synthesized by Puter AI.',
+          'Professional editorial sequence synthesized by Se7eN AI Bot.',
         content: data.content,
         category: 'Technical safety',
         read_time: `${Math.ceil(parseInt(aiInput.wordCount) / 200)} min read`,
@@ -304,10 +304,10 @@ export default function AdminBlogEditPage() {
     }
 
     setImageGenerating(true);
-    showToast('Consulting Puter AI for the perfect prompt...', 'info');
+    showToast('Consulting Se7eN AI Bot for the perfect prompt...', 'info');
 
     try {
-      // 1. Ask Puter for an optimized image prompt
+      // 1. Ask Se7eN AI Bot for an optimized image prompt
       let finalizedPrompt = `professional cinematic 8k photography, modern digital workspace, ${formData.title}, clean minimal composition, high-end corporate aesthetic, photorealistic`;
 
       if (puterReady && window.puter) {

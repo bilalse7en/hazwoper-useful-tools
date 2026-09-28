@@ -437,7 +437,7 @@ export function PuterAgent() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Technical Authority">
-                      Technical Authority (Claude Style)
+                      Technical Authority (Se7eN AI Bot)
                     </SelectItem>
                     <SelectItem value="Executive Overview">
                       Executive &amp; Compliance Overview
@@ -617,7 +617,7 @@ export function PuterAgent() {
         </div>
       )}
 
-      {/* TAB 2: CLAUDE AI-STYLE HISTORY ARCHIVE */}
+      {/* TAB 2: SE7EN AI BOT HISTORY ARCHIVE */}
       {activeTab === 'history' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

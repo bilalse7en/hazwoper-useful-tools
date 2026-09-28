@@ -69,30 +69,30 @@ import Swal from 'sweetalert2';
 const MODELS = [
   {
     id: 'se7en',
-    label: 'Se7eN AI Pro',
+    label: 'Se7eN AI Bot Pro',
     icon: Sparkles,
-    provider: 'Web Scraping & Multi-Format Intelligence',
+    provider: 'Se7eN Multi-Modal Intelligence',
     description:
       'Extracts live web URL data into JSON/XML, analyzes & enhances uploaded images, and generates free HD AI images',
   },
   {
     id: 'kimi',
-    label: 'Kimi Code Enhancer',
+    label: 'Se7eN Code & Layout Architect',
     icon: Wand2,
-    provider: 'Kimi Neural Engine',
+    provider: 'Se7eN Neural Engine',
     description:
       'Transforms raw text & word content into 100% accurate responsive HTML cards & layouts',
   },
   {
     id: 'assistant',
-    label: 'Neural Assistant',
+    label: 'Se7eN Technical Assistant',
     icon: Bot,
-    provider: 'General Intelligence',
-    description: 'General AI Q&A and technical guidance',
+    provider: 'General Intelligence & Safety',
+    description: 'General AI Q&A, safety compliance, and technical guidance',
   },
 ];
 
-const SYSTEM_PROMPT_SE7EN = `You are "Se7eN AI", the Master Multi-Modal Super-Intelligence and Pro AI Architect of "All Useful Tools", crafted by Bilal Se7eN.
+const SYSTEM_PROMPT_SE7EN = `You are "Se7eN AI Bot", the Master Multi-Modal Super-Intelligence and Pro AI Architect of "All Useful Tools", crafted by Bilal Se7eN.
 
 CRITICAL MULTI-MODAL DIRECTIVES:
 1. When the user attaches an image or document, you have FULL native multi-modal and extraction processing. NEVER say "as an AI I cannot view images" or "I cannot process attachments".
@@ -101,9 +101,9 @@ CRITICAL MULTI-MODAL DIRECTIVES:
 4. When web URLs are provided, analyze and extract the scraped live data directly.
 5. Tone: Authoritative, sharp, highly intelligent, friendly, and precise.`;
 
-const SYSTEM_PROMPT_KIMI = `You are Kimi Code Enhancer & HTML Generator, an elite frontend architect and code transformer inside AI Hub.
+const SYSTEM_PROMPT_KIMI = `You are "Se7eN AI Code Architect & HTML Generator", an elite frontend architect and code transformer inside AI Hub.
 
-CRITICAL DIRECTIVES FOR KIMI CODE ENHANCER:
+CRITICAL DIRECTIVES FOR SE7EN CODE ARCHITECT:
 1. EXACT CONTENT PRESERVATION (100% ACCURACY):
    - When the user provides text, paragraphs, or bullet points: PRESERVE 100% OF THE USER'S EXACT CONTENT TEXT. NEVER alter, rephrase, remove, or add fake filler text.
 2. STUNNING HTML/CSS STRUCTURE:
@@ -114,8 +114,8 @@ CRITICAL DIRECTIVES FOR KIMI CODE ENHANCER:
 4. OUTPUT FORMAT:
    - Always return the complete, standalone HTML code in a \`\`\`html codeblock so the user can preview and copy it immediately.`;
 
-const SYSTEM_PROMPT_ASSISTANT = `You are Neural Assistant for "All Useful Tools", architected by Bilal Se7eN.
-Provide authoritative, clear, precise, and professional answers for programming, technical writing, and workflow automation.`;
+const SYSTEM_PROMPT_ASSISTANT = `You are "Se7eN AI Bot Assistant" for "All Useful Tools", architected by Bilal Se7eN.
+Provide authoritative, clear, precise, and professional answers for programming, technical writing, safety compliance, and workflow automation.`;
 
 export function AIAssistant() {
   const [selectedEngine, setSelectedEngine] = useState('se7en');
@@ -125,7 +125,7 @@ export function AIAssistant() {
       id: 'welcome',
       role: 'assistant',
       content:
-        '👋 Welcome to **AI Hub**!\n\nI am equipped with:\n- 🖼️ **Exact Image Enhancement**: Upload any photo to enhance clarity, sharpness, and lighting while preserving the exact person/subject.\n- 🌐 **Live Web Scraping**: Paste any URL to scrape & extract data into structured **JSON** or **XML**.\n- 📁 **File & Document Analysis**: Drag and drop images, PDFs, Word DOCX, or Excel spreadsheets.\n- 🎨 **Free AI Image Generation**: Type `/image <prompt>` to generate instant new concepts.\n- 📑 **Kimi Code Enhancer**: Convert raw text into production-ready responsive HTML cards.\n\nWhat would you like to enhance or build today?',
+        '👋 Welcome to **Se7eN AI Bot**!\n\nI am equipped with:\n- 🖼️ **Exact Image Enhancement**: Upload any photo to enhance clarity, sharpness, and lighting while preserving the exact person/subject.\n- 🌐 **Live Web Scraping**: Paste any URL to scrape & extract data into structured **JSON** or **XML**.\n- 📁 **File & Document Analysis**: Drag and drop images, PDFs, Word DOCX, or Excel spreadsheets.\n- 🎨 **Free AI Image Generation**: Type `/image <prompt>` to generate instant new concepts.\n- 📑 **Se7eN Code Architect**: Convert raw text into production-ready responsive HTML cards.\n\nWhat would you like to enhance or build today?',
       timestamp: new Date(),
     },
   ]);
@@ -456,11 +456,12 @@ export function AIAssistant() {
                 AI Hub
               </h1>
               <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-[10px] font-bold text-cyan-300 uppercase">
-                Se7eN &amp; Kimi
+                Se7eN AI Bot Pro
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-medium">
-              Web Scraping, Image Enhancer, JSON/XML Export &amp; Code Enhancer
+              Web Scraping, Image Enhancer, JSON/XML Export &amp; Code
+              Architecture
             </p>
           </div>
         </div>
@@ -912,10 +913,10 @@ export function AIAssistant() {
               <div>
                 <DialogTitle className="text-base font-black text-cyan-300 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  Kimi Interactive HTML Live Preview
+                  Se7eN AI Interactive HTML Live Preview
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-400">
-                  Fully rendered interactive viewport generated by AI Hub
+                  Fully rendered interactive viewport generated by Se7eN AI Bot
                 </DialogDescription>
               </div>
               <Button
@@ -930,7 +931,7 @@ export function AIAssistant() {
             </DialogHeader>
             <div className="flex-1 bg-white p-0 overflow-hidden">
               <iframe
-                title="Kimi Live Render"
+                title="Se7eN AI Live Render"
                 srcDoc={previewHtml}
                 className="w-full h-full border-none"
                 sandbox="allow-scripts allow-same-origin"
