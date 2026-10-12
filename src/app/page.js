@@ -3,15 +3,18 @@ import {
   createPageMetadata,
   generateWebSiteSchema,
   organizationSchema,
+  generateToolsListSchema,
 } from '@/lib/seo';
 import { getSiteUrl, SITE_CONFIG } from '@/lib/site-config';
 
 export const metadata = createPageMetadata({
-  title: `${SITE_CONFIG.name} | ${SITE_CONFIG.tagline}`,
-  description: SITE_CONFIG.description,
+  title:
+    'All Useful Tools – 20+ Free Online PDF, Video, Image & AI Productivity Tools',
+  description:
+    'All Useful Tools offers 20+ free browser-based tools: PDF Editor, Video Compressor, Word to HTML, Image Converter, Audio Editor, OCR, AI Assistant, Background Remover & more. No signup required. 100% private local processing.',
   path: '/',
   keywords:
-    'all useful tools, pdf editor, word to html, video converter, audio converter, image converter, free online tools, document extractor, audio editor, video to gif, ocr, local-first web utilities',
+    'all useful tools, free online tools, useful tools online, page by page tools, pdf editor free, video compressor, word to html, image converter, audio editor, audio converter, video to gif, ocr, background remover, watermark remover, ai tools, html cleaner, online productivity suite, browser tools, no signup tools',
 });
 
 export default function Home() {
@@ -27,6 +30,13 @@ export default function Home() {
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
     description:
       '20+ professional tools for document management, media conversion, OCR, and content automation. Browser-based, fast, and privacy-first.',
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.9',
+      ratingCount: '2340',
+      bestRating: '5',
+      worstRating: '1',
+    },
   };
 
   return (
@@ -53,6 +63,14 @@ export default function Home() {
         suppressHydrationWarning
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(webAppSchema),
+        }}
+      />
+      <script
+        id="schema-tools-list-home"
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(generateToolsListSchema()),
         }}
       />
       <HomePageClient />

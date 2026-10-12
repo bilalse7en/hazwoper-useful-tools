@@ -1,6 +1,10 @@
 import { withSentryConfig } from '@sentry/nextjs';
 
 const nextConfig = {
+  // SEO: Remove X-Powered-By header for cleaner responses
+  poweredByHeader: false,
+  // SEO: Consistent URL format (no trailing slash)
+  trailingSlash: false,
   // Enable source maps in production for better debugging and PageSpeed Insights compliance
   productionBrowserSourceMaps: false,
 
@@ -67,11 +71,31 @@ const nextConfig = {
         destination: '/privacy',
         permanent: true,
       },
+      {
+        source: '/tool/:tool',
+        destination: '/tools/:tool',
+        permanent: true,
+      },
+      {
+        source: '/tool',
+        destination: '/tools',
+        permanent: true,
+      },
     ];
   },
 
   async headers() {
     return [
+      {
+        // SEO: Help search engines know content is fresh
+        source: '/:path((?!api|_next|monitoring).*)',
+        headers: [
+          {
+            key: 'X-Robots-Tag',
+            value: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+          },
+        ],
+      },
       {
         source: '/:path*',
         headers: [

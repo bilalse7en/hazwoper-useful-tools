@@ -306,3 +306,5 @@ export function FloatingChatbot() {
     </div>
   );
 }
+
+export default FloatingChatbot;

@@ -239,3 +239,5 @@ export function InquiryReplyNotifier() {
     </AnimatePresence>
   );
 }
+
+export default InquiryReplyNotifier;

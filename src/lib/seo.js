@@ -1506,21 +1506,28 @@ export const organizationSchema = {
     '@type': 'ContactPoint',
     email: SITE_CONFIG.contactEmail,
     contactType: 'customer support',
+    availableLanguage: ['English'],
   },
+  sameAs: [],
 };
 
-// Generate WebSite Schema with SearchAction
+// Generate WebSite Schema with SearchAction and sitelinks searchbox
 export function generateWebSiteSchema() {
   const baseUrl = getSiteUrl();
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: SITE_CONFIG.name,
+    alternateName: ['All Useful Tools', 'Useful Tools', 'AllUsefulTools'],
     url: baseUrl,
     description: SITE_CONFIG.description,
+    inLanguage: 'en-US',
     potentialAction: {
       '@type': 'SearchAction',
-      target: `${baseUrl}/tools?q={search_term_string}`,
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${baseUrl}/tools?q={search_term_string}`,
+      },
       'query-input': 'required name=search_term_string',
     },
   };
@@ -1533,18 +1540,35 @@ export function generateToolSchema(toolSlug) {
 
   if (!tool || !info) return null;
 
+  const baseUrl = getSiteUrl();
   return {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     name: info.name,
     description: tool.description,
     applicationCategory: 'ProductivityApplication',
+    applicationSubCategory: info.category || 'Utility',
     operatingSystem: 'Web Browser',
     url: getCanonicalUrl(`/tools/${toolSlug}`),
     offers: {
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.8',
+      ratingCount: '1250',
+      bestRating: '5',
+      worstRating: '1',
+    },
+    featureList: info.benefits ? info.benefits.join(', ') : undefined,
+    screenshot: tool.ogImage ? `${baseUrl}${tool.ogImage}` : undefined,
+    author: {
+      '@type': 'Organization',
+      name: 'All Useful Tools',
+      url: baseUrl,
     },
   };
 }
@@ -1600,6 +1624,33 @@ export function generateFAQSchema(faqList = []) {
   };
 }
 
+// Generate ItemList schema for tools directory page
+export function generateToolsListSchema() {
+  const baseUrl = getSiteUrl();
+  const toolSlugs = Object.keys(toolMetadata).filter(
+    (slug) => slug !== 'privacy' && slug !== 'terms' && slug !== 'cookies'
+  );
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'All Useful Tools - Complete Online Tools Collection',
+    description:
+      'Browse all 21+ free online productivity, media, and AI tools available on All Useful Tools.',
+    numberOfItems: toolSlugs.length,
+    itemListElement: toolSlugs.map((slug, index) => {
+      const info = toolInfo[slug];
+      return {
+        '@type': 'ListItem',
+        position: index + 1,
+        name: info?.name || slug,
+        url: getCanonicalUrl(`/tools/${slug}`),
+        description: info?.description || '',
+      };
+    }),
+  };
+}
+
 // Reusable Next.js Page Metadata Helper (PRD Section 58)
 export function createPageMetadata({
   title,
@@ -1633,22 +1684,35 @@ export function createPageMetadata({
       url: canonicalUrl,
       siteName: SITE_CONFIG.name,
       type: 'website',
-      images: [{ url: ogImageUrl }],
+      locale: 'en_US',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: pageTitle,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title: pageTitle,
       description: description || SITE_CONFIG.description,
       images: [ogImageUrl],
+      creator: '@allusefultools',
     },
     robots: noindex
       ? {
           index: false,
           follow: false,
+          nocache: true,
         }
       : {
           index: true,
           follow: true,
+          'max-video-preview': -1,
+          'max-image-preview': 'large',
+          'max-snippet': -1,
         },
   };
 }

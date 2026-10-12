@@ -1,0 +1,19 @@
+{
+  "name": "All Useful Tools - Free Online Productivity & Media Tools",
+  "short_name": "All Useful Tools",
+  "description": "20+ free browser-based tools: PDF Editor, Video Compressor, Image Converter, Audio Editor, OCR, AI Assistant & more. No signup, 100% private.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "utilities", "developer tools"],
+  "icons": [
+    {
+      "src": "/hazwoper-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

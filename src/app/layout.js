@@ -40,15 +40,49 @@ export const viewport = {
 export const metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: `${SITE_CONFIG.name} | ${SITE_CONFIG.tagline}`,
-    template: `%s | ${SITE_CONFIG.name}`,
+    default: `All Useful Tools - Free Online PDF Editor, Video Compressor, Image Converter & 20+ Productivity Tools`,
+    template: `%s | All Useful Tools`,
   },
-  description: SITE_CONFIG.description,
-  keywords:
-    'all useful tools, pdf editor, word to html, video converter, audio converter, image converter, free online tools, productivity suite',
-  authors: [{ name: SITE_CONFIG.name }],
+  description:
+    'All Useful Tools is your all-in-one free online tool suite. PDF Editor, Word to HTML Converter, Video Compressor, Image Converter, Audio Editor, OCR, AI Assistant & 20+ browser-based tools. No signup, 100% private, works offline.',
+  keywords: [
+    'all useful tools',
+    'free online tools',
+    'useful tools',
+    'online tools',
+    'page by page tools',
+    'productivity tools',
+    'pdf editor online free',
+    'word to html converter',
+    'video compressor online',
+    'image converter',
+    'audio converter',
+    'audio editor online',
+    'video to gif converter',
+    'ocr online free',
+    'background remover',
+    'watermark remover',
+    'ai assistant',
+    'document extractor',
+    'html cleaner',
+    'free online tool suite',
+    'browser based tools',
+    'no signup tools',
+  ],
+  authors: [{ name: 'All Useful Tools', url: getSiteUrl() }],
+  creator: 'All Useful Tools',
+  publisher: 'All Useful Tools',
+  category: 'Technology',
+  classification: 'Online Tools & Productivity',
   other: {
     'google-adsense-account': 'ca-pub-9874465109252768',
+    'revisit-after': '3 days',
+    rating: 'General',
+  },
+  verification: {
+    google:
+      process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ||
+      'fB1i6gJpQ2H6_google_verification_token',
   },
 };
 
@@ -73,6 +107,8 @@ export default function RootLayout({ children }) {
         />
         <link rel="dns-prefetch" href="https://js.puter.com" />
         <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/hazwoper-logo.png" />
       </head>
       <body
         className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}

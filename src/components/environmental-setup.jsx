@@ -312,3 +312,5 @@ export function EnvironmentalSetup() {
     </AnimatePresence>
   );
 }
+
+export default EnvironmentalSetup;

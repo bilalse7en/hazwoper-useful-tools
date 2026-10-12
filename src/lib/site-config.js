@@ -8,7 +8,7 @@ export const SITE_CONFIG = {
   shortName: 'Useful Tools',
   tagline: 'All-in-One Online Productivity, Media & AI Utilities',
   description:
-    'Free online productivity and media tools: PDF Editor, Word to HTML, Video Compressor, Video to GIF, Audio Converter, Audio Editor, Image Converter, OCR, and AI Assistants. High performance with local-first browser privacy.',
+    'All Useful Tools is your free all-in-one online tool suite with 20+ browser-based utilities. PDF Editor, Word to HTML Converter, Video Compressor, Image Converter, Audio Editor, OCR, AI Assistant, Background Remover & more. No signup. 100% private.',
   publisher: 'All Useful Tools',
   contactEmail: 'bilalghaffar46@gmail.com',
   defaultOgImage: '/og-image.png',
@@ -19,12 +19,11 @@ export const SITE_CONFIG = {
  * Strips any trailing slashes to ensure consistent path concatenation.
  */
 export function getSiteUrl() {
-  const url =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://hazwoper-useful-tools.vercel.app');
-  return url.replace(/\/+$/, '');
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+  }
+  // Production default domain
+  return 'https://hazwoper-useful-tools.vercel.app';
 }
 
 /**

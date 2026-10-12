@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Lock,
   Send,
+  Download,
   FileCode,
   Layers,
   LayoutGrid,
@@ -37,6 +38,7 @@ import {
   SlidersHorizontal,
   Layers2,
   ExternalLink,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,18 +64,361 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/components/auth-provider';
+import { useTheme } from 'next-themes';
 import { supabase } from '@/lib/supabase';
 import {
   detectStyleAttributes,
   convertInlineStylesToTailwind,
   applyHoverAnimationsAndCornerGlow,
+  applyCustomPromptToHtml,
   enhanceHtmlWithFreeAi,
   injectQuickTextIntoDesign,
   DESIGN_CATALOG,
+  isExistingCardDesign,
   autoSelectBestDesign,
   injectContentIntoDesignSlots,
+  extractAndConvertIconsFromHtml,
+  extractAndConvertAssetsFromHtml,
+  syncIconsToMediaHub,
+  syncAssetsToMediaHub,
 } from '@/lib/html-design-enhancer-engine';
 import { ensurePuterLoaded } from '@/lib/se7en-ai';
+
+/**
+ * Isolated Live Preview Frame with True Responsive Viewport Emulation
+ * Guarantees mobile/tablet media queries (e.g. grid-cols-1 md:grid-cols-2)
+ * evaluate accurately against the simulated screen width rather than the desktop browser window.
+ */
+function HtmlLivePreview({
+  html,
+  viewport = 'desktop',
+  isDark = false,
+  emptyMessage = 'No HTML content provided.',
+  className = '',
+}) {
+  const iframeRef = React.useRef(null);
+
+  const srcDoc = useMemo(() => {
+    const raw = (html || '').trim();
+    const content =
+      raw ||
+      `<div style="padding: 32px; text-align: center; font-size: 13px; color: ${
+        isDark ? '#94a3b8' : '#64748b'
+      }; font-style: italic;">${emptyMessage}</div>`;
+
+    return `<!DOCTYPE html>
+<html lang="en" class="${isDark ? 'dark' : ''}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            border: '${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}',
+            background: '${isDark ? '#090d16' : '#ffffff'}',
+            foreground: '${isDark ? '#f8fafc' : '#0f172a'}',
+            card: '${isDark ? '#0f172a' : '#ffffff'}',
+            'card-foreground': '${isDark ? '#f8fafc' : '#0f172a'}',
+            muted: '${isDark ? '#1e293b' : '#f1f5f9'}',
+            'muted-foreground': '${isDark ? '#94a3b8' : '#64748b'}',
+            primary: {
+              DEFAULT: '#2563eb',
+              foreground: '#ffffff',
+            }
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(8px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+          },
+          animation: {
+            fadeIn: 'fadeIn .6s ease forwards',
+          },
+        }
+      }
+    };
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: transparent;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      padding: 12px;
+      color: ${isDark ? '#f8fafc' : '#0f172a'};
+      overflow-x: hidden;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+    /* Smooth Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.4); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.7); }
+  </style>
+</head>
+<body class="${isDark ? 'dark text-slate-100' : 'text-slate-900'}">
+  <div class="w-full flex justify-center">
+    ${content}
+  </div>
+</body>
+</html>`;
+  }, [html, isDark, emptyMessage]);
+
+  const viewportWidthStyle =
+    viewport === 'mobile'
+      ? 'w-[375px] max-w-full'
+      : viewport === 'tablet'
+        ? 'w-[768px] max-w-full'
+        : 'w-full';
+
+  return (
+    <div
+      className={`w-full h-full flex items-start justify-center overflow-auto p-2 sm:p-3 transition-all duration-300 ${className}`}
+    >
+      <div
+        className={`transition-all duration-300 shadow-sm rounded-2xl overflow-hidden border border-border/80 bg-background ${viewportWidthStyle} h-full min-h-[480px] flex flex-col`}
+      >
+        <iframe
+          ref={iframeRef}
+          srcDoc={srcDoc}
+          title="HTML Live Responsive Preview"
+          sandbox="allow-scripts allow-same-origin"
+          className="w-full h-full min-h-[480px] flex-1 border-0 bg-transparent block"
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Isolated Responsive Frame for Catalog and Gallery Previews
+ * Features:
+ * - Isolated sandboxed iframe with Tailwind CSS CDN
+ * - Viewport Switcher (Desktop 100%, Tablet 768px, Mobile 375px)
+ * - Shimmer skeleton state until iframe completes initial load
+ * - True media-query execution against container width
+ */
+function CatalogDesignPreviewFrame({
+  html,
+  isDark = false,
+  title = '',
+  height = '380px',
+  allowViewportSwitch = true,
+  defaultViewport = 'desktop',
+}) {
+  const [viewport, setViewport] = useState(defaultViewport);
+  const [isLoading, setIsLoading] = useState(true);
+  const iframeRef = React.useRef(null);
+
+  useEffect(() => {
+    setIsLoading(true);
+  }, [html, isDark, viewport]);
+
+  const srcDoc = useMemo(() => {
+    const raw = (html || '').trim();
+    const content =
+      raw ||
+      `<div style="padding: 32px; text-align: center; font-size: 13px; color: ${
+        isDark ? '#94a3b8' : '#64748b'
+      }; font-style: italic;">Preview not available.</div>`;
+
+    return `<!DOCTYPE html>
+<html lang="en" class="${isDark ? 'dark' : ''}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            border: '${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}',
+            background: '${isDark ? '#090d16' : '#ffffff'}',
+            foreground: '${isDark ? '#f8fafc' : '#0f172a'}',
+            card: '${isDark ? '#0f172a' : '#ffffff'}',
+            'card-foreground': '${isDark ? '#f8fafc' : '#0f172a'}',
+            muted: '${isDark ? '#1e293b' : '#f1f5f9'}',
+            'muted-foreground': '${isDark ? '#94a3b8' : '#64748b'}',
+            primary: {
+              DEFAULT: '#2563eb',
+              foreground: '#ffffff',
+            }
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(8px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+          },
+          animation: {
+            fadeIn: 'fadeIn .6s ease forwards',
+          },
+        }
+      }
+    };
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: transparent;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      padding: 14px;
+      color: ${isDark ? '#f8fafc' : '#0f172a'};
+      overflow-x: hidden;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.4); border-radius: 9999px; }
+  </style>
+</head>
+<body class="${isDark ? 'dark text-slate-100' : 'text-slate-900'}">
+  <div class="w-full flex justify-center">
+    ${content}
+  </div>
+</body>
+</html>`;
+  }, [html, isDark]);
+
+  const viewportWidthClass =
+    viewport === 'mobile'
+      ? 'w-[375px] max-w-full'
+      : viewport === 'tablet'
+        ? 'w-[768px] max-w-full'
+        : 'w-full';
+
+  return (
+    <div className="w-full rounded-2xl border border-border/80 bg-slate-100/90 dark:bg-slate-900/90 overflow-hidden shadow-inner flex flex-col">
+      {/* Top Device Switcher Bar */}
+      {allowViewportSwitch && (
+        <div className="px-3 py-1.5 bg-muted/40 border-b border-border/50 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-indigo-500" />
+              Responsive Frame
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground/70">
+              (
+              {viewport === 'mobile'
+                ? '375px'
+                : viewport === 'tablet'
+                  ? '768px'
+                  : '100%'}
+              )
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1 bg-background border rounded-lg p-0.5 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setViewport('desktop')}
+              className={`p-1 rounded text-xs font-semibold cursor-pointer transition-colors ${
+                viewport === 'desktop'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Desktop View (Full Width)"
+            >
+              <Monitor className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewport('tablet')}
+              className={`p-1 rounded text-xs font-semibold cursor-pointer transition-colors ${
+                viewport === 'tablet'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Tablet View (768px)"
+            >
+              <Tablet className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewport('mobile')}
+              className={`p-1 rounded text-xs font-semibold cursor-pointer transition-colors ${
+                viewport === 'mobile'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Mobile View (375px)"
+            >
+              <Smartphone className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Frame Container with Skeleton Shimmer */}
+      <div
+        className="w-full flex items-center justify-center p-2 sm:p-3 overflow-x-auto relative"
+        style={{ minHeight: height, height }}
+      >
+        {/* Pulsing Skeleton Loader until iframe loads */}
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col p-6 bg-card/70 backdrop-blur-xs space-y-3 animate-pulse justify-center items-center">
+            <div className="w-3/4 h-5 bg-muted rounded-xl"></div>
+            <div className="w-1/2 h-3.5 bg-muted/80 rounded-lg"></div>
+            <div className="w-full max-w-sm grid grid-cols-2 gap-3 mt-3">
+              <div className="h-20 bg-muted/70 rounded-xl"></div>
+              <div className="h-20 bg-muted/70 rounded-xl"></div>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground mt-3">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+              <span>Rendering Responsive Design Frame...</span>
+            </div>
+          </div>
+        )}
+
+        {/* The Viewport-Constrained Container */}
+        <div
+          className={`transition-all duration-300 rounded-xl overflow-hidden border border-border/60 bg-background ${viewportWidthClass} h-full shadow-xs flex flex-col`}
+        >
+          <iframe
+            ref={iframeRef}
+            srcDoc={srcDoc}
+            title={title || 'Catalog Design Preview'}
+            sandbox="allow-scripts allow-same-origin"
+            onLoad={() => setIsLoading(false)}
+            className="w-full h-full border-0 bg-transparent block flex-1"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Sample presentation card with raw inline styles to demonstrate 100% conversion
 const SAMPLE_SLIDE_HTML = `<div style="display: flex; flex-wrap: wrap; gap: 24px; width: 100%; justify-content: center; padding: 24px; background-color: #f8fafc; border-radius: 20px;">
@@ -106,6 +451,16 @@ const SAMPLE_SLIDE_HTML = `<div style="display: flex; flex-wrap: wrap; gap: 24px
 
 // Fallback published community designs if database is initial
 const SEED_PUBLISHED_DESIGNS = [
+  ...DESIGN_CATALOG.slice(0, 8).map((d) => ({
+    id: d.id,
+    title: d.title,
+    description: d.description,
+    enhanced_html: d.enhanced_html,
+    published_by: 'Super Admin',
+    created_at: new Date().toISOString(),
+    is_saved: true,
+    is_published: true,
+  })),
   {
     id: 'seed-design-1',
     title: 'Dual 3D Comparative Cards (Ocean Blue)',
@@ -175,6 +530,8 @@ export function HtmlDesignEnhancer({
   embeddedMode = false,
 }) {
   const { user } = useAuth();
+  const { theme, resolvedTheme } = useTheme();
+  const isDarkMode = resolvedTheme === 'dark' || theme === 'dark';
   const isAdmin =
     user?.role === 'admin' ||
     user?.role === 'superadmin' ||
@@ -198,6 +555,7 @@ export function HtmlDesignEnhancer({
   // Custom Prompt state
   const [showCustomPrompt, setShowCustomPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
+  const [customPromptTarget, setCustomPromptTarget] = useState('last'); // 'last' (incremental on last made design) | 'source' (re-synthesize from source HTML)
 
   // 80% Sidebar / Drawer State for Design Selection
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
@@ -230,10 +588,172 @@ export function HtmlDesignEnhancer({
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [designToPublish, setDesignToPublish] = useState(null);
 
+  // Detected Icons & Media Bucket Asset Manager
+  const [detectedIcons, setDetectedIcons] = useState([]);
+  const [isIconsModalOpen, setIsIconsModalOpen] = useState(false);
+  const [iconFormat, setIconFormat] = useState('webp'); // 'webp' | 'png' | 'svg'
+  const [assetFilterTab, setAssetFilterTab] = useState('all'); // 'all' | 'icons' | 'images'
+
   const showToast = useCallback((msg, type = 'info') => {
     setToastMsg({ text: msg, type });
     setTimeout(() => setToastMsg(null), 3800);
   }, []);
+
+  // Filtered Assets based on Active Tab
+  const filteredAssets = useMemo(() => {
+    if (assetFilterTab === 'icons') {
+      return detectedIcons.filter((a) => a.type === 'icon');
+    }
+    if (assetFilterTab === 'images') {
+      return detectedIcons.filter((a) => a.type === 'image');
+    }
+    return detectedIcons;
+  }, [detectedIcons, assetFilterTab]);
+
+  const vectorIconsCount = useMemo(
+    () => detectedIcons.filter((a) => a.type === 'icon').length,
+    [detectedIcons]
+  );
+  const imagesCount = useMemo(
+    () => detectedIcons.filter((a) => a.type === 'image').length,
+    [detectedIcons]
+  );
+
+  // Auto-extract and sync icons and card images whenever enhanced HTML changes
+  useEffect(() => {
+    const targetHtml = enhancedHtml || inputHtml;
+    if (!targetHtml) {
+      setDetectedIcons([]);
+      return;
+    }
+    let isCancelled = false;
+    extractAndConvertAssetsFromHtml(targetHtml, iconFormat).then((assets) => {
+      if (!isCancelled && assets) {
+        setDetectedIcons(assets);
+        if (assets.length > 0) {
+          syncAssetsToMediaHub(assets);
+        }
+      }
+    });
+    return () => {
+      isCancelled = true;
+    };
+  }, [enhancedHtml, inputHtml, iconFormat]);
+
+  // 1-Click Instant Batch Download for all detected icons & images
+  const handleDownloadAllIcons = async (chosenFormat = 'webp') => {
+    const targetAssets =
+      filteredAssets.length > 0 ? filteredAssets : detectedIcons;
+    if (targetAssets.length === 0) {
+      showToast(
+        'No assets detected in the current design to download.',
+        'info'
+      );
+      return;
+    }
+
+    try {
+      showToast(
+        `Preparing 1-click batch download (${chosenFormat.toUpperCase()})...`,
+        'info'
+      );
+      const targetHtml = enhancedHtml || inputHtml;
+      const assetsToDownload =
+        chosenFormat === iconFormat
+          ? targetAssets
+          : await extractAndConvertAssetsFromHtml(targetHtml, chosenFormat);
+
+      for (let i = 0; i < assetsToDownload.length; i++) {
+        const asset = assetsToDownload[i];
+        const a = document.createElement('a');
+        const baseName = (asset.name || `asset-${i + 1}`).replace(
+          /\.[^/.]+$/,
+          ''
+        );
+        if (chosenFormat === 'svg' && asset.type === 'icon' && asset.svgCode) {
+          a.href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(asset.svgCode)}`;
+          a.download = `${baseName}.svg`;
+        } else {
+          a.href = asset.dataUrl || asset.originalSrc;
+          a.download = `${baseName}.${chosenFormat}`;
+        }
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        await new Promise((r) => setTimeout(r, 140));
+      }
+
+      showToast(
+        `Downloaded ${assetsToDownload.length} asset(s) as ${chosenFormat.toUpperCase()}! Auto-saved in Media Bucket 📦`,
+        'success'
+      );
+    } catch (err) {
+      console.warn('Error downloading assets:', err);
+      showToast('Could not download all assets simultaneously.', 'error');
+    }
+  };
+
+  // Download a single asset in chosen format
+  const handleDownloadSingleAsset = async (asset, format = 'webp') => {
+    try {
+      if (format === 'svg' && asset.type === 'icon' && asset.svgCode) {
+        const blob = new Blob([asset.svgCode], {
+          type: 'image/svg+xml;charset=utf-8',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const baseName = (asset.name || 'vector-icon').replace(/\.[^/.]+$/, '');
+        a.download = `${baseName}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(`Downloaded ${baseName}.svg!`, 'success');
+        return;
+      }
+
+      const baseName = (asset.name || 'asset').replace(/\.[^/.]+$/, '');
+      const downloadFilename = `${baseName}.${format}`;
+      let downloadUrl = asset.dataUrl || asset.originalSrc;
+
+      // If requested format differs or asset is an SVG icon, re-render through canvas
+      if (asset.type === 'icon' && asset.svgCode && format !== asset.format) {
+        const converted = await extractAndConvertAssetsFromHtml(
+          `<svg>${asset.svgCode}</svg>`,
+          format
+        );
+        if (converted?.[0]?.dataUrl) {
+          downloadUrl = converted[0].dataUrl;
+        }
+      }
+
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = downloadFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast(`Downloaded ${downloadFilename}!`, 'success');
+    } catch (err) {
+      console.warn('Error downloading asset:', err);
+      showToast('Could not download asset.', 'error');
+    }
+  };
+
+  // Copy Data URL or URL for quick bucket upload
+  const handleCopyAssetUrl = (asset) => {
+    const toCopy = asset.dataUrl || asset.originalSrc || asset.svgCode || '';
+    if (!toCopy) {
+      showToast('No URL available to copy.', 'error');
+      return;
+    }
+    navigator.clipboard.writeText(toCopy);
+    showToast(
+      `Copied ${asset.name} Data URL to clipboard! Ready to upload to your bucket 📦`,
+      'success'
+    );
+  };
 
   // Analysis metrics for current input
   const styleAnalysis = useMemo(() => {
@@ -343,35 +863,50 @@ export function HtmlDesignEnhancer({
   };
 
   // 2. Free AI Master Enhancement via Puter.js with Custom Prompt & Verbatim Guarantee
-  const handleFreeAiEnhance = async (overridePrompt = '') => {
-    if (!inputHtml.trim()) {
+  const handleFreeAiEnhance = async (
+    overridePrompt = '',
+    forceSource = false
+  ) => {
+    const hasEnhanced = Boolean(enhancedHtml && enhancedHtml.trim());
+    const promptToUse = overridePrompt !== '' ? overridePrompt : customPrompt;
+    const isIncremental =
+      !forceSource &&
+      hasEnhanced &&
+      customPromptTarget === 'last' &&
+      Boolean(promptToUse && promptToUse.trim());
+    const baseHtml = isIncremental ? enhancedHtml : inputHtml;
+
+    if (!baseHtml.trim()) {
       showToast('Please provide HTML input first.', 'error');
       return;
     }
 
     setIsProcessing(true);
-    setActiveAiAction(overridePrompt ? 'custom' : 'enhance');
+    setActiveAiAction(promptToUse ? 'custom' : 'enhance');
     setProcessingStatus(
-      'Se7eN AI Bot is synthesizing layout, slow animations & Tailwind styling...'
+      isIncremental
+        ? 'Applying surgical adjustment to last made design while strictly preserving cards & text...'
+        : 'Se7eN AI Bot is synthesizing layout, slow animations & Tailwind styling...'
     );
 
-    const promptToUse = overridePrompt || customPrompt;
-
     try {
-      const result = await enhanceHtmlWithFreeAi(inputHtml, {
+      const result = await enhanceHtmlWithFreeAi(baseHtml, {
         animateOnHover,
         themeColor,
         requestedModel: 'gpt-4o-mini',
         customPrompt: promptToUse,
+        isIncremental,
       });
 
       if (result) {
         setEnhancedHtml(result);
         recordGenerationToHistory(result, false);
         showToast(
-          promptToUse
-            ? 'Enhanced with custom AI prompt! 100% of your content preserved verbatim.'
-            : 'Enhanced with Free AI Master & Tailwind CSS successfully!',
+          isIncremental
+            ? 'Updated last made design! 100% of cards and text preserved.'
+            : promptToUse
+              ? 'Enhanced with custom AI prompt! 100% of your content preserved verbatim.'
+              : 'Enhanced with Free AI Master & Tailwind CSS successfully!',
           'success'
         );
       } else {
@@ -379,17 +914,22 @@ export function HtmlDesignEnhancer({
       }
     } catch (err) {
       console.warn(
-        'AI Enhance error, falling back to deterministic transform:',
+        'AI Enhance error, falling back to prompt-aware engine:',
         err
       );
-      const fallback = applyHoverAnimationsAndCornerGlow(
-        convertInlineStylesToTailwind(inputHtml),
-        { animateOnHover, themeColor }
-      );
+      const fallback = applyCustomPromptToHtml(baseHtml, promptToUse, {
+        animateOnHover,
+        themeColor,
+        isIncremental,
+      });
       setEnhancedHtml(fallback);
       recordGenerationToHistory(fallback, false);
       showToast(
-        'Completed with Instant Deterministic Engine (Offline Fallback)',
+        isIncremental
+          ? 'Design updated incrementally!'
+          : promptToUse
+            ? 'Layout enhanced with custom prompt!'
+            : 'Completed with Instant Tailwind Engine',
         'info'
       );
     } finally {
@@ -425,14 +965,11 @@ export function HtmlDesignEnhancer({
         inputHtml,
         'all'
       );
-      const finalized = applyHoverAnimationsAndCornerGlow(populated, {
-        animateOnHover,
-        themeColor,
-      });
 
-      setEnhancedHtml(finalized);
+      setEnhancedHtml(populated);
+      setInputHtml(populated);
       setDesignTitle(`Auto: ${template.title}`);
-      recordGenerationToHistory(finalized, false);
+      recordGenerationToHistory(populated, false);
 
       showToast(
         `Auto-Design Matched: ${template.title}! (${reason})`,
@@ -453,29 +990,35 @@ export function HtmlDesignEnhancer({
 
   // 4. Apply selected template from catalog to input/enhanced with specific slot targeting
   const handleApplyTemplateWithSlot = (template, targetSlot = 'all') => {
-    const rawContent = inputHtml.trim() || SAMPLE_SLIDE_HTML;
-    const populated = injectContentIntoDesignSlots(
-      template.enhanced_html,
-      rawContent,
-      targetSlot
-    );
-    const finalized = applyHoverAnimationsAndCornerGlow(populated, {
-      animateOnHover,
-      themeColor,
-    });
+    const rawContent = inputHtml.trim();
+    const hasUserContent =
+      rawContent &&
+      rawContent !== SAMPLE_SLIDE_HTML &&
+      !isExistingCardDesign(rawContent);
 
-    setEnhancedHtml(finalized);
+    const populated = hasUserContent
+      ? injectContentIntoDesignSlots(
+          template.enhanced_html,
+          rawContent,
+          targetSlot
+        )
+      : template.enhanced_html;
+
+    setEnhancedHtml(populated);
+    setInputHtml(populated);
     setDesignTitle(
       `${template.title} (Slot: ${targetSlot === 'all' ? 'All' : `Card ${parseInt(targetSlot, 10) + 1}`})`
     );
     setIsCatalogOpen(false);
     setActiveTab('studio');
-    recordGenerationToHistory(finalized, false);
+    recordGenerationToHistory(populated, false);
 
     showToast(
-      targetSlot === 'all'
-        ? `Applied "${template.title}" across all cards! 100% verbatim text preserved.`
-        : `Injected content into Card ${parseInt(targetSlot, 10) + 1} of "${template.title}"!`,
+      hasUserContent
+        ? targetSlot === 'all'
+          ? `Applied "${template.title}" with your content! 100% verbatim text preserved.`
+          : `Injected content into Card ${parseInt(targetSlot, 10) + 1} of "${template.title}"!`
+        : `Loaded "${template.title}" presentation template!`,
       'success'
     );
   };
@@ -960,7 +1503,7 @@ export function HtmlDesignEnhancer({
                 <Button
                   size="sm"
                   disabled={isProcessing}
-                  onClick={() => handleFreeAiEnhance()}
+                  onClick={() => handleFreeAiEnhance('', true)}
                   className="h-9 px-3.5 gap-2 text-xs font-extrabold bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700 text-white cursor-pointer shadow-md shadow-indigo-500/20 border-0 transition-all duration-300"
                   title="Refines full styling to Tailwind with slow ambient glow & custom prompt execution"
                 >
@@ -1088,23 +1631,71 @@ export function HtmlDesignEnhancer({
 
             {/* Expandable Custom AI Prompt Bar */}
             {showCustomPrompt && (
-              <div className="mt-3 pt-3 border-t border-border/40 space-y-2 animate-in fade-in-50 duration-200">
-                <div className="flex items-center justify-between">
+              <div className="mt-3 pt-3 border-t border-border/40 space-y-2.5 animate-in fade-in-50 duration-200">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-                    Custom Design Prompt (AI will apply styling while preserving
-                    100% of text verbatim):
+                    Custom Design Prompt (Modifies only requested attributes
+                    while preserving 100% text):
                   </Label>
-                  <span className="text-[10px] text-muted-foreground">
-                    Verbatim Text Guard: Active 🔒
-                  </span>
+
+                  <div className="flex items-center gap-2">
+                    {enhancedHtml && (
+                      <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/60">
+                        <span className="text-[10px] font-semibold text-muted-foreground px-1.5">
+                          Target:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCustomPromptTarget('last')}
+                          className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer ${
+                            customPromptTarget === 'last'
+                              ? 'bg-purple-600 text-white shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                          title="Incremental mode: Modifies only requested attributes (border, background, layout) on your last made design"
+                        >
+                          ⚡ Last Made Design (Incremental)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomPromptTarget('source')}
+                          className={`text-[10px] px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer ${
+                            customPromptTarget === 'source'
+                              ? 'bg-purple-600 text-white shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                          title="Full synthesis mode: Builds brand new card layout from Source Input HTML"
+                        >
+                          📄 Source HTML
+                        </button>
+                      </div>
+                    )}
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      Verbatim Text Guard: Active 🔒
+                    </span>
+                  </div>
                 </div>
+
                 <div className="flex gap-2">
                   <Input
                     value={customPrompt}
                     onChange={(e) => setCustomPrompt(e.target.value)}
-                    placeholder="e.g., Left icon badges, dark cyber glassmorphic with neon cyan borders, bounded desktop image, modern sleek font..."
+                    placeholder={
+                      customPromptTarget === 'last' && enhancedHtml
+                        ? 'e.g., Change border color to amber, make background dark, or add rotating dashed rings...'
+                        : 'e.g., Make these cards 1 row 2 column on desktop and responsive on mobile...'
+                    }
                     className="h-8 text-xs bg-background border-border/60"
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === 'Enter' &&
+                        customPrompt.trim() &&
+                        !isProcessing
+                      ) {
+                        handleFreeAiEnhance(customPrompt);
+                      }
+                    }}
                   />
                   <Button
                     size="sm"
@@ -1117,8 +1708,65 @@ export function HtmlDesignEnhancer({
                     ) : (
                       <Send className="w-3 h-3 mr-1" />
                     )}
-                    <span>Apply Prompt</span>
+                    <span>
+                      {customPromptTarget === 'last' && enhancedHtml
+                        ? 'Update Last Design'
+                        : 'Apply Prompt'}
+                    </span>
                   </Button>
+                </div>
+
+                {/* Quick Prompt Suggestion Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  <span className="text-[10px] text-muted-foreground font-semibold">
+                    {customPromptTarget === 'last' && enhancedHtml
+                      ? 'Quick Incremental Edits:'
+                      : 'Quick Prompts:'}
+                  </span>
+                  {(customPromptTarget === 'last' && enhancedHtml
+                    ? [
+                        'Change border color to amber',
+                        'Change border color to emerald',
+                        'Change border color to ocean blue',
+                        'Change border color to purple',
+                        'Change border color to rose red',
+                        'Add a card for Quality Assurance',
+                        'Add rotating dashed rings & circles',
+                        'Switch to dark cyber mode',
+                        'Switch to clean light mode',
+                        'Make 1 row 2 column on desktop',
+                        'Make 3-column grid',
+                      ]
+                    : [
+                        'Challenge vs AI Solution split cards',
+                        'Executive compliance & legal advisory shield card',
+                        'Reference citation & source link card',
+                        'Before AI vs With AI transformation matrix',
+                        'AI-powered 5-column capability showcase grid',
+                        '3-pillar numbered core principles (01, 02, 03)',
+                        '6-role capability executive grid',
+                        'Executive multi-color 5-stage feature rows',
+                        'Make 1 row 2 column on desktop and responsive on mobile',
+                        '3-column feature cards with slow hover animations',
+                        'Left image and right structured content with bounded desktop size',
+                        'Left icon badge emblem with right heading and text',
+                        'Dark cyber glassmorphic with neon borders',
+                        'Ocean blue 3D cards with ambient glow',
+                      ]
+                  ).map((presetPrompt, pIdx) => (
+                    <button
+                      key={pIdx}
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={() => {
+                        setCustomPrompt(presetPrompt);
+                        handleFreeAiEnhance(presetPrompt);
+                      }}
+                      className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/20 transition-all cursor-pointer font-medium"
+                    >
+                      {presetPrompt}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -1166,7 +1814,7 @@ export function HtmlDesignEnhancer({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 relative">
             {/* Left Pane: HTML Source Input (Collapsible: 5 cols on lg when open, hidden when closed) */}
             {isSourcePanelOpen && (
-              <Card className="border border-border/70 flex flex-col h-[640px] lg:col-span-5 animate-in fade-in-50 duration-200">
+              <Card className="border border-border/70 flex flex-col min-h-[700px] h-[700px] lg:h-[740px] lg:col-span-5 animate-in fade-in-50 duration-200">
                 <CardHeader className="py-2.5 px-4 border-b border-border/50 flex flex-row items-center justify-between shrink-0 bg-muted/20">
                   <div className="flex items-center gap-2">
                     <Code2 className="w-4 h-4 text-primary" />
@@ -1208,7 +1856,7 @@ export function HtmlDesignEnhancer({
 
             {/* Right Pane: Before & After Live Preview & Tailwind Code (7 cols if source open, 12 cols if source closed) */}
             <Card
-              className={`border border-border/70 flex flex-col h-[640px] transition-all duration-300 relative overflow-hidden ${
+              className={`border border-border/70 flex flex-col min-h-[700px] h-[700px] lg:h-[740px] transition-all duration-300 relative overflow-hidden ${
                 isSourcePanelOpen ? 'lg:col-span-7' : 'lg:col-span-12'
               }`}
             >
@@ -1343,6 +1991,24 @@ export function HtmlDesignEnhancer({
                     </div>
                   )}
 
+                  {detectedIcons.length > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={() => setIsIconsModalOpen(true)}
+                      className="h-7 text-xs px-2.5 gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold cursor-pointer shadow-xs"
+                      title="Download detected icons & images in WebP, PNG, SVG (Auto-saved to Media Bucket)"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">
+                        Icons &amp; Images
+                      </span>{' '}
+                      ({detectedIcons.length})
+                      <Badge className="bg-white/20 text-white text-[9px] px-1 py-0 border-0">
+                        Export
+                      </Badge>
+                    </Button>
+                  )}
+
                   <Button
                     size="sm"
                     onClick={handleCopyCode}
@@ -1364,7 +2030,7 @@ export function HtmlDesignEnhancer({
                   <div className="w-full h-full overflow-y-auto p-3 grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-100 dark:bg-slate-900/60">
                     {/* Before Card */}
                     <div className="flex flex-col border border-border/80 rounded-2xl bg-card overflow-hidden shadow-xs">
-                      <div className="py-2 px-3 bg-muted/40 border-b border-border/50 flex items-center justify-between">
+                      <div className="py-2 px-3 bg-muted/40 border-b border-border/50 flex items-center justify-between shrink-0">
                         <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
                           <RotateCcw className="w-3 h-3 text-amber-500" />{' '}
                           BEFORE: Original HTML
@@ -1376,27 +2042,19 @@ export function HtmlDesignEnhancer({
                           Raw Styles
                         </Badge>
                       </div>
-                      <div className="p-3 flex-1 overflow-auto bg-slate-50/50 dark:bg-slate-950/40">
-                        <div
-                          className={`transition-all duration-500 w-full ${
-                            previewViewport === 'mobile'
-                              ? 'max-w-[320px] mx-auto'
-                              : previewViewport === 'tablet'
-                                ? 'max-w-[480px] mx-auto'
-                                : 'max-w-full'
-                          }`}
-                          dangerouslySetInnerHTML={{
-                            __html:
-                              inputHtml ||
-                              '<div class="p-4 text-center text-xs text-muted-foreground italic">No input HTML provided.</div>',
-                          }}
+                      <div className="flex-1 overflow-hidden min-h-[460px]">
+                        <HtmlLivePreview
+                          html={inputHtml}
+                          viewport={previewViewport}
+                          isDark={isDarkMode}
+                          emptyMessage="No input HTML provided."
                         />
                       </div>
                     </div>
 
                     {/* After Card */}
                     <div className="flex flex-col border border-emerald-500/40 rounded-2xl bg-card overflow-hidden shadow-md">
-                      <div className="py-2 px-3 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between">
+                      <div className="py-2 px-3 bg-emerald-500/10 border-b border-emerald-500/20 flex items-center justify-between shrink-0">
                         <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-emerald-500" />{' '}
                           AFTER: 100% Tailwind
@@ -1405,20 +2063,12 @@ export function HtmlDesignEnhancer({
                           Clean &amp; Animated
                         </Badge>
                       </div>
-                      <div className="p-3 flex-1 overflow-auto bg-slate-50/50 dark:bg-slate-950/40">
-                        <div
-                          className={`transition-all duration-500 w-full ${
-                            previewViewport === 'mobile'
-                              ? 'max-w-[320px] mx-auto'
-                              : previewViewport === 'tablet'
-                                ? 'max-w-[480px] mx-auto'
-                                : 'max-w-full'
-                          }`}
-                          dangerouslySetInnerHTML={{
-                            __html:
-                              enhancedHtml ||
-                              '<div class="p-4 text-center text-xs text-muted-foreground italic">Run Instant Convert or Free AI to preview enhanced design.</div>',
-                          }}
+                      <div className="flex-1 overflow-hidden min-h-[460px]">
+                        <HtmlLivePreview
+                          html={enhancedHtml}
+                          viewport={previewViewport}
+                          isDark={isDarkMode}
+                          emptyMessage="Run Instant Convert or Free AI to preview enhanced design."
                         />
                       </div>
                     </div>
@@ -1427,52 +2077,76 @@ export function HtmlDesignEnhancer({
 
                 {/* 2. AFTER PREVIEW (FULL) */}
                 {previewTab === 'after' && (
-                  <div className="w-full h-full overflow-auto p-4 flex items-start justify-center bg-slate-100 dark:bg-slate-900/60">
-                    <div
-                      className={`transition-all duration-500 w-full ${
-                        previewViewport === 'mobile'
-                          ? 'max-w-[375px]'
-                          : previewViewport === 'tablet'
-                            ? 'max-w-[768px]'
-                            : 'max-w-full'
-                      }`}
-                      dangerouslySetInnerHTML={{
-                        __html:
-                          enhancedHtml ||
-                          '<div class="p-8 text-center text-xs text-muted-foreground italic">Run Instant Convert or Free AI to preview enhanced design.</div>',
-                      }}
+                  <div className="w-full h-full overflow-hidden bg-slate-100 dark:bg-slate-900/60">
+                    <HtmlLivePreview
+                      html={enhancedHtml}
+                      viewport={previewViewport}
+                      isDark={isDarkMode}
+                      emptyMessage="Run Instant Convert or Free AI to preview enhanced design."
                     />
                   </div>
                 )}
 
                 {/* 3. BEFORE PREVIEW (FULL) */}
                 {previewTab === 'before' && (
-                  <div className="w-full h-full overflow-auto p-4 flex items-start justify-center bg-slate-100 dark:bg-slate-900/60">
-                    <div
-                      className={`transition-all duration-500 w-full ${
-                        previewViewport === 'mobile'
-                          ? 'max-w-[375px]'
-                          : previewViewport === 'tablet'
-                            ? 'max-w-[768px]'
-                            : 'max-w-full'
-                      }`}
-                      dangerouslySetInnerHTML={{
-                        __html:
-                          inputHtml ||
-                          '<div class="p-8 text-center text-xs text-muted-foreground italic">No input HTML provided.</div>',
-                      }}
+                  <div className="w-full h-full overflow-hidden bg-slate-100 dark:bg-slate-900/60">
+                    <HtmlLivePreview
+                      html={inputHtml}
+                      viewport={previewViewport}
+                      isDark={isDarkMode}
+                      emptyMessage="No input HTML provided."
                     />
                   </div>
                 )}
 
                 {/* 4. TAILWIND CODE VIEW */}
                 {previewTab === 'code' && (
-                  <Textarea
-                    readOnly
-                    value={enhancedHtml}
-                    className="flex-1 w-full rounded-none border-0 font-mono text-xs bg-slate-950 text-slate-100 p-3 leading-relaxed resize-none focus-visible:ring-0"
-                    placeholder="Enhanced 100% Tailwind HTML will appear here..."
-                  />
+                  <div className="flex-1 flex flex-col min-h-0">
+                    {detectedIcons.length > 0 && (
+                      <div className="p-2.5 bg-purple-500/10 border-b border-purple-500/20 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                        <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-medium text-xs">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                          <span>
+                            <strong>{detectedIcons.length} Asset(s)</strong>{' '}
+                            detected &amp; auto-saved in your Media Bucket 📦
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            onClick={() => handleDownloadAllIcons('webp')}
+                            className="h-6 text-[11px] bg-purple-600 hover:bg-purple-700 text-white font-bold gap-1 px-2 cursor-pointer"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>Download (WebP)</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadAllIcons('png')}
+                            className="h-6 text-[11px] border-purple-500/30 text-purple-600 dark:text-purple-300 font-bold gap-1 px-2 cursor-pointer"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>PNG</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setIsIconsModalOpen(true)}
+                            className="h-6 text-[11px] text-purple-600 dark:text-purple-300 font-bold px-2 cursor-pointer"
+                          >
+                            View All Assets
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <Textarea
+                      readOnly
+                      value={enhancedHtml}
+                      className="flex-1 w-full rounded-none border-0 font-mono text-xs bg-slate-950 text-slate-100 p-3 leading-relaxed resize-none focus-visible:ring-0"
+                      placeholder="Enhanced 100% Tailwind HTML will appear here..."
+                    />
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1538,13 +2212,13 @@ export function HtmlDesignEnhancer({
                   className="h-8 text-xs rounded-md border border-border/60 bg-background px-2 text-foreground focus:outline-hidden"
                 >
                   <option value="all">All Categories</option>
+                  <option value="comparison">Comparison &amp; Split</option>
+                  <option value="features">Features &amp; Rows</option>
+                  <option value="showcase">Showcase Grid</option>
                   <option value="media">Media / Image Cards</option>
                   <option value="icon">Icon Headers</option>
-                  <option value="comparison">Comparison (Dual)</option>
-                  <option value="features">Features / Pillars</option>
                   <option value="process">Process / Roadmap</option>
                   <option value="metrics">Metrics &amp; Stats</option>
-                  <option value="grid">Grid Matrix</option>
                   <option value="community">Community</option>
                 </select>
               </div>
@@ -1624,12 +2298,14 @@ export function HtmlDesignEnhancer({
                       </CardHeader>
 
                       <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-4">
-                        {/* Live Rendered Dummy Preview */}
-                        <div
-                          className="w-full rounded-2xl border bg-slate-100/80 dark:bg-slate-900/80 p-3 overflow-hidden shadow-inner"
-                          dangerouslySetInnerHTML={{
-                            __html: tmpl.enhanced_html,
-                          }}
+                        {/* Live Rendered Responsive Preview Frame with Skeletons */}
+                        <CatalogDesignPreviewFrame
+                          html={tmpl.enhanced_html}
+                          isDark={isDarkMode}
+                          title={tmpl.title}
+                          height="420px"
+                          allowViewportSwitch={true}
+                          defaultViewport="desktop"
                         />
 
                         {/* Card Slot Selection Control */}
@@ -1690,7 +2366,7 @@ export function HtmlDesignEnhancer({
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40">
                           <Button
                             size="sm"
                             variant="outline"
@@ -1711,19 +2387,33 @@ export function HtmlDesignEnhancer({
                             <span>Load Template As-Is</span>
                           </Button>
 
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              handleApplyTemplateWithSlot(
-                                tmpl,
-                                currentSelectedSlot
-                              )
-                            }
-                            className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer gap-1.5 shadow-sm"
-                          >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Apply My Content Verbatim</span>
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedTemplateForQuickText(tmpl);
+                                setIsCatalogOpen(false);
+                              }}
+                              className="h-8 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold cursor-pointer gap-1.5 shadow-sm"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Free AI Populate</span>
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                handleApplyTemplateWithSlot(
+                                  tmpl,
+                                  currentSelectedSlot
+                                )
+                              }
+                              className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer gap-1.5 shadow-sm"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Apply My Content Verbatim</span>
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -1790,9 +2480,13 @@ export function HtmlDesignEnhancer({
                   </Badge>
                 </CardHeader>
                 <CardContent className="p-3 flex-1 flex flex-col justify-between space-y-3">
-                  <div
-                    className="w-full max-h-48 overflow-hidden rounded-xl border bg-slate-50 dark:bg-slate-900/50 p-2 pointer-events-none scale-90 origin-top"
-                    dangerouslySetInnerHTML={{ __html: tmpl.enhanced_html }}
+                  <CatalogDesignPreviewFrame
+                    html={tmpl.enhanced_html}
+                    isDark={isDarkMode}
+                    title={tmpl.title}
+                    height="420px"
+                    allowViewportSwitch={true}
+                    defaultViewport="desktop"
                   />
 
                   <div className="flex items-center justify-between pt-2 border-t border-border/40">
@@ -1818,10 +2512,10 @@ export function HtmlDesignEnhancer({
                     <Button
                       size="sm"
                       onClick={() => setSelectedTemplateForQuickText(tmpl)}
-                      className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer gap-1.5 shadow-sm"
+                      className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold cursor-pointer gap-1.5 shadow-sm"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Quick Text to Generate</span>
+                      <span>Free AI Populate</span>
                     </Button>
                   </div>
                 </CardContent>
@@ -2120,6 +2814,222 @@ export function HtmlDesignEnhancer({
             >
               <Globe className="w-3.5 h-3.5" />
               <span>Confirm &amp; Publish for Everyone</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ======================================================== */}
+      {/* ICON & IMAGE ASSET MANAGER & 1-CLICK DOWNLOAD DIALOG */}
+      {/* ======================================================== */}
+      <Dialog open={isIconsModalOpen} onOpenChange={setIsIconsModalOpen}>
+        <DialogContent className="max-w-3xl bg-card border-border max-h-[88vh] flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-500" />
+                Asset Manager: Icons &amp; AI Artwork
+              </DialogTitle>
+              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
+                Auto-Saved in Media Bucket 📦
+              </Badge>
+            </div>
+            <DialogDescription className="text-xs">
+              All vector icons and card images (AI artwork, webp/png) extracted
+              and converted. 1-click batch download in WebP or PNG format, ready
+              to upload to your own storage bucket.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Quick 1-Click Batch Download Header */}
+          <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <div className="text-xs text-purple-700 dark:text-purple-300">
+              <strong>{detectedIcons.length} Total Asset(s)</strong>
+              <span className="text-[11px] opacity-80 ml-1">
+                ({vectorIconsCount} vector icons, {imagesCount} images)
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                size="sm"
+                onClick={() => handleDownloadAllIcons('webp')}
+                className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold gap-1.5 shadow-xs cursor-pointer"
+                title="1-Click Download all assets in WebP format"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>1-Click Download (WebP)</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDownloadAllIcons('png')}
+                className="h-7 text-xs border-purple-500/30 text-purple-600 dark:text-purple-300 font-bold gap-1.5 cursor-pointer hover:bg-purple-500/10"
+                title="Download all assets in PNG format"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download (PNG)</span>
+              </Button>
+              {vectorIconsCount > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDownloadAllIcons('svg')}
+                  className="h-7 text-xs text-muted-foreground hover:text-foreground font-bold gap-1 cursor-pointer"
+                  title="Download vector icons as SVG"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>SVG</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Filter Tabs: All Assets, Vector Icons, Images & AI Artwork */}
+          <div className="flex items-center gap-1.5 pt-1 border-b border-border/50 pb-2">
+            <Button
+              size="sm"
+              variant={assetFilterTab === 'all' ? 'default' : 'ghost'}
+              onClick={() => setAssetFilterTab('all')}
+              className="h-7 text-xs font-bold cursor-pointer"
+            >
+              All Assets ({detectedIcons.length})
+            </Button>
+            <Button
+              size="sm"
+              variant={assetFilterTab === 'icons' ? 'default' : 'ghost'}
+              onClick={() => setAssetFilterTab('icons')}
+              className="h-7 text-xs font-bold cursor-pointer gap-1.5"
+            >
+              <Sparkles className="w-3 h-3 text-purple-500" />
+              <span>Vector Icons ({vectorIconsCount})</span>
+            </Button>
+            <Button
+              size="sm"
+              variant={assetFilterTab === 'images' ? 'default' : 'ghost'}
+              onClick={() => setAssetFilterTab('images')}
+              className="h-7 text-xs font-bold cursor-pointer gap-1.5"
+            >
+              <ImageIcon className="w-3 h-3 text-sky-500" />
+              <span>Images &amp; AI Artwork ({imagesCount})</span>
+            </Button>
+          </div>
+
+          {/* Asset List Grid */}
+          <div className="flex-1 overflow-y-auto py-2 grid grid-cols-1 sm:grid-cols-2 gap-3 min-h-[180px]">
+            {filteredAssets.length === 0 ? (
+              <div className="col-span-full py-8 text-center text-xs text-muted-foreground italic border border-dashed rounded-xl">
+                No assets matching this filter.
+              </div>
+            ) : (
+              filteredAssets.map((asset, idx) => (
+                <div
+                  key={asset.id || idx}
+                  className="p-3 rounded-xl border border-border/70 bg-background/80 flex items-center justify-between gap-3 hover:border-purple-500/40 transition-colors shadow-2xs"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-14 h-14 rounded-xl bg-slate-900 border border-border/80 flex items-center justify-center p-1.5 text-white shrink-0 overflow-hidden shadow-xs relative">
+                      {asset.previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={asset.previewUrl}
+                          alt={asset.name}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : asset.svgCode ? (
+                        <div
+                          className="w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:fill-current"
+                          dangerouslySetInnerHTML={{ __html: asset.svgCode }}
+                        />
+                      ) : (
+                        <ImageIcon className="w-6 h-6 text-slate-500" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-bold text-foreground truncate max-w-[140px]">
+                          {asset.name}
+                        </p>
+                        <Badge
+                          variant="outline"
+                          className={`text-[9px] px-1 py-0 font-bold shrink-0 ${
+                            asset.type === 'icon'
+                              ? 'border-purple-500/30 text-purple-600 dark:text-purple-300 bg-purple-500/10'
+                              : 'border-sky-500/30 text-sky-600 dark:text-sky-300 bg-sky-500/10'
+                          }`}
+                        >
+                          {asset.type === 'icon' ? 'Icon' : 'Image'}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
+                        {asset.title || asset.size || 'High-Res Asset'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDownloadSingleAsset(asset, 'webp')}
+                        className="h-7 text-[11px] px-2 text-purple-600 dark:text-purple-300 hover:text-purple-700 font-bold cursor-pointer"
+                        title="Download as WebP"
+                      >
+                        WebP
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDownloadSingleAsset(asset, 'png')}
+                        className="h-7 text-[11px] px-2 text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 font-bold cursor-pointer"
+                        title="Download as PNG"
+                      >
+                        PNG
+                      </Button>
+                      {asset.type === 'icon' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            handleDownloadSingleAsset(asset, 'svg')
+                          }
+                          className="h-7 text-[11px] px-1.5 text-muted-foreground hover:text-foreground font-bold cursor-pointer"
+                          title="Download as SVG"
+                        >
+                          SVG
+                        </Button>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopyAssetUrl(asset)}
+                      className="h-7 text-[11px] px-2 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
+                      title="Copy Image URL or Data URL to clipboard (easy bucket upload)"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span className="text-[10px] hidden sm:inline">
+                        Copy URL
+                      </span>
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter className="border-t border-border/50 pt-2 flex items-center justify-between sm:justify-between w-full">
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              Auto-Synchronized with Media Hub • Ready for Bucket Upload
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsIconsModalOpen(false)}
+              className="h-7 text-xs cursor-pointer"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

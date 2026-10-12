@@ -92,3 +92,5 @@ export function BlockedOverlay() {
     </div>
   );
 }
+
+export default BlockedOverlay;

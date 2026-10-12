@@ -203,3 +203,5 @@ export function BackgroundSpace() {
     />
   );
 }
+
+export default BackgroundSpace;

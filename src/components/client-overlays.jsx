@@ -1,45 +1,28 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import BackgroundSpace from '@/components/background-space';
 
-const BackgroundSpace = dynamic(
-  () =>
-    import('@/components/background-space').then((mod) => mod.BackgroundSpace),
-  { ssr: false }
-);
-
-const GdprConsent = dynamic(
-  () => import('@/components/gdpr-consent').then((mod) => mod.GdprConsent),
-  { ssr: false }
-);
+const GdprConsent = dynamic(() => import('@/components/gdpr-consent'), {
+  ssr: false,
+});
 
 const EnvironmentalSetup = dynamic(
-  () =>
-    import('@/components/environmental-setup').then(
-      (mod) => mod.EnvironmentalSetup
-    ),
+  () => import('@/components/environmental-setup'),
   { ssr: false }
 );
 
-const FloatingChatbot = dynamic(
-  () =>
-    import('@/components/floating-chatbot').then((mod) => mod.FloatingChatbot),
-  { ssr: false }
-);
+const FloatingChatbot = dynamic(() => import('@/components/floating-chatbot'), {
+  ssr: false,
+});
 
 const BlockedOverlay = dynamic(
-  () =>
-    import('@/components/chat/BlockedOverlay').then(
-      (mod) => mod.BlockedOverlay
-    ),
+  () => import('@/components/chat/BlockedOverlay'),
   { ssr: false }
 );
 
 const InquiryReplyNotifier = dynamic(
-  () =>
-    import('@/components/inquiry-reply-notifier').then(
-      (mod) => mod.InquiryReplyNotifier
-    ),
+  () => import('@/components/inquiry-reply-notifier'),
   { ssr: false }
 );
 
