@@ -341,6 +341,15 @@ const DEFAULT_BEFORE_AFTER_SKELETON = `<div class="w-full box-border my-[25px]">
 \t</div>
 </div>`;
 
+// Exact user code skeleton for Slide 3 (Meet Employee Introduction Card)
+const DEFAULT_MEET_EMPLOYEE_SKELETON = `<div class="group absolute inset-0 z-20 pointer-events-none">
+  <div class="badge-6 absolute right-[2.5%] top-0 pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-[#111827]/95 px-[4px] py-[1px] backdrop-blur-sm transition-opacity duration-300 group-has-[.badge-1:hover]:opacity-0 group-has-[.badge-2:hover]:opacity-0 group-has-[.badge-3:hover]:opacity-0 group-has-[.badge-4:hover]:opacity-0 group-has-[.badge-5:hover]:opacity-0 hover:!opacity-100">
+    <span class="text-[9px] font-semibold uppercase tracking-[0.08em] text-white">COM</span>
+    <span class="h-2.5 w-px bg-white/35"></span>
+    <span class="text-[9px] font-bold uppercase tracking-[0.06em] text-[#7ee2b1]">Communication &amp; Coordination</span>
+  </div>
+</div><p class="text-center"><img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1790764492/M3-C1-T1-02Employee-Introduction-Card-1-1.webp" style="width: 75%;"><br></p>`;
+
 // Starter templates for custom slides
 const STARTER_TEMPLATES = [
   {
@@ -363,6 +372,13 @@ const STARTER_TEMPLATES = [
     description: '5-point comparison with "After AI" branding',
     type: 'before-after',
     skeleton: DEFAULT_BEFORE_AFTER_SKELETON,
+  },
+  {
+    id: 'meet-employee',
+    name: 'Meet Employee',
+    description: 'Dynamic Employee Intro card with category badge',
+    type: 'meet-employee',
+    skeleton: DEFAULT_MEET_EMPLOYEE_SKELETON,
   },
   {
     id: 'summary-3',
@@ -998,6 +1014,76 @@ function renderChallengeSkeletonHtml(skeletonHtml, slide) {
   }
 }
 
+// Transformer for Meet Employee slides:
+// Dynamically preserves category badge untouched, updates parent <p> to text-center and <img> to width: 75%
+function updateMeetEmployeeHtml(code) {
+  if (!code) return '';
+  let updated = code.trim();
+
+  // 1. Update <p> parent containing <img>:
+  // If <p> without class:
+  updated = updated.replace(
+    /<p(?![^>]*\bclass=)([^>]*)>(\s*<img)/gi,
+    '<p class="text-center"$1>$2'
+  );
+  // If <p class="..."> without text-center:
+  updated = updated.replace(
+    /<p([^>]*)\bclass="([^"]*)"([^>]*)>(\s*<img)/gi,
+    (match, before, cls, after, img) => {
+      if (!/\btext-center\b/.test(cls)) {
+        cls = (cls + ' text-center').trim();
+      }
+      return `<p${before}class="${cls}"${after}>${img}`;
+    }
+  );
+
+  // 2. Update <img ...> style to width: 75%;
+  if (/<img[^>]*\bstyle="[^"]*"/i.test(updated)) {
+    updated = updated.replace(
+      /(<img[^>]*\bstyle=")([^"]*)(")/gi,
+      (m, prefix, styleVal, suffix) => {
+        let newStyle = styleVal;
+        if (/width\s*:\s*[^;"]+/i.test(newStyle)) {
+          newStyle = newStyle.replace(/width\s*:\s*[^;"]+/i, 'width: 75%');
+        } else {
+          newStyle =
+            (newStyle.trim() ? newStyle.trim() + '; ' : '') + 'width: 75%;';
+        }
+        return `${prefix}${newStyle}${suffix}`;
+      }
+    );
+  } else {
+    updated = updated.replace(
+      /<img\b([^>]*)>/gi,
+      '<img$1 style="width: 75%;">'
+    );
+  }
+
+  // Normalize <img style="width: 75%;" src="..."> to <img src="..." style="width: 75%;">
+  updated = updated.replace(
+    /<img\s+style="width:\s*75%;?"\s+src="([^"]+)"/gi,
+    '<img src="$1" style="width: 75%;"'
+  );
+
+  return updated;
+}
+
+function renderMeetEmployeeSkeletonHtml(skeletonHtml, slide) {
+  if (!skeletonHtml) return '';
+  let html = skeletonHtml;
+  if (slide?.imageUrl) {
+    if (/<img[^>]*\bsrc="[^"]*"/i.test(html)) {
+      html = html.replace(
+        /(<img[^>]*\bsrc=")[^"]*(")/i,
+        `$1${slide.imageUrl}$2`
+      );
+    } else {
+      html = html.replace(/<img\b/i, `<img src="${slide.imageUrl}"`);
+    }
+  }
+  return stripHtmlComments(updateMeetEmployeeHtml(html));
+}
+
 const SLIDES_STORAGE_KEY = 'hazwoper_saved_slides_deck_v3';
 
 // Initial default slides in the library matching user's exact skeletons and content
@@ -1046,6 +1132,15 @@ const DEFAULT_SAVED_SLIDES = [
     skeletonHtml: DEFAULT_BEFORE_AFTER_SKELETON,
     skeletonHistory: [],
   },
+  {
+    id: 'slide-3',
+    type: 'meet-employee',
+    title: 'Slide 3: Meet Employee',
+    imageUrl:
+      'https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1790764492/M3-C1-T1-02Employee-Introduction-Card-1-1.webp',
+    skeletonHtml: DEFAULT_MEET_EMPLOYEE_SKELETON,
+    skeletonHistory: [],
+  },
 ];
 
 // Helper to initialize slides cleanly from localStorage or defaults
@@ -1056,6 +1151,19 @@ function getInitialSavedSlides() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((s) => s.id));
+          const missingDefaults = DEFAULT_SAVED_SLIDES.filter(
+            (s) => !existingIds.has(s.id)
+          );
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
+            try {
+              localStorage.setItem(SLIDES_STORAGE_KEY, JSON.stringify(merged));
+            } catch {
+              // ignore
+            }
+            return merged;
+          }
           return parsed;
         }
       }
@@ -1088,6 +1196,7 @@ function slideToRow(s, currentUser) {
       pointCount: s.pointCount,
       beforePoints: s.beforePoints,
       withPoints: s.withPoints,
+      imageUrl: s.imageUrl,
       fields: s.fields,
       skeletonHistory: s.skeletonHistory || [],
     },
@@ -1128,7 +1237,7 @@ export function SlideGenerator() {
   // Active slides currently open in tabs
   const [slides, setSlides] = useState(() => {
     const initial = getInitialSavedSlides();
-    return initial.slice(0, 2);
+    return initial.slice(0, 3);
   });
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -1251,7 +1360,10 @@ export function SlideGenerator() {
   // Save changes from Edit Skeleton modal
   const handleSaveSkeletonModal = async () => {
     if (!editingSkeletonSlide) return;
-    const cleaned = stripHtmlComments(tempSkeletonCode);
+    let cleaned = stripHtmlComments(tempSkeletonCode);
+    if (editingSkeletonSlide.type === 'meet-employee') {
+      cleaned = updateMeetEmployeeHtml(cleaned);
+    }
     const prevHistory = editingSkeletonSlide.skeletonHistory || [];
     const newEntry = {
       timestamp: new Date().toISOString(),
@@ -1421,6 +1533,19 @@ export function SlideGenerator() {
           'Communicate follow-up actions faster',
         ],
         skeletonHtml: DEFAULT_BEFORE_AFTER_SKELETON,
+      };
+    } else if (selectedTemplateId === 'meet-employee') {
+      const updatedCode = updateMeetEmployeeHtml(
+        skeleton || DEFAULT_MEET_EMPLOYEE_SKELETON
+      );
+      const imgMatch = updatedCode.match(/<img[^>]*\bsrc="([^"]+)"/i);
+      newSlide = {
+        ...baseMeta,
+        type: 'meet-employee',
+        imageUrl:
+          imgMatch?.[1] ||
+          'https://media.hazwoper-osha.com/wp-content/uploads/2026/09/1790764492/M3-C1-T1-02Employee-Introduction-Card-1-1.webp',
+        skeletonHtml: updatedCode,
       };
     } else {
       const fields = extractFieldsFromSkeleton(skeleton);
@@ -1632,6 +1757,96 @@ export function SlideGenerator() {
       return;
     }
 
+    if (currentSlide.type === 'meet-employee') {
+      const isJustUrl =
+        /^https?:\/\/[^\s<>'"]+$/i.test(raw) ||
+        /^\/[^\s<>'"]+\.(webp|png|jpe?g|gif|svg)$/i.test(raw);
+
+      if (isJustUrl) {
+        const currentSkeleton =
+          currentSlide.skeletonHtml || DEFAULT_MEET_EMPLOYEE_SKELETON;
+        let updatedSkeleton = currentSkeleton;
+        if (/<img[^>]*\bsrc="[^"]*"/i.test(updatedSkeleton)) {
+          updatedSkeleton = updatedSkeleton.replace(
+            /(<img[^>]*\bsrc=")[^"]*(")/i,
+            `$1${raw}$2`
+          );
+        } else {
+          updatedSkeleton = `<p class="text-center"><img src="${raw}" style="width: 75%;"><br></p>`;
+        }
+        updatedSkeleton = updateMeetEmployeeHtml(updatedSkeleton);
+
+        updateActiveSlide({
+          imageUrl: raw,
+          skeletonHtml: updatedSkeleton,
+        });
+
+        showToast('Updated employee card image URL!', 'success');
+        setSinglePasteText('');
+        return;
+      }
+
+      // User pasted old code or multiple slide blocks
+      const updatedCode = updateMeetEmployeeHtml(raw);
+      const imgMatch = updatedCode.match(/<img[^>]*\bsrc="([^"]+)"/i);
+      const extractedImg = imgMatch ? imgMatch[1] : currentSlide.imageUrl;
+
+      updateActiveSlide({
+        skeletonHtml: updatedCode,
+        imageUrl: extractedImg,
+      });
+
+      showToast(
+        'Updated Meet Employee slide! Preserved category badge & converted <p> and <img> to 75% width centered.',
+        'success'
+      );
+      setSinglePasteText('');
+      return;
+    }
+
+    // Auto-detect Meet Employee code pasted into another slide
+    if (
+      currentSlide.type !== 'meet-employee' &&
+      (raw.includes('badge-6') ||
+        raw.includes('Employee-Introduction-Card') ||
+        (/<img[^>]*style="width:\s*100%"/i.test(raw) && raw.includes('badge-')))
+    ) {
+      let meetIndex = slides.findIndex((s) => s.type === 'meet-employee');
+      const updatedCode = updateMeetEmployeeHtml(raw);
+      const imgMatch = updatedCode.match(/<img[^>]*\bsrc="([^"]+)"/i);
+      const extractedImg = imgMatch ? imgMatch[1] : '';
+
+      if (meetIndex !== -1) {
+        setActiveSlideIndex(meetIndex);
+        setSlides((prev) => {
+          const next = [...prev];
+          next[meetIndex] = {
+            ...next[meetIndex],
+            skeletonHtml: updatedCode,
+            imageUrl: extractedImg || next[meetIndex].imageUrl,
+          };
+          return next;
+        });
+      } else {
+        const newSlide = {
+          id: `slide-${Date.now()}`,
+          title: `Slide ${savedSlides.length + 1}: Meet Employee`,
+          type: 'meet-employee',
+          imageUrl: extractedImg || '',
+          skeletonHtml: updatedCode,
+        };
+        setSlides((prev) => [...prev, newSlide]);
+        setSavedSlides((prev) => [...prev, newSlide]);
+        setActiveSlideIndex(slides.length);
+      }
+      showToast(
+        'Detected Meet Employee code! Updated slide with dynamic badge preserved and 75% width centered image.',
+        'success'
+      );
+      setSinglePasteText('');
+      return;
+    }
+
     if (currentSlide.type === 'custom') {
       const lines = raw
         .split('\n')
@@ -1825,9 +2040,14 @@ export function SlideGenerator() {
     }
   };
 
-  // Generate HTML for any slide (Challenge, Before-After, or Custom Skeleton)
+  // Generate HTML for any slide (Challenge, Before-After, Meet Employee, or Custom Skeleton)
   const generateSlideHtml = (slide) => {
     if (!slide) return '';
+
+    if (slide.type === 'meet-employee') {
+      const skel = slide.skeletonHtml || DEFAULT_MEET_EMPLOYEE_SKELETON;
+      return renderMeetEmployeeSkeletonHtml(skel, slide);
+    }
 
     if (slide.type === 'challenge') {
       const skel = slide.skeletonHtml || DEFAULT_CHALLENGE_SKELETON;
@@ -1880,6 +2100,9 @@ export function SlideGenerator() {
 
   // Quick Text box placeholder description
   const quickPlaceholder = useMemo(() => {
+    if (currentSlide?.type === 'meet-employee') {
+      return 'Paste your old Meet Employee slide code here to automatically convert <p> to text-center and <img> to 75% width, or paste an image URL...';
+    }
     if (currentSlide?.type === 'custom') {
       const detected =
         currentSlide.fields && currentSlide.fields.length > 0
@@ -1945,6 +2168,9 @@ export function SlideGenerator() {
             if (slide.type === 'challenge') {
               badgeText = 'Challenge';
               badgeClass = 'bg-blue-500/15 text-blue-700 dark:text-blue-300';
+            } else if (slide.type === 'meet-employee') {
+              badgeText = 'Meet Employee';
+              badgeClass = 'bg-amber-500/15 text-amber-700 dark:text-amber-300';
             } else if (slide.type === 'custom') {
               badgeText = 'Custom Slide';
               badgeClass =
@@ -2160,11 +2386,13 @@ export function SlideGenerator() {
         </CardHeader>
         <CardContent className="p-4 space-y-3">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {currentSlide?.type === 'custom'
-              ? `Paste lines of text below. They will automatically map into your slide's auto-detected fields.`
-              : currentSlide?.type === 'challenge'
-                ? 'Paste Challenge text and How AI Can Help text here to generate the cards automatically.'
-                : 'Paste bullet points here. The tool separates "Before AI" and "With AI", assigns points, and colors the first bold words.'}
+            {currentSlide?.type === 'meet-employee'
+              ? 'Paste your old slide HTML code below. It will preserve your dynamic category badge untouched and automatically update the parent <p> to text-center and <img> to 75% width.'
+              : currentSlide?.type === 'custom'
+                ? `Paste lines of text below. They will automatically map into your slide's auto-detected fields.`
+                : currentSlide?.type === 'challenge'
+                  ? 'Paste Challenge text and How AI Can Help text here to generate the cards automatically.'
+                  : 'Paste bullet points here. The tool separates "Before AI" and "With AI", assigns points, and colors the first bold words.'}
           </p>
           <div className="relative w-full min-w-0">
             <Textarea
@@ -2204,16 +2432,20 @@ export function SlideGenerator() {
             className={`text-[10px] uppercase font-mono ${
               currentSlide?.type === 'challenge'
                 ? 'border-blue-300 text-blue-700 bg-blue-50/50'
-                : currentSlide?.type === 'custom'
-                  ? 'border-purple-300 text-purple-700 bg-purple-50/50'
-                  : 'border-emerald-300 text-emerald-700 bg-emerald-50/50'
+                : currentSlide?.type === 'meet-employee'
+                  ? 'border-amber-300 text-amber-700 bg-amber-50/50'
+                  : currentSlide?.type === 'custom'
+                    ? 'border-purple-300 text-purple-700 bg-purple-50/50'
+                    : 'border-emerald-300 text-emerald-700 bg-emerald-50/50'
             }`}
           >
             {currentSlide?.type === 'challenge'
               ? 'Challenge Design'
-              : currentSlide?.type === 'custom'
-                ? 'Custom Skeleton'
-                : 'Before vs AI Design'}
+              : currentSlide?.type === 'meet-employee'
+                ? 'Meet Employee Card'
+                : currentSlide?.type === 'custom'
+                  ? 'Custom Skeleton'
+                  : 'Before vs AI Design'}
           </Badge>
         </div>
 
@@ -2417,8 +2649,79 @@ export function SlideGenerator() {
               )}
             </div>
 
-            {/* DYNAMIC FIELDS FOR CUSTOM SLIDE */}
-            {currentSlide.type === 'custom' ? (
+            {/* DYNAMIC FIELDS FOR MEET EMPLOYEE SLIDE */}
+            {currentSlide.type === 'meet-employee' ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl border border-amber-200/60 bg-amber-50/25 dark:bg-amber-950/15 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <Label className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                      <span>Meet Employee Introduction Card</span>
+                    </Label>
+                    <Badge
+                      variant="outline"
+                      className="text-amber-700 dark:text-amber-300 border-amber-300"
+                    >
+                      Width: 75% Centered
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Any category badge (COM, DOC, SAF, etc.) is dynamically
+                    preserved untouched. The employee image is centered with 75%
+                    width.
+                  </p>
+
+                  <div>
+                    <Label className="text-xs font-semibold text-muted-foreground">
+                      Employee Card Image URL
+                    </Label>
+                    <Input
+                      value={currentSlide.imageUrl || ''}
+                      onChange={(e) => {
+                        const newUrl = e.target.value;
+                        let currentSkel =
+                          currentSlide.skeletonHtml ||
+                          DEFAULT_MEET_EMPLOYEE_SKELETON;
+                        if (/<img[^>]*\bsrc="[^"]*"/i.test(currentSkel)) {
+                          currentSkel = currentSkel.replace(
+                            /(<img[^>]*\bsrc=")[^"]*(")/i,
+                            `$1${newUrl}$2`
+                          );
+                        }
+                        updateActiveSlide({
+                          imageUrl: newUrl,
+                          skeletonHtml: updateMeetEmployeeHtml(currentSkel),
+                        });
+                      }}
+                      className="mt-1 text-xs font-mono"
+                      placeholder="https://media.hazwoper-osha.com/wp-content/uploads/..."
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">
+                      Slide HTML Code (Category Badge &amp; Centered 75% Image)
+                    </Label>
+                    <Textarea
+                      rows={5}
+                      value={
+                        currentSlide.skeletonHtml ||
+                        DEFAULT_MEET_EMPLOYEE_SKELETON
+                      }
+                      onChange={(e) => {
+                        const updated = updateMeetEmployeeHtml(e.target.value);
+                        const imgM = updated.match(/<img[^>]*\bsrc="([^"]+)"/i);
+                        updateActiveSlide({
+                          skeletonHtml: updated,
+                          imageUrl: imgM ? imgM[1] : currentSlide.imageUrl,
+                        });
+                      }}
+                      className="mt-1 text-xs font-mono resize-y"
+                      placeholder="Paste old or updated slide HTML code here..."
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : currentSlide.type === 'custom' ? (
               <div className="space-y-4">
                 <div className="p-3.5 rounded-xl border border-primary/20 bg-primary/[0.02] flex items-center justify-between flex-wrap gap-2">
                   <div>
@@ -3021,7 +3324,7 @@ export function SlideGenerator() {
           {viewMode === 'preview' ? (
             <div className="p-2 sm:p-4 md:p-6 bg-slate-50/50 dark:bg-slate-900/30 overflow-x-auto w-full max-w-full min-w-0">
               <div
-                className="w-full min-w-0 max-w-full overflow-x-auto"
+                className="relative min-h-[160px] w-full min-w-0 max-w-full overflow-x-auto"
                 dangerouslySetInnerHTML={{ __html: generatedCode }}
               />
             </div>
@@ -3228,9 +3531,11 @@ export function SlideGenerator() {
                     <strong className="text-foreground uppercase font-mono">
                       {editingSkeletonSlide.type === 'challenge'
                         ? 'Challenge & AI Help'
-                        : editingSkeletonSlide.type === 'custom'
-                          ? 'Custom Slide'
-                          : 'Before vs With AI'}
+                        : editingSkeletonSlide.type === 'meet-employee'
+                          ? 'Meet Employee Card'
+                          : editingSkeletonSlide.type === 'custom'
+                            ? 'Custom Slide'
+                            : 'Before vs With AI'}
                     </strong>
                   </span>
                   <div className="flex items-center gap-2">

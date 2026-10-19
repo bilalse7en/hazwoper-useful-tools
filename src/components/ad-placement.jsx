@@ -5,20 +5,20 @@ import { cn } from '@/lib/utils';
 
 const AD_CONFIG = {
   'top-banner': {
-    slot: '2228101298',
-    format: 'horizontal',
+    slot: process.env.NEXT_PUBLIC_ADSENSE_TOP_BANNER_SLOT || '2843368252',
+    format: 'auto',
     minHeight: '90px',
     label: 'Sponsored',
   },
   'in-content': {
-    slot: '2228101298',
-    format: 'rectangle',
+    slot: process.env.NEXT_PUBLIC_ADSENSE_IN_CONTENT_SLOT || '6825091272',
+    format: 'auto',
     minHeight: '250px',
     label: 'Advertisement',
   },
   footer: {
-    slot: '2228101298',
-    format: 'horizontal',
+    slot: process.env.NEXT_PUBLIC_ADSENSE_FOOTER_SLOT || '1516924274',
+    format: 'auto',
     minHeight: '90px',
     label: 'Sponsored Content',
   },

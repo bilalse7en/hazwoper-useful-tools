@@ -55,44 +55,12 @@ export function AdSenseAd({
       return; // Already filled by Google
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          try {
-            // Wait for the adsbygoogle script to be available
-            const interval = setInterval(() => {
-              if (window.adsbygoogle) {
-                clearInterval(interval);
-                // Only push if not already filled
-                const currentIns = adRef.current?.querySelector('.adsbygoogle');
-                if (currentIns && !currentIns.getAttribute('data-ad-status')) {
-                  window.adsbygoogle = window.adsbygoogle || [];
-                  window.adsbygoogle.push({});
-
-                  setAdLoaded(true);
-                }
-              }
-            }, 200);
-            // Safety timeout: stop trying after 8 seconds
-            setTimeout(() => clearInterval(interval), 8000);
-          } catch (e) {
-            console.error('AdSense push error:', e);
-          }
-          observer.unobserve(entry.target);
-        }
-      },
-      { rootMargin: '200px' }
-    );
-
-    observer.observe(adRef.current);
-
-    const currentAd = adRef.current;
-    return () => {
-      if (currentAd) {
-        observer.unobserve(currentAd);
-        currentAd.innerHTML = '';
-      }
-    };
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      setAdLoaded(true);
+    } catch (e) {
+      console.error('AdSense push error:', e);
+    }
   }, [isProduction, slot, adLoaded]);
 
   // Show placeholder in development

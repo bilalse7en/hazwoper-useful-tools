@@ -117,7 +117,7 @@ export default function RootLayout({ children }) {
         <Script
           id="adsense-init"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9874465109252768"
-          strategy="lazyOnload"
+          strategy="afterInteractive"
           crossOrigin="anonymous"
         />
         <Script
