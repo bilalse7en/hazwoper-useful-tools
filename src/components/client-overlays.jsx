@@ -26,6 +26,10 @@ const InquiryReplyNotifier = dynamic(
   { ssr: false }
 );
 
+const AdBlockDetector = dynamic(() => import('@/components/adblock-detector'), {
+  ssr: false,
+});
+
 export function ClientOverlays() {
   return (
     <>
@@ -35,6 +39,7 @@ export function ClientOverlays() {
       <FloatingChatbot />
       <BlockedOverlay />
       <InquiryReplyNotifier />
+      <AdBlockDetector />
     </>
   );
 }

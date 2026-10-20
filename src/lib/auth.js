@@ -38,6 +38,11 @@ export const NAV_ITEMS = [
     icon: 'Sparkles',
   },
   {
+    id: 'ai-video-shorts',
+    label: 'AI Video to Shorts',
+    icon: 'Scissors',
+  },
+  {
     id: 'html-design-enhancer',
     label: 'HTML Design Enhancer (PRO)',
     icon: 'Sparkles',
@@ -201,6 +206,8 @@ export function hasAccess(user, featureId, toolSettings = null) {
     'chat',
     'slide-generator',
     'slide',
+    'ai-video-shorts',
+    'video-shorts',
   ];
 
   if (defaultFreeTools.includes(featureId) || defaultFreeTools.includes(slug)) {

@@ -38,6 +38,7 @@ import {
   DatabaseZap,
   Mail,
   Presentation,
+  Scissors,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -97,6 +98,12 @@ const navGroups = [
         icon: Video,
         isParent: true,
         subItems: [
+          {
+            id: 'ai-video-shorts',
+            label: 'AI Video to Shorts',
+            icon: Scissors,
+            badge: 'NEW',
+          },
           {
             id: 'youtube-downloader',
             label: 'Social Video Downloader',

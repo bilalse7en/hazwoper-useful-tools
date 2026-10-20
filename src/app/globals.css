@@ -1,5 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Dancing+Script:wght@700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
+
+@font-face {
+  font-family: 'Rockybilly';
+  src: local('Rockybilly'), local('Rockybilly-Regular'), local('Rockybilly Regular');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Kumail';
+  src: local('Kumail'), local('Kumail-Regular'), local('Kumail Regular'), local('AlQalam Taj Nastaleeq');
+  font-display: swap;
+}
+
+.font-urdu {
+  font-family: 'Kumail', 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Segoe UI', Arial, sans-serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 1.8;
+}
+
+.font-kumail {
+  font-family: 'Kumail', 'Noto Nastaliq Urdu', 'Noto Sans Arabic', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', Arial, sans-serif;
+  direction: rtl;
+}
+
+.font-caption {
+  font-family: 'Rockybilly', 'Caveat', 'Dancing Script', 'Brush Script MT', cursive, sans-serif;
+}
+
 
 @keyframes fadeIn {
   from {

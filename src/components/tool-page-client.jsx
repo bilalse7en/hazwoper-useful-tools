@@ -139,6 +139,14 @@ const HtmlDesignEnhancer = nextDynamic(
   { ssr: false }
 );
 
+const AIVideoShorts = nextDynamic(
+  () =>
+    import('@/components/generators/ai-video-shorts').then(
+      (m) => m.default || m.AIVideoShorts
+    ),
+  { ssr: false }
+);
+
 // Map slugs to components
 const toolComponents = {
   'ai-course-creator': AICourseCreatorGenerator,
@@ -164,6 +172,7 @@ const toolComponents = {
   'pdf-editor': PDFEditor,
   'slide-generator': SlideGenerator,
   'html-design-enhancer': HtmlDesignEnhancer,
+  'ai-video-shorts': AIVideoShorts,
 };
 
 export function ToolPageClient({ toolSlug }) {

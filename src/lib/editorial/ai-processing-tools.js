@@ -489,4 +489,60 @@ Result: A sleek, interactive presentation card set with instant copy-to-clipboar
       },
     ],
   },
+  'ai-video-shorts': {
+    overview: `The AI Video to Shorts Studio is a production-grade, 100% free video repurposing platform designed to transform long-form recordings, podcasts, webinars, and YouTube videos into captivating, short-form clips optimized for YouTube Shorts, Instagram Reels, and TikTok. Rather than manually watching hours of footage to locate hooks and tedious manual keyframing for vertical 9:16 aspect ratios, this tool automates the entire workflow. It analyzes audio energy and speech cadence to detect natural thought boundaries, identifies visual scene changes, tracks the active speaker with cinematic exponential moving average (EMA) smoothing, generates viral animated karaoke captions, and provides a multi-track timeline editor where you can trim, split, reorder, and export high-definition MP4 videos without subscription fees or watermarks.`,
+    stepByStep: `1. Input Source Video: Drag and drop an MP4, MOV, or WebM video file, or paste a public YouTube video URL into the source input field.
+2. Configure Studio Settings: Select your target format (9:16 Portrait, 16:9 Landscape, or 1:1 Square), set clip duration bounds (15-30s, 30-45s, 45-60s), and choose your preferred caption animation style (Viral Bold, Modern Clean, or Karaoke Glow).
+3. Execute Intelligent Analysis: Click 'Analyze Video' to run the speech cadence, audio energy, and scene boundary pipeline.
+4. Review Scored Highlights: Browse the generated clips gallery. Each clip is ranked with an engagement score, timestamp range, and hook summary.
+5. Edit in Studio Timeline: Click 'Open in Studio Editor' on any clip to trim boundaries, split segments at the playhead, adjust face framing, edit subtitle words, or add background music.
+6. Render & Download: Click 'Render & Export Short' to produce a high-definition H.264/AAC MP4 video, or download subtitle files in .SRT and .VTT formats.
+
+Common Errors to Avoid:
+- Uploading non-standard codecs: Highly exotic or proprietary codecs may fail in browser decoding; standard MP4 (H.264) or WebM provides the smoothest performance.
+- Cutting mid-sentence manually: When editing timestamps on the timeline, make sure to align your cut points with the natural speech pauses indicated on the audio track.
+- Forgetting safe vertical margins: Keep captions positioned between 70% and 80% from the top so they do not overlap with YouTube Shorts or TikTok UI icons.`,
+    methodology: `The AI Video to Shorts pipeline integrates computer vision, audio DSP, and non-linear video editing principles:
+1. **Audio Energy & Silence Detection**: Decodes PCM audio buffers using the Web Audio API to calculate Root-Mean-Square (RMS) amplitude and spectral flux over 100ms sliding windows. It locates silence intervals (< 0.02 amplitude) to snap clip boundaries cleanly without truncating spoken words.
+2. **Visual Scene & Motion Analysis**: Samples frames onto high-performance offscreen canvases and computes 3D color histogram deltas $\\Delta_{RGB}$ across consecutive frames to identify camera cuts, slide transitions, and visual pace changes.
+3. **Smart 9:16 Crop & Speaker Tracking**: Detects facial skin-tone chroma/luma centroids ($C_b \\in [77, 128], C_r \\in [130, 175]$) and applies an Exponential Moving Average ($EMA$) damping filter:
+$$X_{\\text{smoothed}}(t) = \\alpha X_{\\text{detected}}(t) + (1 - \\alpha) X_{\\text{smoothed}}(t-1)$$
+with $\\alpha = 0.12$ to deliver smooth, cinematic camera tracking that eliminates rapid horizontal jitter.
+4. **Multi-Factor Clip Scoring**: Ranks candidate moments using an objective weighted composite formula:
+$$\\text{Score} = 0.35 \\cdot \\text{HookEnergy} + 0.30 \\cdot \\text{SpeechDensity} + 0.20 \\cdot \\text{VisualDynamics} + 0.15 \\cdot \\text{DurationFit}$$
+5. **High-Fidelity FFmpeg Rendering**: Utilizes native FFmpeg H.264 video encoding, AAC audio sampling, -14 LUFS loudness normalization, and custom subtitle burning.`,
+    examples: `Example 1: Repurposing a 45-minute Technical Podcast into 5 YouTube Shorts.
+Input: A 1080p landscape recording of a tech interview.
+Process: The analysis pipeline identifies 5 high-energy discussion points with clear question-and-answer hooks, snaps each clip to natural breathing pauses between 28s and 42s, and applies 9:16 smart face tracking.
+Result: 5 vertical shorts with animated word-by-word bold captions ready for immediate multi-platform publishing.
+
+Example 2: Creating a 30-Second Tutorial Reel from a Screen Recording.
+Input: A product demo video with voiceover narration.
+Process: Uses the 'Blurred Background' framing preset to center the 16:9 demo while filling the 9:16 canvas with an ambient blurred background, applying a 0.5s audio fade-in.
+Result: A polished tutorial short featuring synced karaoke subtitles and normalized audio.`,
+    additionalFaq: [
+      {
+        question:
+          'Are there any usage limits, watermarks, or subscription fees?',
+        answer:
+          'None. The AI Video to Shorts Studio is 100% free and open-source, with no hidden paywalls, subscriptions, or watermarks.',
+      },
+      {
+        question:
+          'Can I upload multiple video clips into the same short project?',
+        answer:
+          'Yes. The Studio Editor features a project Media Bin where you can upload additional footage and append or insert segments anywhere on the timeline.',
+      },
+      {
+        question: 'Can I download separate subtitle files (.SRT or .VTT)?',
+        answer:
+          'Yes. Both .SRT and .VTT subtitle files can be exported with one click for any generated clip.',
+      },
+      {
+        question: 'Does the tool require an external GPU or server compute?',
+        answer:
+          'The editor runs seamlessly using client-side Web Audio, Canvas computer vision, and bundled native FFmpeg rendering.',
+      },
+    ],
+  },
 };

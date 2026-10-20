@@ -25,6 +25,7 @@ import {
   FileType,
   AudioWaveform,
   Target,
+  Scissors,
 } from 'lucide-react';
 import { toolIdToSlug, toolInfo } from '@/lib/seo';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,7 @@ import { triggerLogin, hasAccess } from '@/lib/auth';
 import { useAuth } from '@/components/auth-provider';
 
 const iconMap = {
+  'ai-video-shorts': Scissors,
   'ai-course-creator': Sparkles,
   course: Layout,
   blog: FileText,
@@ -75,6 +77,7 @@ const FREE_TOOL_IDS = [
   'watermark-remover',
   'bg-remover',
   'pdf-editor',
+  'ai-video-shorts',
 ];
 
 // Generator tools that require login + generator access

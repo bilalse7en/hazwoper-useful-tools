@@ -35,6 +35,16 @@ export const toolMetadata = {
     canonical: '/tools/html-design-enhancer',
     ogImage: '/og-web-content.png',
   },
+  'ai-video-shorts': {
+    title:
+      'AI Video to Shorts - Free Video Repurposing & Shorts Studio | All Useful Tools',
+    description:
+      'Transform long videos and YouTube links into viral shorts, reels, and TikTok clips. Smart 9:16 face tracking, animated captions, and a full multi-track timeline editor. 100% Free.',
+    keywords:
+      'ai video to shorts, video repurposing, shorts creator, reels generator, smart face tracking, video clip editor, free ai video editor, youtube to shorts',
+    canonical: '/tools/ai-video-shorts',
+    ogImage: '/og-web-content.png',
+  },
   'web-content': {
     title:
       'Web Content Generator - Extract Structured Web Content from Documents | All Useful Tools',
@@ -282,6 +292,7 @@ export const toolIdToSlug = {
   'pdf-editor': 'pdf-editor',
   'slide-generator': 'slide-generator',
   'html-design-enhancer': 'html-design-enhancer',
+  'ai-video-shorts': 'ai-video-shorts',
 };
 
 // Reverse mapping
@@ -291,6 +302,24 @@ export const slugToToolId = Object.fromEntries(
 
 // Tool display information
 export const toolInfo = {
+  'ai-video-shorts': {
+    name: 'AI Video to Shorts',
+    icon: '✂️',
+    description:
+      'Transform long videos & YouTube URLs into viral 9:16 portrait shorts with smart face tracking, animated captions, and a full timeline editor. 100% Free.',
+    category: 'Video & Audio Processing',
+    detailedDescription:
+      'AI Video to Shorts is a production-grade repurposing studio that automatically analyzes long-form videos to discover engaging moments, detects speech boundaries so sentences are never cut in half, tracks faces for cinematic 9:16 portrait framing, generates viral dynamic captions, and lets you edit everything in a multi-track timeline editor. Free with zero paid APIs or subscriptions.',
+    benefits: [
+      'Automatic Viral Hook Discovery: Scored ranking using speech cadence, audio energy, and scene boundaries',
+      'Smart 9:16 Face Tracking: Exponentially smoothed camera panning keeping active speaker centered',
+      'Dynamic Animated Captions: Word-by-word viral highlight subtitles with customizable styles',
+      'Multi-Track Timeline Editor: Split, trim, delete, reorder segments, and combine multiple video sources',
+      '100% Free & Open-Source: No paid subscriptions, no API keys, and no watermarks',
+    ],
+    howToUse:
+      '1. Upload a video file or paste a YouTube URL.\n2. Choose portrait (9:16), landscape (16:9), or square (1:1) format and select duration.\n3. Click "Analyze Video" to generate scored viral clips.\n4. Click "Open in Studio Editor" to trim, adjust captions, split segments, or add music.\n5. Click "Render & Export Short" to download in high-definition MP4.',
+  },
   'html-design-enhancer': {
     name: 'HTML Design Enhancer',
     icon: '✨',

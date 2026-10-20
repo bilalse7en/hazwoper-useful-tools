@@ -81,5 +81,10 @@ old_docx_processor*.js
 *.json.orig
 *.bak
 *.sql
-!contact_setup.sql
+# temporary video shorts storage
+/public/temp-shorts/
+/bin/
 
+
+/public/media-hub/
+/data/

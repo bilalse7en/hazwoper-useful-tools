@@ -2069,23 +2069,49 @@ export async function processQuizFile(file) {
 
 function extractLessonQuiz(elementsArray) {
   let quizStart = -1;
+  let detectedType = 'lesson-quiz'; // 'lesson-quiz' | 'final-exam'
+  let detectedHeading = 'Lesson Quiz';
+
+  // 1. Scan headings (H1-H6) for Lesson Quiz or Final Exam
   elementsArray.forEach((element, i) => {
     const text = element.textContent.trim().toLowerCase();
-    if (
-      (text === 'lesson quiz' || text.includes('lesson quiz')) &&
-      element.tagName.match(/^H[1-6]$/i) &&
-      quizStart === -1
-    ) {
-      quizStart = i;
+    if (element.tagName.match(/^H[1-6]$/i) && quizStart === -1) {
+      if (text === 'lesson quiz' || text.includes('lesson quiz')) {
+        quizStart = i;
+        detectedType = 'lesson-quiz';
+        detectedHeading = element.textContent.trim();
+      } else if (
+        text === 'final exam' ||
+        text.includes('final exam') ||
+        text.includes('final examination') ||
+        text.includes('course final exam')
+      ) {
+        quizStart = i;
+        detectedType = 'final-exam';
+        detectedHeading = element.textContent.trim();
+      }
     }
   });
 
+  // 2. Try p tags if no heading tag found
   if (quizStart === -1) {
-    // Try p tags if no heading found
     elementsArray.forEach((element, i) => {
       const text = element.textContent.trim().toLowerCase();
-      if (text === 'lesson quiz' && quizStart === -1) {
-        quizStart = i;
+      if (quizStart === -1) {
+        if (text === 'lesson quiz' || text.includes('lesson quiz')) {
+          quizStart = i;
+          detectedType = 'lesson-quiz';
+          detectedHeading = element.textContent.trim();
+        } else if (
+          text === 'final exam' ||
+          text.includes('final exam') ||
+          text.includes('final examination') ||
+          text.includes('course final exam')
+        ) {
+          quizStart = i;
+          detectedType = 'final-exam';
+          detectedHeading = element.textContent.trim();
+        }
       }
     });
   }
@@ -2105,7 +2131,8 @@ function extractLessonQuiz(elementsArray) {
     if (
       tagName.match(/^H[1-2]$/i) &&
       !lowerText.startsWith('question') &&
-      !lowerText.includes('lesson quiz')
+      !lowerText.includes('lesson quiz') &&
+      !lowerText.includes('final exam')
     ) {
       break;
     }
@@ -2129,6 +2156,15 @@ function extractLessonQuiz(elementsArray) {
     }
 
     if (currentQuestion) {
+      // Find standalone answer key line (e.g. "Answer: B", "Answer Key: B")
+      const ansKeyMatch = text.match(
+        /^(?:answer\s*key|correct\s*answer|answer|correct|key):\s*([A-D])/i
+      );
+      if (ansKeyMatch) {
+        currentQuestion.correctAnswer = ansKeyMatch[1].toUpperCase();
+        continue;
+      }
+
       // Find correct answer indicator like "(B)" or "(A)" etc.
       const answerMatch = text.match(/\(([A-D])\)$/i);
       if (answerMatch) {
@@ -2166,13 +2202,183 @@ function extractLessonQuiz(elementsArray) {
     questions.push(currentQuestion);
   }
 
+  questions.detectedType = detectedType;
+  questions.detectedHeading = detectedHeading;
+
   return questions;
 }
 
-export function generateLessonQuizCode(questions) {
+/**
+ * Parses raw pasted quiz or final exam text (plain text or markdown)
+ * Detects H1/header, questions, options (A-D), and correct answer keys.
+ */
+export function parseQuizFromText(rawText) {
+  if (!rawText || typeof rawText !== 'string') return [];
+
+  const lines = rawText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return [];
+
+  let detectedType = 'lesson-quiz';
+  let detectedHeading = 'Lesson Quiz';
+  let quizStartIndex = 0;
+
+  // Scan top lines for Lesson Quiz or Final Exam header
+  for (let i = 0; i < Math.min(lines.length, 12); i++) {
+    const cleanLine = lines[i]
+      .replace(/^[#\*\-=\s]+/, '')
+      .trim()
+      .toLowerCase();
+    if (
+      cleanLine.includes('final exam') ||
+      cleanLine.includes('final examination') ||
+      cleanLine.includes('course final exam')
+    ) {
+      detectedType = 'final-exam';
+      detectedHeading = lines[i].replace(/^[#\*\-=\s]+/, '').trim();
+      quizStartIndex = i + 1;
+      break;
+    } else if (cleanLine.includes('lesson quiz')) {
+      detectedType = 'lesson-quiz';
+      detectedHeading = lines[i].replace(/^[#\*\-=\s]+/, '').trim();
+      quizStartIndex = i + 1;
+      break;
+    }
+  }
+
+  const questions = [];
+  let currentQuestion = null;
+
+  for (let i = quizStartIndex; i < lines.length; i++) {
+    const line = lines[i];
+    const lower = line.toLowerCase();
+
+    // Check for question headers: "Question 1", "Question 1:", "Q1.", "1."
+    const questionHeaderMatch = line.match(
+      /^(?:question\s*(\d+)[:.]?|q(\d+)[:.]?|(\d+)\.)\s*(.*)/i
+    );
+    const isExplicitQuestion =
+      lower.startsWith('question') ||
+      lower.startsWith('q.') ||
+      (questionHeaderMatch && !line.match(/^[A-D][\.\)]/i));
+
+    if (isExplicitQuestion) {
+      if (currentQuestion && currentQuestion.question) {
+        questions.push(currentQuestion);
+      }
+
+      let qNumber = `Question ${questions.length + 1}`;
+      let qText = '';
+
+      if (questionHeaderMatch) {
+        const num =
+          questionHeaderMatch[1] ||
+          questionHeaderMatch[2] ||
+          questionHeaderMatch[3];
+        qNumber = `Question ${num}`;
+        qText = questionHeaderMatch[4]?.trim() || '';
+      } else {
+        qNumber = line;
+      }
+
+      currentQuestion = {
+        id: `q-${questions.length + 1}`,
+        number: qNumber,
+        question: qText,
+        options: [],
+        correctAnswer: '',
+      };
+
+      if (qText) {
+        const ansMatch = qText.match(/\(([A-D])\)$/i);
+        if (ansMatch) {
+          currentQuestion.correctAnswer = ansMatch[1].toUpperCase();
+          currentQuestion.question = qText.replace(/\(([A-D])\)$/i, '').trim();
+        }
+      }
+      continue;
+    }
+
+    if (currentQuestion) {
+      // Check for standalone answer line: "Answer: B", "Answer Key: B", "Correct Answer: B", "Key: B"
+      const ansKeyMatch = line.match(
+        /^(?:answer\s*key|correct\s*answer|answer|correct|key):\s*([A-D])/i
+      );
+      if (ansKeyMatch) {
+        currentQuestion.correctAnswer = ansKeyMatch[1].toUpperCase();
+        continue;
+      }
+
+      // Check if line contains "(B)" at end
+      const inlineAnswerMatch = line.match(/\(([A-D])\)$/i);
+      if (inlineAnswerMatch && !currentQuestion.question) {
+        currentQuestion.correctAnswer = inlineAnswerMatch[1].toUpperCase();
+        currentQuestion.question = line.replace(/\(([A-D])\)$/i, '').trim();
+        continue;
+      }
+
+      // Check for Option: "A. ...", "A) ...", "A - ..."
+      const optMatch = line.match(/^([A-D])[\.\)\-\:]\s*(.*)/i);
+      if (optMatch) {
+        const letter = optMatch[1].toUpperCase();
+        let optText = optMatch[2].trim();
+
+        // Check if option line marks itself as correct
+        if (
+          /[\(\[](correct|\*|x)[\)\]]/i.test(optText) ||
+          optText.endsWith('*')
+        ) {
+          currentQuestion.correctAnswer = letter;
+          optText = optText
+            .replace(/[\(\[](correct|\*|x)[\)\]]/gi, '')
+            .replace(/\*$/, '')
+            .trim();
+        }
+
+        currentQuestion.options.push({
+          letter,
+          text: optText,
+        });
+        continue;
+      }
+
+      // If no question text yet, this line is the question text
+      if (!currentQuestion.question && line.length > 3) {
+        const ansMatch = line.match(/\(([A-D])\)$/i);
+        if (ansMatch) {
+          currentQuestion.correctAnswer = ansMatch[1].toUpperCase();
+          currentQuestion.question = line.replace(/\(([A-D])\)$/i, '').trim();
+        } else {
+          currentQuestion.question = line;
+        }
+      }
+    }
+  }
+
+  if (currentQuestion && currentQuestion.question) {
+    questions.push(currentQuestion);
+  }
+
+  questions.detectedType = detectedType;
+  questions.detectedHeading = detectedHeading;
+
+  return questions;
+}
+
+export function generateLessonQuizCode(questions, title) {
   if (!questions || questions.length === 0) return '';
 
-  let quizHtml = '<div class="lesson-quiz-container">\n';
+  const isFinalExam =
+    questions.detectedType === 'final-exam' ||
+    /final\s*exam/i.test(title || '');
+  const containerClass = isFinalExam
+    ? 'final-exam-container'
+    : 'lesson-quiz-container';
+
+  let quizHtml = `<div class="${containerClass}">\n`;
 
   questions.forEach((q, index) => {
     quizHtml += `  <div class="quiz-question-item mb-5">\n`;

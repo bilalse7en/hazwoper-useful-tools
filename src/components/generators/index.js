@@ -18,3 +18,4 @@ export { BgRemover } from './bg-remover';
 export { PDFEditor } from './pdf-editor';
 export { SlideGenerator } from './slide-generator';
 export { HtmlDesignEnhancer } from './html-design-enhancer';
+export { AIVideoShorts } from './ai-video-shorts';

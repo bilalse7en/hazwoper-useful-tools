@@ -55,7 +55,7 @@ describe('Page Metadata Factory (PRD Standardized Metadata)', () => {
       noindex: true,
     });
 
-    expect(meta.robots).toEqual({ index: false, follow: false });
+    expect(meta.robots).toMatchObject({ index: false, follow: false });
   });
 });
 

@@ -22,7 +22,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { processQuizFile, generateLessonQuizCode } from '@/lib/docx-processor';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  processQuizFile,
+  generateLessonQuizCode,
+  parseQuizFromText,
+} from '@/lib/docx-processor';
 import { ProgressButton } from '@/components/progress-button';
 import { HistoryList } from '@/components/history-list';
 import { useAuthAction } from '@/lib/use-auth-action';
@@ -31,11 +37,15 @@ import { saveGeneratorState } from '@/lib/tool-history';
 import { cn } from '@/lib/utils';
 
 export default function LessonQuizBuilder() {
+  const [inputMode, setInputMode] = useState('upload'); // 'upload' | 'paste'
   const [file, setFile] = useState(null);
+  const [pastedText, setPastedText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressText, setProgressText] = useState('');
   const [questions, setQuestions] = useState([]);
+  const [detectedType, setDetectedType] = useState('lesson-quiz'); // 'lesson-quiz' | 'final-exam'
+  const [detectedHeading, setDetectedHeading] = useState('Lesson Quiz');
   const [generatedCode, setGeneratedCode] = useState('');
   const [copiedTracker, setCopiedTracker] = useState({});
   const { performAction } = useAuthAction();
@@ -62,7 +72,10 @@ export default function LessonQuizBuilder() {
     const currentState = {
       questions,
       generatedCode,
-      fileName: updates.fileName || file?.name || 'Lesson Quiz',
+      detectedType,
+      detectedHeading,
+      fileName:
+        updates.fileName || file?.name || detectedHeading || 'Lesson Quiz',
       ...updates,
     };
     await saveGeneratorState(
@@ -94,7 +107,7 @@ export default function LessonQuizBuilder() {
 
       if (!data || data.length === 0) {
         throw new Error(
-          'No "Lesson Quiz" section found in the document. Please ensure the file has an H1 heading titled "Lesson Quiz".'
+          'No "Lesson Quiz" or "Final Exam" section found in the document. Please ensure the file has an H1 heading titled "Lesson Quiz" or "Final Exam".'
         );
       }
 
@@ -102,15 +115,28 @@ export default function LessonQuizBuilder() {
       setProgressText('Extraction complete!');
       setQuestions(data);
 
-      const code = generateLessonQuizCode(data);
+      const detected = data.detectedType || 'lesson-quiz';
+      const heading =
+        data.detectedHeading ||
+        (detected === 'final-exam' ? 'Final Exam' : 'Lesson Quiz');
+      setDetectedType(detected);
+      setDetectedHeading(heading);
+
+      const code = generateLessonQuizCode(data, heading);
       setGeneratedCode(code);
       setCopiedTracker({});
 
       showSuccess(
-        'Quiz Extracted',
-        `Successfully identified ${data.length} questions.`
+        `${detected === 'final-exam' ? 'Final Exam' : 'Lesson Quiz'} Extracted`,
+        `Successfully identified ${data.length} questions from ${heading}.`
       );
-      persistState({ questions: data, generatedCode: code });
+      persistState({
+        questions: data,
+        generatedCode: code,
+        detectedType: detected,
+        detectedHeading: heading,
+        fileName: file.name,
+      });
 
       setTimeout(() => {
         setIsProcessing(false);
@@ -120,6 +146,121 @@ export default function LessonQuizBuilder() {
       setIsProcessing(false);
       showToast(error.message, 'error');
     }
+  };
+
+  const handleParsePastedText = () => {
+    if (!pastedText.trim()) {
+      return showToast(
+        'Please paste quiz or final exam text first.',
+        'warning'
+      );
+    }
+
+    setIsProcessing(true);
+    setProgress(30);
+    setProgressText('Parsing questions and answer keys...');
+
+    try {
+      const data = parseQuizFromText(pastedText);
+
+      if (!data || data.length === 0) {
+        throw new Error(
+          'No valid questions found in pasted text. Make sure questions have a number (e.g. "1. Question text") and options labeled A., B., C., D.'
+        );
+      }
+
+      setProgress(100);
+      setProgressText('Parsing complete!');
+      setQuestions(data);
+
+      const detected = data.detectedType || 'lesson-quiz';
+      const heading =
+        data.detectedHeading ||
+        (detected === 'final-exam' ? 'Final Exam' : 'Lesson Quiz');
+      setDetectedType(detected);
+      setDetectedHeading(heading);
+
+      const code = generateLessonQuizCode(data, heading);
+      setGeneratedCode(code);
+      setCopiedTracker({});
+
+      showSuccess(
+        `${detected === 'final-exam' ? 'Final Exam' : 'Lesson Quiz'} Parsed`,
+        `Successfully extracted ${data.length} questions from pasted text.`
+      );
+      persistState({
+        questions: data,
+        generatedCode: code,
+        detectedType: detected,
+        detectedHeading: heading,
+        fileName: `${heading} (Pasted)`,
+      });
+
+      setTimeout(() => {
+        setIsProcessing(false);
+        setProgress(0);
+      }, 800);
+    } catch (error) {
+      setIsProcessing(false);
+      showToast(error.message, 'error');
+    }
+  };
+
+  const loadSampleFinalExam = () => {
+    const sample = `# Final Exam
+
+1. What is the primary purpose of OSHA 29 CFR 1910.120 HAZWOPER regulations?
+A. Regulate offshore maritime cargo tariffs
+B. Protect workers involved in hazardous waste operations and emergency response
+C. Standardize residential building electrical wiring codes
+D. Supervise federal income tax filings
+Correct Answer: B
+
+2. Which level of personal protective equipment (PPE) provides the highest level of respiratory and skin protection?
+A. Level A
+B. Level B
+C. Level C
+D. Level D
+Answer: A
+
+3. An immediately dangerous to life or health (IDLH) atmosphere requires which type of respirator?
+A. Dust mask
+B. Half-face air-purifying respirator
+C. Positive-pressure self-contained breathing apparatus (SCBA)
+D. Surgical mask
+Answer Key: C
+
+4. What is the minimum training requirement for an on-site hazardous waste worker engaged in operations with potential health hazards?
+A. 8 hours initial training
+B. 24 hours initial training
+C. 40 hours initial training plus 3 days field experience
+D. No training required
+Answer: C`;
+    setPastedText(sample);
+    showToast('Loaded sample Final Exam text.', 'info');
+  };
+
+  const copyLmsFormat = () => {
+    if (!questions.length) return;
+    const lmsText = questions
+      .map((q, idx) => {
+        const optionsText = q.options
+          .map(
+            (opt) =>
+              `${opt.letter}. ${opt.text}${opt.letter === q.correctAnswer ? ' (CORRECT)' : ''}`
+          )
+          .join('\n');
+        return `${idx + 1}. ${q.question}\n${optionsText}`;
+      })
+      .join('\n\n');
+
+    performAction(
+      () => {
+        navigator.clipboard.writeText(lmsText);
+        showSuccess('Copied', 'All questions copied in LMS plain text format.');
+      },
+      { type: 'copy', name: 'All Questions LMS Text' }
+    );
   };
 
   const copyOnlyQuestion = (q, idx) => {
@@ -198,6 +339,8 @@ export default function LessonQuizBuilder() {
     if (!state) return;
     setQuestions(state.questions || []);
     setGeneratedCode(state.generatedCode || '');
+    if (state.detectedType) setDetectedType(state.detectedType);
+    if (state.detectedHeading) setDetectedHeading(state.detectedHeading);
     setCopiedTracker({});
     showSuccess('Neural Sync', 'Session data restored successfully.');
   };
@@ -257,75 +400,144 @@ export default function LessonQuizBuilder() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
-              <div className="space-y-2 border-b border-border pb-4 mb-4">
-                <p className="text-sm text-muted-foreground">
-                  Download our demo file to check the required structure. Create
-                  your lesson quiz file following the same format, then upload
-                  for easy copy and paste on your LMS.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadDemoFile}
-                  className="btn"
+              {/* Input Mode Selector */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-muted/20 border border-border/40 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setInputMode('upload')}
+                  className={cn(
+                    'py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all',
+                    inputMode === 'upload'
+                      ? 'bg-background text-foreground shadow-sm border border-border/50'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
                 >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Download Demo Lesson Quiz File
-                </Button>
+                  <Upload className="h-3.5 w-3.5" /> Upload DOCX
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInputMode('paste')}
+                  className={cn(
+                    'py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all',
+                    inputMode === 'paste'
+                      ? 'bg-background text-foreground shadow-sm border border-border/50'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <FileText className="h-3.5 w-3.5" /> Paste Text
+                </button>
               </div>
 
-              <div
-                className="group relative border-2 border-dashed border-border/50 rounded-2xl p-10 text-center hover:border-primary/50 transition-all cursor-pointer bg-muted/5"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className="mb-4 inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary/5 group-hover:bg-primary/10 transition-colors">
-                  <FileText className="h-8 w-8 text-primary/40 group-hover:text-primary/60" />
-                </div>
-                <h4 className="text-sm font-black text-foreground uppercase tracking-tight mb-1">
-                  Load Training Data
-                </h4>
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mb-4">
-                  DOCX format required
-                </p>
-                <div className="flex justify-center">
-                  <div className="px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-                    Select File
+              {inputMode === 'upload' ? (
+                <>
+                  <div className="space-y-2 border-b border-border pb-4">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Download our demo file to check the required structure.
+                      Works for both
+                      <strong> Lesson Quiz</strong> and{' '}
+                      <strong>Final Exam</strong> documents.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={downloadDemoFile}
+                      className="btn text-xs"
+                    >
+                      <Upload className="mr-2 h-3.5 w-3.5" />
+                      Download Demo File
+                    </Button>
                   </div>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".docx"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </div>
 
-              {file && (
-                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 animate-in fade-in zoom-in duration-300">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-black text-foreground truncate">
-                        {file.name}
-                      </p>
-                      <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-                        Ready for signal extraction
-                      </p>
+                  <div
+                    className="group relative border-2 border-dashed border-border/50 rounded-2xl p-8 text-center hover:border-primary/50 transition-all cursor-pointer bg-muted/5"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div className="mb-3 inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                      <FileText className="h-7 w-7 text-primary/40 group-hover:text-primary/60" />
                     </div>
+                    <h4 className="text-sm font-black text-foreground uppercase tracking-tight mb-1">
+                      Load Training Document
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mb-3">
+                      DOCX format with &quot;Lesson Quiz&quot; or &quot;Final
+                      Exam&quot;
+                    </p>
+                    <div className="flex justify-center">
+                      <div className="px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
+                        Select File
+                      </div>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".docx"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
                   </div>
-                </div>
-              )}
 
-              <ProgressButton
-                onClick={handleUpload}
-                isLoading={isProcessing}
-                progress={progress}
-                disabled={!file}
-                label="EXTRACT QUIZ DATA"
-                loadingLabel={progressText || 'EXTRACTING'}
-                className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-              />
+                  {file && (
+                    <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/10 animate-in fade-in zoom-in duration-300">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-black text-foreground truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                            Ready for signal extraction
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <ProgressButton
+                    onClick={handleUpload}
+                    isLoading={isProcessing}
+                    progress={progress}
+                    disabled={!file}
+                    label="EXTRACT QUIZ / EXAM"
+                    loadingLabel={progressText || 'EXTRACTING'}
+                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  />
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Paste question items with options (A-D) and answers:
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={loadSampleFinalExam}
+                        className="h-7 text-[10px] font-black uppercase tracking-wider text-primary hover:bg-primary/10 gap-1 px-2"
+                      >
+                        <Sparkles className="h-3 w-3" /> Sample Final Exam
+                      </Button>
+                    </div>
+
+                    <Textarea
+                      value={pastedText}
+                      onChange={(e) => setPastedText(e.target.value)}
+                      placeholder={`# Final Exam\n\n1. What is the primary purpose of OSHA 29 CFR 1910.120?\nA. Maritime shipping codes\nB. Protect hazardous waste workers\nC. Residential electrical codes\nD. Commercial tax filings\nCorrect Answer: B\n\n2. Which PPE level provides maximum respiratory protection?\nA. Level A\nB. Level B\nC. Level C\nD. Level D\nAnswer: A`}
+                      className="min-h-[220px] font-mono text-xs leading-relaxed border-border/50 bg-background/50 focus:border-primary resize-y"
+                    />
+                  </div>
+
+                  <ProgressButton
+                    onClick={handleParsePastedText}
+                    isLoading={isProcessing}
+                    progress={progress}
+                    disabled={!pastedText.trim()}
+                    label="PARSE QUESTIONS"
+                    loadingLabel={progressText || 'PARSING'}
+                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -333,14 +545,29 @@ export default function LessonQuizBuilder() {
             <Card className="card border-emerald-500/20 bg-emerald-500/5 overflow-hidden animate-in slide-in-from-left duration-500">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <Trophy className="h-6 w-6 text-white" />
+                  <div
+                    className={cn(
+                      'h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg',
+                      detectedType === 'final-exam'
+                        ? 'bg-purple-600 text-white shadow-purple-600/30'
+                        : 'bg-emerald-500 text-white shadow-emerald-500/30'
+                    )}
+                  >
+                    {detectedType === 'final-exam' ? (
+                      <Trophy className="h-6 w-6" />
+                    ) : (
+                      <Target className="h-6 w-6" />
+                    )}
                   </div>
                   <div>
-                    <h3 className="text-sm font-black uppercase tracking-tight text-emerald-600 dark:text-emerald-400">
-                      Extraction Success
+                    <h3 className="text-sm font-black uppercase tracking-tight text-foreground">
+                      {detectedHeading ||
+                        (detectedType === 'final-exam'
+                          ? 'Final Exam'
+                          : 'Lesson Quiz')}{' '}
+                      Extracted
                     </h3>
-                    <p className="text-xs font-medium text-emerald-600/70">
+                    <p className="text-xs font-medium text-muted-foreground">
                       {questions.length} questions identified and formatted.
                     </p>
                   </div>
@@ -353,46 +580,83 @@ export default function LessonQuizBuilder() {
         {/* Output Column */}
         <div className="lg:col-span-3 space-y-6">
           <Card className="card h-full flex flex-col border-primary/10 overflow-hidden min-h-[600px]">
-            <CardHeader className="p-6 bg-card border-b border-border/50 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                <Code className="h-4 w-4 text-primary" />
-                QUIZ WORKBENCH
-              </CardTitle>
+            <CardHeader className="p-5 bg-card border-b border-border/50 flex flex-row items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Code className="h-4 w-4 text-primary" />
+                  QUIZ WORKBENCH
+                </CardTitle>
+                {questions.length > 0 && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'font-black uppercase tracking-wider text-[9px] gap-1 px-2 py-0.5',
+                      detectedType === 'final-exam'
+                        ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
+                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                    )}
+                  >
+                    {detectedType === 'final-exam' ? (
+                      <Trophy className="h-3 w-3" />
+                    ) : (
+                      <Target className="h-3 w-3" />
+                    )}
+                    {detectedHeading ||
+                      (detectedType === 'final-exam'
+                        ? 'Final Exam'
+                        : 'Lesson Quiz')}
+                  </Badge>
+                )}
+              </div>
+
               {questions.length > 0 && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-8 px-4 rounded-lg text-[9px] font-black uppercase tracking-widest gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all animate-in fade-in duration-300"
-                  onClick={copyAllCode}
-                >
-                  <Copy className="h-3.5 w-3.5" /> Copy All HTML
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest gap-1.5 border-border/60 hover:bg-muted"
+                    onClick={copyLmsFormat}
+                    title="Copy all questions as clean plain text formatted for LMS platforms"
+                  >
+                    <FileText className="h-3 w-3 text-primary" /> Copy LMS Text
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-8 px-3.5 rounded-lg text-[9px] font-black uppercase tracking-widest gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all"
+                    onClick={copyAllCode}
+                  >
+                    <Copy className="h-3 w-3" /> Copy HTML
+                  </Button>
+                </div>
               )}
             </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
               {questions.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-20">
+                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-30">
                   <Target className="h-16 w-16 mb-4" />
                   <h4 className="text-xl font-black uppercase tracking-tighter italic">
                     Awaiting Signal
                   </h4>
-                  <p className="text-xs font-bold uppercase tracking-widest max-w-[200px]">
-                    Synchronize a training file to initialize extraction logic
+                  <p className="text-xs font-bold uppercase tracking-widest max-w-[260px] mt-1">
+                    Upload a DOCX file or paste exam text to initialize
+                    extraction logic
                   </p>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="p-5 border-b border-border/30 bg-muted/5">
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent border border-emerald-500/10">
-                      <div className="h-8 w-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                  <div className="p-4 border-b border-border/30 bg-muted/5">
+                    <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent border border-emerald-500/10">
+                      <div className="h-8 w-8 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
                         <Sparkles className="h-4 w-4 text-emerald-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-[10px] font-black text-foreground uppercase tracking-widest">
-                          QUIZ WORKBENCH
+                          {detectedHeading}
                         </h4>
                         <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">
-                          Refine and copy items.{' '}
+                          Refine and copy individual questions or full blocks
+                          for LMS.{' '}
                           <span className="text-emerald-500 dark:text-emerald-400">
                             Green
                           </span>{' '}
@@ -424,7 +688,7 @@ export default function LessonQuizBuilder() {
                             )}
                           >
                             {/* Card Top Details Header */}
-                            <div className="flex items-center justify-between border-b border-border/30 pb-2.5">
+                            <div className="flex items-center justify-between border-b border-border/30 pb-2.5 flex-wrap gap-2">
                               <div className="flex items-center gap-3">
                                 <div
                                   className={cn(
@@ -441,13 +705,22 @@ export default function LessonQuizBuilder() {
                                 </span>
                               </div>
 
-                              <div>
+                              <div className="flex items-center gap-2">
                                 {isFullyCopied && (
                                   <span className="text-emerald-500 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest animate-in fade-in duration-300">
-                                    ✓ QUESTION {idx + 1} AND ITS 4 OPTIONS
-                                    COPIED
+                                    ✓ COPIED
                                   </span>
                                 )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-[8px] font-black uppercase tracking-widest gap-1 border-primary/20 hover:bg-primary/10 text-foreground"
+                                  onClick={() => copyFullBlock(q, idx)}
+                                  title="Copy question stem and all options for LMS"
+                                >
+                                  <Copy className="h-3 w-3 text-primary" /> Copy
+                                  Full Block
+                                </Button>
                               </div>
                             </div>
 
@@ -473,7 +746,11 @@ export default function LessonQuizBuilder() {
                                     : 'hover:bg-muted text-muted-foreground/60 hover:text-foreground'
                                 )}
                                 onClick={() => copyOnlyQuestion(q, idx)}
-                                title={isQuestionCopied ? 'Copied' : 'Copy'}
+                                title={
+                                  isQuestionCopied
+                                    ? 'Copied'
+                                    : 'Copy Question Only'
+                                }
                               >
                                 {isQuestionCopied ? (
                                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
