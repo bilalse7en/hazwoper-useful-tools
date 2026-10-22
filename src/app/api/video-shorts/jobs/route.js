@@ -9,6 +9,7 @@ import {
   loadAllJobs,
 } from '@/lib/video-shorts/job-queue-service';
 import { getMediaHubItem } from '@/lib/video-shorts/media-storage-service';
+import { getLocalMediaDir } from '@/lib/video-shorts/storage-paths';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,14 +52,9 @@ export async function POST(request) {
       }
     }
 
-    // Direct filesystem check for public/media-hub/<actualMediaId>
+    // Direct filesystem check for media-hub/<actualMediaId>
     if ((!localPath || !videoUrl) && actualMediaId) {
-      const hubDir = path.join(
-        process.cwd(),
-        'public',
-        'media-hub',
-        actualMediaId
-      );
+      const hubDir = getLocalMediaDir(actualMediaId);
       if (fs.existsSync(hubDir)) {
         const files = fs
           .readdirSync(hubDir)
@@ -90,9 +86,9 @@ export async function POST(request) {
       }
     }
 
-    // Fallback: search most recent media in public/media-hub
+    // Fallback: search most recent media in media-hub
     if (!videoUrl && !localPath) {
-      const hubBase = path.join(process.cwd(), 'public', 'media-hub');
+      const hubBase = getLocalMediaDir();
       if (fs.existsSync(hubBase)) {
         const dirs = fs.readdirSync(hubBase).sort().reverse();
         for (const d of dirs) {

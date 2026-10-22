@@ -31,6 +31,7 @@ import { showToast, showSuccess } from '@/lib/swal';
 import { cn } from '@/lib/utils';
 
 export function AIVideoShorts() {
+  const [mounted, setMounted] = useState(false);
   const [viewState, setViewState] = useState('input'); // 'input' | 'gallery' | 'editor'
   const [videoSource, setVideoSource] = useState(null);
   const [settings, setSettings] = useState(DEFAULT_STUDIO_SETTINGS);
@@ -55,6 +56,10 @@ export function AIVideoShorts() {
   // Export Modal state
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportConfig, setExportConfig] = useState(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Check for previous 24-hour saved session on initial load
   useEffect(() => {
@@ -839,6 +844,19 @@ export function AIVideoShorts() {
   };
 
   const queueBadge = getQueueBadge();
+
+  if (!mounted) {
+    return (
+      <div className="w-full max-w-7xl mx-auto p-12 flex items-center justify-center min-h-[500px]">
+        <div className="flex flex-col items-center gap-3 animate-pulse text-muted-foreground">
+          <div className="w-12 h-12 rounded-2xl bg-primary/20" />
+          <p className="text-xs font-bold uppercase tracking-wider">
+            Initializing Shorts Studio...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">

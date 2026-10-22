@@ -1,17 +1,24 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import { isReadOnlyEnv } from '@/lib/video-shorts/storage-paths';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function getCookieCandidates() {
+  return [
+    path.join(os.tmpdir(), 'cookies.txt'),
+    path.join(process.cwd(), 'cookies.txt'),
+    path.join(process.cwd(), 'bin', 'cookies.txt'),
+    path.join(process.cwd(), 'public', 'temp-shorts', 'cookies.txt'),
+  ];
+}
+
 export async function GET() {
   try {
-    const cookiesCandidates = [
-      path.join(process.cwd(), 'cookies.txt'),
-      path.join(process.cwd(), 'bin', 'cookies.txt'),
-      path.join(process.cwd(), 'public', 'temp-shorts', 'cookies.txt'),
-    ];
+    const cookiesCandidates = getCookieCandidates();
     const found = cookiesCandidates.find((p) => fs.existsSync(p));
     if (found) {
       const stats = fs.statSync(found);
@@ -40,7 +47,10 @@ export async function POST(request) {
       );
     }
 
-    const targetPath = path.join(process.cwd(), 'cookies.txt');
+    const targetPath = isReadOnlyEnv
+      ? path.join(os.tmpdir(), 'cookies.txt')
+      : path.join(process.cwd(), 'cookies.txt');
+
     fs.writeFileSync(targetPath, cookiesContent.trim(), 'utf-8');
 
     return NextResponse.json({
@@ -55,17 +65,15 @@ export async function POST(request) {
 
 export async function DELETE() {
   try {
-    const cookiesCandidates = [
-      path.join(process.cwd(), 'cookies.txt'),
-      path.join(process.cwd(), 'bin', 'cookies.txt'),
-      path.join(process.cwd(), 'public', 'temp-shorts', 'cookies.txt'),
-    ];
+    const cookiesCandidates = getCookieCandidates();
 
     let deletedCount = 0;
     for (const p of cookiesCandidates) {
       if (fs.existsSync(p)) {
-        fs.unlinkSync(p);
-        deletedCount++;
+        try {
+          fs.unlinkSync(p);
+          deletedCount++;
+        } catch (_) {}
       }
     }
 

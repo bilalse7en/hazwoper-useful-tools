@@ -17,6 +17,7 @@ import {
   parseVttFile,
   mergeIntoPhraseCaptions,
 } from '@/lib/video-shorts/vtt-parser';
+import { getTempDir, getLocalMediaDir } from '@/lib/video-shorts/storage-paths';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -100,12 +101,7 @@ export async function POST(request) {
     const metadata = await getYouTubeMetadata(url);
 
     // 1. Check if this exact video was already downloaded and preserved in Media Hub
-    const hubDir = path.join(
-      process.cwd(),
-      'public',
-      'media-hub',
-      `yt_${videoId}`
-    );
+    const hubDir = getLocalMediaDir(`yt_${videoId}`);
     if (fs.existsSync(hubDir)) {
       const files = fs.readdirSync(hubDir).filter((f) => f.endsWith('.mp4'));
       if (files.length > 0) {
@@ -161,11 +157,7 @@ export async function POST(request) {
       }
     }
 
-    const tempDir = path.join(process.cwd(), 'temp', 'yt-downloads');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-
+    const tempDir = getTempDir('yt-downloads');
     const tempTargetPath = path.join(tempDir, `${videoId}.mp4`);
 
     let dlResult = null;

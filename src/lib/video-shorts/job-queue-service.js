@@ -33,8 +33,9 @@ import {
   deleteMediaHubItem,
   getMediaHubItem,
 } from './media-storage-service';
+import { getTempDir, getLocalMediaDir, getJobsFilePath } from './storage-paths';
 
-const JOBS_FILE = path.join(process.cwd(), 'data', 'video-shorts-jobs.json');
+const JOBS_FILE = getJobsFilePath();
 
 function ensureDataDir() {
   const dir = path.dirname(JOBS_FILE);
@@ -160,17 +161,16 @@ export async function runJobWorker(jobId) {
       progress: 10,
     });
 
-    const tempDir = path.join(process.cwd(), 'temp', jobId);
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    const tempDir = getTempDir(jobId);
 
     let localVideoPath = job.local_path;
 
     // Check if direct local_path exists
     if (!localVideoPath || !fs.existsSync(localVideoPath)) {
-      // Check if mediaId exists in public/media-hub
+      // Check if mediaId exists in media-hub
       const mediaId = job.mediaId || job.source_media_id;
       if (mediaId) {
-        const hubDir = path.join(process.cwd(), 'public', 'media-hub', mediaId);
+        const hubDir = getLocalMediaDir(mediaId);
         if (fs.existsSync(hubDir)) {
           const files = fs
             .readdirSync(hubDir)
@@ -347,10 +347,7 @@ export async function runJobWorker(jobId) {
     });
 
     const thumbDir = path.join(
-      process.cwd(),
-      'public',
-      'media-hub',
-      job.source_media_id || jobId,
+      getLocalMediaDir(job.source_media_id || jobId),
       'thumbnails'
     );
     let thumbCandidates = [];

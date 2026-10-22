@@ -11,13 +11,10 @@ import path from 'path';
 import fs from 'fs';
 import { supabase } from '@/lib/supabase';
 import { probeVideo, extractVideoPoster } from './ffmpeg-service';
+import { getLocalMediaDir, getRegistryFilePath } from './storage-paths';
 
-const REGISTRY_FILE = path.join(
-  process.cwd(),
-  'data',
-  'media-hub-registry.json'
-);
-const LOCAL_MEDIA_DIR = path.join(process.cwd(), 'public', 'media-hub');
+const REGISTRY_FILE = getRegistryFilePath();
+const LOCAL_MEDIA_DIR = getLocalMediaDir();
 
 function ensureDirectories() {
   const dataDir = path.dirname(REGISTRY_FILE);

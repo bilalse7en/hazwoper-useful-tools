@@ -7,6 +7,7 @@
 
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { spawn } from 'child_process';
 import { probeVideo, getFFmpegBinary } from './ffmpeg-service.js';
 import { isValidYouTubeUrl, extractYouTubeId } from './source-parser.js';
@@ -22,6 +23,8 @@ export function resolveDownloaderBinaries() {
     path.join(process.cwd(), 'bin', ytDlpName),
     path.join(process.cwd(), 'bin', 'yt-dlp.exe'),
     path.join(process.cwd(), 'node_modules', '.bin', ytDlpName),
+    path.join(os.tmpdir(), ytDlpName),
+    path.join(os.tmpdir(), 'yt-dlp'),
   ];
 
   let ytDlpPath = ytDlpCandidates.find((p) => fs.existsSync(p));
@@ -40,10 +43,59 @@ export function resolveDownloaderBinaries() {
 }
 
 /**
+ * Ensures yt-dlp binary is available, auto-fetching standalone Linux binary on Vercel/serverless if needed.
+ */
+export async function ensureYtDlpBinary() {
+  const isWin = process.platform === 'win32';
+  if (isWin) {
+    return resolveDownloaderBinaries();
+  }
+
+  const resolved = resolveDownloaderBinaries();
+  if (fs.existsSync(resolved.ytDlpPath)) {
+    return resolved;
+  }
+
+  const tmpYtDlp = path.join(os.tmpdir(), 'yt-dlp');
+  if (fs.existsSync(tmpYtDlp)) {
+    try {
+      const stat = fs.statSync(tmpYtDlp);
+      if (stat.size > 5000000) {
+        fs.chmodSync(tmpYtDlp, 0o755);
+        return { ...resolved, ytDlpPath: tmpYtDlp };
+      }
+    } catch (_) {}
+  }
+
+  try {
+    const res = await fetch(
+      'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',
+      {
+        redirect: 'follow',
+      }
+    );
+    if (res.ok) {
+      const buffer = Buffer.from(await res.arrayBuffer());
+      fs.writeFileSync(tmpYtDlp, buffer);
+      fs.chmodSync(tmpYtDlp, 0o755);
+      return { ...resolved, ytDlpPath: tmpYtDlp };
+    }
+  } catch (err) {
+    console.warn(
+      'Could not auto-download yt-dlp binary for Linux:',
+      err.message
+    );
+  }
+
+  return resolved;
+}
+
+/**
  * Searches for any verified, non-empty user-supplied cookies.txt file
  */
 export function getAvailableCookiesFile() {
   const candidates = [
+    path.join(os.tmpdir(), 'cookies.txt'),
     path.join(process.cwd(), 'cookies.txt'),
     path.join(process.cwd(), 'bin', 'cookies.txt'),
     path.join(process.cwd(), 'public', 'temp-shorts', 'cookies.txt'),
@@ -242,7 +294,7 @@ export async function downloadYouTubeVideo({
     );
   }
 
-  const { ytDlpPath, ffmpegPath, nodePath } = resolveDownloaderBinaries();
+  const { ytDlpPath, ffmpegPath, nodePath } = await ensureYtDlpBinary();
 
   if (!fs.existsSync(ytDlpPath) && ytDlpPath.includes(path.sep)) {
     throw new Error(`yt-dlp binary not found at ${ytDlpPath}`);

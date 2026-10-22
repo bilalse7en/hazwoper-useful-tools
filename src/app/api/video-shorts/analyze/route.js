@@ -7,6 +7,7 @@ import {
   extractYouTubeId,
 } from '@/lib/video-shorts/source-parser';
 import { downloadYouTubeVideo } from '@/lib/video-shorts/youtube-downloader';
+import { getTempDir, getLocalMediaDir } from '@/lib/video-shorts/storage-paths';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,10 +65,7 @@ export async function POST(request) {
     let transcript = null;
 
     if (downloadVideo && videoId) {
-      const publicTempDir = path.join(process.cwd(), 'public', 'temp-shorts');
-      if (!fs.existsSync(publicTempDir)) {
-        fs.mkdirSync(publicTempDir, { recursive: true });
-      }
+      const publicTempDir = getTempDir('temp-shorts');
 
       // Purge temp videos older than 24 hours
       cleanOldTempVideos(publicTempDir);
@@ -76,12 +74,7 @@ export async function POST(request) {
       const subtitleCachePath = path.join(publicTempDir, `${videoId}.vtt`);
 
       // 1. Check if already cached in Media Hub
-      const hubDir = path.join(
-        process.cwd(),
-        'public',
-        'media-hub',
-        `yt_${videoId}`
-      );
+      const hubDir = getLocalMediaDir(`yt_${videoId}`);
       let hubFile = null;
       if (fs.existsSync(hubDir)) {
         const files = fs.readdirSync(hubDir).filter((f) => f.endsWith('.mp4'));

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import { getLocalMediaDir, getTempDir } from '@/lib/video-shorts/storage-paths';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,47 +51,61 @@ async function resolveMediaFilePath(paramsPromise) {
   });
 
   const relativePath = path.join(...decodedSegments);
-  const baseHubDir = path.resolve(process.cwd(), 'public', 'media-hub');
-  const targetPath = path.resolve(baseHubDir, relativePath);
 
-  // Security: Prevent path traversal outside process.cwd()
-  const appRoot = path.resolve(process.cwd());
-  if (!targetPath.startsWith(appRoot)) {
+  // Security: Prevent path traversal
+  if (
+    decodedSegments.some(
+      (s) => s.includes('..') || s.includes('/') || s.includes('\\')
+    )
+  ) {
     return { error: 'forbidden', status: 403 };
   }
 
-  // 1. Direct path in public/media-hub
-  if (fs.existsSync(targetPath) && fs.statSync(targetPath).isFile()) {
-    return { filePath: targetPath };
+  const candidateDirs = [
+    getLocalMediaDir(),
+    path.resolve(process.cwd(), 'public', 'media-hub'),
+    path.resolve(os.tmpdir(), 'media-hub'),
+  ];
+
+  // 1. Direct path in media-hub directories
+  for (const baseDir of candidateDirs) {
+    const candidatePath = path.resolve(baseDir, relativePath);
+    if (fs.existsSync(candidatePath) && fs.statSync(candidatePath).isFile()) {
+      return { filePath: candidatePath };
+    }
   }
 
   // 2. Fallback search if directory name is present but filename is slightly varied or sanitized
   if (decodedSegments.length >= 2) {
-    const parentFolder = path.resolve(baseHubDir, decodedSegments[0]);
-    if (
-      fs.existsSync(parentFolder) &&
-      fs.statSync(parentFolder).isDirectory()
-    ) {
-      const files = fs.readdirSync(parentFolder);
-      const requestedFile = decodedSegments[decodedSegments.length - 1];
-      const match = files.find(
-        (f) =>
-          f === requestedFile ||
-          f.toLowerCase() === requestedFile.toLowerCase() ||
-          f.replace(/[^a-zA-Z0-9]/g, '_') ===
-            requestedFile.replace(/[^a-zA-Z0-9]/g, '_')
-      );
-      if (match) {
-        const candidate = path.join(parentFolder, match);
-        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-          return { filePath: candidate };
+    const folderName = decodedSegments[0];
+    const requestedFile = decodedSegments[decodedSegments.length - 1];
+
+    for (const baseDir of candidateDirs) {
+      const parentFolder = path.resolve(baseDir, folderName);
+      if (
+        fs.existsSync(parentFolder) &&
+        fs.statSync(parentFolder).isDirectory()
+      ) {
+        const files = fs.readdirSync(parentFolder);
+        const match = files.find(
+          (f) =>
+            f === requestedFile ||
+            f.toLowerCase() === requestedFile.toLowerCase() ||
+            f.replace(/[^a-zA-Z0-9]/g, '_') ===
+              requestedFile.replace(/[^a-zA-Z0-9]/g, '_')
+        );
+        if (match) {
+          const candidate = path.join(parentFolder, match);
+          if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+            return { filePath: candidate };
+          }
         }
       }
     }
   }
 
-  // 3. Fallback: temp/yt-downloads directory (e.g. active downloads or cache)
-  const tempDir = path.resolve(process.cwd(), 'temp', 'yt-downloads');
+  // 3. Fallback: temp yt-downloads directory (e.g. active downloads or cache)
+  const tempDir = getTempDir('yt-downloads');
   const filename = decodedSegments[decodedSegments.length - 1];
   if (fs.existsSync(tempDir)) {
     const directTemp = path.join(tempDir, filename);

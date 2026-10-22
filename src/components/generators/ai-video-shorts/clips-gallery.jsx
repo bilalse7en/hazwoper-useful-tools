@@ -164,6 +164,8 @@ function ClipCardPlayer({
     return `${mins}:${String(secs).padStart(2, '0')}`;
   };
 
+  const playPromiseRef = useRef(null);
+
   // Safe Playback Control for Preview Video (prevents AbortError)
   useEffect(() => {
     const video = videoRef.current;
@@ -175,14 +177,35 @@ function ClipCardPlayer({
       }
       const promise = video.play();
       if (promise !== undefined) {
-        promise.catch((err) => {
-          if (err.name !== 'AbortError') {
-            console.warn('Clip preview play aborted:', err);
-          }
-        });
+        playPromiseRef.current = promise;
+        promise
+          .then(() => {
+            playPromiseRef.current = null;
+          })
+          .catch((err) => {
+            playPromiseRef.current = null;
+            if (err.name !== 'AbortError') {
+              console.warn('Clip preview play aborted:', err);
+            }
+          });
       }
     } else {
-      video.pause();
+      if (playPromiseRef.current !== null) {
+        playPromiseRef.current
+          .then(() => {
+            if (!video.paused) {
+              video.pause();
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            playPromiseRef.current = null;
+          });
+      } else {
+        if (!video.paused) {
+          video.pause();
+        }
+      }
     }
   }, [isPlaying, clipStart, clipEnd, mediaLoadError]);
 
