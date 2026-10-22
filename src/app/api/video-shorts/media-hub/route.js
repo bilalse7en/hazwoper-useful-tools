@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   listMediaHubItems,
   purgeExpiredMedia,
+  deleteMediaHubItem,
   getLocalRegistry,
   saveLocalRegistry,
 } from '@/lib/video-shorts/media-storage-service';
@@ -48,29 +49,10 @@ export async function DELETE(request) {
       );
     }
 
-    // 1. Delete from local directory
-    const localDir = path.join(process.cwd(), 'public', 'media-hub', id);
-    if (fs.existsSync(localDir)) {
-      try {
-        fs.rmSync(localDir, { recursive: true, force: true });
-      } catch (e) {
-        console.warn('Local dir cleanup notice:', e.message);
-      }
-    }
-
-    // 2. Delete from Supabase
-    try {
-      await supabase.from('media_hub').delete().eq('id', id);
-    } catch (e) {
-      /* ignore */
-    }
-
-    // 3. Update local registry
-    const registry = getLocalRegistry().filter((item) => item.id !== id);
-    saveLocalRegistry(registry);
+    const success = await deleteMediaHubItem(id);
 
     return NextResponse.json({
-      success: true,
+      success,
       message: 'Asset deleted successfully.',
     });
   } catch (err) {

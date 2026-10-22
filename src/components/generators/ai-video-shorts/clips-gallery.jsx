@@ -90,9 +90,20 @@ function ClipCardPlayer({
   const detectorCanvasRef = useRef(null);
   const frameCounterRef = useRef(0);
   const prevFrameDataRef = useRef(null);
+  const [mediaLoadError, setMediaLoadError] = useState(false);
 
-  // Always use the downloaded bucket video or blob
-  const videoStreamUrl = videoSource?.blobUrl || videoSource?.videoUrl || null;
+  // If clip was pre-rendered to Full HD 1080x1920 MP4, use its rendered URL directly
+  const isRenderedClip = Boolean(
+    clip.isRendered && (clip.videoUrl || clip.downloadUrl)
+  );
+  const videoStreamUrl = isRenderedClip
+    ? clip.videoUrl || clip.downloadUrl
+    : videoSource?.blobUrl || videoSource?.videoUrl || null;
+
+  const clipStart = isRenderedClip ? 0 : clip.start;
+  const clipEnd = isRenderedClip
+    ? clip.duration || Math.max(1, clip.end - clip.start)
+    : clip.end;
 
   // Sync Subtitles with Short Audio Handler
   const handleSyncSubtitles = async (e) => {
@@ -153,14 +164,14 @@ function ClipCardPlayer({
     return `${mins}:${String(secs).padStart(2, '0')}`;
   };
 
-  // Safe Playback Control for Bucket Video (prevents AbortError)
+  // Safe Playback Control for Preview Video (prevents AbortError)
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || mediaLoadError) return;
 
     if (isPlaying) {
-      if (video.currentTime < clip.start || video.currentTime >= clip.end) {
-        video.currentTime = clip.start;
+      if (video.currentTime < clipStart || video.currentTime >= clipEnd) {
+        video.currentTime = clipStart;
       }
       const promise = video.play();
       if (promise !== undefined) {
@@ -173,7 +184,7 @@ function ClipCardPlayer({
     } else {
       video.pause();
     }
-  }, [isPlaying, clip.start, clip.end]);
+  }, [isPlaying, clipStart, clipEnd, mediaLoadError]);
 
   // Auto-generate unique AI Thumbnail with hook title, badge, and spoken lines from the clip's peak frame
   useEffect(() => {
@@ -259,7 +270,15 @@ function ClipCardPlayer({
     }
 
     const currTime = timeToDraw !== undefined ? timeToDraw : video.currentTime;
-    const elapsed = Math.max(0, currTime - clip.start);
+    const elapsed = Math.max(0, currTime - clipStart);
+
+    // If clip was pre-rendered by FFmpeg into a 9:16 vertical Short, render frame directly
+    if (isRenderedClip) {
+      ctx.drawImage(video, 0, 0, cw, ch);
+      setCurrentClipTime(elapsed);
+      return;
+    }
+
     const isSpeaking = (clipCaptions || []).some(
       (c) => elapsed >= c.start && elapsed <= c.end
     );
@@ -333,7 +352,8 @@ function ClipCardPlayer({
     if (!video) return;
 
     const handleLoadedData = () => {
-      video.currentTime = clip.start + 0.6;
+      setMediaLoadError(false);
+      video.currentTime = isRenderedClip ? 0.3 : clip.start + 0.6;
     };
 
     const handleSeeked = () => {
@@ -350,7 +370,7 @@ function ClipCardPlayer({
     return () => {
       video.removeEventListener('seeked', handleSeeked);
     };
-  }, [clip.start]);
+  }, [clip.start, isRenderedClip]);
 
   // Continuous animation loop when playing
   useEffect(() => {
@@ -362,8 +382,8 @@ function ClipCardPlayer({
         drawFrame(video.currentTime);
 
         // Loop clip within bounds
-        if (video.currentTime >= clip.end) {
-          video.currentTime = clip.start;
+        if (video.currentTime >= clipEnd) {
+          video.currentTime = clipStart;
         }
       }
 
@@ -382,7 +402,7 @@ function ClipCardPlayer({
     }
 
     return () => cancelAnimationFrame(animId);
-  }, [isPlaying, clip]);
+  }, [isPlaying, clipStart, clipEnd, isRenderedClip]);
 
   const downloadThumbnail = () => {
     if (!aiThumbnail && !videoSource?.thumbnailUrl) return;
@@ -475,12 +495,46 @@ function ClipCardPlayer({
             playsInline
             preload="auto"
             muted={isMuted}
+            onError={() => {
+              setMediaLoadError(true);
+            }}
+            onLoadedData={() => {
+              setMediaLoadError(false);
+            }}
             className="absolute opacity-0 pointer-events-none -z-10 w-1 h-1"
           />
         )}
 
         {/* Guaranteed 9:16 Portrait Canvas (Decoded directly from downloaded bucket video with CapCut Smart Pan) */}
         <canvas ref={canvasRef} className="w-full h-full object-cover" />
+
+        {/* Media Missing or Unreachable Error Overlay */}
+        {mediaLoadError && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-zinc-950/92 text-center select-none">
+            <Film className="w-10 h-10 text-amber-500 mb-2 opacity-85" />
+            <p className="text-xs font-bold text-foreground">
+              Preview Unavailable
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
+              Video source stream could not be loaded from storage.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-3 text-[11px] h-7 bg-card hover:bg-muted font-bold pointer-events-auto"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMediaLoadError(false);
+                if (videoRef.current) {
+                  videoRef.current.load();
+                }
+              }}
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Retry Stream
+            </Button>
+          </div>
+        )}
 
         {/* Paused Cinematic Overlay with Play Button & Metadata Badges */}
         {!isPlaying && (

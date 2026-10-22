@@ -524,31 +524,22 @@ export function AIVideoShorts() {
         setProcessingStatus('');
         setQueueStatus('idle');
 
-        const errorText = data.error || '';
+        const errorText = data.error || 'Failed to ingest YouTube video.';
         const isBotCheck =
           errorText.toLowerCase().includes('bot') ||
           errorText.toLowerCase().includes('sign in') ||
-          errorText.toLowerCase().includes('cookie') ||
-          errorText.toLowerCase().includes('code 1') ||
-          errorText.toLowerCase().includes('429');
+          errorText.toLowerCase().includes('cookie');
 
         setYoutubeIssue({
           url,
           title: data.metadata?.title || 'YouTube Video',
           author: data.metadata?.author || '',
           error: errorText,
-          isBotCheck: true,
+          isBotCheck,
         });
 
-        if (isBotCheck) {
-          showToast(
-            'YouTube restricted automated fetch. You can drop the video file directly into "Upload Video" for instant 1080p FHD processing!',
-            'info'
-          );
-          return;
-        }
-
-        throw new Error(data.error || 'Failed to ingest YouTube video.');
+        showToast(errorText, isBotCheck ? 'warning' : 'error');
+        return;
       }
 
       const item = data.mediaItem;

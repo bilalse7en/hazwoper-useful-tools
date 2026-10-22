@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
-import { spawn } from 'child_process';
 import { ingestMediaFile } from '@/lib/video-shorts/media-storage-service';
 import { probeVideo } from '@/lib/video-shorts/ffmpeg-service';
 import {
@@ -9,6 +8,10 @@ import {
   extractYouTubeId,
   getYouTubeMetadata,
 } from '@/lib/video-shorts/source-parser';
+import {
+  downloadYouTubeVideo,
+  findSubtitleFile,
+} from '@/lib/video-shorts/youtube-downloader';
 import { transcribeUrduVideo } from '@/lib/video-shorts/transcription-service';
 import {
   parseVttFile,
@@ -18,157 +21,6 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // Allow up to 5 minutes for download & probe
-
-function runYtDlpAttempt(args, targetPath, timeoutMs = 120000) {
-  return new Promise((resolve, reject) => {
-    const ytDlpPath = path.join(process.cwd(), 'bin', 'yt-dlp.exe');
-    const proc = spawn(ytDlpPath, args, { timeout: timeoutMs });
-    let stderr = '';
-    let stdout = '';
-
-    proc.stdout.on('data', (d) => {
-      stdout += d.toString();
-    });
-    proc.stderr.on('data', (d) => {
-      stderr += d.toString();
-    });
-
-    proc.on('close', (code) => {
-      if (
-        code === 0 &&
-        fs.existsSync(targetPath) &&
-        fs.statSync(targetPath).size > 10000
-      ) {
-        resolve({ targetPath });
-      } else {
-        const errorSnippet = (stderr || stdout || '').slice(-350);
-        reject(new Error(`yt-dlp exited with code ${code}: ${errorSnippet}`));
-      }
-    });
-
-    proc.on('error', reject);
-  });
-}
-
-/**
- * Downloads a YouTube video via yt-dlp with multi-strategy fallbacks
- */
-async function downloadYouTubeToTemp(
-  url,
-  targetPath,
-  subtitleDir,
-  timeoutMs = 180000
-) {
-  const ytDlpPath = path.join(process.cwd(), 'bin', 'yt-dlp.exe');
-  const ffmpegPath = path.join(
-    process.cwd(),
-    'node_modules',
-    'ffmpeg-static',
-    'ffmpeg.exe'
-  );
-
-  if (!fs.existsSync(ytDlpPath)) {
-    throw new Error('yt-dlp binary not found in bin directory');
-  }
-
-  // Check for uploaded cookies only in temp-shorts or bin
-  const cookiesCandidates = [
-    path.join(process.cwd(), 'public', 'temp-shorts', 'cookies.txt'),
-    path.join(process.cwd(), 'bin', 'cookies.txt'),
-  ];
-  const cookiesFile = cookiesCandidates.find((p) => fs.existsSync(p));
-
-  const baseArgs = [
-    url,
-    '-o',
-    targetPath,
-    '-f',
-    'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
-    '--merge-output-format',
-    'mp4',
-    '--no-playlist',
-    '--no-warnings',
-    '--max-filesize',
-    '500M',
-    '--write-subs',
-    '--write-auto-sub',
-    '--sub-lang',
-    'ur,ur-PK,en,hi,ar,all',
-    '--sub-format',
-    'vtt',
-    '--convert-subs',
-    'vtt',
-    '--paths',
-    subtitleDir,
-  ];
-
-  try {
-    const nodePath = process.execPath;
-    if (nodePath && fs.existsSync(nodePath)) {
-      baseArgs.push('--js-runtimes', `node:${nodePath}`);
-    }
-  } catch (e) {
-    /* ignore */
-  }
-
-  if (fs.existsSync(ffmpegPath)) {
-    baseArgs.push('--ffmpeg-location', ffmpegPath);
-  }
-
-  // Strategy 1: Primary clean Web client (direct download, solves JS challenge natively via Node)
-  try {
-    return await runYtDlpAttempt(baseArgs, targetPath, timeoutMs);
-  } catch (cleanErr) {
-    console.warn(
-      'Clean web download attempt failed, trying fallback strategies:',
-      cleanErr.message
-    );
-
-    // Strategy 2: If clean web failed and user-uploaded cookies exist, try with cookies
-    if (cookiesFile) {
-      try {
-        const argsWithCookies = [...baseArgs, '--cookies', cookiesFile];
-        return await runYtDlpAttempt(argsWithCookies, targetPath, timeoutMs);
-      } catch (cookieErr) {
-        console.warn('Cookie attempt notice:', cookieErr.message);
-      }
-    }
-
-    // Strategy 3: Web Creator client fallback
-    try {
-      const argsWebCreator = [
-        ...baseArgs,
-        '--extractor-args',
-        'youtube:player_client=web_creator',
-      ];
-      return await runYtDlpAttempt(argsWebCreator, targetPath, timeoutMs);
-    } catch (webCreatorErr) {
-      console.warn('Web Creator client attempt notice:', webCreatorErr.message);
-    }
-
-    throw cleanErr;
-  }
-}
-
-function findSubtitleFile(dir, videoId) {
-  try {
-    if (!fs.existsSync(dir)) return null;
-    const files = fs.readdirSync(dir);
-    const priorities = ['ur', 'en', 'ar', 'hi'];
-    for (const lang of priorities) {
-      const match = files.find(
-        (f) =>
-          f.includes(videoId) && f.endsWith('.vtt') && f.includes(`.${lang}.`)
-      );
-      if (match) return path.join(dir, match);
-    }
-    const anyVtt = files.find((f) => f.includes(videoId) && f.endsWith('.vtt'));
-    if (anyVtt) return path.join(dir, anyVtt);
-  } catch (e) {
-    console.warn('Could not read subtitle directory:', e.message);
-  }
-  return null;
-}
 
 export async function POST(request) {
   try {
@@ -316,16 +168,23 @@ export async function POST(request) {
 
     const tempTargetPath = path.join(tempDir, `${videoId}.mp4`);
 
+    let dlResult = null;
     try {
-      await downloadYouTubeToTemp(url, tempTargetPath, tempDir);
+      dlResult = await downloadYouTubeVideo({
+        url,
+        targetPath: tempTargetPath,
+        subtitleDir: tempDir,
+        timeoutMs: 180000,
+      });
     } catch (dlErr) {
       return NextResponse.json(
         {
           success: false,
           error: dlErr.message || 'YouTube download failed.',
+          errorType: dlErr.type,
           metadata,
         },
-        { status: 422 }
+        { status: dlErr.status || 422 }
       );
     }
 
@@ -346,7 +205,7 @@ export async function POST(request) {
       .slice(0, 50);
 
     // Accurately probe downloaded video timing, resolution and streams
-    const probe = await probeVideo(tempTargetPath);
+    const probe = dlResult.probe || (await probeVideo(tempTargetPath));
     const resolvedDuration =
       probe.duration && probe.duration > 0 && probe.duration !== 60
         ? probe.duration
@@ -367,7 +226,7 @@ export async function POST(request) {
     });
 
     // Check for auto-extracted YouTube subtitle or transcribe from audio
-    const subPath = findSubtitleFile(tempDir, videoId);
+    const subPath = dlResult.subtitlePath || findSubtitleFile(tempDir, videoId);
     let transcript = null;
     let extractedCaptions = [];
 

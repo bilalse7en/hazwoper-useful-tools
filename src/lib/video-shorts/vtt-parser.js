@@ -67,7 +67,7 @@ export function parseVttFile(vttContent) {
     // Look for timestamp line: "00:00:01.234 --> 00:00:04.567"
     if (line.includes('-->')) {
       const [startStr, rest] = line.split('-->');
-      const endStr = rest?.split(/\s+/)[0] || rest;
+      const endStr = rest?.trim().split(/\s+/)[0] || rest;
       const start = parseVttTimestamp(startStr);
       const end = parseVttTimestamp(endStr);
 

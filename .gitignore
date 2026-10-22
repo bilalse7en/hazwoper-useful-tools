@@ -88,3 +88,6 @@ old_docx_processor*.js
 
 /public/media-hub/
 /data/
+
+cookies.txt
+*cookies*.txt

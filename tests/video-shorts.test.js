@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import path from 'path';
+import fs from 'fs';
 import {
   extractYouTubeId,
   isValidYouTubeUrl,
@@ -35,6 +37,7 @@ import {
   ingestMediaFile,
   listMediaHubItems,
   getMediaHubItem,
+  deleteMediaHubItem,
 } from '@/lib/video-shorts/media-storage-service';
 import {
   createJob,
@@ -42,6 +45,13 @@ import {
   updateJob,
   listJobs,
 } from '@/lib/video-shorts/job-queue-service';
+import {
+  resolveDownloaderBinaries,
+  getAvailableCookiesFile,
+  findSubtitleFile,
+  categorizeDownloadError,
+  downloadYouTubeVideo,
+} from '@/lib/video-shorts/youtube-downloader';
 
 describe('AI Video to Shorts - Unit & Integration Test Suite', () => {
   describe('YouTube URL Parser & Validator', () => {
@@ -67,6 +77,69 @@ describe('AI Video to Shorts - Unit & Integration Test Suite', () => {
       expect(extractYouTubeId('https://example.com/video.mp4')).toBeNull();
       expect(isValidYouTubeUrl('not-a-url')).toBe(false);
       expect(isValidYouTubeUrl('')).toBe(false);
+    });
+  });
+
+  describe('Unified YouTube Downloader Service', () => {
+    it('resolves valid downloader binaries and Node runtime', () => {
+      const binaries = resolveDownloaderBinaries();
+      expect(binaries).toBeDefined();
+      expect(typeof binaries.ytDlpPath).toBe('string');
+      expect(binaries.ytDlpPath.length).toBeGreaterThan(0);
+      expect(typeof binaries.ffmpegPath).toBe('string');
+      expect(binaries.ffmpegPath.length).toBeGreaterThan(0);
+      expect(binaries.nodePath).toBeDefined();
+      expect(typeof binaries.nodePath).toBe('string');
+    });
+
+    it('categorizes YouTube bot detection challenge accurately', () => {
+      const errorText =
+        "yt-dlp exited with code 1: Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies for the authentication.";
+      const res = categorizeDownloadError(errorText);
+      expect(res.type).toBe('BOT_DETECTION');
+      expect(res.status).toBe(422);
+      expect(res.message).toContain("Sign in to confirm you're not a bot");
+      expect(res.message).toContain('upload the video file directly');
+    });
+
+    it('categorizes private/restricted video error accurately', () => {
+      const errorText =
+        'ERROR: [youtube] dQw4w9WgXcQ: Private video. Sign in if you have been granted access to this video';
+      const res = categorizeDownloadError(errorText);
+      expect(res.type).toBe('RESTRICTED_VIDEO');
+      expect(res.status).toBe(403);
+    });
+
+    it('categorizes unavailable / 404 video error accurately', () => {
+      const errorText =
+        'ERROR: [youtube] dQw4w9WgXcQ: Video unavailable. This video does not exist.';
+      const res = categorizeDownloadError(errorText);
+      expect(res.type).toBe('NOT_FOUND');
+      expect(res.status).toBe(404);
+    });
+
+    it('categorizes timeout accurately', () => {
+      const res = categorizeDownloadError(
+        'Download timed out after 180 seconds.'
+      );
+      expect(res.type).toBe('TIMEOUT');
+      expect(res.status).toBe(504);
+    });
+
+    it('falls back cleanly to generic download failed on unrecognized errors', () => {
+      const res = categorizeDownloadError('Network connection reset by peer');
+      expect(res.type).toBe('DOWNLOAD_FAILED');
+      expect(res.status).toBe(500);
+      expect(res.message).toContain('Network connection reset');
+    });
+
+    it('rejects download call with invalid YouTube URL format before spawning', async () => {
+      await expect(
+        downloadYouTubeVideo({
+          url: 'https://example.com/not-youtube',
+          targetPath: 'temp.mp4',
+        })
+      ).rejects.toThrow('Invalid YouTube URL format');
     });
   });
 
@@ -1221,6 +1294,198 @@ Third stanza bringing full spiritual depth
         parseInt(durMatch[2], 10) * 60 +
         parseFloat(durMatch[3].replace(',', '.'));
       expect(Math.round(dur)).toBe(398); // 6m 37.57s = 397.57s -> 398s
+    });
+
+    it('safely deletes Media Hub item and removes record from registry', async () => {
+      const fakeId = `test_delete_${Date.now()}`;
+      const buffer = Buffer.from('fake mp4 video bytes');
+      await ingestMediaFile({
+        buffer,
+        fileName: 'to_be_deleted.mp4',
+        fileType: 'video/mp4',
+        sourceType: 'upload',
+        customId: fakeId,
+      });
+
+      const beforeDelete = await getMediaHubItem(fakeId);
+      expect(beforeDelete).not.toBeNull();
+
+      const deleted = await deleteMediaHubItem(fakeId);
+      expect(deleted).toBe(true);
+
+      const afterDelete = await getMediaHubItem(fakeId);
+      expect(afterDelete).toBeNull();
+    });
+
+    it('returns empty ASS subtitle script when captionMode is none or off', () => {
+      const caps = [
+        {
+          id: '1',
+          start: 0.5,
+          end: 3.5,
+          textUrdu: 'فاصلوں کو تکلف ہے ہم سے اگر',
+        },
+      ];
+      expect(captionsToASS(caps, { captionMode: 'none' })).toBe('');
+      expect(captionsToASS(caps, { captionMode: 'off' })).toBe('');
+    });
+
+    it('uses Roman Urdu tokens in ASS karaoke when captionMode is roman-urdu', () => {
+      const caps = [
+        {
+          id: '1',
+          start: 0.5,
+          end: 3.5,
+          textUrdu: 'فاصلوں کو تکلف',
+          textRoman: 'Faslon Ko Takalluf',
+          words: [
+            { wordUrdu: 'فاصلوں', wordRoman: 'Faslon', start: 0.5, end: 1.5 },
+            { wordUrdu: 'کو', wordRoman: 'Ko', start: 1.5, end: 2.2 },
+            { wordUrdu: 'تکلف', wordRoman: 'Takalluf', start: 2.2, end: 3.5 },
+          ],
+        },
+      ];
+      const ass = captionsToASS(caps, { captionMode: 'roman-urdu' });
+      expect(ass).toContain('Faslon');
+      expect(ass).toContain('Takalluf');
+      expect(ass).not.toContain('فاصلوں');
+    });
+
+    it('derives clip titles strictly from authentic recited verse text without hardcoded clickbait', () => {
+      const mockCaptions = [
+        {
+          id: '1',
+          start: 2.0,
+          end: 18.0,
+          textUrdu: 'مدینے کا بھکاری بن گیا ہوں',
+          textRoman: 'Madine Ka Bhikari Ban Gaya Hoon',
+          isVerseBoundary: false,
+        },
+        {
+          id: '2',
+          start: 18.5,
+          end: 38.0,
+          textUrdu: 'مرے سر پر کرم کی چھاؤں ہے',
+          textRoman: 'Mere Sar Par Karam Ki Chhaon Hai',
+          isVerseBoundary: true,
+        },
+      ];
+
+      const clips = discoverClips({
+        videoDuration: 180,
+        captions: mockCaptions,
+        settings: {
+          durationPreset: 'standard',
+          captionLanguage: 'urdu',
+        },
+      });
+
+      expect(clips.length).toBeGreaterThanOrEqual(1);
+      const title = clips[0].title;
+      expect(title).toContain('مدینے کا بھکاری');
+      expect(title).not.toContain('Yeh Naat Sun Kar Ro Parein Ge');
+      expect(title).not.toContain('Crucial Concept Breakdown');
+    });
+
+    it('guarantees at least 3 to 4 shorts are generated for standard videos', () => {
+      const clips = discoverClips({
+        videoDuration: 300,
+        captions: [],
+        settings: {
+          durationPreset: 'standard',
+          clipCount: 4,
+        },
+      });
+
+      expect(clips.length).toBeGreaterThanOrEqual(3);
+      expect(clips.length).toBeLessThanOrEqual(5);
+
+      // Verify that clips do not overlap significantly
+      for (let i = 0; i < clips.length - 1; i++) {
+        expect(clips[i].end).toBeLessThanOrEqual(clips[i + 1].start + 6.0);
+      }
+    });
+
+    it('serves media hub assets with 200 OK and 206 Partial Content range requests', async () => {
+      const { GET, HEAD } = await import('@/app/media-hub/[...path]/route.js');
+      const testFileDir = path.join(
+        process.cwd(),
+        'public',
+        'media-hub',
+        'test_stream_asset'
+      );
+      if (!fs.existsSync(testFileDir)) {
+        fs.mkdirSync(testFileDir, { recursive: true });
+      }
+      const testFilePath = path.join(testFileDir, 'sample video test.mp4');
+      fs.writeFileSync(testFilePath, Buffer.alloc(4096, 'A'));
+
+      try {
+        // 1. Full GET request
+        const fullReq = new Request(
+          'http://localhost:3000/media-hub/test_stream_asset/sample%20video%20test.mp4'
+        );
+        const fullRes = await GET(fullReq, {
+          params: Promise.resolve({
+            path: ['test_stream_asset', 'sample%20video%20test.mp4'],
+          }),
+        });
+
+        expect(fullRes.status).toBe(200);
+        expect(fullRes.headers.get('Content-Type')).toBe('video/mp4');
+        expect(fullRes.headers.get('Accept-Ranges')).toBe('bytes');
+        expect(fullRes.headers.get('Content-Length')).toBe('4096');
+
+        // 2. HTTP Range request (206 Partial Content)
+        const rangeReq = new Request(
+          'http://localhost:3000/media-hub/test_stream_asset/sample%20video%20test.mp4',
+          {
+            headers: { Range: 'bytes=0-511' },
+          }
+        );
+        const rangeRes = await GET(rangeReq, {
+          params: Promise.resolve({
+            path: ['test_stream_asset', 'sample%20video%20test.mp4'],
+          }),
+        });
+
+        expect(rangeRes.status).toBe(206);
+        expect(rangeRes.headers.get('Content-Range')).toBe('bytes 0-511/4096');
+        expect(rangeRes.headers.get('Content-Length')).toBe('512');
+        expect(rangeRes.headers.get('Content-Type')).toBe('video/mp4');
+
+        // 3. HEAD request
+        const headReq = new Request(
+          'http://localhost:3000/media-hub/test_stream_asset/sample%20video%20test.mp4',
+          {
+            method: 'HEAD',
+          }
+        );
+        const headRes = await HEAD(headReq, {
+          params: Promise.resolve({
+            path: ['test_stream_asset', 'sample%20video%20test.mp4'],
+          }),
+        });
+        expect(headRes.status).toBe(200);
+        expect(headRes.headers.get('Content-Length')).toBe('4096');
+
+        // 4. Missing file returns 404 with JSON explanation
+        const missingReq = new Request(
+          'http://localhost:3000/media-hub/non_existent_id/missing.mp4'
+        );
+        const missingRes = await GET(missingReq, {
+          params: Promise.resolve({
+            path: ['non_existent_id', 'missing.mp4'],
+          }),
+        });
+        expect(missingRes.status).toBe(404);
+        const missingJson = await missingRes.json();
+        expect(missingJson.error).toContain('Media file not found');
+      } finally {
+        if (fs.existsSync(testFileDir)) {
+          fs.rmSync(testFileDir, { recursive: true, force: true });
+        }
+      }
     });
   });
 });

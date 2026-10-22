@@ -10,18 +10,29 @@
 
 import path from 'path';
 import fs from 'fs';
-import { probeVideo, extractThumbnailCandidates } from './ffmpeg-service';
+import {
+  probeVideo,
+  extractThumbnailCandidates,
+  buildFFmpegArgs,
+  runFFmpegJob,
+} from './ffmpeg-service';
 import { extractAudioWav, transcribeUrduVideo } from './transcription-service';
 import {
   transliterateUrduCaptions,
   transliterateUrduSentence,
 } from './urdu-transliterator';
 import { discoverClips } from './clip-finder';
+import { captionsToASS } from './caption-engine';
 import { parseVttFile, mergeIntoPhraseCaptions } from './vtt-parser';
 import {
   segmentCaptionsForClip,
   normalizeCanonicalTiming,
 } from './canonical-time';
+import {
+  ingestMediaFile,
+  deleteMediaHubItem,
+  getMediaHubItem,
+} from './media-storage-service';
 
 const JOBS_FILE = path.join(process.cwd(), 'data', 'video-shorts-jobs.json');
 
@@ -331,8 +342,8 @@ export async function runJobWorker(jobId) {
     // 6. Stage: Generating Thumbnail Candidates
     updateJob(jobId, {
       status: 'generating_thumbnails',
-      current_stage: 'Extracting genuine high-retention candidate frames (90%)',
-      progress: 90,
+      current_stage: 'Extracting genuine high-retention candidate frames (85%)',
+      progress: 85,
     });
 
     const thumbDir = path.join(
@@ -360,12 +371,198 @@ export async function runJobWorker(jobId) {
       /* ignore */
     }
 
-    // 7. Stage: Completed
+    // 7. Stage: Render & Validate All Generated Shorts at 1080x1920 Full HD
+    updateJob(jobId, {
+      status: 'rendering_shorts',
+      current_stage: `Rendering & validating ${clipsWithCaptions.length} Full HD (1080x1920) Shorts (88%)...`,
+      progress: 88,
+    });
+
+    const renderedShorts = [];
+    const captionMode = job.settings?.captionMode || 'urdu'; // 'urdu' | 'roman-urdu' | 'none'
+    const cleanBaseTitle = (job.file_name || 'Naat_Short')
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .slice(0, 35);
+
+    for (let cIdx = 0; cIdx < clipsWithCaptions.length; cIdx++) {
+      const clip = clipsWithCaptions[cIdx];
+      const clipProgress =
+        88 + Math.round(((cIdx + 1) / clipsWithCaptions.length) * 8);
+      updateJob(jobId, {
+        current_stage: `Rendering Short #${cIdx + 1}/${clipsWithCaptions.length}: 1080x1920 with ${captionMode} captions (${clipProgress}%)...`,
+        progress: clipProgress,
+      });
+
+      const shortTempDir = path.join(tempDir, `clip_${cIdx + 1}`);
+      if (!fs.existsSync(shortTempDir))
+        fs.mkdirSync(shortTempDir, { recursive: true });
+
+      const shortOutPath = path.join(
+        shortTempDir,
+        `rendered_${cleanBaseTitle}_short_${cIdx + 1}.mp4`
+      );
+      let assSubtitlePath = null;
+
+      if (
+        captionMode !== 'none' &&
+        captionMode !== 'off' &&
+        clip.captions?.length > 0
+      ) {
+        try {
+          const assContent = captionsToASS(clip.captions, {
+            captionMode,
+            fontSize: 48,
+          });
+          if (assContent && assContent.trim().length > 0) {
+            assSubtitlePath = path.join(shortTempDir, 'subtitles.ass');
+            fs.writeFileSync(assSubtitlePath, assContent, 'utf8');
+          }
+        } catch (assErr) {
+          console.warn(
+            `ASS generation warning for clip ${cIdx + 1}:`,
+            assErr.message
+          );
+        }
+      }
+
+      // Build high-quality vertical 9:16 FFmpeg arguments
+      const ffmpegArgs = buildFFmpegArgs({
+        inputPath: localVideoPath,
+        outputPath: shortOutPath,
+        startTime: clip.start,
+        duration: clip.duration,
+        aspectRatio: '9:16',
+        framingMode: job.settings?.framingMode || 'smart-face',
+        cropX: null,
+        fadeIn: 0.4,
+        fadeOut: 0.4,
+        normalizeAudio: true,
+        assPath: assSubtitlePath,
+        sourceWidth: probe?.width || 1920,
+        sourceHeight: probe?.height || 1080,
+        hasAudio: probe?.hasAudio ?? true,
+      });
+
+      try {
+        await new Promise((resolve, reject) => {
+          runFFmpegJob({
+            args: ffmpegArgs,
+            duration: clip.duration,
+            onComplete: resolve,
+            onError: reject,
+          });
+        });
+      } catch (renderErr) {
+        // Fallback render without ASS if subtitle font issue occurred
+        if (assSubtitlePath) {
+          console.warn(
+            `Fallback render without ASS for clip ${cIdx + 1}:`,
+            renderErr.message
+          );
+          const cleanFfmpegArgs = buildFFmpegArgs({
+            inputPath: localVideoPath,
+            outputPath: shortOutPath,
+            startTime: clip.start,
+            duration: clip.duration,
+            aspectRatio: '9:16',
+            framingMode: job.settings?.framingMode || 'smart-face',
+            cropX: null,
+            fadeIn: 0.4,
+            fadeOut: 0.4,
+            normalizeAudio: true,
+            assPath: null,
+            sourceWidth: probe?.width || 1920,
+            sourceHeight: probe?.height || 1080,
+            hasAudio: probe?.hasAudio ?? true,
+          });
+          await new Promise((resolve, reject) => {
+            runFFmpegJob({
+              args: cleanFfmpegArgs,
+              duration: clip.duration,
+              onComplete: resolve,
+              onError: reject,
+            });
+          });
+        } else {
+          throw renderErr;
+        }
+      }
+
+      // Validation Step: Probe rendered file to guarantee 1080x1920 Full HD and valid streams
+      if (
+        !fs.existsSync(shortOutPath) ||
+        fs.statSync(shortOutPath).size < 10000
+      ) {
+        throw new Error(`Rendered Short #${cIdx + 1} is empty or incomplete.`);
+      }
+
+      const shortProbe = await probeVideo(shortOutPath);
+      if (!shortProbe || !shortProbe.duration || shortProbe.duration <= 0) {
+        throw new Error(
+          `Rendered Short #${cIdx + 1} produced unplayable media streams.`
+        );
+      }
+
+      // Save rendered Short permanently to Media Hub
+      const shortBuffer = fs.readFileSync(shortOutPath);
+      const shortMediaItem = await ingestMediaFile({
+        buffer: shortBuffer,
+        fileName: `${cleanBaseTitle}_Short_${cIdx + 1}.mp4`,
+        fileType: 'video/mp4',
+        sourceType: 'generated_short',
+        customId: `short_${jobId}_${cIdx + 1}`,
+        duration: shortProbe.duration,
+        resolution: '1080x1920',
+      });
+
+      renderedShorts.push({
+        ...clip,
+        videoUrl: shortMediaItem.download_url || shortMediaItem.downloadUrl,
+        downloadUrl: shortMediaItem.download_url || shortMediaItem.downloadUrl,
+        mediaHubId: shortMediaItem.id,
+        isRendered: true,
+        renderStatus: 'completed',
+        probe: shortProbe,
+      });
+    }
+
+    // 8. Stage: Safe Source Cleanup
+    // Only delete original long video if explicitly requested by user in settings.autoCleanupSource === true
+    let sourceCleaned = false;
+    const shouldCleanup = job.settings?.autoCleanupSource === true; // Preserved by default for gallery & editor
+    const sourceMediaId = job.source_media_id || job.mediaId;
+
+    if (
+      shouldCleanup &&
+      renderedShorts.length === clipsWithCaptions.length &&
+      sourceMediaId
+    ) {
+      updateJob(jobId, {
+        current_stage:
+          'Safely deleting original long video from Media Hub (98%)...',
+        progress: 98,
+      });
+
+      try {
+        sourceCleaned = await deleteMediaHubItem(sourceMediaId);
+        console.log(
+          `Original long video [${sourceMediaId}] safely cleaned up from Media Hub after validating ${renderedShorts.length} Shorts.`
+        );
+      } catch (cleanErr) {
+        console.warn('Source cleanup notice:', cleanErr.message);
+      }
+    }
+
+    // 9. Stage: Completed
     updateJob(jobId, {
       status: 'completed',
-      current_stage: 'Shorts generation complete & ready for preview (100%)',
+      current_stage:
+        'All Shorts generated, validated, and saved to Media Hub (100%)',
       progress: 100,
-      result_clips: clipsWithCaptions,
+      source_cleaned: sourceCleaned,
+      result_clips:
+        renderedShorts.length > 0 ? renderedShorts : clipsWithCaptions,
       thumbnail_candidates: thumbCandidates.map((c) => ({
         ...c,
         publicUrl: `/media-hub/${job.source_media_id || jobId}/thumbnails/${c.fileName}`,

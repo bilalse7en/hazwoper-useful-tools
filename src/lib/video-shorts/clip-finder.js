@@ -5,14 +5,14 @@
  * 100% Free and transparent scoring algorithm.
  */
 
-import { snapToCleanBoundary, detectVocalPhrases } from './audio-analyzer';
-import { generateCadenceCaptions } from './caption-engine';
-import { parseVttFile, mergeIntoPhraseCaptions } from './vtt-parser';
-import { transliterateUrduCaptions } from './urdu-transliterator';
+import { snapToCleanBoundary, detectVocalPhrases } from './audio-analyzer.js';
+import { generateCadenceCaptions } from './caption-engine.js';
+import { parseVttFile, mergeIntoPhraseCaptions } from './vtt-parser.js';
+import { transliterateUrduCaptions } from './urdu-transliterator.js';
 import {
   normalizeCanonicalTiming,
   segmentCaptionsForClip,
-} from './canonical-time';
+} from './canonical-time.js';
 
 /**
  * Parses user reference lyrics into stanzas and lines.
@@ -204,7 +204,12 @@ export function discoverClips({
     }
   }
 
-  const desiredClipCount = settings.clipCount || 4;
+  // Dynamic clip count adaptation: 3-4 shorts for typical sources, up to 5 for longer sources
+  const maxClipsForDuration =
+    videoDuration >= 300 ? 5 : videoDuration >= 180 ? 4 : 3;
+  const desiredClipCount = settings.clipCount
+    ? Math.min(5, Math.max(2, settings.clipCount))
+    : maxClipsForDuration;
   const targetDuration = (minDuration + maxDuration) / 2;
 
   const silenceIntervals = audioAnalysis?.silenceIntervals || [];
@@ -222,29 +227,6 @@ export function discoverClips({
   const referenceStanzas = parseReferenceLyrics(settings.referenceLyrics);
 
   const candidateClips = [];
-
-  const isRomanUrdu = settings.captionLanguage !== 'en';
-  const romanUrduHookLabels = [
-    'Kamaal Ka Viral Hook',
-    'Subhan Allah • Dil Ko Choo Lene Wala Kalam',
-    'Yeh Naat Sun Kar Ro Parein Ge',
-    'Durood-o-Salam Ki Barkat',
-    'Sab Se Ahem Aur Khoobsurat Kalam',
-    'Madine Ki Yaad Mein',
-    'Aakhir Tak Zaroor Dekhein',
-  ];
-
-  const englishHookLabels = [
-    'Viral Hook & Key Takeaway',
-    'High-Impact Explanation',
-    'Crucial Concept Breakdown',
-    'The Big Transformation',
-    'Surprising Revelation',
-    'Core Lesson & Master Tip',
-    'Actionable Secret Revealed',
-  ];
-
-  const hookLabels = isRomanUrdu ? romanUrduHookLabels : englishHookLabels;
 
   const formatDurationTag = (sec) => {
     const s = Math.round(sec);
@@ -306,23 +288,24 @@ export function discoverClips({
         lengthScore * 0.1
     );
 
-    const labelIndex = candidateClips.length % hookLabels.length;
     const isOpeningVerse = start <= (firstVoiceOnset || 0) + 0.5;
     const durLabel = formatDurationTag(duration);
 
+    // Dynamic title derived strictly from genuine recitation verse or chronological moment
+    const firstVerse = metadata.firstVerse || '';
+    const clipTitle = firstVerse
+      ? `${firstVerse.slice(0, 48)} (${durLabel})`
+      : isOpeningVerse
+        ? `Opening Recitation (${durLabel})`
+        : `Recitation Verse ${candidateClips.length + 1} (${durLabel})`;
+
     let explanation = '';
     if (metadata.stanzasCount >= 2) {
-      explanation = isRomanUrdu
-        ? `${metadata.stanzasCount} mukammal stanzas natural flow ke sath jore gaye (${durLabel}). Koi verse adhoora nahi chora.`
-        : `${metadata.stanzasCount} consecutive stanzas seamlessly joined (${durLabel}) satisfying complete verse closure.`;
+      explanation = `${metadata.stanzasCount} complete recitation stanzas captured (${durLabel}) with natural vocal flow and zero truncation.`;
     } else if (metadata.isFullStanza) {
-      explanation = isRomanUrdu
-        ? `Mukammal standalone stanza (${durLabel}). Subhan Allah, khubsoorat recitation aur clean audio pause.`
-        : `Complete standalone stanza (${durLabel}) with natural opening hook and complete verse closure.`;
+      explanation = `Complete standalone recitation stanza (${durLabel}) with natural breath pre-roll and complete verse closure.`;
     } else {
-      explanation = isRomanUrdu
-        ? `Voice onset ke 1.0s pehle shuru ho kar mukammal phrase tak (${durLabel}). High vocal cadence.`
-        : `Cleanly segmented thought from ${Math.round(start)}s to ${Math.round(end)}s (${durLabel}).`;
+      explanation = `Natural recitation segment from ${Math.round(start)}s to ${Math.round(end)}s (${durLabel}) preserving vocal cadence.`;
     }
 
     return {
@@ -344,9 +327,7 @@ export function discoverClips({
       verseCompleteness:
         metadata.verseCompleteness ||
         (metadata.isFullStanza ? 'complete_verse' : 'uncertain'),
-      title: isOpeningVerse
-        ? `Subhan Allah • Pehla Kalam (${durLabel})`
-        : `${hookLabels[labelIndex]} (${durLabel})`,
+      title: clipTitle,
       summary: explanation,
       explanation,
       cutsCount: cutsInClip,
@@ -412,9 +393,30 @@ export function discoverClips({
       }
 
       if (bestDuration >= Math.min(20, minDuration)) {
+        const curEndPhrase = realCaptions[bestEndPhraseIndex];
+        const nextPhrase =
+          bestEndPhraseIndex < realCaptions.length - 1
+            ? realCaptions[bestEndPhraseIndex + 1]
+            : null;
+
+        // Content-aware post-recitation pause: prefer 1.5 - 2.0s when available without truncating next verse
+        let postPause = 0.6;
+        if (nextPhrase) {
+          const availableSilence = Math.max(
+            0,
+            nextPhrase.start - curEndPhrase.end
+          );
+          postPause = Math.min(1.8, Math.max(0.4, availableSilence - 0.25));
+        } else {
+          postPause = Math.min(
+            2.0,
+            Math.max(0.5, videoDuration - curEndPhrase.end)
+          );
+        }
+
         const end = Math.min(
           videoDuration,
-          parseFloat((realCaptions[bestEndPhraseIndex].end + 0.4).toFixed(2))
+          parseFloat((curEndPhrase.end + postPause).toFixed(2))
         );
         const matchedCaptions = realCaptions.slice(
           currentStartIndex,
@@ -427,6 +429,12 @@ export function discoverClips({
             : 'complete_verse'
           : 'uncertain';
 
+        const firstVerseText =
+          matchedCaptions[0]?.textUrdu ||
+          matchedCaptions[0]?.text ||
+          matchedCaptions[0]?.textRoman ||
+          '';
+
         candidateClips.push(
           buildCandidateClip(start, end, actualDur, {
             isFullStanza: true,
@@ -435,10 +443,7 @@ export function discoverClips({
             lyricsText: matchedCaptions
               .map((c) => c.textUrdu || c.text || c.textRoman)
               .join('\n'),
-            firstVerse:
-              matchedCaptions[0]?.textUrdu ||
-              matchedCaptions[0]?.text ||
-              'Recitation Verse',
+            firstVerse: firstVerseText,
           })
         );
         currentStartIndex = bestEndPhraseIndex + 1;
@@ -463,10 +468,21 @@ export function discoverClips({
         parseFloat((startStanza.start - 1.0).toFixed(2))
       );
 
-      // Check single standalone stanza
+      // Check single standalone stanza with natural post-recitation pause (~1.5s - 2.0s)
+      const nextStanza = stanzas[i + 1];
+      let postPause = 0.8;
+      if (nextStanza) {
+        const gap = Math.max(0, nextStanza.start - startStanza.end);
+        postPause = Math.min(1.8, Math.max(0.4, gap - 0.25));
+      } else {
+        postPause = Math.min(
+          2.0,
+          Math.max(0.5, videoDuration - startStanza.end)
+        );
+      }
       const singleCandidateEnd = Math.min(
         videoDuration,
-        parseFloat((startStanza.end + 0.4).toFixed(2))
+        parseFloat((startStanza.end + postPause).toFixed(2))
       );
       const singleSnappedEnd = snapToCleanBoundary(
         singleCandidateEnd,
@@ -495,9 +511,20 @@ export function discoverClips({
           accumulatedEnd = nextStanza.end;
           stanzasCombined++;
 
+          const followingStanza = stanzas[j + 1];
+          let multiPostPause = 0.8;
+          if (followingStanza) {
+            const gap = Math.max(0, followingStanza.start - accumulatedEnd);
+            multiPostPause = Math.min(1.8, Math.max(0.4, gap - 0.25));
+          } else {
+            multiPostPause = Math.min(
+              2.0,
+              Math.max(0.5, videoDuration - accumulatedEnd)
+            );
+          }
           const multiCandidateEnd = Math.min(
             videoDuration,
-            parseFloat((accumulatedEnd + 0.4).toFixed(2))
+            parseFloat((accumulatedEnd + multiPostPause).toFixed(2))
           );
           const multiSnappedEnd = snapToCleanBoundary(
             multiCandidateEnd,
@@ -535,15 +562,20 @@ export function discoverClips({
     }
   }
 
-  // Elastic silence-gap fallback (never forces identical 45s chunks)
-  if (candidateClips.length === 0) {
+  // Elastic silence-gap / interval fallback to ensure desired clip count is satisfied
+  if (candidateClips.length < desiredClipCount * 2) {
     const candidateStarts = [];
+    const firstSpeechOnset =
+      realCaptions && realCaptions.length > 0
+        ? Math.max(0, realCaptions[0].start - 1.0)
+        : firstVoiceOnset || 0;
+
     const initialSilence = silenceIntervals.find(
       (s) => s.start <= 0.5 && s.duration > 1.5
     );
     const safeFirstStart = initialSilence
       ? Math.max(0, initialSilence.end - 0.5)
-      : 0;
+      : firstSpeechOnset;
 
     if (safeFirstStart < videoDuration - minDuration) {
       candidateStarts.push(safeFirstStart);
@@ -556,6 +588,25 @@ export function discoverClips({
         candidateStarts.push(resumeStart);
       }
     });
+
+    // If starts are insufficient, distribute evenly across video timeline
+    if (
+      candidateStarts.length < desiredClipCount &&
+      videoDuration > minDuration
+    ) {
+      const step = Math.max(
+        minDuration + 2,
+        (videoDuration - minDuration - firstSpeechOnset) /
+          Math.max(1, desiredClipCount)
+      );
+      for (
+        let s = firstSpeechOnset;
+        s <= videoDuration - minDuration;
+        s += step
+      ) {
+        candidateStarts.push(parseFloat(s.toFixed(2)));
+      }
+    }
 
     const uniqueStarts = Array.from(
       new Set(candidateStarts.map((s) => Math.round(s * 2) / 2))
@@ -613,6 +664,60 @@ export function discoverClips({
       selectedClips.push(candidate);
       if (selectedClips.length >= desiredClipCount) {
         break;
+      }
+    }
+  }
+
+  // Step 4b: Guarantee at least 3-4 clips when duration allows
+  if (
+    selectedClips.length < desiredClipCount &&
+    videoDuration >= minDuration * 2
+  ) {
+    const naturalSpanTargets = [42, 50, 38, 55, 45];
+    let spanIdx = 0;
+    const maxExistingEnd = selectedClips.reduce(
+      (max, c) => Math.max(max, c.end),
+      0
+    );
+    const startOffset =
+      maxExistingEnd > 0
+        ? maxExistingEnd + 1.0
+        : realCaptions && realCaptions.length > 0
+          ? Math.max(0, realCaptions[0].start - 1.0)
+          : 0;
+
+    const remainingTime = videoDuration - startOffset;
+    if (remainingTime >= minDuration) {
+      const step = Math.max(
+        minDuration,
+        (remainingTime - minDuration) /
+          Math.max(1, desiredClipCount - selectedClips.length)
+      );
+      for (
+        let t = startOffset;
+        t <= videoDuration - minDuration &&
+        selectedClips.length < desiredClipCount;
+        t += step
+      ) {
+        const span = Math.min(
+          maxDuration,
+          Math.max(
+            minDuration,
+            naturalSpanTargets[spanIdx % naturalSpanTargets.length]
+          )
+        );
+        spanIdx++;
+        const end = Math.min(videoDuration, t + span);
+        const dur = parseFloat((end - t).toFixed(2));
+        if (dur < minDuration) continue;
+
+        const overlaps = selectedClips.some((sel) => {
+          return Math.max(t, sel.start) < Math.min(end, sel.end) - minGapSec;
+        });
+
+        if (!overlaps) {
+          selectedClips.push(buildCandidateClip(t, end, dur));
+        }
       }
     }
   }

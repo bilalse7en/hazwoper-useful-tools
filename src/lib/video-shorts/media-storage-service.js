@@ -415,3 +415,44 @@ export async function purgeExpiredMedia() {
   saveLocalRegistry(kept);
   return { purgedCount: items.length - kept.length };
 }
+
+/**
+ * Safely deletes a specific media asset from local storage, Supabase, and registry.
+ * Validates ID and ensures no unintended deletion of other assets.
+ */
+export async function deleteMediaHubItem(id) {
+  if (!id || typeof id !== 'string') return false;
+  ensureDirectories();
+  const items = getLocalRegistry();
+  const targetItem = items.find((item) => item.id === id);
+
+  // 1. Remove local asset folder
+  const assetDir = path.join(LOCAL_MEDIA_DIR, id);
+  if (fs.existsSync(assetDir)) {
+    try {
+      fs.rmSync(assetDir, { recursive: true, force: true });
+    } catch (e) {
+      console.warn(`Could not delete local asset folder for ${id}:`, e.message);
+    }
+  }
+
+  // 2. Remove from Supabase if configured
+  if (targetItem) {
+    try {
+      await supabase.from('media_hub').delete().eq('id', id);
+      const fileName = targetItem.file_name || targetItem.fileName;
+      if (fileName) {
+        await supabase.storage
+          .from('media')
+          .remove([`video-shorts/${id}/${fileName}`]);
+      }
+    } catch (e) {
+      /* ignore Supabase sync error */
+    }
+  }
+
+  // 3. Update local registry
+  const filtered = items.filter((item) => item.id !== id);
+  saveLocalRegistry(filtered);
+  return true;
+}

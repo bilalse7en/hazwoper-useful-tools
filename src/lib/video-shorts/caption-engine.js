@@ -169,9 +169,8 @@ export function wrapTextToLines(ctx, text, maxWidth, maxLines = 2) {
 }
 
 export function captionsToASS(captions, options = {}) {
-  const cleanCaptions = preventCaptionOverlap(captions);
   const {
-    captionMode = 'urdu', // 'urdu' (default) | 'roman-urdu' | 'dual-urdu-roman'
+    captionMode = 'urdu', // 'urdu' (default) | 'roman-urdu' | 'dual-urdu-roman' | 'none' | 'off'
     fontSize = 46, // Professional legible size for 1080x1920
     fontFamily = 'Montserrat',
     textColorHex = '&H00FFFFFF', // White
@@ -179,6 +178,12 @@ export function captionsToASS(captions, options = {}) {
     bgOpacity = '66', // 40% transparent / 60% opaque black in hex (&H66)
     marginV = 260, // Bottom-center safe zone for YouTube Shorts / TikTok UI
   } = options;
+
+  if (captionMode === 'none' || captionMode === 'off') {
+    return '';
+  }
+
+  const cleanCaptions = preventCaptionOverlap(captions);
 
   const bgColourHex = `&H${bgOpacity}000000`;
 
@@ -206,6 +211,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     let textToBurn = cap.textUrdu || cap.text || '';
     let styleToUse = 'UrduNastaliq';
+
+    if (captionMode === 'none' || captionMode === 'off') {
+      return '';
+    }
 
     if (captionMode === 'urdu') {
       textToBurn = cap.textUrdu || cap.text;
@@ -238,7 +247,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
           15,
           Math.round(((w.end || w.start + 0.3) - w.start) * 100)
         );
-        karaokeText += `{\\k${durCentis}}${w.word || w.text || ''} `;
+        const wordText =
+          captionMode === 'roman-urdu'
+            ? w.wordRoman || w.word || ''
+            : w.wordUrdu || w.word || '';
+        karaokeText += `{\\k${durCentis}}${wordText} `;
       });
       textToBurn = karaokeText.trim();
     }
