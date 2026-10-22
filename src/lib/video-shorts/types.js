@@ -302,7 +302,7 @@ export const DEFAULT_STUDIO_SETTINGS = {
   channelLogoUrl: null,
   reciterName: '',
   enableCaptions: true,
-  captionMode: 'urdu', // Urdu script by default
+  captionMode: 'dual-urdu-roman', // Both authentic Urdu script and Roman Urdu subtitles by default
   captionLanguage: 'urdu',
   transliterationStyle: 'conversational',
   captionStyle: 'beast-bold',

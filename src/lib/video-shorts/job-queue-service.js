@@ -376,7 +376,7 @@ export async function runJobWorker(jobId) {
     });
 
     const renderedShorts = [];
-    const captionMode = job.settings?.captionMode || 'urdu'; // 'urdu' | 'roman-urdu' | 'none'
+    const defaultCaptionMode = job.settings?.captionMode || 'dual-urdu-roman'; // 'dual-urdu-roman' | 'urdu' | 'roman-urdu' | 'none'
     const cleanBaseTitle = (job.file_name || 'Naat_Short')
       .replace(/\.[^/.]+$/, '')
       .replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -384,10 +384,11 @@ export async function runJobWorker(jobId) {
 
     for (let cIdx = 0; cIdx < clipsWithCaptions.length; cIdx++) {
       const clip = clipsWithCaptions[cIdx];
+      const clipCaptionMode = clip.captionMode || defaultCaptionMode;
       const clipProgress =
         88 + Math.round(((cIdx + 1) / clipsWithCaptions.length) * 8);
       updateJob(jobId, {
-        current_stage: `Rendering Short #${cIdx + 1}/${clipsWithCaptions.length}: 1080x1920 with ${captionMode} captions (${clipProgress}%)...`,
+        current_stage: `Rendering Short #${cIdx + 1}/${clipsWithCaptions.length}: 1080x1920 with ${clipCaptionMode} captions (${clipProgress}%)...`,
         progress: clipProgress,
       });
 
@@ -402,13 +403,13 @@ export async function runJobWorker(jobId) {
       let assSubtitlePath = null;
 
       if (
-        captionMode !== 'none' &&
-        captionMode !== 'off' &&
+        clipCaptionMode !== 'none' &&
+        clipCaptionMode !== 'off' &&
         clip.captions?.length > 0
       ) {
         try {
           const assContent = captionsToASS(clip.captions, {
-            captionMode,
+            captionMode: clipCaptionMode,
             fontSize: 48,
           });
           if (assContent && assContent.trim().length > 0) {

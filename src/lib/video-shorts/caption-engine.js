@@ -10,7 +10,7 @@
  * 100% Free and open-source.
  */
 
-import { CAPTION_STYLES } from './types';
+import { CAPTION_STYLES } from './types.js';
 
 /**
  * Formats seconds into SRT timestamp format: HH:MM:SS,mmm
@@ -232,28 +232,46 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       styleToUse = 'Default';
     }
 
-    // Wrap long lines exceeding 7 words into 2 balanced lines
+    // Wrap long lines exceeding 7 words into 2 balanced lines (for single-line captions)
     const words = textToBurn.split(' ');
-    if (words.length > 7 && !textToBurn.includes('\\N')) {
+    if (
+      words.length > 7 &&
+      !textToBurn.includes('\\N') &&
+      captionMode !== 'dual-urdu-roman'
+    ) {
       const mid = Math.ceil(words.length / 2);
       textToBurn = `${words.slice(0, mid).join(' ')}\\N${words.slice(mid).join(' ')}`;
     }
 
     // Add karaoke typing progression if word timings are provided
     if (cap.words && Array.isArray(cap.words) && cap.words.length > 1) {
-      let karaokeText = '';
-      cap.words.forEach((w) => {
-        const durCentis = Math.max(
-          15,
-          Math.round(((w.end || w.start + 0.3) - w.start) * 100)
-        );
-        const wordText =
-          captionMode === 'roman-urdu'
-            ? w.wordRoman || w.word || ''
-            : w.wordUrdu || w.word || '';
-        karaokeText += `{\\k${durCentis}}${wordText} `;
-      });
-      textToBurn = karaokeText.trim();
+      if (captionMode === 'dual-urdu-roman') {
+        let urduKaraoke = '';
+        let romanKaraoke = '';
+        cap.words.forEach((w) => {
+          const durCentis = Math.max(
+            15,
+            Math.round(((w.end || w.start + 0.3) - w.start) * 100)
+          );
+          urduKaraoke += `{\\k${durCentis}}${w.wordUrdu || w.word || ''} `;
+          romanKaraoke += `{\\k${durCentis}}${w.wordRoman || w.word || ''} `;
+        });
+        textToBurn = `{\\rUrduNastaliq}${urduKaraoke.trim()}\\N{\\rDualStacked}${romanKaraoke.trim()}`;
+      } else {
+        let karaokeText = '';
+        cap.words.forEach((w) => {
+          const durCentis = Math.max(
+            15,
+            Math.round(((w.end || w.start + 0.3) - w.start) * 100)
+          );
+          const wordText =
+            captionMode === 'roman-urdu'
+              ? w.wordRoman || w.word || ''
+              : w.wordUrdu || w.word || '';
+          karaokeText += `{\\k${durCentis}}${wordText} `;
+        });
+        textToBurn = karaokeText.trim();
+      }
     }
 
     // Clean backslashes for ASS format

@@ -131,7 +131,9 @@ export function StudioEditor({
   // Captions State & Styling
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
   const [captions, setCaptions] = useState(clip.captions || []);
-  const [captionMode, setCaptionMode] = useState(clip.captionMode || 'urdu');
+  const [captionMode, setCaptionMode] = useState(
+    clip.captionMode || 'dual-urdu-roman'
+  );
   const [captionStyle, setCaptionStyle] = useState('beast-bold');
   const [captionFontSize, setCaptionFontSize] = useState(24);
   const [captionPosition, setCaptionPosition] = useState(76); // percent from top

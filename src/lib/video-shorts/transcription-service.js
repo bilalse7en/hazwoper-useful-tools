@@ -24,7 +24,10 @@ export async function getWhisperPipeline(modelName = 'Xenova/whisper-tiny') {
   if (cachedWhisperPipeline) return cachedWhisperPipeline;
 
   try {
-    const { pipeline } = await import('@xenova/transformers');
+    const { pipeline, env } = await import('@xenova/transformers');
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      env.cacheDir = path.join(os.tmpdir(), '.cache');
+    }
     cachedWhisperPipeline = await pipeline(
       'automatic-speech-recognition',
       modelName,
@@ -39,6 +42,73 @@ export async function getWhisperPipeline(modelName = 'Xenova/whisper-tiny') {
       err.message
     );
     return null;
+  }
+}
+
+/**
+ * Loads any WAV audio file in Node.js and decodes it into a 16kHz mono Float32Array.
+ * Fully compatible with @xenova/transformers speech recognition pipelines in Node.js runtime.
+ * Eliminates the browser AudioContext dependency completely.
+ */
+export async function loadAudioToFloat32Array(wavPath) {
+  if (!fs.existsSync(wavPath)) {
+    throw new Error(`WAV file not found at: ${wavPath}`);
+  }
+
+  const fileBuffer = fs.readFileSync(wavPath);
+
+  // Strategy 1: Using wavefile library (handles any bit depth, stereo downmix, resampling)
+  try {
+    const wavefileModule = await import('wavefile');
+    const WaveFile =
+      wavefileModule.WaveFile ||
+      wavefileModule.default?.WaveFile ||
+      wavefileModule.default ||
+      wavefileModule;
+    const wav = new WaveFile(fileBuffer);
+    wav.toBitDepth('32f');
+    wav.toSampleRate(16000);
+    let samples = wav.getSamples();
+    if (Array.isArray(samples)) {
+      // If stereo or multi-channel, use primary channel
+      samples = samples[0];
+    }
+    return new Float32Array(samples);
+  } catch (wfErr) {
+    console.warn(
+      'Wavefile parser fallback to direct PCM buffer parser:',
+      wfErr.message
+    );
+  }
+
+  // Strategy 2: Direct 16-bit PCM RIFF WAV parser (zero-dependency fallback)
+  try {
+    let dataOffset = 44;
+    let dataLength = fileBuffer.length - 44;
+
+    let offset = 12;
+    while (offset < fileBuffer.length - 8) {
+      const chunkId = fileBuffer.toString('ascii', offset, offset + 4);
+      const chunkSize = fileBuffer.readUInt32LE(offset + 4);
+      if (chunkId === 'data') {
+        dataOffset = offset + 8;
+        dataLength = Math.min(chunkSize, fileBuffer.length - dataOffset);
+        break;
+      }
+      offset += 8 + chunkSize;
+    }
+
+    const numSamples = Math.floor(dataLength / 2);
+    const float32 = new Float32Array(numSamples);
+    for (let i = 0; i < numSamples; i++) {
+      const int16 = fileBuffer.readInt16LE(dataOffset + i * 2);
+      float32[i] = int16 / 32768.0;
+    }
+    return float32;
+  } catch (err) {
+    throw new Error(
+      `Failed to decode WAV file to Float32Array: ${err.message}`
+    );
   }
 }
 
@@ -188,8 +258,7 @@ export async function transcribeUrduVideo({
         );
 
       try {
-        const { read_audio } = await import('@xenova/transformers');
-        const audioData = await read_audio(wavPath, 16000);
+        const audioData = await loadAudioToFloat32Array(wavPath);
         let result = null;
 
         try {

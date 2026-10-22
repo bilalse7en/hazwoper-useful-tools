@@ -75,7 +75,9 @@ function ClipCardPlayer({
   const [seoModalOpen, setSeoModalOpen] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
   const [isTranscriptModalOpen, setIsTranscriptModalOpen] = useState(false);
-  const [captionMode, setCaptionMode] = useState(clip.captionMode || 'urdu'); // 'urdu' | 'dual-urdu-roman' | 'roman-urdu'
+  const [captionMode, setCaptionMode] = useState(
+    clip.captionMode || 'dual-urdu-roman'
+  ); // 'dual-urdu-roman' | 'urdu' | 'roman-urdu'
   const [clipCaptions, setClipCaptions] = useState(clip.captions || []);
   const [syncStatus, setSyncStatus] = useState(
     clip.syncStatus || 'synchronized'
