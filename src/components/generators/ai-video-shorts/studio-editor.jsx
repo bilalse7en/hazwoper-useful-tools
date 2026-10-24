@@ -128,8 +128,14 @@ export function StudioEditor({
   const [fadeOut, setFadeOut] = useState(0.5);
   const [normalizeAudio, setNormalizeAudio] = useState(true);
 
-  // Captions State & Styling
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
+  // Captions State & Styling (Subtitles OFF by default; generated on-demand)
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(
+    Boolean(
+      clip.captions &&
+      clip.captions.length > 0 &&
+      clip.syncStatus === 'synchronized'
+    )
+  );
   const [captions, setCaptions] = useState(clip.captions || []);
   const [captionMode, setCaptionMode] = useState(
     clip.captionMode || 'dual-urdu-roman'
@@ -185,6 +191,7 @@ export function StudioEditor({
         throw new Error(data.error || 'Failed to sync captions with audio.');
       }
       setCaptions(data.captions);
+      setSubtitlesEnabled(true);
       pushHistory({ segments, captions: data.captions });
       setHasUnsavedChanges(true);
       if (onUpdateClip) {
@@ -230,8 +237,10 @@ export function StudioEditor({
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   const videoRef = useRef(null);
+  const brollVideoRef = useRef(null);
   const canvasRef = useRef(null);
   const timelineRef = useRef(null);
+  const lastReportedTimeRef = useRef(clip.start);
 
   // Extract available phrases from video transcript or clip captions
   useEffect(() => {
@@ -328,8 +337,17 @@ export function StudioEditor({
 
         ctx.clearRect(0, 0, cw, ch);
 
-        const vw = video.videoWidth || 1920;
-        const vh = video.videoHeight || 1080;
+        const activeSeg = segments[activeSegmentIndex] || segments[0];
+        const isBrollActive = Boolean(
+          activeSeg?.isStock &&
+          activeSeg?.stockVideoUrl &&
+          brollVideoRef.current &&
+          brollVideoRef.current.readyState >= 2
+        );
+        const sourceVideo = isBrollActive ? brollVideoRef.current : video;
+
+        const vw = sourceVideo.videoWidth || 1920;
+        const vh = sourceVideo.videoHeight || 1080;
 
         // Draw Video Crop
         if (aspectRatio === '9:16') {
@@ -344,12 +362,12 @@ export function StudioEditor({
           if (framingMode === 'blurred-bg') {
             // Draw blurred background
             ctx.filter = 'blur(25px) brightness(0.6)';
-            ctx.drawImage(video, 0, 0, cw, ch);
+            ctx.drawImage(sourceVideo, 0, 0, cw, ch);
             ctx.filter = 'none';
 
             // Draw centered original video
             const targetH = Math.round(cw / (vw / vh));
-            ctx.drawImage(video, 0, (ch - targetH) / 2, cw, targetH);
+            ctx.drawImage(sourceVideo, 0, (ch - targetH) / 2, cw, targetH);
           } else if (framingMode === 'trending-ai-speaker') {
             const elapsed = video.currentTime - (segments[0]?.start || 0);
             const isSpeakingNow = captions.some(
@@ -363,7 +381,7 @@ export function StudioEditor({
             const zoomedY = (vh - zoomedH) / 2;
 
             ctx.drawImage(
-              video,
+              sourceVideo,
               zoomedX,
               zoomedY,
               zoomedW,
@@ -374,14 +392,14 @@ export function StudioEditor({
               ch
             );
           } else {
-            ctx.drawImage(video, cx, 0, cropW, vh, 0, 0, cw, ch);
+            ctx.drawImage(sourceVideo, cx, 0, cropW, vh, 0, 0, cw, ch);
           }
         } else if (aspectRatio === '1:1') {
           const dim = Math.min(vw, vh);
           const cx = (vw - dim) / 2;
-          ctx.drawImage(video, cx, 0, dim, dim, 0, 0, cw, ch);
+          ctx.drawImage(sourceVideo, cx, 0, dim, dim, 0, 0, cw, ch);
         } else {
-          ctx.drawImage(video, 0, 0, vw, vh, 0, 0, cw, ch);
+          ctx.drawImage(sourceVideo, 0, 0, vw, vh, 0, 0, cw, ch);
         }
 
         // Render Live Dynamic Captions with word-wrap and safe background fitting if enabled
@@ -402,14 +420,34 @@ export function StudioEditor({
           );
         }
 
-        setCurrentTime(video.currentTime);
+        // Synchronize B-Roll video playback if active
+        if (isBrollActive && brollVideoRef.current) {
+          if (isPlaying && brollVideoRef.current.paused) {
+            brollVideoRef.current.play().catch(() => {});
+          } else if (!isPlaying && !brollVideoRef.current.paused) {
+            brollVideoRef.current.pause();
+          }
+        }
 
-        // In Short Mode, loop or pause when reaching segment end
-        if (editorMode === 'short') {
-          const activeSeg = segments[0];
-          if (activeSeg && video.currentTime >= activeSeg.end) {
-            video.currentTime = activeSeg.start;
-            setCurrentTime(activeSeg.start);
+        // Only throttle React currentTime state when playing; NEVER update state during paused render!
+        if (isPlaying) {
+          const now = video.currentTime;
+          if (Math.abs(now - lastReportedTimeRef.current) >= 0.15) {
+            lastReportedTimeRef.current = now;
+            setCurrentTime(now);
+          }
+
+          // In Short Mode, loop or pause when reaching segment end
+          if (editorMode === 'short') {
+            const activeSeg = segments[0];
+            if (activeSeg && now >= activeSeg.end) {
+              video.currentTime = activeSeg.start;
+              lastReportedTimeRef.current = activeSeg.start;
+              setCurrentTime(activeSeg.start);
+              if (brollVideoRef.current) {
+                brollVideoRef.current.currentTime = 0;
+              }
+            }
           }
         }
       }
@@ -449,12 +487,20 @@ export function StudioEditor({
 
     if (!video.paused) {
       video.pause();
+      if (brollVideoRef.current && !brollVideoRef.current.paused) {
+        brollVideoRef.current.pause();
+      }
       setIsPlaying(false);
     } else {
       const playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise
-          .then(() => setIsPlaying(true))
+          .then(() => {
+            setIsPlaying(true);
+            if (brollVideoRef.current && brollVideoRef.current.paused) {
+              brollVideoRef.current.play().catch(() => {});
+            }
+          })
           .catch((err) => {
             if (err.name !== 'AbortError')
               console.warn('Playback interrupted:', err);
@@ -469,7 +515,14 @@ export function StudioEditor({
     const video = videoRef.current;
     if (video) {
       video.currentTime = newTime;
+      lastReportedTimeRef.current = newTime;
       setCurrentTime(newTime);
+      if (brollVideoRef.current) {
+        const activeSeg = segments[activeSegmentIndex] || segments[0];
+        const brollDuration = brollVideoRef.current.duration || 15;
+        const offset = Math.max(0, newTime - (activeSeg?.start || 0));
+        brollVideoRef.current.currentTime = offset % brollDuration;
+      }
     }
   };
 
@@ -516,7 +569,7 @@ export function StudioEditor({
   };
 
   // Split Segment at Current Playhead (Blade Tool)
-  const handleSplitSegment = () => {
+  const handleSplitSegment = useCallback(() => {
     const activeSeg = segments[activeSegmentIndex];
     if (!activeSeg) return;
 
@@ -531,16 +584,17 @@ export function StudioEditor({
       return;
     }
 
+    const cutId = `seg-${Date.now()}`;
     const seg1 = {
       ...activeSeg,
-      id: `seg-${Date.now()}-a`,
+      id: `${cutId}-a`,
       end: currentTime,
       duration: currentTime - activeSeg.start,
     };
 
     const seg2 = {
       ...activeSeg,
-      id: `seg-${Date.now()}-b`,
+      id: `${cutId}-b`,
       start: currentTime,
       duration: activeSeg.end - currentTime,
     };
@@ -555,30 +609,44 @@ export function StudioEditor({
     setSegments(updated);
     pushHistory({ segments: updated, captions });
     showToast('Split segment at playhead (Blade cut executed).', 'success');
-  };
+  }, [
+    segments,
+    activeSegmentIndex,
+    currentTime,
+    pushHistory,
+    captions,
+    showToast,
+  ]);
+
+  const togglePlayRef = useRef(togglePlay);
+  const handleSplitSegmentRef = useRef(handleSplitSegment);
+
+  useEffect(() => {
+    togglePlayRef.current = togglePlay;
+    handleSplitSegmentRef.current = handleSplitSegment;
+  });
 
   // Keyboard shortcut (Space to play/pause, C to blade split)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (
-        e.code === 'Space' &&
-        e.target.tagName !== 'INPUT' &&
-        e.target.tagName !== 'TEXTAREA'
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable
       ) {
+        return;
+      }
+      if (e.code === 'Space') {
         e.preventDefault();
-        togglePlay();
-      } else if (
-        e.code === 'KeyC' &&
-        e.target.tagName !== 'INPUT' &&
-        e.target.tagName !== 'TEXTAREA'
-      ) {
+        togglePlayRef.current?.();
+      } else if (e.code === 'KeyC') {
         e.preventDefault();
-        handleSplitSegment();
+        handleSplitSegmentRef.current?.();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, currentTime, activeSegmentIndex, segments]);
+  }, []);
 
   // Delete Selected Segment
   const handleDeleteSegment = (idx) => {
@@ -767,28 +835,48 @@ export function StudioEditor({
     );
   };
 
-  // Add Stock Video to Timeline (Preserves Naat Audio)
-  const handleAddStockToTimeline = (stockVideo) => {
-    const newStockSegment = {
-      id: `stock-${Date.now()}`,
-      sourceId: stockVideo.id,
-      fileName: stockVideo.title || 'Islamic B-Roll',
-      start: 0,
-      end: Math.min(10, stockVideo.duration || 10),
-      duration: Math.min(10, stockVideo.duration || 10),
-      isStock: true,
-      stockVideoUrl: stockVideo.videoUrl,
-      attribution: stockVideo.attribution,
-    };
+  // Apply Stock Video to Timeline as Visual Replacement (Preserves Naat Audio)
+  const handleAddStockToTimeline = (stockVideo, replaceScope = 'segment') => {
+    const updated = segments.map((seg, idx) => {
+      if (replaceScope === 'whole' || idx === activeSegmentIndex) {
+        return {
+          ...seg,
+          isStock: true,
+          stockVideoUrl: stockVideo.videoUrl,
+          stockVideoTitle: stockVideo.title || 'Islamic B-Roll',
+          stockVideoId: stockVideo.id,
+          stockAuthor: stockVideo.author,
+          stockLicense: stockVideo.license,
+          stockAttribution: stockVideo.attribution,
+          fileName: stockVideo.title || 'Islamic B-Roll',
+        };
+      }
+      return seg;
+    });
 
-    // Insert into timeline at active playhead position
-    const updated = [...segments, newStockSegment];
     setSegments(updated);
     pushHistory({ segments: updated, captions });
     showSuccess(
-      'Islamic B-Roll Added!',
-      `"${stockVideo.title}" added to timeline. Original recitation audio is preserved.`
+      'Islamic B-Roll Applied!',
+      `"${stockVideo.title}" is now the visual content for ${replaceScope === 'whole' ? 'the entire short' : 'the active segment'}. Original recitation audio is strictly preserved.`
     );
+  };
+
+  const handleRevertStockSegment = (idx) => {
+    const updated = segments.map((seg, i) => {
+      if (i === idx) {
+        return {
+          ...seg,
+          isStock: false,
+          stockVideoUrl: null,
+          fileName: videoSource.fileName || 'Recitation Source',
+        };
+      }
+      return seg;
+    });
+    setSegments(updated);
+    pushHistory({ segments: updated, captions });
+    showToast('Reverted segment back to original camera footage.', 'info');
   };
 
   // Initiate Export with exact parameters
@@ -834,6 +922,12 @@ export function StudioEditor({
       'Subtitle file exported successfully.'
     );
   };
+
+  const activeSeg = segments[activeSegmentIndex] || segments[0];
+  const activeStockUrl =
+    activeSeg?.isStock && activeSeg?.stockVideoUrl
+      ? activeSeg.stockVideoUrl
+      : null;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -1022,25 +1116,27 @@ export function StudioEditor({
 
         {/* Right Side: Apply, Sync & Render Actions */}
         <div className="flex items-center gap-2">
-          {/* Prominent Primary Sync Action */}
+          {/* Prominent On-Demand Generate / Sync Subtitles Action */}
           <Button
             size="sm"
             variant="outline"
             onClick={handleSyncUrduCaptions}
             disabled={isSyncingCaptions}
             className="rounded-xl text-xs font-bold cursor-pointer h-9 gap-1.5 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15 shadow-xs"
-            title="Re-align this Short's Urdu captions directly against its audio"
+            title="Generate or sync this Short's Urdu captions directly against its audio"
           >
-            <RefreshCw
+            <Sparkles
               className={cn(
-                'w-3.5 h-3.5',
-                isSyncingCaptions && 'animate-spin text-primary'
+                'w-3.5 h-3.5 text-amber-500',
+                isSyncingCaptions && 'animate-spin'
               )}
             />
             <span>
               {isSyncingCaptions
-                ? 'Syncing...'
-                : 'SYNC URDU CAPTIONS WITH AUDIO'}
+                ? 'Transcribing Speech...'
+                : captions?.length > 0
+                  ? 'Re-Sync Urdu Captions'
+                  : '✨ Generate Urdu Subtitles'}
             </span>
           </Button>
 
@@ -1071,17 +1167,17 @@ export function StudioEditor({
           <Button
             size="sm"
             onClick={handleInitiateExport}
-            className="rounded-xl text-xs font-bold cursor-pointer h-9 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
+            className="rounded-xl text-xs sm:text-sm font-black cursor-pointer h-9 sm:h-10 px-4 gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/25 transition-all ring-1 ring-emerald-400/40"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Re-render Short</span>
+            <Download className="w-4 h-4" />
+            <span>Download Short Video</span>
           </Button>
         </div>
       </div>
 
-      {/* Main Studio Workspace: Responsive 3-Column Layout (Klap Spaces Studio) */}
+      {/* Main Studio Workspace: Responsive 3-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Column 1: Klap Spaces Shorts Feed (3 Cols when allClips has multiple items) */}
+        {/* Column 1: Shorts Feed (3 Cols when allClips has multiple items) */}
         {allClips && allClips.length > 1 && (
           <div className="lg:col-span-3 flex flex-col space-y-3">
             <Card className="p-3.5 rounded-3xl border-border/70 bg-card/90 shadow-xl space-y-3 flex-1 flex flex-col max-h-[750px]">
@@ -1186,6 +1282,20 @@ export function StudioEditor({
               />
             )}
 
+            {/* Offscreen B-Roll Video element used as replacement visual source */}
+            {activeStockUrl && (
+              <video
+                ref={brollVideoRef}
+                src={activeStockUrl}
+                crossOrigin="anonymous"
+                playsInline
+                loop
+                muted
+                preload="auto"
+                className="absolute opacity-0 pointer-events-none -z-10 w-1 h-1"
+              />
+            )}
+
             {/* Rendered Live Monitor Output */}
             <div
               className={cn(
@@ -1216,7 +1326,7 @@ export function StudioEditor({
             </div>
           </Card>
 
-          {/* Floating Control Pill Bar directly beneath video (Klap Style) */}
+          {/* Floating Control Pill Bar directly beneath video */}
           <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-card/90 border border-border/60 shadow-md backdrop-blur-md">
             <Button
               size="sm"
@@ -1810,111 +1920,140 @@ export function StudioEditor({
                     </button>
                   </div>
 
-                  {captions.map((cap, i) => {
-                    const isCurrent =
-                      currentTime - (segments[0]?.start || 0) >= cap.start &&
-                      currentTime - (segments[0]?.start || 0) <= cap.end;
-                    const isUrduMode = captionMode === 'urdu';
-                    const displayText = isUrduMode
-                      ? cap.textUrdu || cap.text || ''
-                      : cap.text || cap.textRoman || '';
-
-                    return (
-                      <div
-                        key={cap.id || i}
-                        onClick={() =>
-                          handleSeek((segments[0]?.start || 0) + cap.start)
-                        }
-                        className={cn(
-                          'p-2 rounded-xl border transition-all cursor-pointer space-y-1',
-                          isCurrent
-                            ? 'bg-primary/10 border-primary shadow-xs'
-                            : 'bg-muted/40 border-border/50 hover:border-border'
-                        )}
-                        title="Click to seek preview to this line"
+                  {captions.length === 0 ? (
+                    <div className="p-4 rounded-2xl border border-dashed border-border/80 text-center space-y-2 bg-muted/20 my-1">
+                      <Sparkles className="w-5 h-5 text-amber-500 mx-auto" />
+                      <p className="text-xs font-bold text-foreground">
+                        No Subtitles Generated Yet
+                      </p>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Generate authentic Urdu Nastaliq &amp; Roman Urdu dual
+                        subtitles directly from this Short&apos;s audio slice
+                        whenever you like.
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={handleSyncUrduCaptions}
+                        disabled={isSyncingCaptions}
+                        className="rounded-xl text-xs font-bold gap-2 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 mt-1 shadow-xs"
                       >
-                        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
-                          <span>
-                            {formatTimecode(cap.start)} -{' '}
-                            {formatTimecode(cap.end)}
-                          </span>
-                          <span
-                            className={cn(
-                              'font-bold',
-                              isCurrent
-                                ? 'text-primary'
-                                : 'text-muted-foreground'
-                            )}
-                          >
-                            #{i + 1} {cap.isVerseBoundary ? '• Verse End' : ''}
-                          </span>
-                        </div>
-                        <Input
-                          value={displayText}
-                          dir={isUrduMode ? 'rtl' : 'ltr'}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setCaptions((prev) =>
-                              prev.map((c, idx) =>
-                                idx === i
-                                  ? {
-                                      ...c,
-                                      text: val,
-                                      textUrdu: isUrduMode ? val : c.textUrdu,
-                                      textRoman: !isUrduMode
-                                        ? val
-                                        : c.textRoman,
-                                    }
-                                  : c
-                              )
-                            );
-                            setHasUnsavedChanges(true);
-                          }}
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>
+                          {isSyncingCaptions
+                            ? 'Transcribing Audio...'
+                            : 'Generate Urdu AI Subtitles'}
+                        </span>
+                      </Button>
+                    </div>
+                  ) : (
+                    captions.map((cap, i) => {
+                      const isCurrent =
+                        currentTime - (segments[0]?.start || 0) >= cap.start &&
+                        currentTime - (segments[0]?.start || 0) <= cap.end;
+                      const isUrduMode = captionMode === 'urdu';
+                      const displayText = isUrduMode
+                        ? cap.textUrdu || cap.text || ''
+                        : cap.text || cap.textRoman || '';
+
+                      return (
+                        <div
+                          key={cap.id || i}
+                          onClick={() =>
+                            handleSeek((segments[0]?.start || 0) + cap.start)
+                          }
                           className={cn(
-                            'text-xs h-7.5 bg-background/80',
-                            isUrduMode && 'font-urdu text-right'
+                            'p-2 rounded-xl border transition-all cursor-pointer space-y-1',
+                            isCurrent
+                              ? 'bg-primary/10 border-primary shadow-xs'
+                              : 'bg-muted/40 border-border/50 hover:border-border'
                           )}
-                        />
-
-                        {/* Interactive Word Chips (Click word to seek directly) */}
-                        {cap.words && cap.words.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1 pt-1">
-                            {cap.words.map((w, wIdx) => {
-                              const clipElapsed =
-                                currentTime - (segments[0]?.start || 0);
-                              const isWordActive =
-                                clipElapsed >= w.start && clipElapsed <= w.end;
-                              const wordText = isUrduMode
-                                ? w.wordUrdu || w.word
-                                : w.wordRoman || w.word;
-
-                              return (
-                                <span
-                                  key={wIdx}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSeek(
-                                      (segments[0]?.start || 0) + w.start
-                                    );
-                                  }}
-                                  className={cn(
-                                    'text-[10px] px-1.5 py-0.5 rounded-md cursor-pointer transition-all',
-                                    isWordActive
-                                      ? 'bg-amber-400 text-black font-black scale-105 shadow-xs'
-                                      : 'bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground'
-                                  )}
-                                  title={`Seek to ${w.start.toFixed(2)}s`}
-                                >
-                                  {wordText}
-                                </span>
-                              );
-                            })}
+                          title="Click to seek preview to this line"
+                        >
+                          <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                            <span>
+                              {formatTimecode(cap.start)} -{' '}
+                              {formatTimecode(cap.end)}
+                            </span>
+                            <span
+                              className={cn(
+                                'font-bold',
+                                isCurrent
+                                  ? 'text-primary'
+                                  : 'text-muted-foreground'
+                              )}
+                            >
+                              #{i + 1}{' '}
+                              {cap.isVerseBoundary ? '• Verse End' : ''}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          <Input
+                            value={displayText}
+                            dir={isUrduMode ? 'rtl' : 'ltr'}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setCaptions((prev) =>
+                                prev.map((c, idx) =>
+                                  idx === i
+                                    ? {
+                                        ...c,
+                                        text: val,
+                                        textUrdu: isUrduMode ? val : c.textUrdu,
+                                        textRoman: !isUrduMode
+                                          ? val
+                                          : c.textRoman,
+                                      }
+                                    : c
+                                )
+                              );
+                              setHasUnsavedChanges(true);
+                            }}
+                            className={cn(
+                              'text-xs h-7.5 bg-background/80',
+                              isUrduMode && 'font-urdu text-right'
+                            )}
+                          />
+
+                          {/* Interactive Word Chips (Click word to seek directly) */}
+                          {cap.words && cap.words.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1 pt-1">
+                              {cap.words.map((w, wIdx) => {
+                                const clipElapsed =
+                                  currentTime - (segments[0]?.start || 0);
+                                const isWordActive =
+                                  clipElapsed >= w.start &&
+                                  clipElapsed <= w.end;
+                                const wordText = isUrduMode
+                                  ? w.wordUrdu || w.word
+                                  : w.wordRoman || w.word;
+
+                                return (
+                                  <span
+                                    key={wIdx}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSeek(
+                                        (segments[0]?.start || 0) + w.start
+                                      );
+                                    }}
+                                    className={cn(
+                                      'text-[10px] px-1.5 py-0.5 rounded-md cursor-pointer transition-all',
+                                      isWordActive
+                                        ? 'bg-amber-400 text-black font-black scale-105 shadow-xs'
+                                        : 'bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground'
+                                    )}
+                                    title={`Seek to ${w.start.toFixed(2)}s`}
+                                  >
+                                    {wordText}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
 
                   {/* Add Verse / Line Action */}
                   <div className="pt-2">
@@ -2101,16 +2240,29 @@ export function StudioEditor({
                         </p>
                       </div>
 
-                      {segments.length > 1 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeleteSegment(idx)}
-                          className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {seg.isStock && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRevertStockSegment(idx)}
+                            className="h-7 px-2 text-[10px] font-bold rounded-lg cursor-pointer text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+                            title="Revert back to original camera footage"
+                          >
+                            Revert Visual
+                          </Button>
+                        )}
+                        {segments.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteSegment(idx)}
+                            className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2176,6 +2328,17 @@ export function StudioEditor({
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleInitiateExport}
+              className="rounded-xl text-xs font-bold cursor-pointer h-8 px-3 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download Short</span>
+            </Button>
+
+            <div className="h-4 w-px bg-border/60 mx-1" />
+
             {/* Subtitle standalone export buttons */}
             <Button
               size="sm"
@@ -2290,7 +2453,7 @@ export function StudioEditor({
         </div>
       </Card>
 
-      {/* Islamic Stock Footage Discovery Modal */}
+      {/* Islamic Stock Footage Discovery Drawer (80% Left Sidebar) */}
       <IslamicStockGalleryModal
         isOpen={isStockModalOpen}
         onClose={() => setIsStockModalOpen(false)}
@@ -2298,6 +2461,9 @@ export function StudioEditor({
         onImportToMediaBin={(importedItem) => {
           setMediaBin((prev) => [...prev, importedItem]);
         }}
+        targetDuration={
+          segments[activeSegmentIndex]?.duration || currentClip?.duration || 30
+        }
       />
 
       {/* Thumbnail Editor Modal with Kumail Urdu Font */}

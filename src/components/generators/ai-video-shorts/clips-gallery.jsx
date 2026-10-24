@@ -842,7 +842,7 @@ function ClipCardPlayer({
 
         {/* Action Buttons */}
         <div className="space-y-2 pt-2 border-t border-border/40">
-          {/* Prominent Sync Subtitles with Short Audio Button */}
+          {/* Prominent On-Demand Generate Subtitles Button */}
           <Button
             variant="outline"
             size="sm"
@@ -850,24 +850,24 @@ function ClipCardPlayer({
             disabled={isSyncing}
             className={cn(
               'w-full text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 h-8.5 transition-all shadow-xs',
-              syncStatus === 'synchronized'
+              clipCaptions?.length > 0 && syncStatus === 'synchronized'
                 ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15'
                 : 'border-primary/50 text-primary bg-primary/5 hover:bg-primary/15 font-black'
             )}
-            title="Extract this short's exact audio slice and re-align Urdu captions"
+            title="Generate and align authentic Urdu Nastaliq & Roman Urdu subtitles directly from this short's audio slice"
           >
-            <RefreshCw
+            <Sparkles
               className={cn(
-                'w-3.5 h-3.5 shrink-0',
-                isSyncing && 'animate-spin text-primary'
+                'w-3.5 h-3.5 shrink-0 text-amber-500',
+                isSyncing && 'animate-spin'
               )}
             />
             <span>
               {isSyncing
-                ? 'Aligning Urdu Speech & Audio...'
-                : syncStatus === 'synchronized'
-                  ? '✓ Urdu Captions Synchronized with Audio'
-                  : 'SYNC URDU CAPTIONS WITH AUDIO'}
+                ? 'Transcribing Speech with AI...'
+                : clipCaptions?.length > 0
+                  ? '✓ Urdu Subtitles Synchronized'
+                  : '✨ Generate Urdu AI Subtitles'}
             </span>
           </Button>
 
@@ -1139,6 +1139,7 @@ export function ClipsGallery({
   videoSource,
   clips = [],
   thumbnailCandidates = [],
+  generationMetrics = null,
   onOpenEditor,
   onOpenFullVideo,
   onDownloadClip,
@@ -1341,6 +1342,42 @@ export function ClipsGallery({
           </Button>
         </div>
       </div>
+
+      {/* Generation Duration & Efficiency Metric Banner */}
+      {generationMetrics && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/30">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-black text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                ⚡ Generated {clips.length} Viral Shorts from{' '}
+                {Math.round(generationMetrics.sourceDuration || 60)}s Long Video
+                in {generationMetrics.totalSeconds}s!
+              </p>
+              <p className="text-muted-foreground text-[11px] mt-0.5">
+                Analyzed and extracted with zero wait time. Subtitles start idle
+                and can be synchronized on-demand for any short with 1-click.
+              </p>
+            </div>
+          </div>
+          <Badge
+            variant="outline"
+            className="text-emerald-500 border-emerald-500/30 font-mono text-[10px] shrink-0 font-bold bg-emerald-500/5"
+          >
+            Time Saved: ~
+            {Math.max(
+              0,
+              Math.round(
+                (generationMetrics.sourceDuration || 60) -
+                  parseFloat(generationMetrics.totalSeconds || 4)
+              )
+            )}
+            s
+          </Badge>
+        </div>
+      )}
 
       {/* Interactive Phrase Boundary Review & Confirmation for All Clips */}
       {displayClips.length > 0 && (

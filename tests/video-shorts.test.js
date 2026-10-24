@@ -38,6 +38,7 @@ import {
   listMediaHubItems,
   getMediaHubItem,
   deleteMediaHubItem,
+  isValidUUID,
 } from '@/lib/video-shorts/media-storage-service';
 import {
   createJob,
@@ -983,6 +984,29 @@ Third stanza bringing full spiritual depth
         expect(v.provider.toLowerCase()).toContain('wikimedia');
       });
     });
+
+    it('concurrently imports multiple stock videos and handles both successes and failures', async () => {
+      const { importMultipleStockVideos } =
+        await import('@/lib/video-shorts/stock-video-service');
+
+      // Test with empty list
+      const emptyResult = await importMultipleStockVideos([]);
+      expect(emptyResult.total).toBe(0);
+      expect(emptyResult.saved).toEqual([]);
+      expect(emptyResult.failed).toEqual([]);
+
+      // Test with invalid video items to verify concurrent error tracking
+      const mockVideos = [
+        { id: 'invalid_1', videoUrl: null },
+        { id: 'invalid_2', videoUrl: '' },
+      ];
+      const res = await importMultipleStockVideos(mockVideos);
+      expect(res.total).toBe(2);
+      expect(res.saved.length).toBe(0);
+      expect(res.failed.length).toBe(2);
+      expect(res.failed[0].id).toBe('invalid_1');
+      expect(res.failed[1].id).toBe('invalid_2');
+    });
   });
 
   describe('Universal YouTube Cookies Session Manager', () => {
@@ -1484,6 +1508,57 @@ Third stanza bringing full spiritual depth
       } finally {
         if (fs.existsSync(testFileDir)) {
           fs.rmSync(testFileDir, { recursive: true, force: true });
+        }
+      }
+    });
+  });
+
+  describe('B-Roll Video Stream Replacement & Supabase UUID Decoupling', () => {
+    it('validates UUIDs correctly and rejects external string IDs from UUID columns', () => {
+      expect(isValidUUID('c0a80101-0000-0000-0000-000000000000')).toBe(true);
+      expect(isValidUUID('stock_broll-madinah-17')).toBe(false);
+      expect(isValidUUID('short_job_1792852738245_24x6r_2')).toBe(false);
+      expect(isValidUUID('yt_4O36A7yGX1E')).toBe(false);
+      expect(isValidUUID(null)).toBe(false);
+      expect(isValidUUID(undefined)).toBe(false);
+    });
+
+    it('builds FFmpeg args with broll replacement mapping when brollPath exists', () => {
+      const dummyBrollPath = path.join(
+        process.cwd(),
+        'tests',
+        'dummy_broll.mp4'
+      );
+      fs.writeFileSync(dummyBrollPath, 'dummy-broll-content');
+
+      try {
+        const args = buildFFmpegArgs({
+          inputPath: 'test_recitation.mp4',
+          outputPath: 'rendered_output.mp4',
+          startTime: 10,
+          duration: 25,
+          aspectRatio: '9:16',
+          brollPath: dummyBrollPath,
+          hasAudio: true,
+        });
+
+        // Verifies broll is looped as second input
+        expect(args).toContain('-stream_loop');
+        expect(args).toContain('-1');
+        expect(args).toContain(dummyBrollPath);
+
+        // Verifies filter_complex maps broll video [1:v] and recitation audio [0:a]
+        expect(args).toContain('-filter_complex');
+        const filterIdx = args.indexOf('-filter_complex');
+        const filterStr = args[filterIdx + 1];
+        expect(filterStr).toContain('[1:v]');
+        expect(filterStr).toContain('[0:a]');
+        expect(args).toContain('-map');
+        expect(args).toContain('[vfinal]');
+        expect(args).toContain('[afinal]');
+      } finally {
+        if (fs.existsSync(dummyBrollPath)) {
+          fs.unlinkSync(dummyBrollPath);
         }
       }
     });

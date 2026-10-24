@@ -82,6 +82,36 @@ export async function POST(request) {
       }
     }
 
+    // Handle B-roll replacement video stream if provided
+    const brollVideoUrl =
+      formData.get('brollVideoUrl') || formData.get('brollUrl');
+    let brollPath = null;
+    if (brollVideoUrl) {
+      try {
+        const brollCandidatePath = path.join(tempDir, 'broll.mp4');
+        const localRel = brollVideoUrl.startsWith('/')
+          ? brollVideoUrl.slice(1)
+          : brollVideoUrl;
+        const localPath = path.join(process.cwd(), 'public', localRel);
+        if (fs.existsSync(localPath)) {
+          fs.copyFileSync(localPath, brollCandidatePath);
+          brollPath = brollCandidatePath;
+        } else {
+          const resp = await fetch(brollVideoUrl);
+          if (resp.ok) {
+            const ab = await resp.arrayBuffer();
+            fs.writeFileSync(brollCandidatePath, Buffer.from(ab));
+            brollPath = brollCandidatePath;
+          }
+        }
+      } catch (brollErr) {
+        console.warn(
+          'Could not fetch B-roll video for render:',
+          brollErr.message
+        );
+      }
+    }
+
     // Handle burned-in subtitles via ASS file with canonical relative retiming
     let assPath = null;
     if (burnSubtitles && captionsRaw) {
@@ -143,6 +173,7 @@ export async function POST(request) {
       sourceWidth,
       sourceHeight,
       hasAudio,
+      brollPath,
     });
 
     // Execute FFmpeg with automated fallback if subtitle font parser fails
@@ -179,6 +210,7 @@ export async function POST(request) {
           sourceWidth,
           sourceHeight,
           hasAudio,
+          brollPath,
         });
         await new Promise((resolve, reject) => {
           runFFmpegJob({

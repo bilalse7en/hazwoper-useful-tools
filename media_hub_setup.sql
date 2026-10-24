@@ -18,6 +18,17 @@ CREATE TABLE IF NOT EXISTS public.media_hub (
     expires_at TIMESTAMPTZ
 );
 
+-- Safe migration: If id was previously UUID in existing tables, convert to TEXT to support external IDs directly
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'media_hub' AND column_name = 'id' AND data_type = 'uuid'
+    ) THEN
+        ALTER TABLE public.media_hub ALTER COLUMN id TYPE TEXT USING id::text;
+    END IF;
+END $$;
+
 -- Ensure all columns exist if table was partially created
 ALTER TABLE public.media_hub ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.media_hub ADD COLUMN IF NOT EXISTS file_name TEXT;
@@ -33,6 +44,7 @@ ALTER TABLE public.media_hub ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS idx_media_hub_user_id ON public.media_hub (user_id);
 CREATE INDEX IF NOT EXISTS idx_media_hub_created_at ON public.media_hub (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_media_hub_expires_at ON public.media_hub (expires_at);
+CREATE INDEX IF NOT EXISTS idx_media_hub_external_id ON public.media_hub ((metadata->>'external_id'));
 
 -- 3. Row Level Security (RLS)
 ALTER TABLE public.media_hub ENABLE ROW LEVEL SECURITY;

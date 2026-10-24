@@ -223,7 +223,7 @@ export async function POST(request) {
       resolution: resolvedResolution,
     });
 
-    // Check for auto-extracted YouTube subtitle or transcribe from audio
+    // Extract existing authentic Urdu subtitles if YouTube provided them
     const subPath = dlResult.subtitlePath || findSubtitleFile(tempDir, videoId);
     let transcript = null;
     let extractedCaptions = [];
@@ -241,26 +241,7 @@ export async function POST(request) {
       }
     }
 
-    // If no YouTube subtitle file was found, transcribe audio directly with Whisper ONNX
-    if (
-      (!extractedCaptions || extractedCaptions.length === 0) &&
-      fs.existsSync(tempTargetPath)
-    ) {
-      try {
-        const whisperRes = await transcribeUrduVideo({
-          videoPath: tempTargetPath,
-          language: 'ur',
-        });
-        if (whisperRes?.captions?.length > 0) {
-          extractedCaptions = whisperRes.captions;
-          transcript = whisperRes.rawText || transcript;
-          mediaItem.transcript = transcript;
-        }
-      } catch (whisperErr) {
-        console.warn('Ingest audio transcription notice:', whisperErr.message);
-      }
-    }
-
+    // Do NOT transcribe during initial ingest to keep ingestion instant
     mediaItem.captions = extractedCaptions;
 
     // Clean up temporary download file

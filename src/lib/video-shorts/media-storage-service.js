@@ -9,9 +9,17 @@
 
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { supabase } from '@/lib/supabase';
 import { probeVideo, extractVideoPoster } from './ffmpeg-service';
 import { getLocalMediaDir, getRegistryFilePath } from './storage-paths';
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isValidUUID(str) {
+  return typeof str === 'string' && UUID_REGEX.test(str);
+}
 
 const REGISTRY_FILE = getRegistryFilePath();
 const LOCAL_MEDIA_DIR = getLocalMediaDir();
@@ -187,11 +195,25 @@ export async function ingestMediaFile({
   };
 
   // 5. Insert record into Supabase 'media_hub' table
+  // Ensure we never pass non-UUID strings into Postgres UUID columns
+  const isIdUUID = isValidUUID(id);
+  const dbId = isIdUUID ? id : crypto.randomUUID();
+  const dbUserId = isValidUUID(userId) ? userId : null;
+
+  mediaItem.db_id = dbId;
+  mediaItem.metadata = {
+    external_id: id,
+    custom_id: customId || null,
+    source_type: sourceType,
+    duration,
+    resolution,
+  };
+
   try {
     const { error: dbErr } = await supabase.from('media_hub').insert([
       {
-        id,
-        user_id: userId,
+        id: dbId,
+        user_id: dbUserId,
         file_name: cleanFileName,
         file_type: fileType,
         file_size: fileSize,
@@ -199,6 +221,7 @@ export async function ingestMediaFile({
         download_url: downloadUrl,
         created_at: now.toISOString(),
         expires_at: expiresAt,
+        metadata: mediaItem.metadata,
       },
     ]);
     if (dbErr) {
@@ -273,10 +296,12 @@ export async function listMediaHubItems(search = '') {
       }
     }
 
-    const existing = map.get(db.id);
+    const canonicalId = db.metadata?.external_id || db.id;
+    const existing = map.get(canonicalId) || map.get(db.id);
     if (!existing) {
-      map.set(db.id, {
-        id: db.id,
+      map.set(canonicalId, {
+        id: canonicalId,
+        db_id: db.id,
         user_id: db.user_id,
         file_name: db.file_name,
         fileName: db.file_name,
@@ -291,14 +316,15 @@ export async function listMediaHubItems(search = '') {
         videoUrl: db.download_url,
         local_path: localCandidate,
         localPath: localCandidate,
-        duration: db.duration || 60,
-        resolution: db.resolution || '1920x1080',
-        source_type: db.source_type || 'upload',
-        sourceType: db.source_type || 'upload',
+        duration: db.metadata?.duration || db.duration || 60,
+        resolution: db.metadata?.resolution || db.resolution || '1920x1080',
+        source_type: db.metadata?.source_type || db.source_type || 'upload',
+        sourceType: db.metadata?.source_type || db.source_type || 'upload',
         created_at: db.created_at,
         createdAt: db.created_at,
         expires_at: db.expires_at,
         expiresAt: db.expires_at,
+        metadata: db.metadata || {},
         status: 'ready',
       });
     } else {
@@ -369,7 +395,15 @@ export async function listMediaHubItems(search = '') {
 export async function getMediaHubItem(id) {
   if (!id) return null;
   const items = await listMediaHubItems();
-  return items.find((item) => item.id === id) || null;
+  return (
+    items.find(
+      (item) =>
+        item.id === id ||
+        item.db_id === id ||
+        item.metadata?.external_id === id ||
+        item.metadata?.custom_id === id
+    ) || null
+  );
 }
 
 /**
@@ -395,9 +429,21 @@ export async function purgeExpiredMedia() {
         }
       }
 
-      // Remove from Supabase
+      // Remove from Supabase without violating UUID format
       try {
-        await supabase.from('media_hub').delete().eq('id', item.id);
+        const deleteId = isValidUUID(item.id)
+          ? item.id
+          : isValidUUID(item.db_id)
+            ? item.db_id
+            : null;
+        if (deleteId) {
+          await supabase.from('media_hub').delete().eq('id', deleteId);
+        } else {
+          await supabase
+            .from('media_hub')
+            .delete()
+            .filter('metadata->>external_id', 'eq', item.id);
+        }
         await supabase.storage
           .from('media')
           .remove([`video-shorts/${item.id}/${item.file_name}`]);
@@ -421,7 +467,13 @@ export async function deleteMediaHubItem(id) {
   if (!id || typeof id !== 'string') return false;
   ensureDirectories();
   const items = getLocalRegistry();
-  const targetItem = items.find((item) => item.id === id);
+  const targetItem = items.find(
+    (item) =>
+      item.id === id ||
+      item.db_id === id ||
+      item.metadata?.external_id === id ||
+      item.metadata?.custom_id === id
+  );
 
   // 1. Remove local asset folder
   const assetDir = path.join(LOCAL_MEDIA_DIR, id);
@@ -433,10 +485,22 @@ export async function deleteMediaHubItem(id) {
     }
   }
 
-  // 2. Remove from Supabase if configured
+  // 2. Remove from Supabase if configured (respecting UUID vs text)
   if (targetItem) {
     try {
-      await supabase.from('media_hub').delete().eq('id', id);
+      const deleteId = isValidUUID(targetItem.id)
+        ? targetItem.id
+        : isValidUUID(targetItem.db_id)
+          ? targetItem.db_id
+          : null;
+      if (deleteId) {
+        await supabase.from('media_hub').delete().eq('id', deleteId);
+      } else {
+        await supabase
+          .from('media_hub')
+          .delete()
+          .filter('metadata->>external_id', 'eq', id);
+      }
       const fileName = targetItem.file_name || targetItem.fileName;
       if (fileName) {
         await supabase.storage
@@ -449,7 +513,10 @@ export async function deleteMediaHubItem(id) {
   }
 
   // 3. Update local registry
-  const filtered = items.filter((item) => item.id !== id);
+  const filtered = items.filter(
+    (item) =>
+      item.id !== id && item.db_id !== id && item.metadata?.external_id !== id
+  );
   saveLocalRegistry(filtered);
   return true;
 }

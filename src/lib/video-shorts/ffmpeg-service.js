@@ -55,6 +55,7 @@ export function buildFFmpegArgs({
   openingStyle = 'none',
   openingDuration = 1.5,
   hasAudio = true,
+  brollPath = null,
 }) {
   const args = ['-y'];
 
@@ -63,6 +64,12 @@ export function buildFFmpegArgs({
   args.push('-i', inputPath);
   args.push('-avoid_negative_ts', 'make_zero');
   args.push('-t', String(Math.max(1, duration)));
+
+  const hasBroll = Boolean(brollPath && fs.existsSync(brollPath));
+  if (hasBroll) {
+    // Input 1: Islamic B-roll visual (seamlessly looped to match short duration)
+    args.push('-stream_loop', '-1', '-i', brollPath);
+  }
 
   // Background music input if provided
   if (bgmPath && fs.existsSync(bgmPath)) {
@@ -80,8 +87,9 @@ export function buildFFmpegArgs({
     const cropXPct = cropX !== null ? Math.min(100, Math.max(0, cropX)) : 50;
 
     if (framingMode === 'blurred-bg') {
+      const vSrc = hasBroll ? '[1:v]' : '[0:v]';
       vFilters.push(
-        `scale=${targetW}:${targetH}:force_original_aspect_ratio=increase:flags=lanczos,boxblur=20:5,setsar=1[bg];[0:v]scale=${targetW}:-1:force_original_aspect_ratio=decrease:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2`
+        `scale=${targetW}:${targetH}:force_original_aspect_ratio=increase:flags=lanczos,boxblur=20:5,setsar=1[bg];${vSrc}scale=${targetW}:-1:force_original_aspect_ratio=decrease:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2`
       );
     } else if (cropX !== null && cropX > 100) {
       // Explicit pixel-coordinate crop (for exact pixel framing tests/configs)
@@ -127,13 +135,9 @@ export function buildFFmpegArgs({
     vFilters.push(`ass='${escapedAssPath}'`);
   }
 
-  if (vFilters.length > 0) {
-    args.push('-vf', vFilters.join(','));
-  }
-
   // Audio Filter Construction
+  const aFilters = [];
   if (hasAudio !== false) {
-    const aFilters = [];
     if (audioVolume !== 1.0) {
       aFilters.push(`volume=${audioVolume}`);
     }
@@ -147,29 +151,57 @@ export function buildFFmpegArgs({
     if (normalizeAudio && duration >= 3.0) {
       aFilters.push('loudnorm=I=-14:TP=-1.0:LRA=11');
     }
-
-    if (aFilters.length > 0) {
-      args.push('-af', aFilters.join(','));
-    }
-    args.push('-c:a', 'aac', '-b:a', '192k', '-ar', '48000');
-  } else {
-    args.push('-an');
   }
 
-  // Codecs & High-Quality Compressed Encoding (1920/1080 resolution, CRF 18 visually lossless, faststart for instant playback)
+  if (hasBroll) {
+    // Complex filter mapping: [1:v] for visual, [0:a] for recitation audio
+    const filterComplex = [
+      `[1:v]${vFilters.join(',')}[vfinal]`,
+      hasAudio !== false
+        ? `[0:a]${aFilters.length > 0 ? aFilters.join(',') : 'anull'}[afinal]`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(';');
+
+    args.push('-filter_complex', filterComplex);
+    args.push('-map', '[vfinal]');
+    if (hasAudio !== false) {
+      args.push('-map', '[afinal]');
+      args.push('-c:a', 'aac', '-b:a', '192k', '-ar', '48000');
+    } else {
+      args.push('-an');
+    }
+  } else {
+    if (vFilters.length > 0) {
+      args.push('-vf', vFilters.join(','));
+    }
+    if (hasAudio !== false) {
+      if (aFilters.length > 0) {
+        args.push('-af', aFilters.join(','));
+      }
+      args.push('-c:a', 'aac', '-b:a', '192k', '-ar', '48000');
+    } else {
+      args.push('-an');
+    }
+  }
+
+  // High-Performance Compressed Encoding (1080x1920 vertical, veryfast preset for 5-8x render speed, CRF 22 for lightweight mobile MP4)
   args.push(
     '-c:v',
     'libx264',
     '-preset',
-    'medium',
+    'veryfast',
     '-crf',
-    '18',
+    '22',
     '-pix_fmt',
     'yuv420p',
+    '-threads',
+    '0',
     '-maxrate',
-    '10M',
+    '8M',
     '-bufsize',
-    '20M',
+    '16M',
     '-movflags',
     '+faststart'
   );

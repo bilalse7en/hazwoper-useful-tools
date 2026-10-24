@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Download,
   CheckCircle2,
@@ -11,6 +11,10 @@ import {
   X,
   Sparkles,
   Share2,
+  Film,
+  Volume2,
+  Languages,
+  Scissors,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -28,6 +32,35 @@ export function ExportModal({ isOpen, onClose, exportConfig, videoSource }) {
   const [downloadUrl, setDownloadUrl] = useState(null);
   const [outputFileName, setOutputFileName] = useState('viral_short.mp4');
   const [fileSizeBytes, setFileSizeBytes] = useState(0);
+  const hasAutoDownloadedRef = useRef(false);
+
+  // Reset auto-download trigger when modal re-opens
+  useEffect(() => {
+    if (!isOpen) {
+      hasAutoDownloadedRef.current = false;
+    }
+  }, [isOpen]);
+
+  // Direct Auto-Download Short Video when rendering succeeds
+  useEffect(() => {
+    if (
+      status === 'completed' &&
+      downloadUrl &&
+      !hasAutoDownloadedRef.current
+    ) {
+      hasAutoDownloadedRef.current = true;
+      try {
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = outputFileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (err) {
+        console.warn('Auto-download was blocked by browser:', err);
+      }
+    }
+  }, [status, downloadUrl, outputFileName]);
 
   useEffect(() => {
     if (!isOpen || !exportConfig) return;
@@ -105,6 +138,9 @@ export function ExportModal({ isOpen, onClose, exportConfig, videoSource }) {
             'captionFontSize',
             (exportConfig.captionFontSize || 46).toString()
           );
+          if (activeSeg.isStock && activeSeg.stockVideoUrl) {
+            formData.append('brollVideoUrl', activeSeg.stockVideoUrl);
+          }
 
           if (isMounted) {
             setProgress(60);
@@ -196,6 +232,27 @@ export function ExportModal({ isOpen, onClose, exportConfig, videoSource }) {
 
   if (!isOpen) return null;
 
+  const activeSeg = exportConfig?.segments?.[0] || {};
+  const isStockBroll = Boolean(activeSeg?.isStock && activeSeg?.stockVideoUrl);
+  const brollTitle = activeSeg?.stockVideoTitle || 'Islamic Stock Footage';
+  const captionMode = exportConfig?.captionMode || 'dual-urdu-roman';
+  const isSubtitlesBurned =
+    exportConfig?.burnSubtitles !== false &&
+    exportConfig?.subtitlesEnabled !== false;
+  const captionModeLabel = !isSubtitlesBurned
+    ? 'Subtitles Off'
+    : captionMode === 'dual-urdu-roman'
+      ? 'Dual Urdu Nastaliq & Roman Urdu'
+      : captionMode === 'urdu-only'
+        ? 'Urdu Nastaliq Only'
+        : captionMode === 'roman-urdu-only'
+          ? 'Roman Urdu Only'
+          : 'Subtitles Enabled';
+  const audioVolume = exportConfig?.audioVolume
+    ? `${Math.round(exportConfig.audioVolume * 100)}%`
+    : '100%';
+  const durationSec = activeSeg?.duration || exportConfig?.duration || 30;
+
   const downloadSrt = () => {
     const srt = captionsToSRT(exportConfig?.captions || []);
     const blob = new Blob([srt], { type: 'text/plain;charset=utf-8' });
@@ -240,7 +297,7 @@ export function ExportModal({ isOpen, onClose, exportConfig, videoSource }) {
         <div className="text-center space-y-2 pt-2">
           <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mx-auto shadow-inner">
             {status === 'completed' ? (
-              <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+              <CheckCircle2 className="w-8 h-8 text-emerald-500 animate-in zoom-in-75 duration-300" />
             ) : status === 'error' ? (
               <AlertCircle className="w-8 h-8 text-destructive" />
             ) : (
@@ -249,14 +306,91 @@ export function ExportModal({ isOpen, onClose, exportConfig, videoSource }) {
           </div>
           <h3 className="text-2xl font-black tracking-tight text-foreground">
             {status === 'completed'
-              ? 'Your Short is Ready!'
+              ? 'Your Short Video is Ready!'
               : status === 'error'
                 ? 'Export Failed'
-                : 'Rendering High-Quality MP4...'}
+                : 'Rendering Short Video...'}
           </h3>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
             {statusMessage}
           </p>
+        </div>
+
+        {/* Applied Short Changes Card (Visible in both rendering and completed states) */}
+        <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 space-y-2.5 text-xs shadow-xs">
+          <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
+            <span className="font-mono uppercase font-black tracking-wider text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              Applied Short Changes
+            </span>
+            <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+              {status === 'completed' ? 'Render Completed' : 'Applying Edits'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+            {/* Visual footage */}
+            <div className="flex items-start gap-2 p-2 rounded-xl bg-background/80 border border-border/50">
+              <Film className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="text-muted-foreground block text-[10px]">
+                  Visual Track:
+                </span>
+                <span
+                  className="font-bold text-foreground truncate block"
+                  title={
+                    isStockBroll ? brollTitle : 'Original Recitation Video'
+                  }
+                >
+                  {isStockBroll
+                    ? `🕌 B-Roll: ${brollTitle}`
+                    : '🎥 Original Recitation'}
+                </span>
+              </div>
+            </div>
+
+            {/* Audio Recitation */}
+            <div className="flex items-start gap-2 p-2 rounded-xl bg-background/80 border border-border/50">
+              <Volume2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="text-muted-foreground block text-[10px]">
+                  Audio Track:
+                </span>
+                <span className="font-bold text-foreground truncate block">
+                  🎙️ Recitation (-14 LUFS)
+                </span>
+              </div>
+            </div>
+
+            {/* Subtitles */}
+            <div className="flex items-start gap-2 p-2 rounded-xl bg-background/80 border border-border/50">
+              <Languages className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="text-muted-foreground block text-[10px]">
+                  Subtitles:
+                </span>
+                <span
+                  className="font-bold text-foreground truncate block"
+                  title={captionModeLabel}
+                >
+                  ✍️ {captionModeLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Framing & Duration */}
+            <div className="flex items-start gap-2 p-2 rounded-xl bg-background/80 border border-border/50">
+              <Scissors className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="text-muted-foreground block text-[10px]">
+                  Framing & Duration:
+                </span>
+                <span className="font-bold text-foreground truncate block">
+                  📱 9:16 Portrait ({Number(durationSec).toFixed(1)}s)
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Progress Bar during render */}
@@ -272,18 +406,34 @@ export function ExportModal({ isOpen, onClose, exportConfig, videoSource }) {
 
         {/* Completed State Actions */}
         {status === 'completed' && downloadUrl && (
-          <div className="space-y-4 pt-2">
-            <div className="p-4 rounded-2xl bg-muted/40 border border-border/50 space-y-2 text-xs">
+          <div className="space-y-4 pt-1">
+            {/* Primary Action: Direct Download Short Video */}
+            <div className="space-y-2">
+              <a
+                href={downloadUrl}
+                download={outputFileName}
+                className="w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base shadow-xl shadow-emerald-600/30 transition-all cursor-pointer ring-2 ring-emerald-400/30 group"
+              >
+                <Download className="w-5 h-5 transition-transform group-hover:translate-y-0.5" />
+                <span>Download Short Video (MP4)</span>
+              </a>
+              <p className="text-[11px] text-center text-muted-foreground font-mono">
+                ✓ Auto-download triggered! Click button above if download
+                didn&apos;t start.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/50 space-y-1.5 text-xs">
               <div className="flex justify-between font-mono">
-                <span className="text-muted-foreground">Output Format:</span>
-                <span className="font-bold text-foreground">
-                  MP4 (H.264 / AAC)
+                <span className="text-muted-foreground">File Name:</span>
+                <span className="font-bold text-foreground truncate max-w-[260px]">
+                  {outputFileName}
                 </span>
               </div>
               <div className="flex justify-between font-mono">
-                <span className="text-muted-foreground">Aspect Ratio:</span>
+                <span className="text-muted-foreground">Output Format:</span>
                 <span className="font-bold text-foreground">
-                  {exportConfig?.aspectRatio || '9:16'}
+                  MP4 (H.264 / AAC, 9:16 Vertical)
                 </span>
               </div>
               {fileSizeBytes > 0 && (
@@ -295,16 +445,6 @@ export function ExportModal({ isOpen, onClose, exportConfig, videoSource }) {
                 </div>
               )}
             </div>
-
-            {/* Primary Download: Selected Short */}
-            <a
-              href={downloadUrl}
-              download={outputFileName}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl bg-primary text-primary-foreground font-bold text-sm sm:text-base shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all cursor-pointer"
-            >
-              <Download className="w-5 h-5" />
-              <span>Download This Short (MP4)</span>
-            </a>
 
             {/* Full Original Video & Subtitles Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">

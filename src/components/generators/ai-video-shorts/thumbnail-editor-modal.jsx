@@ -63,17 +63,28 @@ export function ThumbnailEditorModal({
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const logoInputRef = useRef(null);
+  const lastInitialRef = useRef(initialFrameUrl);
+  const lastTitleRef = useRef(clipTitle);
+  const lastSublineRef = useRef(clipSubline);
 
   useEffect(() => {
-    if (initialFrameUrl) setSelectedFrame(initialFrameUrl);
-    else if (candidateFrames.length > 0 && !selectedFrame) {
-      setSelectedFrame(candidateFrames[0].publicUrl);
+    if (initialFrameUrl && initialFrameUrl !== lastInitialRef.current) {
+      lastInitialRef.current = initialFrameUrl;
+      setSelectedFrame(initialFrameUrl);
+    } else if (candidateFrames && candidateFrames.length > 0) {
+      setSelectedFrame((prev) => prev || candidateFrames[0]?.publicUrl || null);
     }
   }, [initialFrameUrl, candidateFrames]);
 
   useEffect(() => {
-    if (clipTitle) setNaatName(clipTitle);
-    if (clipSubline) setReciterName(clipSubline);
+    if (clipTitle && clipTitle !== lastTitleRef.current) {
+      lastTitleRef.current = clipTitle;
+      setNaatName(clipTitle);
+    }
+    if (clipSubline && clipSubline !== lastSublineRef.current) {
+      lastSublineRef.current = clipSubline;
+      setReciterName(clipSubline);
+    }
   }, [clipTitle, clipSubline]);
 
   const renderCanvas = useCallback(() => {

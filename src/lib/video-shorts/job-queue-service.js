@@ -234,69 +234,30 @@ export async function runJobWorker(jobId) {
     const probe = await probeVideo(localVideoPath);
     const videoDuration = probe.duration || 60;
 
-    // 2. Stage: Extracting Audio
+    // 2. Stage: Fast Pacing & Boundary Inspection
     updateJob(jobId, {
-      status: 'extracting_audio',
-      current_stage: 'Extracting 16kHz mono audio for speech recognition (25%)',
-      progress: 25,
+      status: 'analyzing',
+      current_stage: 'Analyzing video pacing, boundaries & viral hooks (40%)',
+      progress: 40,
     });
 
-    const wavPath = path.join(tempDir, 'audio_16k.wav');
-    try {
-      await extractAudioWav(localVideoPath, wavPath);
-    } catch (wavErr) {
-      console.warn('WAV extraction notice:', wavErr.message);
-    }
-
-    // 3. Stage: Transcribing Audio with Local Whisper ONNX
-    updateJob(jobId, {
-      status: 'transcribing',
-      current_stage:
-        'Transcribing speech into authentic Urdu script via Whisper (45%)',
-      progress: 45,
-    });
-
+    // Fast clip discovery without heavy upfront transcription (subtitles start idle for on-demand generation)
     let captions = [];
-    const hasUrdu = /[\u0600-\u06FF]/.test(job.transcript || '');
-    if (job.transcript && hasUrdu) {
-      // Use existing pre-extracted transcript ONLY if it actually contains genuine Urdu script
-      const parsed = parseVttFile(job.transcript);
-      captions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
-    } else if (fs.existsSync(wavPath)) {
+    if (job.transcript && /[\u0600-\u06FF]/.test(job.transcript)) {
       try {
-        const whisperRes = await transcribeUrduVideo({
-          audioPath: wavPath,
-          videoPath: localVideoPath,
-          language: 'ur',
-          referenceLyrics: job.settings?.referenceLyrics,
-        });
-        captions = whisperRes.captions || [];
-      } catch (sttErr) {
-        console.warn(
-          'Whisper transcription fallback to phrases:',
-          sttErr.message
-        );
+        const parsed = parseVttFile(job.transcript);
+        captions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
+      } catch (e) {
+        console.warn('Transcript parse notice:', e.message);
       }
     }
 
-    // 4. Stage: Aligning & Transliterating Urdu to Roman Urdu
-    updateJob(jobId, {
-      status: 'aligning',
-      current_stage:
-        'Linguistically aligning Urdu script & Roman Urdu transliteration (65%)',
-      progress: 65,
-    });
-
-    const transliterationStyle =
-      job.settings?.transliterationStyle || 'conversational';
-    captions = transliterateUrduCaptions(captions, transliterationStyle);
-
-    // 5. Stage: Selecting Clips
+    // 3. Stage: Selecting High-Engagement Viral Clips
     updateJob(jobId, {
       status: 'selecting_clips',
       current_stage:
-        'Discovering viral moments & enforcing phrase boundaries (80%)',
-      progress: 80,
+        'Discovering viral moments & enforcing phrase boundaries (75%)',
+      progress: 75,
     });
 
     const discovered = discoverClips({
@@ -307,7 +268,7 @@ export async function runJobWorker(jobId) {
       captions,
     });
 
-    // Attach authentic phrase-segmented captions to each individual clip
+    // Prepare clean clips for immediate editing & previewing (subtitles OFF by default)
     const clipsWithCaptions = discovered.map((clip, idx) => {
       const timing = normalizeCanonicalTiming({
         sourceStartSeconds: clip.start,
@@ -315,26 +276,16 @@ export async function runJobWorker(jobId) {
         duration: clip.duration,
       });
 
-      const clipCaptions =
-        clip.captions && clip.captions.length > 0
-          ? clip.captions
-          : segmentCaptionsForClip(
-              captions,
-              timing.sourceStartSeconds,
-              timing.sourceEndSeconds
-            );
-
       return {
         ...clip,
         ...timing,
         id: clip.id || `clip-${idx + 1}`,
         clipId: clip.id || `clip-${idx + 1}`,
         index: idx + 1,
-        captions: clipCaptions,
-        captionMode: job.settings?.captionMode || 'dual-urdu-roman',
+        captions: [],
+        captionMode: 'none',
         sourceUrl: job.video_url,
-        syncStatus:
-          clipCaptions.length > 0 ? 'synchronized' : 'needs_manual_review',
+        syncStatus: 'idle',
         renderStatus: 'ready',
         lastModified: new Date().toISOString(),
       };

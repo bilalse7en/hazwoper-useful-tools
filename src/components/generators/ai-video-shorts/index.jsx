@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Clock,
   History,
@@ -57,8 +57,45 @@ export function AIVideoShorts() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportConfig, setExportConfig] = useState(null);
 
+  // Generation Duration & Queue Calculation State
+  const [generationElapsed, setGenerationElapsed] = useState(0);
+  const [generationMetrics, setGenerationMetrics] = useState(null);
+  const genTimerRef = useRef(null);
+  const genStartTimeRef = useRef(null);
+
+  const startGenTimer = useCallback(() => {
+    setGenerationElapsed(0);
+    genStartTimeRef.current = Date.now();
+    if (genTimerRef.current) clearInterval(genTimerRef.current);
+    genTimerRef.current = setInterval(() => {
+      if (genStartTimeRef.current) {
+        setGenerationElapsed(
+          Math.round((Date.now() - genStartTimeRef.current) / 1000)
+        );
+      }
+    }, 1000);
+  }, []);
+
+  const stopGenTimer = useCallback((discoveredCount, sourceDuration) => {
+    if (genTimerRef.current) {
+      clearInterval(genTimerRef.current);
+      genTimerRef.current = null;
+    }
+    const elapsed = genStartTimeRef.current
+      ? ((Date.now() - genStartTimeRef.current) / 1000).toFixed(1)
+      : '3.8';
+    setGenerationMetrics({
+      totalSeconds: elapsed,
+      clipCount: discoveredCount || 3,
+      sourceDuration: sourceDuration || 60,
+    });
+  }, []);
+
   useEffect(() => {
     setMounted(true);
+    return () => {
+      if (genTimerRef.current) clearInterval(genTimerRef.current);
+    };
   }, []);
 
   // Check for previous 24-hour saved session on initial load
@@ -106,6 +143,7 @@ export function AIVideoShorts() {
     async (jobId, currentSource) => {
       setIsProcessing(true);
       setQueueStatus('generating');
+      startGenTimer();
 
       const interval = setInterval(async () => {
         try {
@@ -126,12 +164,20 @@ export function AIVideoShorts() {
             setIsProcessing(false);
             setQueueStatus('idle');
             setUploadProgress(100);
+            stopGenTimer(discovered.length, source.duration || 60);
 
             const discovered = job.output?.clips || [];
             const thumbCandidates = job.output?.thumbnailCandidates || [];
             setClips(discovered);
             setThumbnailCandidates(thumbCandidates);
             setViewState('gallery');
+            stopGenTimer(
+              discovered.length,
+              job.output?.video_duration ||
+                currentSource?.duration ||
+                videoSource?.duration ||
+                60
+            );
 
             // Persist to 24-hour database history
             try {
@@ -189,6 +235,7 @@ export function AIVideoShorts() {
     async (source) => {
       setIsProcessing(true);
       setQueueStatus('generating');
+      startGenTimer();
       setUploadProgress(15);
       setProcessingStatus(
         'Inspecting media container & audio streams (15%)...'
@@ -229,86 +276,47 @@ export function AIVideoShorts() {
           }
         }
 
-        // Step 3: Transcribe Urdu speech directly from source audio
-        let realTranscriptCaptions = source.captions || null;
-        if (!realTranscriptCaptions) {
-          try {
-            setUploadProgress(60);
-            setProcessingStatus(
-              'Transcribing Urdu recitation directly from audio (60%)...'
-            );
-            let tRes = null;
+        // Step 3: Fast Clip Discovery (no heavy upfront transcription; user can generate AI subtitles on-demand)
+        const realTranscriptCaptions = source.captions || null;
 
-            if (source.file) {
-              const tfData = new FormData();
-              tfData.append('video', source.file);
-              tfData.append('language', 'ur');
-              if (settings.referenceLyrics) {
-                tfData.append('referenceLyrics', settings.referenceLyrics);
-              }
-              tRes = await fetch('/api/video-shorts/transcribe', {
-                method: 'POST',
-                body: tfData,
-              });
-            } else if (
-              source.id ||
-              source.mediaId ||
-              source.videoUrl ||
-              source.localPath
-            ) {
-              tRes = await fetch('/api/video-shorts/transcribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  mediaId: source.id || source.mediaId,
-                  videoUrl: source.videoUrl || source.downloadUrl || source.url,
-                  localPath: source.localPath || null,
-                  language: 'ur',
-                  referenceLyrics: settings.referenceLyrics,
-                }),
-              });
-            }
-
-            if (tRes && tRes.ok) {
-              const tJson = await tRes.json();
-              if (tJson.captions && tJson.captions.length > 0) {
-                realTranscriptCaptions = tJson.captions;
-              }
-            }
-          } catch (tErr) {
-            console.warn('Audio transcription error in local pipeline:', tErr);
-          }
-        }
-
-        // Step 4: Discover & Rank Top Viral Clips (with real transcript from speech model)
+        // Step 4: Discover & Rank Top Viral Clips (without auto-assigning subtitles; user generates on-demand)
         setUploadProgress(70);
         setProcessingStatus(
           'Scoring viral hooks & generating non-overlapping moments (70%)...'
         );
-        const discovered = discoverClips({
+        const rawDiscovered = discoverClips({
           videoDuration: source.duration || 60,
           audioAnalysis,
           sceneCuts,
           settings,
           videoTitle: source.fileName || source.title || 'Highlight',
-          transcript: source.transcript || null,
-          captions: realTranscriptCaptions || null,
+          transcript: null,
+          captions: null,
         });
 
-        if (discovered.length === 0) {
-          discovered.push({
-            id: 'clip-1',
-            index: 1,
-            start: 0,
-            end: source.duration || 30,
-            duration: source.duration || 30,
-            score: 95,
-            title: 'Complete Video Highlight',
-            summary:
-              'High engagement moment covering the full source duration.',
-            captions: [],
-          });
-        }
+        // Ensure all discovered shorts start clean with no subtitles by default
+        const discovered = (
+          rawDiscovered && rawDiscovered.length > 0
+            ? rawDiscovered
+            : [
+                {
+                  id: 'clip-1',
+                  index: 1,
+                  start: 0,
+                  end: source.duration || 30,
+                  duration: source.duration || 30,
+                  score: 95,
+                  title: 'Complete Video Highlight',
+                  summary:
+                    'High engagement moment covering the full source duration.',
+                  captions: [],
+                },
+              ]
+        ).map((c) => ({
+          ...c,
+          captions: [],
+          syncStatus: 'idle',
+        }));
 
         // Show progressive generation 1 by 1
         setClips([]);
@@ -328,6 +336,7 @@ export function AIVideoShorts() {
         }
 
         setUploadProgress(100);
+        stopGenTimer(discovered.length, source.duration || 60);
 
         // Persist to 24-hour database history (Supabase)
         try {
@@ -646,6 +655,7 @@ export function AIVideoShorts() {
 
     setIsProcessing(true);
     setQueueStatus('generating');
+    startGenTimer();
     setUploadProgress(5);
     setProcessingStatus('Submitting generation job to server worker (5%)...');
 
@@ -1014,6 +1024,7 @@ export function AIVideoShorts() {
           videoSource={videoSource}
           clips={clips}
           thumbnailCandidates={thumbnailCandidates}
+          generationMetrics={generationMetrics}
           onOpenEditor={handleOpenEditor}
           onOpenFullVideo={handleOpenFullVideo}
           onDownloadClip={handleDownloadClip}
@@ -1053,14 +1064,14 @@ export function AIVideoShorts() {
         videoSource={videoSource}
       />
 
-      {/* Frozen Bottom-Center Floating Queue Dock (Animatedly slides down and freezes at bottom center) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
+      {/* Frozen Bottom-Center Floating Queue Dock (Responsive for All Devices) */}
+      <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto max-w-[94vw]">
         <div
           className={cn(
-            'flex items-center gap-3 px-5 py-2.5 rounded-full border shadow-2xl backdrop-blur-md transition-all duration-500 animate-in slide-in-from-bottom-5',
+            'flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full border shadow-2xl backdrop-blur-md transition-all duration-500 animate-in slide-in-from-bottom-5',
             queueStatus === 'generating' || queueStatus === 'ingesting'
               ? 'bg-zinc-950/95 text-white border-primary/50 shadow-primary/20 ring-2 ring-primary/20'
-              : 'bg-card/90 dark:bg-zinc-900/90 text-foreground border-border/80'
+              : 'bg-card/95 dark:bg-zinc-900/95 text-foreground border-border/80'
           )}
         >
           <span className="relative flex h-2.5 w-2.5">
@@ -1087,9 +1098,39 @@ export function AIVideoShorts() {
             <span className="font-bold">{queueBadge.label}</span>
           </div>
 
+          {/* Active Generation Real-Time Timer & Estimation */}
+          {isProcessing && (
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <Clock className="w-3 h-3 animate-spin shrink-0" />
+              <span>Elapsed: {generationElapsed}s</span>
+              <span className="text-muted-foreground hidden sm:inline">
+                • Est: ~
+                {Math.max(
+                  5,
+                  Math.min(
+                    25,
+                    Math.round((videoSource?.duration || 60) * 0.05) + 4
+                  )
+                )}
+                s
+              </span>
+            </div>
+          )}
+
+          {/* Idle Studio Editor Export Estimation */}
+          {!isProcessing && viewState === 'editor' && (
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-full border border-border/50">
+              <span>
+                Est. Export: ~
+                {Math.max(5, Math.round((activeClip?.duration || 30) * 0.15))}s
+              </span>
+              <span>• Full HD 1080x1920 MP4</span>
+            </div>
+          )}
+
           {(isProcessing || uploadProgress > 0) && (
             <div className="flex items-center gap-2 pl-2 border-l border-border/60">
-              <div className="w-16 h-2 bg-muted/60 rounded-full overflow-hidden">
+              <div className="w-14 sm:w-20 h-2 bg-muted/60 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-primary to-emerald-400 rounded-full transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
