@@ -94,6 +94,28 @@ export async function ensureYtDlpBinary() {
  * Searches for any verified, non-empty user-supplied cookies.txt file
  */
 export function getAvailableCookiesFile() {
+  // Support environment variables on serverless / cloud deployments
+  if (process.env.YOUTUBE_COOKIES && process.env.YOUTUBE_COOKIES.length > 50) {
+    try {
+      const tmpPath = path.join(os.tmpdir(), 'cookies.txt');
+      fs.writeFileSync(tmpPath, process.env.YOUTUBE_COOKIES.trim(), 'utf-8');
+      return tmpPath;
+    } catch (_) {}
+  }
+  if (process.env.YOUTUBE_COOKIES_BASE64) {
+    try {
+      const decoded = Buffer.from(
+        process.env.YOUTUBE_COOKIES_BASE64,
+        'base64'
+      ).toString('utf-8');
+      if (decoded.length > 50) {
+        const tmpPath = path.join(os.tmpdir(), 'cookies.txt');
+        fs.writeFileSync(tmpPath, decoded.trim(), 'utf-8');
+        return tmpPath;
+      }
+    } catch (_) {}
+  }
+
   const candidates = [
     path.join(os.tmpdir(), 'cookies.txt'),
     path.join(process.cwd(), 'cookies.txt'),
@@ -170,12 +192,17 @@ export function categorizeDownloadError(rawError) {
   if (
     /Sign in to confirm you're not a bot/i.test(text) ||
     /confirm you.*re not a bot/i.test(text) ||
-    /Use --cookies/i.test(text)
+    /Use --cookies/i.test(text) ||
+    /403: Forbidden/i.test(text) ||
+    /HTTP Error 403/i.test(text) ||
+    /Forbidden/i.test(text) ||
+    /bot/i.test(text) ||
+    /blocked/i.test(text)
   ) {
     return {
       type: 'BOT_DETECTION',
       message:
-        "YouTube bot check detected (Sign in to confirm you're not a bot). Please upload the video file directly (MP4/MOV) for instant 1080p FHD processing with authentic Urdu subtitles!",
+        "YouTube bot check detected (Sign in to confirm you're not a bot / HTTP 403). Please upload the video file directly (MP4/MOV) for instant 1080p FHD processing with authentic Urdu subtitles!",
       status: 422,
     };
   }
@@ -315,7 +342,8 @@ export async function downloadYouTubeVideo({
 
   const cookiesFile = allowCookies ? getAvailableCookiesFile() : null;
 
-  // Base arguments: Multi-client extraction (iOS/Android/Web) avoids YouTube's web bot detection
+  // Base arguments: Desktop web client with 1080p max resolution and pure video+audio merging
+  // Subtitles are handled non-fatally below to prevent YouTube's timedtext HTTP 429 from aborting video downloads.
   const baseArgs = [
     url,
     '-o',
@@ -328,8 +356,6 @@ export async function downloadYouTubeVideo({
     '--no-warnings',
     '--max-filesize',
     '500M',
-    '--extractor-args',
-    'youtube:player_client=ios,android,web',
   ];
 
   // Provide Node.js runtime to yt-dlp to decipher YouTube JS challenges
@@ -344,101 +370,30 @@ export async function downloadYouTubeVideo({
 
   let lastError = null;
 
-  // Strategy 1: Multi-client iOS/Android/Web extractor (Bypasses desktop web bot check)
+  // Strategy 1: Clean desktop web client (Standard public videos, solved via Node JS runtime)
   try {
     await runYtDlpProcess(ytDlpPath, baseArgs, resolvedTargetPath, timeoutMs);
   } catch (cleanErr) {
     lastError = cleanErr;
     console.warn(
-      'Multi-client download attempt failed, evaluating fallbacks:',
+      'Clean web download attempt failed, evaluating fallbacks:',
       cleanErr.message
     );
 
-    // Strategy 2: Android + Mobile Web extractor client fallback
-    try {
-      const androidArgs = [
-        url,
-        '-o',
-        resolvedTargetPath,
-        '-f',
-        'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
-        '--merge-output-format',
-        'mp4',
-        '--no-playlist',
-        '--no-warnings',
-        '--max-filesize',
-        '500M',
-        '--extractor-args',
-        'youtube:player_client=android,mweb',
-      ];
-      if (nodePath) androidArgs.push('--js-runtimes', `node:${nodePath}`);
-      if (ffmpegPath && fs.existsSync(ffmpegPath)) {
-        androidArgs.push('--ffmpeg-location', ffmpegPath);
-      }
-      await runYtDlpProcess(
-        ytDlpPath,
-        androidArgs,
-        resolvedTargetPath,
-        timeoutMs
-      );
-      lastError = null;
-    } catch (androidErr) {
-      lastError = androidErr;
-      console.warn(
-        'Android client fallback attempt failed:',
-        androidErr.message
-      );
-
-      // Strategy 3: Single combined stream fallback (format 18 / 22 / best single file)
+    // Strategy 2: If clean web failed and verified user-uploaded cookies exist, retry with cookies
+    if (cookiesFile) {
       try {
-        const streamFallbackArgs = [
-          url,
-          '-o',
-          resolvedTargetPath,
-          '-f',
-          'b/best[height<=1080]/best',
-          '--no-playlist',
-          '--no-warnings',
-          '--max-filesize',
-          '500M',
-          '--extractor-args',
-          'youtube:player_client=ios,android',
-        ];
-        if (nodePath)
-          streamFallbackArgs.push('--js-runtimes', `node:${nodePath}`);
-        if (ffmpegPath && fs.existsSync(ffmpegPath)) {
-          streamFallbackArgs.push('--ffmpeg-location', ffmpegPath);
-        }
+        const argsWithCookies = [...baseArgs, '--cookies', cookiesFile];
         await runYtDlpProcess(
           ytDlpPath,
-          streamFallbackArgs,
+          argsWithCookies,
           resolvedTargetPath,
           timeoutMs
         );
-        lastError = null;
-      } catch (streamErr) {
-        lastError = streamErr;
-        console.warn(
-          'Single stream fallback attempt failed:',
-          streamErr.message
-        );
-
-        // Strategy 4: If verified cookies exist, retry with cookies
-        if (cookiesFile) {
-          try {
-            const argsWithCookies = [...baseArgs, '--cookies', cookiesFile];
-            await runYtDlpProcess(
-              ytDlpPath,
-              argsWithCookies,
-              resolvedTargetPath,
-              timeoutMs
-            );
-            lastError = null;
-          } catch (cookieErr) {
-            lastError = cookieErr;
-            console.warn('Cookie attempt failed:', cookieErr.message);
-          }
-        }
+        lastError = null; // Succeeded with cookies
+      } catch (cookieErr) {
+        lastError = cookieErr;
+        console.warn('Cookie attempt failed:', cookieErr.message);
       }
     }
   }
