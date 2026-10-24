@@ -42,9 +42,19 @@ Welcome to the **HAZWOPER Useful Tools** project. This document serves as the ca
 - **Event Listeners**: Keyboard shortcuts (`Space`, `KeyC`) are bound once on mount using function refs to avoid re-binding on every animation frame.
 
 ### E. Speech Recognition & Subtitle Engine
-- **Urdu Native Recognition**: In `job-queue-service.js` and `transcription-service.js`, Whisper base is forced with `language: 'ur'`, `task: 'transcribe'`.
+- **Opt-In Subtitle Generation**: Subtitles are OFF by default during video ingest and short splitting. Whisper ONNX transcription runs strictly on-demand per short when the user clicks "Generate Urdu & Roman Subtitles".
+- **Urdu Native Recognition**: In `job-queue-service.js`, `sync-captions`, and `transcription-service.js`, Whisper base is forced with `language: 'ur'`, `task: 'transcribe'`.
 - **AudioContext Elimination**: Node.js environments lack Web Audio `AudioContext`. In Node.js, `loadAudioToFloat32Array` extracts single-channel 16kHz PCM audio buffers without depending on browser audio APIs.
 - **Dual Subtitles**: Timed subtitles produce authentic Urdu Nastaliq (`Kumail` font) and phonetically accurate Roman Urdu (`Rockybilly` font) without English machine translation.
+
+### F. Islamic B-Roll Studio & Drawer Architecture
+- **80% Left Sidebar (Zero Centered Popups)**: B-Roll discovery renders as an 80% width Left Sidebar Drawer with an integrated 9:16 portrait preview workspace inside the same drawer.
+- **Strictly Islamic Filtering**: `ISLAMIC_STRICT_REGEX` and `NON_ISLAMIC_REJECT_REGEX` whitelist Makkah, Madinah, Kaaba, Mosques, Calligraphy, and Quran while rejecting random global videos (e.g. German mountain lists).
+- **Duration Matching**: Videos comparing $\le 12\text{s}$ against target short duration display a `⏱️ Matches Short` badge for seamless visual pacing.
+
+### G. Live Generation Stopwatch & ETA Engine
+- **Real-Time Stopwatch & ETA**: Ticker interval updates elapsed time (`mm:ss`) and estimated remaining time based on input video length (`Math.round(duration * 0.25 + 5)`s).
+- **Completion Benchmark**: Upon generation, total elapsed duration is calculated and displayed across the gallery header and floating bottom queue dock.
 
 ---
 

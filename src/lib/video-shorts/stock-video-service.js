@@ -14,91 +14,15 @@ import { CURATED_ISLAMIC_VIDEOS } from './curated-b-roll';
 
 export { CURATED_ISLAMIC_VIDEOS };
 
+const ISLAMIC_STRICT_REGEX =
+  /(makkah|mecca|kaaba|ka'aba|tawaf|hajj|umrah|haram|madinah|medina|nabawi|green dome|roza|prophet|rawdah|quran|koran|mosque|masjid|minaret|adhan|azan|islamic|islam|namaz|salah|sujood|dua|quba|arafat|calligraphy|sunset|desert|stars|night sky|celestial)/i;
+
+const NON_ISLAMIC_REJECT_REGEX =
+  /(visualisierung|liste der berge|sachsen|germany|deutschland|bicycle|car-detection|sintel|flower\.mp4|election|polit|party|war |military|covid|person-bicycle)/i;
+
 // In-memory LRU-style cache for fast repeated stock searches
 const STOCK_SEARCH_CACHE = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-
-export const ISLAMIC_STRICT_KEYWORDS = [
-  'makkah',
-  'mecca',
-  'kaaba',
-  "ka'bah",
-  'madinah',
-  'medina',
-  'nabawi',
-  'masjid',
-  'mosque',
-  'quran',
-  'koran',
-  'tawaf',
-  'hajj',
-  'umrah',
-  'adhan',
-  'azan',
-  'rawdah',
-  'quba',
-  'arafat',
-  'mina',
-  'muzdalifah',
-  'ramadan',
-  'eid',
-  'islam',
-  'islamic',
-  'naat',
-  'nasheed',
-  'calligraphy',
-  'arabic calligraphy',
-  'muslim',
-  'sujood',
-  'salah',
-  'namaz',
-  'dua',
-  'supplication',
-  'tasbih',
-  'minaret',
-  'dome',
-  'roza e rasool',
-  'haram',
-  'prophet',
-  'durood',
-  'kiswah',
-  'ihram',
-  'bismillah',
-];
-
-export const NON_ISLAMIC_BLACKLIST_KEYWORDS = [
-  'dominanz',
-  'berge',
-  'bicycle',
-  'car-detection',
-  'trailer',
-  'sintel',
-  'flower',
-  'germany',
-  'deutschland',
-  'christian',
-  'church',
-  'cathedral',
-  'temple',
-  'buddha',
-  'hindu',
-  'baseball',
-  'football',
-  'gaming',
-  'palace',
-];
-
-export function isStrictlyIslamic(video) {
-  if (!video) return false;
-  const combined =
-    `${video.title || ''} ${(video.tags || []).join(' ')} ${video.author || ''} ${video.category || ''}`.toLowerCase();
-
-  for (const bad of NON_ISLAMIC_BLACKLIST_KEYWORDS) {
-    if (combined.includes(bad)) return false;
-  }
-
-  return ISLAMIC_STRICT_KEYWORDS.some((k) => combined.includes(k));
-}
 
 /**
  * Searches Islamic stock videos with query filtering, provider selection, and pagination.
@@ -205,9 +129,7 @@ export async function searchIslamicStockVideos({
   // 3. Dynamic Wikimedia Commons Open Search (No API Key Required)
   if (provider === 'all' || provider === 'wikimedia') {
     try {
-      const qText =
-        query && query !== 'all' ? query : 'Kaaba OR Madinah OR Masjid';
-      const wikiQuery = `(${qText}) filetype:video`;
+      const wikiQuery = `${query || 'islamic'} filetype:video`;
       const wikiRes = await fetch(
         `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(wikiQuery)}&gsrlimit=${Math.min(limit, 8)}&prop=imageinfo&iiprop=url|size|mime|extmetadata&origin=*`,
         {
@@ -228,11 +150,19 @@ export async function searchIslamicStockVideos({
         const wikiVideos = pages
           .filter((p) => {
             const ii = p.imageinfo?.[0];
+            const title = (p.title || '').toLowerCase();
+            if (
+              !ii?.url ||
+              (!ii.mime?.startsWith('video/') &&
+                !ii.url.endsWith('.webm') &&
+                !ii.url.endsWith('.mp4'))
+            ) {
+              return false;
+            }
+            if (NON_ISLAMIC_REJECT_REGEX.test(title)) return false;
             return (
-              ii?.url &&
-              (ii.mime?.startsWith('video/') ||
-                ii.url.endsWith('.webm') ||
-                ii.url.endsWith('.mp4'))
+              ISLAMIC_STRICT_REGEX.test(title) ||
+              ISLAMIC_STRICT_REGEX.test(query)
             );
           })
           .map((p) => {
@@ -253,10 +183,10 @@ export async function searchIslamicStockVideos({
             return {
               id: `wikimedia-${p.pageid || Math.abs(p.title.split('').reduce((a, b) => (a << 5) - a + b.charCodeAt(0), 0))}`,
               title: cleanTitle,
-              tags: ['wikimedia', query, 'islamic', 'makkah', 'madinah'],
+              tags: ['wikimedia', query, 'creative commons'],
               provider: 'Wikimedia Commons',
               author,
-              duration: ii.duration ? Math.round(ii.duration) : 18.0,
+              duration: 18.0,
               resolution: `${ii.width || 1080}x${ii.height || 1920}`,
               aspectRatio: '9:16',
               thumbnailUrl:
@@ -278,10 +208,15 @@ export async function searchIslamicStockVideos({
     }
   }
 
-  // 4. Strict Islamic Filter: Ensure ONLY Islamic videos are returned
-  results = results.filter(isStrictlyIslamic);
+  // 4. Strictly filter out any non-Islamic results and blacklist items
+  results = results.filter((item) => {
+    const combined =
+      `${item.title} ${(item.tags || []).join(' ')} ${item.author || ''} ${item.category || ''}`.toLowerCase();
+    if (NON_ISLAMIC_REJECT_REGEX.test(combined)) return false;
+    return ISLAMIC_STRICT_REGEX.test(combined);
+  });
 
-  // 4. Filter by search query
+  // 5. Filter by search query
   if (
     normalizedQuery &&
     normalizedQuery !== 'all' &&
@@ -430,8 +365,7 @@ export async function importStockVideoToMediaHub(stockVideo) {
 }
 
 /**
- * Bulk imports multiple selected stock videos into Media Hub concurrently using Promise.allSettled
- * Eliminates sequential awaiting for high-throughput parallel downloads and ingestion.
+ * Bulk imports multiple selected stock videos into Media Hub
  */
 export async function importMultipleStockVideos(stockVideos = []) {
   const results = {
@@ -440,28 +374,14 @@ export async function importMultipleStockVideos(stockVideos = []) {
     failed: [],
   };
 
-  if (!Array.isArray(stockVideos) || stockVideos.length === 0) {
-    return results;
-  }
-
-  const settled = await Promise.allSettled(
-    stockVideos.map(async (video) => {
+  for (const video of stockVideos) {
+    try {
       const item = await importStockVideoToMediaHub(video);
-      return { id: video?.id, item };
-    })
-  );
-
-  settled.forEach((res, index) => {
-    const video = stockVideos[index];
-    if (res.status === 'fulfilled') {
-      results.saved.push(res.value);
-    } else {
-      results.failed.push({
-        id: video?.id,
-        error: res.reason?.message || 'Import failed',
-      });
+      results.saved.push({ id: video.id, item });
+    } catch (err) {
+      results.failed.push({ id: video.id, error: err.message });
     }
-  });
+  }
 
   return results;
 }

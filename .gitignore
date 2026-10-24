@@ -91,3 +91,5 @@ old_docx_processor*.js
 
 cookies.txt
 *cookies*.txt
+*.cookies
+env_cookies.txt

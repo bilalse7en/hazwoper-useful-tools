@@ -161,6 +161,7 @@ export async function POST(request) {
     const tempTargetPath = path.join(tempDir, `${videoId}.mp4`);
 
     let dlResult = null;
+    const downloadStartTime = Date.now();
     try {
       dlResult = await downloadYouTubeVideo({
         url,
@@ -168,13 +169,24 @@ export async function POST(request) {
         subtitleDir: tempDir,
         timeoutMs: 180000,
       });
+      const elapsed = Date.now() - downloadStartTime;
+      console.log(
+        `[ingest] videoId=${videoId} download completed in ${elapsed}ms`
+      );
     } catch (dlErr) {
+      const elapsed = Date.now() - downloadStartTime;
+      console.warn(
+        `[ingest] videoId=${videoId} download failed after ${elapsed}ms: ${dlErr.message}`
+      );
       return NextResponse.json(
         {
           success: false,
           error: dlErr.message || 'YouTube download failed.',
-          errorType: dlErr.type,
+          errorType: dlErr.type || 'DOWNLOAD_FAILED',
+          videoId,
+          url,
           metadata,
+          suggestedAction: 'upload_direct',
         },
         { status: dlErr.status || 422 }
       );
@@ -191,7 +203,10 @@ export async function POST(request) {
           error:
             "YouTube blocked automated fetch. You can drop the video file directly into 'Upload Video' for instant 1080p FHD processing with authentic Urdu subtitles!",
           errorType: 'BOT_DETECTION',
+          videoId,
+          url,
           metadata,
+          suggestedAction: 'upload_direct',
         },
         { status: 422 }
       );
@@ -223,7 +238,7 @@ export async function POST(request) {
       resolution: resolvedResolution,
     });
 
-    // Extract existing authentic Urdu subtitles if YouTube provided them
+    // Check for auto-extracted YouTube subtitle or transcribe from audio
     const subPath = dlResult.subtitlePath || findSubtitleFile(tempDir, videoId);
     let transcript = null;
     let extractedCaptions = [];
@@ -241,7 +256,7 @@ export async function POST(request) {
       }
     }
 
-    // Do NOT transcribe during initial ingest to keep ingestion instant
+    // Subtitles are opt-in and generated on-demand per short, not auto-generated on ingest.
     mediaItem.captions = extractedCaptions;
 
     // Clean up temporary download file

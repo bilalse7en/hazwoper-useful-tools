@@ -243,7 +243,7 @@ export function VideoInputSection({
             </div>
           </div>
 
-          {/* Unified Ingestion Container */}
+          {/* Unified Klap-Style Ingestion Container */}
           <div className="space-y-5">
             {/* Direct YouTube Link Input (1-Click Primary Action) */}
             <form onSubmit={handleUrlSubmit} className="space-y-3">
@@ -417,7 +417,7 @@ export function VideoInputSection({
             </div>
           </div>
 
-          {/* 3-Phase AI Loading Screen */}
+          {/* 3-Phase Klap Loading Screen */}
           {isProcessing && (
             <div className="p-6 rounded-3xl border border-primary/30 bg-primary/5 space-y-5 animate-in fade-in">
               <div className="flex items-center justify-between">
@@ -427,7 +427,7 @@ export function VideoInputSection({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-foreground">
-                      AI Shorts Engine Active
+                      Klap AI Shorts Engine Active
                     </h4>
                     <p className="text-xs text-muted-foreground">
                       {processingStatus ||

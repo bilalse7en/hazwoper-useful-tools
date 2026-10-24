@@ -301,7 +301,8 @@ export const DEFAULT_STUDIO_SETTINGS = {
   openingDuration: 1.5, // 0, 1, 2, or 3 seconds
   channelLogoUrl: null,
   reciterName: '',
-  enableCaptions: true,
+  enableCaptions: false,
+  autoSubtitles: false,
   captionMode: 'dual-urdu-roman', // Both authentic Urdu script and Roman Urdu subtitles by default
   captionLanguage: 'urdu',
   transliterationStyle: 'conversational',

@@ -19,8 +19,6 @@ export async function POST(request) {
     let referenceLyrics = '';
     let videoTitle = '';
     let language = 'ur';
-    let startTime = null;
-    let duration = null;
 
     // Branch A: Multipart form upload (Blob/File from browser)
     if (contentType.includes('multipart/form-data')) {
@@ -29,8 +27,6 @@ export async function POST(request) {
       referenceLyrics = formData.get('referenceLyrics') || '';
       videoTitle = formData.get('videoTitle') || '';
       language = formData.get('language') || 'ur';
-      startTime = formData.get('startTime') || null;
-      duration = formData.get('duration') || null;
 
       if (!videoFile || typeof videoFile === 'string') {
         return NextResponse.json(
@@ -62,14 +58,10 @@ export async function POST(request) {
         referenceLyrics: lyrics,
         videoTitle: title,
         language: lang,
-        startTime: sTime,
-        duration: dur,
       } = body;
       referenceLyrics = lyrics || '';
       videoTitle = title || '';
       language = lang || 'ur';
-      startTime = sTime || null;
-      duration = dur || null;
 
       if (localPath && fs.existsSync(localPath)) {
         targetPath = localPath;
@@ -118,8 +110,6 @@ export async function POST(request) {
       language,
       referenceLyrics,
       videoTitle,
-      startTime: startTime ? parseFloat(startTime) : null,
-      duration: duration ? parseFloat(duration) : null,
     });
 
     return NextResponse.json({

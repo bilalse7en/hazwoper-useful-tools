@@ -99,10 +99,15 @@ const navGroups = [
         isParent: true,
         subItems: [
           {
+            id: 'short-generator-2',
+            label: 'Short Generator 2.0 (AI Cloud)',
+            icon: Sparkles,
+            badge: 'v2.0',
+          },
+          {
             id: 'ai-video-shorts',
-            label: 'AI Video to Shorts',
+            label: 'AI Video to Shorts (Studio)',
             icon: Scissors,
-            badge: 'NEW',
           },
           {
             id: 'youtube-downloader',

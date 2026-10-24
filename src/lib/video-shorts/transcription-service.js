@@ -229,9 +229,6 @@ export async function transcribeUrduVideo({
   referenceLyrics = '',
   videoTitle = '',
   onProgress = null,
-  startTime = null,
-  duration = null,
-  maxDuration = 240, // 4-minute cap prevents 30-minute CPU lockups on long source videos
 }) {
   let wavPath = audioPath;
   let shouldCleanWav = false;
@@ -239,13 +236,7 @@ export async function transcribeUrduVideo({
   try {
     if (onProgress) onProgress(15, 'Extracting 16kHz mono audio stream...');
     if (!wavPath && videoPath) {
-      const targetDuration = duration || maxDuration;
-      wavPath = await extractAudioWav(
-        videoPath,
-        null,
-        startTime,
-        targetDuration
-      );
+      wavPath = await extractAudioWav(videoPath);
       shouldCleanWav = true;
     }
 

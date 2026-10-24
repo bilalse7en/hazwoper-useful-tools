@@ -147,6 +147,14 @@ const AIVideoShorts = nextDynamic(
   { ssr: false }
 );
 
+const ShortGenerator2 = nextDynamic(
+  () =>
+    import('@/components/generators/ai-video-shorts-v2').then(
+      (m) => m.default || m.ShortGenerator2
+    ),
+  { ssr: false }
+);
+
 // Map slugs to components
 const toolComponents = {
   'ai-course-creator': AICourseCreatorGenerator,
@@ -173,6 +181,8 @@ const toolComponents = {
   'slide-generator': SlideGenerator,
   'html-design-enhancer': HtmlDesignEnhancer,
   'ai-video-shorts': AIVideoShorts,
+  'short-generator-2': ShortGenerator2,
+  'ai-video-shorts-v2': ShortGenerator2,
 };
 
 export function ToolPageClient({ toolSlug }) {

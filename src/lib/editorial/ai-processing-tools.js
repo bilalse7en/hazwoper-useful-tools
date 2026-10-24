@@ -545,4 +545,69 @@ Result: A polished tutorial short featuring synced karaoke subtitles and normali
       },
     ],
   },
+  'short-generator-2': {
+    overview: `Short Generator 2.0 is an enterprise-grade cloud AI video repurposing platform designed to transform long-form naat recitations, lectures, and YouTube videos into captivating viral shorts. Powered by official third-party cloud architectures—including OpusClip API for viral moment curation, Shotstack Edit API for distributed cloud rendering, and Whisper for authentic Urdu Nastaliq and Roman transliteration—it eliminates manual video processing and delivers Full HD 1080x1920 portrait shorts with one click.`,
+    stepByStep: `1. Input Video: Paste a public YouTube URL or upload a raw MP4 or MOV video file directly into Short Generator 2.0.
+2. Select Output Configuration: Choose 9:16 vertical portrait, target duration (30s, 45s, 60s), and your preferred caption mode (Dual Urdu + Roman, Urdu Only, or Off).
+3. Cloud AI Generation: Click 'Generate Shorts with Cloud AI'. The system dispatches the video to OpusClip AI for moment analysis and Whisper for speech transcription.
+4. Preview & B-Roll Replacement: Inspect generated shorts in the interactive 9:16 preview gallery. Optionally open the Islamic B-Roll Studio to replace visual footage with Makkah and Madinah B-roll while preserving the original recitation audio.
+5. Cloud Render & Export: Click 'Cloud Render' to export via Shotstack distributed cloud cluster or use 'Direct Download' for instant high-definition MP4 retrieval.`,
+    methodology: `Short Generator 2.0 implements an asynchronous multi-provider orchestration architecture:
+1. **Asynchronous Job Scheduling**: Submits media to cloud workers and returns an immediate durable job ID, avoiding blocking HTTP calls.
+2. **Third-Party Curation**: Connects to OpusClip API (/api/clip-projects) to analyze speech energy, scene pacing, and viral hook potential.
+3. **Phonetic Urdu Transcription**: Transcribes recitations in Urdu Nastaliq and calculates authentic Roman Urdu transliterations aligned with natural couplet pauses.
+4. **Distributed Cloud Rendering**: Leverages Shotstack Edit API to composite multi-track timelines with audio normalization, dynamic caption styles, and B-roll replacement.`,
+    examples: `Example 1: Repurposing a 20-minute Naat Recitation into 4 Viral Shorts.
+Input: A 1080p landscape video of a live naat recitation.
+Process: The cloud pipeline identifies 4 complete couplets with natural musical cadence, applies 9:16 portrait face tracking, and overlays dual Urdu and Roman captions.
+Result: 4 ready-to-publish vertical shorts rendered in crisp 1080x1920 Full HD.`,
+    additionalFaq: [
+      {
+        question:
+          'Which third-party cloud APIs are supported in Short Generator 2.0?',
+        answer:
+          'Short Generator 2.0 officially supports OpusClip API for AI moment curation, Shotstack Edit API for cloud rendering, and OpenAI/Whisper for Urdu speech recognition, with automatic local engine fallback.',
+      },
+      {
+        question:
+          'Can I use Short Generator 2.0 without configuring third-party API keys?',
+        answer:
+          'Yes. When API keys are not provided, the platform automatically switches to its high-speed local processing engine with zero interruption to your workflow.',
+      },
+      {
+        question:
+          'Does Short Generator 2.0 support authentic Urdu Nastaliq subtitles?',
+        answer:
+          'Yes. It generates authentic Urdu Nastaliq and phonetic Roman Urdu subtitles aligned to natural couplet pauses.',
+      },
+      {
+        question: 'What video resolution does Short Generator 2.0 export?',
+        answer:
+          'All vertical shorts are generated in pristine 1080x1920 Full HD resolution.',
+      },
+    ],
+  },
+  'ai-video-shorts-v2': {
+    overview: `AI Video Shorts 2.0 provides automated cloud video repurposing powered by OpusClip AI and Shotstack cloud rendering.`,
+    stepByStep: `1. Paste YouTube URL or upload video. 2. Configure aspect ratio and captions. 3. Click Generate Shorts. 4. Download 1080p MP4.`,
+    methodology: `Integrates cloud clipping, phonetic Urdu transcription, and distributed rendering into an asynchronous pipeline.`,
+    examples: `Automating 9:16 vertical shorts creation from long-form video.`,
+    additionalFaq: [
+      {
+        question: 'What video quality does Short Generator 2.0 export?',
+        answer:
+          'All videos are exported in Full HD 1080x1920 vertical resolution at 30fps.',
+      },
+      {
+        question: 'How does cloud rendering work?',
+        answer:
+          'Renders are processed via Shotstack Edit API or the bundled high-speed FFmpeg engine.',
+      },
+      {
+        question: 'Can I replace background footage with Islamic B-roll?',
+        answer:
+          'Yes, the integrated Islamic B-Roll Studio lets you apply Makkah and Madinah footage seamlessly.',
+      },
+    ],
+  },
 };

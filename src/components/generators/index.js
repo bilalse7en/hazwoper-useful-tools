@@ -19,3 +19,4 @@ export { PDFEditor } from './pdf-editor';
 export { SlideGenerator } from './slide-generator';
 export { HtmlDesignEnhancer } from './html-design-enhancer';
 export { AIVideoShorts } from './ai-video-shorts';
+export { ShortGenerator2 } from './ai-video-shorts-v2';

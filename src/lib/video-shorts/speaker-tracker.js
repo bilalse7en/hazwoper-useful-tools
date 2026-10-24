@@ -292,16 +292,12 @@ export class MultiSpeakerTracker {
     // Save previous frame for next delta comparison
     this.prevImageData = imageData;
 
-    // Anchor face and reciter strictly in the center of the video frame
-    // Prevents wandering to left or right where the face gets cut off or hidden
-    const strictCenterX = this.maxCropX / 2;
-    const maxDeviation = this.maxCropX * 0.05; // Maximum 5% subtle leeway around exact center
-    const clampedTargetX = Math.max(
-      strictCenterX - maxDeviation,
-      Math.min(strictCenterX + maxDeviation, targetX)
-    );
+    // Center face and reciter strictly in the 9:16 portrait viewport
+    // targetX calculates the exact horizontal offset so the detected speaker's face is centered:
+    // targetX = (faceX - cropWidth / 2) clamped to valid [0, maxCropX] bounds.
+    const clampedTargetX = Math.max(0, Math.min(this.maxCropX, targetX));
 
-    // Apply Exponential Moving Average (EMA) for fluid, stabilized centering
+    // Apply Exponential Moving Average (EMA) for fluid, stabilized face-centering without jitter
     this.cameraPanX =
       this.cameraPanX * (1 - this.smoothingAlpha) +
       clampedTargetX * this.smoothingAlpha;

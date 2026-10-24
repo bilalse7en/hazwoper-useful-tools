@@ -128,14 +128,8 @@ export function StudioEditor({
   const [fadeOut, setFadeOut] = useState(0.5);
   const [normalizeAudio, setNormalizeAudio] = useState(true);
 
-  // Captions State & Styling (Subtitles OFF by default; generated on-demand)
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(
-    Boolean(
-      clip.captions &&
-      clip.captions.length > 0 &&
-      clip.syncStatus === 'synchronized'
-    )
-  );
+  // Captions State & Styling (Subtitles OFF by default unless user requests them)
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [captions, setCaptions] = useState(clip.captions || []);
   const [captionMode, setCaptionMode] = useState(
     clip.captionMode || 'dual-urdu-roman'
@@ -202,8 +196,8 @@ export function StudioEditor({
         });
       }
       showSuccess(
-        'Urdu Captions Synchronized!',
-        `Aligned ${data.stats?.wordsCount || 0} words directly to Short #${clip.index || 1}'s audio.`
+        'Urdu & Roman Subtitles Generated!',
+        `Generated and aligned ${data.captions?.length || 0} subtitles directly to Short #${clip.index || 1}'s audio.`
       );
     } catch (err) {
       console.warn('Sync error:', err.message);
@@ -569,7 +563,7 @@ export function StudioEditor({
   };
 
   // Split Segment at Current Playhead (Blade Tool)
-  const handleSplitSegment = useCallback(() => {
+  const handleSplitSegment = () => {
     const activeSeg = segments[activeSegmentIndex];
     if (!activeSeg) return;
 
@@ -584,17 +578,17 @@ export function StudioEditor({
       return;
     }
 
-    const cutId = `seg-${Date.now()}`;
+    const segTimeSuffix = Math.round(currentTime * 100);
     const seg1 = {
       ...activeSeg,
-      id: `${cutId}-a`,
+      id: `${activeSeg.id || 'seg'}-split-a-${segTimeSuffix}`,
       end: currentTime,
       duration: currentTime - activeSeg.start,
     };
 
     const seg2 = {
       ...activeSeg,
-      id: `${cutId}-b`,
+      id: `${activeSeg.id || 'seg'}-split-b-${segTimeSuffix}`,
       start: currentTime,
       duration: activeSeg.end - currentTime,
     };
@@ -609,14 +603,7 @@ export function StudioEditor({
     setSegments(updated);
     pushHistory({ segments: updated, captions });
     showToast('Split segment at playhead (Blade cut executed).', 'success');
-  }, [
-    segments,
-    activeSegmentIndex,
-    currentTime,
-    pushHistory,
-    captions,
-    showToast,
-  ]);
+  };
 
   const togglePlayRef = useRef(togglePlay);
   const handleSplitSegmentRef = useRef(handleSplitSegment);
@@ -624,7 +611,7 @@ export function StudioEditor({
   useEffect(() => {
     togglePlayRef.current = togglePlay;
     handleSplitSegmentRef.current = handleSplitSegment;
-  });
+  }, [togglePlay, handleSplitSegment]);
 
   // Keyboard shortcut (Space to play/pause, C to blade split)
   useEffect(() => {
@@ -1116,27 +1103,25 @@ export function StudioEditor({
 
         {/* Right Side: Apply, Sync & Render Actions */}
         <div className="flex items-center gap-2">
-          {/* Prominent On-Demand Generate / Sync Subtitles Action */}
+          {/* Prominent Primary Sync Action */}
           <Button
             size="sm"
             variant="outline"
             onClick={handleSyncUrduCaptions}
             disabled={isSyncingCaptions}
             className="rounded-xl text-xs font-bold cursor-pointer h-9 gap-1.5 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15 shadow-xs"
-            title="Generate or sync this Short's Urdu captions directly against its audio"
+            title="Re-align this Short's Urdu captions directly against its audio"
           >
-            <Sparkles
+            <RefreshCw
               className={cn(
-                'w-3.5 h-3.5 text-amber-500',
-                isSyncingCaptions && 'animate-spin'
+                'w-3.5 h-3.5',
+                isSyncingCaptions && 'animate-spin text-primary'
               )}
             />
             <span>
               {isSyncingCaptions
-                ? 'Transcribing Speech...'
-                : captions?.length > 0
-                  ? 'Re-Sync Urdu Captions'
-                  : '✨ Generate Urdu Subtitles'}
+                ? 'Syncing...'
+                : 'SYNC URDU CAPTIONS WITH AUDIO'}
             </span>
           </Button>
 
@@ -1167,17 +1152,17 @@ export function StudioEditor({
           <Button
             size="sm"
             onClick={handleInitiateExport}
-            className="rounded-xl text-xs sm:text-sm font-black cursor-pointer h-9 sm:h-10 px-4 gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/25 transition-all ring-1 ring-emerald-400/40"
+            className="rounded-xl text-xs font-bold cursor-pointer h-9 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
           >
-            <Download className="w-4 h-4" />
-            <span>Download Short Video</span>
+            <Download className="w-3.5 h-3.5" />
+            <span>Re-render Short</span>
           </Button>
         </div>
       </div>
 
-      {/* Main Studio Workspace: Responsive 3-Column Layout */}
+      {/* Main Studio Workspace: Responsive 3-Column Layout (Klap Spaces Studio) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Column 1: Shorts Feed (3 Cols when allClips has multiple items) */}
+        {/* Column 1: Klap Spaces Shorts Feed (3 Cols when allClips has multiple items) */}
         {allClips && allClips.length > 1 && (
           <div className="lg:col-span-3 flex flex-col space-y-3">
             <Card className="p-3.5 rounded-3xl border-border/70 bg-card/90 shadow-xl space-y-3 flex-1 flex flex-col max-h-[750px]">
@@ -1326,7 +1311,7 @@ export function StudioEditor({
             </div>
           </Card>
 
-          {/* Floating Control Pill Bar directly beneath video */}
+          {/* Floating Control Pill Bar directly beneath video (Klap Style) */}
           <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-card/90 border border-border/60 shadow-md backdrop-blur-md">
             <Button
               size="sm"
@@ -1792,6 +1777,61 @@ export function StudioEditor({
             {/* TAB 3: Captions Editor */}
             {activeTab === 'captions' && (
               <div className="space-y-3 text-xs sm:text-sm flex-1 flex flex-col">
+                {/* Master Subtitle Toggle & Generation */}
+                <div className="p-3 rounded-2xl bg-card border border-border/80 space-y-2 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Languages className="w-4 h-4 text-primary" />
+                      <div>
+                        <p className="font-bold text-xs text-foreground">
+                          Subtitle Display
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {subtitlesEnabled
+                            ? 'Subtitles active on preview & export'
+                            : 'Subtitles turned off'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={subtitlesEnabled ? 'default' : 'outline'}
+                      onClick={() => setSubtitlesEnabled(!subtitlesEnabled)}
+                      className="rounded-xl text-xs h-7 px-3 font-bold cursor-pointer"
+                    >
+                      {subtitlesEnabled ? 'Enabled' : 'Disabled'}
+                    </Button>
+                  </div>
+
+                  {captions.length === 0 && (
+                    <div className="pt-2 border-t border-border/40 space-y-2">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Subtitles are off by default. Click below to generate
+                        authentic Urdu Nastaliq &amp; Roman Urdu subtitles
+                        directly from this short&apos;s audio.
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={handleSyncUrduCaptions}
+                        disabled={isSyncingCaptions}
+                        className="w-full rounded-xl text-xs font-bold gap-1.5 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-8 shadow-sm"
+                      >
+                        {isSyncingCaptions ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Transcribing Speech...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Generate Urdu &amp; Roman Subtitles</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Caption Mode Selector */}
                 <div className="space-y-1.5">
                   <Label className="font-bold flex items-center justify-between text-xs">
@@ -1920,140 +1960,111 @@ export function StudioEditor({
                     </button>
                   </div>
 
-                  {captions.length === 0 ? (
-                    <div className="p-4 rounded-2xl border border-dashed border-border/80 text-center space-y-2 bg-muted/20 my-1">
-                      <Sparkles className="w-5 h-5 text-amber-500 mx-auto" />
-                      <p className="text-xs font-bold text-foreground">
-                        No Subtitles Generated Yet
-                      </p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Generate authentic Urdu Nastaliq &amp; Roman Urdu dual
-                        subtitles directly from this Short&apos;s audio slice
-                        whenever you like.
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={handleSyncUrduCaptions}
-                        disabled={isSyncingCaptions}
-                        className="rounded-xl text-xs font-bold gap-2 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 mt-1 shadow-xs"
+                  {captions.map((cap, i) => {
+                    const isCurrent =
+                      currentTime - (segments[0]?.start || 0) >= cap.start &&
+                      currentTime - (segments[0]?.start || 0) <= cap.end;
+                    const isUrduMode = captionMode === 'urdu';
+                    const displayText = isUrduMode
+                      ? cap.textUrdu || cap.text || ''
+                      : cap.text || cap.textRoman || '';
+
+                    return (
+                      <div
+                        key={cap.id || i}
+                        onClick={() =>
+                          handleSeek((segments[0]?.start || 0) + cap.start)
+                        }
+                        className={cn(
+                          'p-2 rounded-xl border transition-all cursor-pointer space-y-1',
+                          isCurrent
+                            ? 'bg-primary/10 border-primary shadow-xs'
+                            : 'bg-muted/40 border-border/50 hover:border-border'
+                        )}
+                        title="Click to seek preview to this line"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                        <span>
-                          {isSyncingCaptions
-                            ? 'Transcribing Audio...'
-                            : 'Generate Urdu AI Subtitles'}
-                        </span>
-                      </Button>
-                    </div>
-                  ) : (
-                    captions.map((cap, i) => {
-                      const isCurrent =
-                        currentTime - (segments[0]?.start || 0) >= cap.start &&
-                        currentTime - (segments[0]?.start || 0) <= cap.end;
-                      const isUrduMode = captionMode === 'urdu';
-                      const displayText = isUrduMode
-                        ? cap.textUrdu || cap.text || ''
-                        : cap.text || cap.textRoman || '';
-
-                      return (
-                        <div
-                          key={cap.id || i}
-                          onClick={() =>
-                            handleSeek((segments[0]?.start || 0) + cap.start)
-                          }
-                          className={cn(
-                            'p-2 rounded-xl border transition-all cursor-pointer space-y-1',
-                            isCurrent
-                              ? 'bg-primary/10 border-primary shadow-xs'
-                              : 'bg-muted/40 border-border/50 hover:border-border'
-                          )}
-                          title="Click to seek preview to this line"
-                        >
-                          <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
-                            <span>
-                              {formatTimecode(cap.start)} -{' '}
-                              {formatTimecode(cap.end)}
-                            </span>
-                            <span
-                              className={cn(
-                                'font-bold',
-                                isCurrent
-                                  ? 'text-primary'
-                                  : 'text-muted-foreground'
-                              )}
-                            >
-                              #{i + 1}{' '}
-                              {cap.isVerseBoundary ? '• Verse End' : ''}
-                            </span>
-                          </div>
-                          <Input
-                            value={displayText}
-                            dir={isUrduMode ? 'rtl' : 'ltr'}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setCaptions((prev) =>
-                                prev.map((c, idx) =>
-                                  idx === i
-                                    ? {
-                                        ...c,
-                                        text: val,
-                                        textUrdu: isUrduMode ? val : c.textUrdu,
-                                        textRoman: !isUrduMode
-                                          ? val
-                                          : c.textRoman,
-                                      }
-                                    : c
-                                )
-                              );
-                              setHasUnsavedChanges(true);
-                            }}
+                        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                          <span>
+                            {formatTimecode(cap.start)} -{' '}
+                            {formatTimecode(cap.end)}
+                          </span>
+                          <span
                             className={cn(
-                              'text-xs h-7.5 bg-background/80',
-                              isUrduMode && 'font-urdu text-right'
+                              'font-bold',
+                              isCurrent
+                                ? 'text-primary'
+                                : 'text-muted-foreground'
                             )}
-                          />
-
-                          {/* Interactive Word Chips (Click word to seek directly) */}
-                          {cap.words && cap.words.length > 0 && (
-                            <div className="flex flex-wrap items-center gap-1 pt-1">
-                              {cap.words.map((w, wIdx) => {
-                                const clipElapsed =
-                                  currentTime - (segments[0]?.start || 0);
-                                const isWordActive =
-                                  clipElapsed >= w.start &&
-                                  clipElapsed <= w.end;
-                                const wordText = isUrduMode
-                                  ? w.wordUrdu || w.word
-                                  : w.wordRoman || w.word;
-
-                                return (
-                                  <span
-                                    key={wIdx}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSeek(
-                                        (segments[0]?.start || 0) + w.start
-                                      );
-                                    }}
-                                    className={cn(
-                                      'text-[10px] px-1.5 py-0.5 rounded-md cursor-pointer transition-all',
-                                      isWordActive
-                                        ? 'bg-amber-400 text-black font-black scale-105 shadow-xs'
-                                        : 'bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground'
-                                    )}
-                                    title={`Seek to ${w.start.toFixed(2)}s`}
-                                  >
-                                    {wordText}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
+                          >
+                            #{i + 1} {cap.isVerseBoundary ? '• Verse End' : ''}
+                          </span>
                         </div>
-                      );
-                    })
-                  )}
+                        <Input
+                          value={displayText}
+                          dir={isUrduMode ? 'rtl' : 'ltr'}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCaptions((prev) =>
+                              prev.map((c, idx) =>
+                                idx === i
+                                  ? {
+                                      ...c,
+                                      text: val,
+                                      textUrdu: isUrduMode ? val : c.textUrdu,
+                                      textRoman: !isUrduMode
+                                        ? val
+                                        : c.textRoman,
+                                    }
+                                  : c
+                              )
+                            );
+                            setHasUnsavedChanges(true);
+                          }}
+                          className={cn(
+                            'text-xs h-7.5 bg-background/80',
+                            isUrduMode && 'font-urdu text-right'
+                          )}
+                        />
+
+                        {/* Interactive Word Chips (Click word to seek directly) */}
+                        {cap.words && cap.words.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 pt-1">
+                            {cap.words.map((w, wIdx) => {
+                              const clipElapsed =
+                                currentTime - (segments[0]?.start || 0);
+                              const isWordActive =
+                                clipElapsed >= w.start && clipElapsed <= w.end;
+                              const wordText = isUrduMode
+                                ? w.wordUrdu || w.word
+                                : w.wordRoman || w.word;
+
+                              return (
+                                <span
+                                  key={wIdx}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSeek(
+                                      (segments[0]?.start || 0) + w.start
+                                    );
+                                  }}
+                                  className={cn(
+                                    'text-[10px] px-1.5 py-0.5 rounded-md cursor-pointer transition-all',
+                                    isWordActive
+                                      ? 'bg-amber-400 text-black font-black scale-105 shadow-xs'
+                                      : 'bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground'
+                                  )}
+                                  title={`Seek to ${w.start.toFixed(2)}s`}
+                                >
+                                  {wordText}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
 
                   {/* Add Verse / Line Action */}
                   <div className="pt-2">
@@ -2328,17 +2339,6 @@ export function StudioEditor({
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handleInitiateExport}
-              className="rounded-xl text-xs font-bold cursor-pointer h-8 px-3 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download Short</span>
-            </Button>
-
-            <div className="h-4 w-px bg-border/60 mx-1" />
-
             {/* Subtitle standalone export buttons */}
             <Button
               size="sm"
@@ -2458,12 +2458,11 @@ export function StudioEditor({
         isOpen={isStockModalOpen}
         onClose={() => setIsStockModalOpen(false)}
         onAddToTimeline={handleAddStockToTimeline}
+        targetDuration={currentClip?.duration || 35}
+        shortTitle={currentClip?.title || 'Active Short'}
         onImportToMediaBin={(importedItem) => {
           setMediaBin((prev) => [...prev, importedItem]);
         }}
-        targetDuration={
-          segments[activeSegmentIndex]?.duration || currentClip?.duration || 30
-        }
       />
 
       {/* Thumbnail Editor Modal with Kumail Urdu Font */}

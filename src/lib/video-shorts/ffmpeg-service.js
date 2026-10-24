@@ -67,13 +67,27 @@ export function buildFFmpegArgs({
 
   const hasBroll = Boolean(brollPath && fs.existsSync(brollPath));
   if (hasBroll) {
-    // Input 1: Islamic B-roll visual (seamlessly looped to match short duration)
-    args.push('-stream_loop', '-1', '-i', brollPath);
+    // Input 1: Islamic B-roll visual (seamlessly looped to match short duration, strictly capped at clip duration)
+    args.push(
+      '-stream_loop',
+      '-1',
+      '-t',
+      String(Math.max(1, duration)),
+      '-i',
+      brollPath
+    );
   }
 
   // Background music input if provided
   if (bgmPath && fs.existsSync(bgmPath)) {
-    args.push('-stream_loop', '-1', '-i', bgmPath);
+    args.push(
+      '-stream_loop',
+      '-1',
+      '-t',
+      String(Math.max(1, duration)),
+      '-i',
+      bgmPath
+    );
   }
 
   // Video Filter Construction
@@ -186,22 +200,25 @@ export function buildFFmpegArgs({
     }
   }
 
-  // High-Performance Compressed Encoding (1080x1920 vertical, veryfast preset for 5-8x render speed, CRF 22 for lightweight mobile MP4)
+  // Strictly enforce duration limit & shortest stream on output to guarantee process terminates
+  args.push('-t', String(Math.max(1, duration)));
+  args.push('-shortest');
+
+  // Codecs & Ultra-Fast High-Quality 1080x1920 FHD Encoding
+  // preset veryfast provides 10x encoding speedup while CRF 18 preserves pristine visual quality
   args.push(
     '-c:v',
     'libx264',
     '-preset',
     'veryfast',
     '-crf',
-    '22',
+    '18',
     '-pix_fmt',
     'yuv420p',
-    '-threads',
-    '0',
     '-maxrate',
-    '8M',
-    '-bufsize',
     '16M',
+    '-bufsize',
+    '32M',
     '-movflags',
     '+faststart'
   );
@@ -211,11 +228,12 @@ export function buildFFmpegArgs({
 }
 
 /**
- * Executes FFmpeg render job with real-time progress callbacks and detailed stderr error capture.
+ * Executes FFmpeg render job with real-time progress callbacks, strict timeout, and detailed stderr error capture.
  */
 export function runFFmpegJob({
   args,
   duration,
+  timeoutMs = 60000,
   onProgress,
   onComplete,
   onError,
@@ -223,6 +241,19 @@ export function runFFmpegJob({
   const binary = getFFmpegBinary();
   const proc = spawn(binary, args);
   let stderrBuffer = '';
+
+  const timer = setTimeout(() => {
+    try {
+      proc.kill('SIGKILL');
+    } catch (_) {}
+    if (onError) {
+      onError(
+        new Error(
+          `FFmpeg render timed out after ${Math.round(timeoutMs / 1000)} seconds.`
+        )
+      );
+    }
+  }, timeoutMs);
 
   proc.stderr.on('data', (chunk) => {
     const text = chunk.toString();
@@ -244,6 +275,7 @@ export function runFFmpegJob({
   });
 
   proc.on('close', (code) => {
+    clearTimeout(timer);
     if (code === 0) {
       if (onProgress) onProgress(100, duration);
       if (onComplete) onComplete();
@@ -259,6 +291,7 @@ export function runFFmpegJob({
   });
 
   proc.on('error', (err) => {
+    clearTimeout(timer);
     if (onError) onError(err);
   });
 

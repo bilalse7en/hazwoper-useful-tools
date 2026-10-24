@@ -40,7 +40,7 @@ function computeFrameDelta(prevData, currData) {
 export async function detectSceneCuts(
   videoSource,
   duration,
-  sampleInterval = 1.0,
+  sampleInterval = 0.5,
   threshold = 27.0
 ) {
   if (!duration || duration <= 0) return [];
@@ -48,29 +48,10 @@ export async function detectSceneCuts(
   return new Promise((resolve) => {
     let video;
     let ownVideo = false;
-    let isDone = false;
-
-    // Safety timeout to prevent any video seek hang
-    const timer = setTimeout(() => {
-      finish();
-    }, 4000);
-
-    const finish = () => {
-      if (isDone) return;
-      isDone = true;
-      clearTimeout(timer);
-      if (ownVideo && video && video.src) {
-        try {
-          video.pause();
-          video.removeAttribute('src');
-          video.load();
-        } catch (_) {}
-      }
-      resolve(sceneCuts);
-    };
 
     if (typeof videoSource === 'string') {
       video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
       video.muted = true;
       video.src = videoSource;
       ownVideo = true;
@@ -87,12 +68,15 @@ export async function detectSceneCuts(
     const sceneCuts = [];
     let prevImageData = null;
     let currentTime = 0;
-    // Cap at max 25 samples across the duration for high-speed responsiveness (< 1.5s total)
-    const step = Math.max(sampleInterval, duration / 25);
 
     const sampleNextFrame = () => {
-      if (currentTime >= duration || isDone) {
-        finish();
+      if (currentTime >= duration) {
+        if (ownVideo && video.src) {
+          video.pause();
+          video.removeAttribute('src');
+          video.load();
+        }
+        resolve(sceneCuts);
         return;
       }
 
@@ -100,7 +84,6 @@ export async function detectSceneCuts(
     };
 
     video.onseeked = () => {
-      if (isDone) return;
       try {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const currImageData = ctx.getImageData(
@@ -126,12 +109,12 @@ export async function detectSceneCuts(
         // Continue if a single frame fails
       }
 
-      currentTime += step;
+      currentTime += sampleInterval;
       sampleNextFrame();
     };
 
     video.onerror = () => {
-      finish();
+      resolve(sceneCuts);
     };
 
     video.onloadeddata = () => {

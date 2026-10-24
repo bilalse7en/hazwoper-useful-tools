@@ -84,6 +84,41 @@ function ClipCardPlayer({
   );
   const [isSyncing, setIsSyncing] = useState(false);
   const [activeSpeakerTag, setActiveSpeakerTag] = useState(null);
+  const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
+
+  const handleGenerateSubtitles = async () => {
+    setIsGeneratingSubtitles(true);
+    try {
+      const res = await fetch('/api/video-shorts/sync-captions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clipId: clip.id,
+          sourceStartSeconds: clip.start,
+          sourceEndSeconds: clip.end,
+          videoUrl: videoStreamUrl,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate subtitles.');
+      }
+      const caps = data.captions || [];
+      setClipCaptions(caps);
+      setSyncStatus('synchronized');
+      if (onUpdateCaptions) {
+        onUpdateCaptions(clip.id, caps);
+      }
+      showSuccess(
+        'Urdu & Roman Subtitles Generated!',
+        `Generated ${caps.length} authentic subtitles for Short #${clip.index || 1}.`
+      );
+    } catch (err) {
+      console.warn('Subtitle generation error:', err.message);
+    } finally {
+      setIsGeneratingSubtitles(false);
+    }
+  };
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -265,8 +300,8 @@ function ClipCardPlayer({
     if (!video || !canvas || video.readyState < 2) return;
 
     const ctx = canvas.getContext('2d');
-    const cw = 405; // 9:16 target width
-    const ch = 720; // 9:16 target height
+    const cw = 1080; // True 1080p FHD 9:16 target width
+    const ch = 1920; // True 1080p FHD 9:16 target height
 
     if (canvas.width !== cw || canvas.height !== ch) {
       canvas.width = cw;
@@ -333,6 +368,10 @@ function ClipCardPlayer({
             audioEnergy: isSpeaking ? 0.8 : 0.2,
           });
 
+          if (trackerResult?.cropX !== undefined) {
+            cameraPanXRef.current = trackerResult.cropX;
+          }
+
           if (
             trackerResult?.activeSpeakerId &&
             trackerResult.activeSpeakerId !== activeSpeakerTag
@@ -345,10 +384,13 @@ function ClipCardPlayer({
       }
     }
 
-    // Lock face and speaker strictly in the exact center of 9:16 portrait video
-    // Prevents face from wandering to left or right or hiding from video
-    const centerX = Math.round((vw - cropW) / 2);
-    const safeCX = Math.max(0, Math.min(maxCX, centerX));
+    // Lock face and speaker strictly in the center of 9:16 portrait video
+    // Dynamically uses cameraPanXRef from computer vision face tracking, or centers horizontally
+    const detectedCropX =
+      cameraPanXRef.current !== null
+        ? cameraPanXRef.current
+        : Math.round((vw - cropW) / 2);
+    const safeCX = Math.max(0, Math.min(maxCX, detectedCropX));
     const zoom = isSpeaking ? 1.04 : 1.0;
 
     const zoomedW = cropW / zoom;
@@ -356,14 +398,14 @@ function ClipCardPlayer({
     const zoomedX = safeCX + (cropW - zoomedW) / 2;
     const zoomedY = (vh - zoomedH) / 2;
 
-    // 3. Draw Sharp 9:16 Portrait Active Speaker Crop
+    // 3. Draw Sharp 9:16 Portrait Active Speaker Crop at Full 1080x1920 HD
     ctx.drawImage(video, zoomedX, zoomedY, zoomedW, zoomedH, 0, 0, cw, ch);
 
     // 5. Render dynamic viral subtitles with active word highlight (Dual Stacked / Urdu Nastaliq / Roman Urdu)
     renderCanvasCaptions(ctx, cw, ch, elapsed, clipCaptions, {
       captionMode,
       captionStyle: 'beast-bold',
-      captionFontSize: 24,
+      captionFontSize: 52,
       captionPosition: 76,
       bgOpacity: 0.72,
     });
@@ -838,38 +880,74 @@ function ClipCardPlayer({
               />
             </div>
           )}
+
+          {(!clipCaptions || clipCaptions.length === 0) && (
+            <div className="pt-1">
+              <div className="p-3 rounded-2xl bg-muted/40 border border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-xs">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                    <Languages className="w-3.5 h-3.5 text-primary" />
+                    <span>Subtitles: Off</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Generate authentic Urdu Nastaliq &amp; Roman Urdu subtitles
+                    for this short.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleGenerateSubtitles}
+                  disabled={isGeneratingSubtitles}
+                  className="w-full sm:w-auto rounded-xl text-xs font-bold gap-1.5 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 h-8 shadow-xs"
+                >
+                  {isGeneratingSubtitles ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Transcribing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Generate Subtitles</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
         <div className="space-y-2 pt-2 border-t border-border/40">
-          {/* Prominent On-Demand Generate Subtitles Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSyncSubtitles}
-            disabled={isSyncing}
-            className={cn(
-              'w-full text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 h-8.5 transition-all shadow-xs',
-              clipCaptions?.length > 0 && syncStatus === 'synchronized'
-                ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15'
-                : 'border-primary/50 text-primary bg-primary/5 hover:bg-primary/15 font-black'
-            )}
-            title="Generate and align authentic Urdu Nastaliq & Roman Urdu subtitles directly from this short's audio slice"
-          >
-            <Sparkles
+          {clipCaptions && clipCaptions.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncSubtitles}
+              disabled={isSyncing}
               className={cn(
-                'w-3.5 h-3.5 shrink-0 text-amber-500',
-                isSyncing && 'animate-spin'
+                'w-full text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 h-8.5 transition-all shadow-xs',
+                syncStatus === 'synchronized'
+                  ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15'
+                  : 'border-primary/50 text-primary bg-primary/5 hover:bg-primary/15 font-black'
               )}
-            />
-            <span>
-              {isSyncing
-                ? 'Transcribing Speech with AI...'
-                : clipCaptions?.length > 0
-                  ? '✓ Urdu Subtitles Synchronized'
-                  : '✨ Generate Urdu AI Subtitles'}
-            </span>
-          </Button>
+              title="Extract this short's exact audio slice and re-align Urdu captions"
+            >
+              <RefreshCw
+                className={cn(
+                  'w-3.5 h-3.5 shrink-0',
+                  isSyncing && 'animate-spin text-primary'
+                )}
+              />
+              <span>
+                {isSyncing
+                  ? 'Aligning Urdu Speech & Audio...'
+                  : syncStatus === 'synchronized'
+                    ? '✓ Urdu Captions Synchronized with Audio'
+                    : 'SYNC URDU CAPTIONS WITH AUDIO'}
+              </span>
+            </Button>
+          )}
 
           <Button
             onClick={() => {
@@ -1139,7 +1217,7 @@ export function ClipsGallery({
   videoSource,
   clips = [],
   thumbnailCandidates = [],
-  generationMetrics = null,
+  generationDuration = null,
   onOpenEditor,
   onOpenFullVideo,
   onDownloadClip,
@@ -1236,16 +1314,23 @@ export function ClipsGallery({
             <span>New Video</span>
           </Button>
           <div>
-            <h2 className="text-lg sm:text-xl font-black text-foreground flex items-center gap-2">
-              <span>Discovered {clips.length} Short Moments</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-black text-foreground">
+                Discovered {clips.length} Short Moments
+              </h2>
+              {generationDuration && (
+                <Badge className="bg-emerald-600/90 text-white font-mono text-[10px] font-bold shadow-xs border-0">
+                  ⚡ Generated in {generationDuration}
+                </Badge>
+              )}
               <Badge
                 variant="outline"
-                className="text-primary border-primary/30"
+                className="text-primary border-primary/30 text-[10px]"
               >
                 Trending AI Filter Ready
               </Badge>
-            </h2>
-            <p className="text-xs text-muted-foreground">
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Source:{' '}
               <span className="font-semibold text-foreground">
                 {videoSource?.fileName || videoSource?.title || 'Video'}
@@ -1342,42 +1427,6 @@ export function ClipsGallery({
           </Button>
         </div>
       </div>
-
-      {/* Generation Duration & Efficiency Metric Banner */}
-      {generationMetrics && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in duration-300">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/30">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="font-black text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
-                ⚡ Generated {clips.length} Viral Shorts from{' '}
-                {Math.round(generationMetrics.sourceDuration || 60)}s Long Video
-                in {generationMetrics.totalSeconds}s!
-              </p>
-              <p className="text-muted-foreground text-[11px] mt-0.5">
-                Analyzed and extracted with zero wait time. Subtitles start idle
-                and can be synchronized on-demand for any short with 1-click.
-              </p>
-            </div>
-          </div>
-          <Badge
-            variant="outline"
-            className="text-emerald-500 border-emerald-500/30 font-mono text-[10px] shrink-0 font-bold bg-emerald-500/5"
-          >
-            Time Saved: ~
-            {Math.max(
-              0,
-              Math.round(
-                (generationMetrics.sourceDuration || 60) -
-                  parseFloat(generationMetrics.totalSeconds || 4)
-              )
-            )}
-            s
-          </Badge>
-        </div>
-      )}
 
       {/* Interactive Phrase Boundary Review & Confirmation for All Clips */}
       {displayClips.length > 0 && (

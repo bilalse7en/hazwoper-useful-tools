@@ -49,6 +49,7 @@ import {
 import {
   resolveDownloaderBinaries,
   getAvailableCookiesFile,
+  getBrowserCookiesConfig,
   findSubtitleFile,
   categorizeDownloadError,
   downloadYouTubeVideo,
@@ -132,6 +133,65 @@ describe('AI Video to Shorts - Unit & Integration Test Suite', () => {
       expect(res.type).toBe('DOWNLOAD_FAILED');
       expect(res.status).toBe(500);
       expect(res.message).toContain('Network connection reset');
+    });
+
+    it('categorizes missing python/binary dependency (code 127) accurately', () => {
+      const errorText =
+        "yt-dlp exited with code 127: env: 'python3': No such file or directory";
+      const res = categorizeDownloadError(errorText);
+      expect(res.type).toBe('MISSING_DEPENDENCY');
+      expect(res.status).toBe(500);
+      expect(res.message).toContain('code 127');
+    });
+
+    it('categorizes YouTube HTTP 429 rate limit accurately', () => {
+      const errorText = 'ERROR: [youtube] HTTP Error 429: Too Many Requests';
+      const res = categorizeDownloadError(errorText);
+      expect(res.type).toBe('RATE_LIMITED');
+      expect(res.status).toBe(429);
+      expect(res.message).toContain('HTTP 429');
+    });
+
+    it('extracts cookies from YOUTUBE_COOKIES_BASE64 environment variable', () => {
+      const sampleNetscape =
+        '# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t2147483647\tSID\tsample_session_id_value_12345\n';
+      const b64 = Buffer.from(sampleNetscape).toString('base64');
+      const origEnv = process.env.YOUTUBE_COOKIES_BASE64;
+      try {
+        process.env.YOUTUBE_COOKIES_BASE64 = b64;
+        const cookiePath = getAvailableCookiesFile();
+        expect(cookiePath).toBeDefined();
+        expect(fs.existsSync(cookiePath)).toBe(true);
+        const content = fs.readFileSync(cookiePath, 'utf8');
+        expect(content).toContain('sample_session_id_value_12345');
+      } finally {
+        if (origEnv !== undefined) {
+          process.env.YOUTUBE_COOKIES_BASE64 = origEnv;
+        } else {
+          delete process.env.YOUTUBE_COOKIES_BASE64;
+        }
+      }
+    });
+
+    it('guards getBrowserCookiesConfig from executing on Vercel/serverless environments', () => {
+      const origVercel = process.env.VERCEL;
+      const origBrowser = process.env.YOUTUBE_COOKIES_BROWSER;
+      try {
+        process.env.VERCEL = '1';
+        process.env.YOUTUBE_COOKIES_BROWSER = 'chrome';
+        expect(getBrowserCookiesConfig()).toBeNull();
+      } finally {
+        if (origVercel !== undefined) {
+          process.env.VERCEL = origVercel;
+        } else {
+          delete process.env.VERCEL;
+        }
+        if (origBrowser !== undefined) {
+          process.env.YOUTUBE_COOKIES_BROWSER = origBrowser;
+        } else {
+          delete process.env.YOUTUBE_COOKIES_BROWSER;
+        }
+      }
     });
 
     it('rejects download call with invalid YouTube URL format before spawning', async () => {
@@ -983,29 +1043,6 @@ Third stanza bringing full spiritual depth
       res.videos.forEach((v) => {
         expect(v.provider.toLowerCase()).toContain('wikimedia');
       });
-    });
-
-    it('concurrently imports multiple stock videos and handles both successes and failures', async () => {
-      const { importMultipleStockVideos } =
-        await import('@/lib/video-shorts/stock-video-service');
-
-      // Test with empty list
-      const emptyResult = await importMultipleStockVideos([]);
-      expect(emptyResult.total).toBe(0);
-      expect(emptyResult.saved).toEqual([]);
-      expect(emptyResult.failed).toEqual([]);
-
-      // Test with invalid video items to verify concurrent error tracking
-      const mockVideos = [
-        { id: 'invalid_1', videoUrl: null },
-        { id: 'invalid_2', videoUrl: '' },
-      ];
-      const res = await importMultipleStockVideos(mockVideos);
-      expect(res.total).toBe(2);
-      expect(res.saved.length).toBe(0);
-      expect(res.failed.length).toBe(2);
-      expect(res.failed[0].id).toBe('invalid_1');
-      expect(res.failed[1].id).toBe('invalid_2');
     });
   });
 

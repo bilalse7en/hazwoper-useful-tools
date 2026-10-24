@@ -44,6 +44,8 @@ export function resolveDownloaderBinaries() {
 
 /**
  * Ensures yt-dlp binary is available, auto-fetching standalone Linux binary on Vercel/serverless if needed.
+ * Crucial: Uses 'yt-dlp_linux' (standalone binary with embedded Python runtime), NOT the python zipapp script
+ * which fails with "env: 'python3': No such file or directory" (code 127) on Vercel's Node runtime.
  */
 export async function ensureYtDlpBinary() {
   const isWin = process.platform === 'win32';
@@ -52,28 +54,45 @@ export async function ensureYtDlpBinary() {
   }
 
   const resolved = resolveDownloaderBinaries();
-  if (fs.existsSync(resolved.ytDlpPath)) {
-    return resolved;
+  // Check if a standalone binary already exists locally
+  if (
+    resolved.ytDlpPath &&
+    fs.existsSync(resolved.ytDlpPath) &&
+    resolved.ytDlpPath.includes(path.sep)
+  ) {
+    try {
+      const stat = fs.statSync(resolved.ytDlpPath);
+      if (stat.size > 20000000) {
+        fs.chmodSync(resolved.ytDlpPath, 0o755);
+        return resolved;
+      }
+    } catch (_) {}
   }
 
   const tmpYtDlp = path.join(os.tmpdir(), 'yt-dlp');
   if (fs.existsSync(tmpYtDlp)) {
     try {
       const stat = fs.statSync(tmpYtDlp);
-      if (stat.size > 5000000) {
+      // Standalone Linux binary is ~38MB - 45MB. If > 20MB, it is the standalone PyInstaller ELF binary.
+      if (stat.size > 20000000) {
         fs.chmodSync(tmpYtDlp, 0o755);
         return { ...resolved, ytDlpPath: tmpYtDlp };
+      } else {
+        // Clean up old non-standalone zipapp script (<5MB) that caused code 127
+        try {
+          fs.unlinkSync(tmpYtDlp);
+        } catch (_) {}
       }
     } catch (_) {}
   }
 
+  // Determine architecture: aarch64 (ARM) vs x86_64 (Intel/AMD)
+  const isArm = process.arch === 'arm64' || process.arch === 'arm';
+  const binaryName = isArm ? 'yt-dlp_linux_aarch64' : 'yt-dlp_linux';
+  const downloadUrl = `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${binaryName}`;
+
   try {
-    const res = await fetch(
-      'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',
-      {
-        redirect: 'follow',
-      }
-    );
+    const res = await fetch(downloadUrl, { redirect: 'follow' });
     if (res.ok) {
       const buffer = Buffer.from(await res.arrayBuffer());
       fs.writeFileSync(tmpYtDlp, buffer);
@@ -82,7 +101,7 @@ export async function ensureYtDlpBinary() {
     }
   } catch (err) {
     console.warn(
-      'Could not auto-download yt-dlp binary for Linux:',
+      'Could not auto-download standalone yt-dlp binary for Linux:',
       err.message
     );
   }
@@ -92,16 +111,21 @@ export async function ensureYtDlpBinary() {
 
 /**
  * Searches for any verified, non-empty user-supplied cookies.txt file
+ * Supports environment variables (YOUTUBE_COOKIES_PATH, YOUTUBE_COOKIES_BASE64, YOUTUBE_COOKIES)
+ * for Vercel/serverless environments as well as local files.
  */
 export function getAvailableCookiesFile() {
-  // Support environment variables on serverless / cloud deployments
-  if (process.env.YOUTUBE_COOKIES && process.env.YOUTUBE_COOKIES.length > 50) {
+  // 1. Direct path from environment variable (local development or server configuration)
+  if (process.env.YOUTUBE_COOKIES_PATH) {
     try {
-      const tmpPath = path.join(os.tmpdir(), 'cookies.txt');
-      fs.writeFileSync(tmpPath, process.env.YOUTUBE_COOKIES.trim(), 'utf-8');
-      return tmpPath;
+      const envPath = path.resolve(process.env.YOUTUBE_COOKIES_PATH);
+      if (fs.existsSync(envPath) && fs.statSync(envPath).size > 50) {
+        return envPath;
+      }
     } catch (_) {}
   }
+
+  // 2. Base64-encoded Netscape cookies from Vercel / serverless environment variable
   if (process.env.YOUTUBE_COOKIES_BASE64) {
     try {
       const decoded = Buffer.from(
@@ -109,13 +133,26 @@ export function getAvailableCookiesFile() {
         'base64'
       ).toString('utf-8');
       if (decoded.length > 50) {
-        const tmpPath = path.join(os.tmpdir(), 'cookies.txt');
-        fs.writeFileSync(tmpPath, decoded.trim(), 'utf-8');
-        return tmpPath;
+        const envCookiesPath = path.join(os.tmpdir(), 'env_cookies.txt');
+        fs.writeFileSync(envCookiesPath, decoded, { mode: 0o600 });
+        return envCookiesPath;
       }
     } catch (_) {}
   }
 
+  // 3. Raw Netscape cookies from environment variable
+  if (process.env.YOUTUBE_COOKIES) {
+    try {
+      const raw = process.env.YOUTUBE_COOKIES.trim();
+      if (raw.length > 50) {
+        const envCookiesPath = path.join(os.tmpdir(), 'env_cookies.txt');
+        fs.writeFileSync(envCookiesPath, raw, { mode: 0o600 });
+        return envCookiesPath;
+      }
+    } catch (_) {}
+  }
+
+  // 4. File candidates on disk
   const candidates = [
     path.join(os.tmpdir(), 'cookies.txt'),
     path.join(process.cwd(), 'cookies.txt'),
@@ -136,6 +173,27 @@ export function getAvailableCookiesFile() {
     }
   }
 
+  return null;
+}
+
+/**
+ * Checks for local browser cookie configuration (e.g. YOUTUBE_COOKIES_BROWSER=chrome)
+ * Explicitly disabled on serverless/Vercel runtimes.
+ */
+export function getBrowserCookiesConfig() {
+  const isVercel = Boolean(
+    process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+  );
+  const browserName = process.env.YOUTUBE_COOKIES_BROWSER?.trim().toLowerCase();
+  if (
+    !isVercel &&
+    browserName &&
+    ['chrome', 'firefox', 'edge', 'brave', 'safari', 'opera'].includes(
+      browserName
+    )
+  ) {
+    return browserName;
+  }
   return null;
 }
 
@@ -188,6 +246,34 @@ export function findSubtitleFile(dir, identifierOrPath) {
  */
 export function categorizeDownloadError(rawError) {
   const text = String(rawError || '');
+
+  // Missing standalone binary / missing python runtime (Vercel code 127)
+  if (
+    /code 127/i.test(text) ||
+    /python3.*No such file/i.test(text) ||
+    /No such file or directory.*python/i.test(text)
+  ) {
+    return {
+      type: 'MISSING_DEPENDENCY',
+      message:
+        'The server video-processing runtime requires the standalone Linux binary (code 127: missing python3). The system will auto-download yt-dlp_linux or please upload your video directly.',
+      status: 500,
+    };
+  }
+
+  // YouTube Rate Limiting / 429
+  if (
+    /HTTP Error 429/i.test(text) ||
+    /Too Many Requests/i.test(text) ||
+    /rate-limit/i.test(text)
+  ) {
+    return {
+      type: 'RATE_LIMITED',
+      message:
+        'YouTube has temporarily rate-limited automated requests (HTTP 429). Please wait a few moments or upload the video file directly (MP4/MOV).',
+      status: 429,
+    };
+  }
 
   if (
     /Sign in to confirm you're not a bot/i.test(text) ||
@@ -341,8 +427,10 @@ export async function downloadYouTubeVideo({
   }
 
   const cookiesFile = allowCookies ? getAvailableCookiesFile() : null;
+  const browserCookie = getBrowserCookiesConfig();
 
-  // Base arguments: Desktop web client with 1080p max resolution and pure video+audio merging
+  // Base arguments: Android & Web player client extraction to avoid SABR bot challenges on datacenter IPs,
+  // 1080p max resolution and pure video+audio merging.
   // Subtitles are handled non-fatally below to prevent YouTube's timedtext HTTP 429 from aborting video downloads.
   const baseArgs = [
     url,
@@ -356,6 +444,8 @@ export async function downloadYouTubeVideo({
     '--no-warnings',
     '--max-filesize',
     '500M',
+    '--extractor-args',
+    'youtube:player_client=android,web',
   ];
 
   // Provide Node.js runtime to yt-dlp to decipher YouTube JS challenges
@@ -370,17 +460,17 @@ export async function downloadYouTubeVideo({
 
   let lastError = null;
 
-  // Strategy 1: Clean desktop web client (Standard public videos, solved via Node JS runtime)
+  // Strategy 1: Android + Web player client extraction
   try {
     await runYtDlpProcess(ytDlpPath, baseArgs, resolvedTargetPath, timeoutMs);
   } catch (cleanErr) {
     lastError = cleanErr;
     console.warn(
-      'Clean web download attempt failed, evaluating fallbacks:',
+      'Primary download attempt failed, evaluating fallbacks:',
       cleanErr.message
     );
 
-    // Strategy 2: If clean web failed and verified user-uploaded cookies exist, retry with cookies
+    // Strategy 2: If cookies file exists (from env vars or uploaded cookies.txt)
     if (cookiesFile) {
       try {
         const argsWithCookies = [...baseArgs, '--cookies', cookiesFile];
@@ -394,6 +484,27 @@ export async function downloadYouTubeVideo({
       } catch (cookieErr) {
         lastError = cookieErr;
         console.warn('Cookie attempt failed:', cookieErr.message);
+      }
+    }
+
+    // Strategy 3: Local-only browser cookies (if configured and not on Vercel)
+    if (lastError && browserCookie) {
+      try {
+        const argsWithBrowser = [
+          ...baseArgs,
+          '--cookies-from-browser',
+          browserCookie,
+        ];
+        await runYtDlpProcess(
+          ytDlpPath,
+          argsWithBrowser,
+          resolvedTargetPath,
+          timeoutMs
+        );
+        lastError = null; // Succeeded with browser cookies
+      } catch (browserErr) {
+        lastError = browserErr;
+        console.warn('Browser cookie attempt failed:', browserErr.message);
       }
     }
   }

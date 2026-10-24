@@ -45,6 +45,26 @@ export const toolMetadata = {
     canonical: '/tools/ai-video-shorts',
     ogImage: '/og-web-content.png',
   },
+  'short-generator-2': {
+    title:
+      'Short Generator 2.0 - Third-Party Cloud AI Video Shorts Studio | All Useful Tools',
+    description:
+      'Next-generation automated AI Shorts Studio powered by OpusClip AI, Shotstack Cloud Render, and authentic Urdu Nastaliq & Roman subtitles. 1-click cloud generation.',
+    keywords:
+      'short generator 2, opusclip api, shotstack render, ai video shorts, naat shorts studio, urdu subtitles, roman urdu, cloud video rendering',
+    canonical: '/tools/short-generator-2',
+    ogImage: '/og-web-content.png',
+  },
+  'ai-video-shorts-v2': {
+    title:
+      'AI Video Shorts 2.0 - Cloud AI Video Repurposing | All Useful Tools',
+    description:
+      'Automated cloud AI shorts generation with OpusClip viral curation and Shotstack distributed video rendering.',
+    keywords:
+      'ai video shorts v2, cloud video repurposing, opusclip, shotstack',
+    canonical: '/tools/ai-video-shorts-v2',
+    ogImage: '/og-web-content.png',
+  },
   'web-content': {
     title:
       'Web Content Generator - Extract Structured Web Content from Documents | All Useful Tools',
@@ -293,6 +313,8 @@ export const toolIdToSlug = {
   'slide-generator': 'slide-generator',
   'html-design-enhancer': 'html-design-enhancer',
   'ai-video-shorts': 'ai-video-shorts',
+  'short-generator-2': 'short-generator-2',
+  'ai-video-shorts-v2': 'ai-video-shorts-v2',
 };
 
 // Reverse mapping
@@ -319,6 +341,34 @@ export const toolInfo = {
     ],
     howToUse:
       '1. Upload a video file or paste a YouTube URL.\n2. Choose portrait (9:16), landscape (16:9), or square (1:1) format and select duration.\n3. Click "Analyze Video" to generate scored viral clips.\n4. Click "Open in Studio Editor" to trim, adjust captions, split segments, or add music.\n5. Click "Render & Export Short" to download in high-definition MP4.',
+  },
+  'short-generator-2': {
+    name: 'Short Generator 2.0 (AI Cloud)',
+    icon: '⚡',
+    description:
+      'Third-party cloud AI video shorts studio powered by OpusClip AI, Shotstack Cloud Render, and authentic Urdu Nastaliq & Roman speech transcription.',
+    category: 'Video & Audio Processing',
+    detailedDescription:
+      'Short Generator 2.0 brings enterprise-tier automated video repurposing to Hazwoper Useful Tools by orchestrating OpusClip AI for moment curation, Shotstack for distributed cloud rendering, and Whisper for phonetic Urdu and Roman captions.',
+    benefits: [
+      'OpusClip Cloud AI Integration: Automatic viral hook curation and speaker tracking',
+      'Shotstack Cloud Render: High-throughput distributed rendering in Full HD 1080x1920',
+      'Urdu Speech Recognition: Authentic Nastaliq & Roman Urdu subtitles aligned to couplets',
+      'Islamic B-Roll Studio: 1-click footage replacement for Makkah, Madinah, and Mosques',
+      'Durable Media Hub: Seamless asset storage with instant cloud downloads',
+    ],
+    howToUse:
+      '1. Paste any YouTube video link or upload your raw video file.\n2. Configure output aspect ratio (9:16 portrait) and target duration.\n3. Click "Generate Shorts with Cloud AI".\n4. Preview, apply Islamic B-roll, and export directly in 1080p FHD.',
+  },
+  'ai-video-shorts-v2': {
+    name: 'Short Generator 2.0 (AI Cloud)',
+    icon: '⚡',
+    description:
+      'Third-party cloud AI video shorts studio powered by OpusClip AI and Shotstack Cloud Render.',
+    category: 'Video & Audio Processing',
+    detailedDescription: 'Enterprise cloud AI video shorts generator.',
+    benefits: ['Cloud AI clipping', 'Shotstack cloud render', 'Urdu subtitles'],
+    howToUse: '1. Paste video URL. 2. Generate shorts.',
   },
   'html-design-enhancer': {
     name: 'HTML Design Enhancer',

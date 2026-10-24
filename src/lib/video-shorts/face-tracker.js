@@ -179,21 +179,16 @@ export function calculateSmoothedCropTimeline(
   }
 
   const result = [];
-  const centerX = (sourceWidth - cropW) / 2; // Exact center crop
-  const maxCenterDeviation = maxCropX * 0.05; // Lock within 5% to keep face securely in center
+  const centerX = (sourceWidth - cropW) / 2; // Default center crop if uninitialized
   let currentSmoothedX = centerX;
 
   for (let i = 0; i < detectedPoints.length; i++) {
     const pt = detectedPoints[i];
-    // Ideal crop centered on detected subject with strict center anchor
+    // Ideal crop centered directly on detected face/subject
     const rawCropX = Math.max(0, Math.min(maxCropX, pt.targetX - cropW / 2));
-    const idealCropX = Math.max(
-      centerX - maxCenterDeviation,
-      Math.min(centerX + maxCenterDeviation, rawCropX)
-    );
 
     // Smooth transition
-    currentSmoothedX = alpha * idealCropX + (1 - alpha) * currentSmoothedX;
+    currentSmoothedX = alpha * rawCropX + (1 - alpha) * currentSmoothedX;
 
     result.push({
       time: pt.time,
