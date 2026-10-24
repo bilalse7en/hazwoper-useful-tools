@@ -343,12 +343,22 @@ export async function importMultipleStockVideos(stockVideos = []) {
     failed: [],
   };
 
-  for (const video of stockVideos) {
+  const promises = stockVideos.map(async (video) => {
     try {
       const item = await importStockVideoToMediaHub(video);
-      results.saved.push({ id: video.id, item });
+      return { status: 'fulfilled', id: video.id, item };
     } catch (err) {
-      results.failed.push({ id: video.id, error: err.message });
+      return { status: 'rejected', id: video.id, error: err.message };
+    }
+  });
+
+  const settled = await Promise.all(promises);
+
+  for (const res of settled) {
+    if (res.status === 'fulfilled') {
+      results.saved.push({ id: res.id, item: res.item });
+    } else {
+      results.failed.push({ id: res.id, error: res.error });
     }
   }
 
