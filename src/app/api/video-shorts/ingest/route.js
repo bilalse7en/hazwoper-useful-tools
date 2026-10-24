@@ -186,8 +186,14 @@ export async function POST(request) {
       fs.statSync(tempTargetPath).size < 10000
     ) {
       return NextResponse.json(
-        { error: 'Downloaded file is incomplete or unreadable.' },
-        { status: 500 }
+        {
+          success: false,
+          error:
+            "YouTube blocked automated fetch. You can drop the video file directly into 'Upload Video' for instant 1080p FHD processing with authentic Urdu subtitles!",
+          errorType: 'BOT_DETECTION',
+          metadata,
+        },
+        { status: 422 }
       );
     }
 
@@ -223,12 +229,16 @@ export async function POST(request) {
     let extractedCaptions = [];
 
     if (subPath && fs.existsSync(subPath)) {
-      transcript = fs.readFileSync(subPath, 'utf-8');
-      mediaItem.transcript = transcript;
-      try {
-        const parsed = parseVttFile(transcript);
-        extractedCaptions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
-      } catch (_) {}
+      const candidateVtt = fs.readFileSync(subPath, 'utf-8');
+      // Strictly verify subtitle has authentic Urdu script characters
+      if (/[\u0600-\u06FF]/.test(candidateVtt)) {
+        transcript = candidateVtt;
+        mediaItem.transcript = transcript;
+        try {
+          const parsed = parseVttFile(transcript);
+          extractedCaptions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
+        } catch (_) {}
+      }
     }
 
     // If no YouTube subtitle file was found, transcribe audio directly with Whisper ONNX

@@ -784,7 +784,8 @@ export function AIVideoShorts() {
       framingMode: settings.framingMode,
       manualCropX: 50,
       captions: clip.captions || [],
-      captionMode: clip.captionMode || settings.captionMode || 'roman-urdu',
+      captionMode:
+        clip.captionMode || settings.captionMode || 'dual-urdu-roman',
       captionStyle: settings.captionStyle,
       captionPosition: settings.captionPosition,
       captionFontSize: settings.captionFontSize || 24,

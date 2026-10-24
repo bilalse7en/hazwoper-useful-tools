@@ -432,12 +432,12 @@ export function transliterateUrduCaptions(captions, style = 'conversational') {
   if (!captions || !Array.isArray(captions)) return [];
 
   return captions.map((cap, idx) => {
-    const rawUrdu = cap.text || '';
+    const rawUrdu = cap.textUrdu || cap.text || '';
     const isAlreadyRoman = !/[\u0600-\u06FF]/.test(rawUrdu);
 
-    let textUrdu = isAlreadyRoman ? '' : rawUrdu;
+    let textUrdu = isAlreadyRoman ? cap.textUrdu || '' : rawUrdu;
     let textRoman = isAlreadyRoman
-      ? rawUrdu
+      ? cap.textRoman || rawUrdu
       : transliterateUrduSentence(rawUrdu, style);
 
     // Synchronize word-level timings
@@ -500,7 +500,7 @@ export function transliterateUrduCaptions(captions, style = 'conversational') {
       textRoman,
       textCombined,
       words: enrichedWords,
-      captionMode: cap.captionMode || 'urdu',
+      captionMode: cap.captionMode || 'dual-urdu-roman',
     };
   });
 }

@@ -99,7 +99,7 @@ export function ExportModal({ isOpen, onClose, exportConfig, videoSource }) {
           );
           formData.append(
             'captionMode',
-            exportConfig.captionMode || 'roman-urdu'
+            exportConfig.captionMode || 'dual-urdu-roman'
           );
           formData.append(
             'captionFontSize',

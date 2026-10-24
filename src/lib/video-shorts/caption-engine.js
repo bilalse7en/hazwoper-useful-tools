@@ -170,7 +170,7 @@ export function wrapTextToLines(ctx, text, maxWidth, maxLines = 2) {
 
 export function captionsToASS(captions, options = {}) {
   const {
-    captionMode = 'urdu', // 'urdu' (default) | 'roman-urdu' | 'dual-urdu-roman' | 'none' | 'off'
+    captionMode = 'dual-urdu-roman', // 'dual-urdu-roman' (default) | 'urdu' | 'roman-urdu' | 'none' | 'off'
     fontSize = 46, // Professional legible size for 1080x1920
     fontFamily = 'Montserrat',
     textColorHex = '&H00FFFFFF', // White
@@ -397,7 +397,7 @@ export function renderCanvasCaptions(
   if (!activeCap) return;
 
   const captionMode =
-    styleConfig.captionMode || activeCap.captionMode || 'urdu';
+    styleConfig.captionMode || activeCap.captionMode || 'dual-urdu-roman';
   const isUrduOnly = captionMode === 'urdu';
   const isDualMode = captionMode === 'dual-urdu-roman';
 

@@ -257,8 +257,9 @@ export async function runJobWorker(jobId) {
     });
 
     let captions = [];
-    if (job.transcript) {
-      // Use existing pre-extracted transcript
+    const hasUrdu = /[\u0600-\u06FF]/.test(job.transcript || '');
+    if (job.transcript && hasUrdu) {
+      // Use existing pre-extracted transcript ONLY if it actually contains genuine Urdu script
       const parsed = parseVttFile(job.transcript);
       captions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
     } else if (fs.existsSync(wavPath)) {

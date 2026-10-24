@@ -34,7 +34,7 @@ export async function POST(request) {
     const audioVolume = parseFloat(formData.get('audioVolume') || '1.0');
     const captionsRaw = formData.get('captions');
     const burnSubtitles = formData.get('burnSubtitles') !== 'false';
-    const captionMode = formData.get('captionMode') || 'roman-urdu';
+    const captionMode = formData.get('captionMode') || 'dual-urdu-roman';
     const captionFontSize = parseFloat(formData.get('captionFontSize') || '46');
     const videoUrl = formData.get('videoUrl');
     const openingStyle = formData.get('openingStyle') || 'none';

@@ -130,9 +130,9 @@ export function findSubtitleFile(dir, identifierOrPath) {
       : '';
     const files = fs.readdirSync(dir);
 
-    const priorities = ['ur', 'ur-PK', 'en', 'ar', 'hi'];
+    // Only look for authentic Urdu subtitle files
+    const priorities = ['ur', 'ur-PK'];
 
-    // 1. Check exact match with language priority
     for (const lang of priorities) {
       const match = files.find(
         (f) =>
@@ -140,20 +140,21 @@ export function findSubtitleFile(dir, identifierOrPath) {
           (!baseName || f.includes(baseName)) &&
           (f.includes(`.${lang}.`) || f.includes(`_${lang}.`))
       );
-      if (match) return path.join(dir, match);
+      if (match) {
+        const fullPath = path.join(dir, match);
+        try {
+          const content = fs.readFileSync(fullPath, 'utf8');
+          // Only return if file actually contains Urdu script
+          if (/[\u0600-\u06FF]/.test(content)) {
+            return fullPath;
+          }
+        } catch (_) {}
+      }
     }
 
-    // 2. Check any language matching baseName
-    if (baseName) {
-      const anyMatchingVtt = files.find(
-        (f) => f.includes(baseName) && f.endsWith('.vtt')
-      );
-      if (anyMatchingVtt) return path.join(dir, anyMatchingVtt);
-    }
-
-    // 3. Fallback: return any .vtt file in the directory
-    const anyVtt = files.find((f) => f.endsWith('.vtt'));
-    if (anyVtt) return path.join(dir, anyVtt);
+    // Do NOT return English or foreign non-Urdu subtitles.
+    // Returning null forces Whisper speech recognition to transcribe the authentic audio.
+    return null;
   } catch (e) {
     console.warn('Subtitle file search warning:', e.message);
   }
@@ -169,12 +170,17 @@ export function categorizeDownloadError(rawError) {
   if (
     /Sign in to confirm you're not a bot/i.test(text) ||
     /confirm you.*re not a bot/i.test(text) ||
-    /Use --cookies/i.test(text)
+    /Use --cookies/i.test(text) ||
+    /403: Forbidden/i.test(text) ||
+    /HTTP Error 403/i.test(text) ||
+    /Forbidden/i.test(text) ||
+    /bot/i.test(text) ||
+    /blocked/i.test(text)
   ) {
     return {
       type: 'BOT_DETECTION',
       message:
-        "YouTube bot check detected (Sign in to confirm you're not a bot). You can import your browser cookies in Media Hub or upload the video file directly (MP4/MOV).",
+        "YouTube bot check detected (Sign in to confirm you're not a bot / HTTP 403). Please upload the video file directly (MP4/MOV) for instant 1080p FHD processing with authentic Urdu subtitles!",
       status: 422,
     };
   }

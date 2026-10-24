@@ -24,13 +24,21 @@ export function AdSenseAd({
   className,
 }) {
   const adRef = useRef(null);
+  const [mounted, setMounted] = useState(false);
   const [adLoaded, setAdLoaded] = useState(false);
-  const isProduction =
-    typeof window !== 'undefined' && window.location.hostname !== 'localhost';
 
   useEffect(() => {
-    // Don't render ads in development or if already loaded
-    if (!isProduction || adLoaded || !adRef.current) return;
+    setMounted(true);
+  }, []);
+
+  const isProduction =
+    mounted &&
+    typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost';
+
+  useEffect(() => {
+    // Don't render ads in development, unmounted, or if already loaded
+    if (!mounted || !isProduction || adLoaded || !adRef.current) return;
 
     // Don't push if no valid slot is provided or if it's a placeholder
     const isPlaceholder =
@@ -63,8 +71,8 @@ export function AdSenseAd({
     }
   }, [isProduction, slot, adLoaded]);
 
-  // Show placeholder in development
-  if (!isProduction) {
+  // Show placeholder during SSR, initial hydration, or in development
+  if (!mounted || !isProduction) {
     return (
       <div
         className={cn(
@@ -72,6 +80,7 @@ export function AdSenseAd({
           className
         )}
         style={{ minHeight: '90px', ...style }}
+        suppressHydrationWarning
       >
         Ad Placeholder — Slot: {slot || 'NOT SET'} (Production Only)
       </div>
