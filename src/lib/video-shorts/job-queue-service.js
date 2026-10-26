@@ -234,62 +234,73 @@ export async function runJobWorker(jobId) {
     const probe = await probeVideo(localVideoPath);
     const videoDuration = probe.duration || 60;
 
-    // 2. Stage: Extracting Audio
-    updateJob(jobId, {
-      status: 'extracting_audio',
-      current_stage: 'Extracting 16kHz mono audio for speech recognition (25%)',
-      progress: 25,
-    });
-
-    const wavPath = path.join(tempDir, 'audio_16k.wav');
-    try {
-      await extractAudioWav(localVideoPath, wavPath);
-    } catch (wavErr) {
-      console.warn('WAV extraction notice:', wavErr.message);
-    }
-
-    // 3. Stage: Transcribing Audio with Local Whisper ONNX
-    updateJob(jobId, {
-      status: 'transcribing',
-      current_stage:
-        'Transcribing speech into authentic Urdu script via Whisper (45%)',
-      progress: 45,
-    });
-
+    // 2. Stage: Audio & Speech Analysis (Only if autoSubtitles is explicitly enabled)
     let captions = [];
-    const hasUrdu = /[\u0600-\u06FF]/.test(job.transcript || '');
-    if (job.transcript && hasUrdu) {
-      // Use existing pre-extracted transcript ONLY if it actually contains genuine Urdu script
-      const parsed = parseVttFile(job.transcript);
-      captions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
-    } else if (job.settings?.autoSubtitles && fs.existsSync(wavPath)) {
+    const shouldTranscribe = Boolean(job.settings?.autoSubtitles);
+
+    if (shouldTranscribe) {
+      updateJob(jobId, {
+        status: 'extracting_audio',
+        current_stage:
+          'Extracting 16kHz mono audio for speech recognition (25%)',
+        progress: 25,
+      });
+
+      const wavPath = path.join(tempDir, 'audio_16k.wav');
       try {
-        const whisperRes = await transcribeUrduVideo({
-          audioPath: wavPath,
-          videoPath: localVideoPath,
-          language: 'ur',
-          referenceLyrics: job.settings?.referenceLyrics,
-        });
-        captions = whisperRes.captions || [];
-      } catch (sttErr) {
-        console.warn(
-          'Whisper transcription fallback to phrases:',
-          sttErr.message
-        );
+        await extractAudioWav(localVideoPath, wavPath);
+      } catch (wavErr) {
+        console.warn('WAV extraction notice:', wavErr.message);
       }
+
+      // 3. Stage: Transcribing Audio with Whisper ONNX
+      updateJob(jobId, {
+        status: 'transcribing',
+        current_stage:
+          'Transcribing speech into authentic Urdu script via Whisper (45%)',
+        progress: 45,
+      });
+
+      const hasUrdu = /[\u0600-\u06FF]/.test(job.transcript || '');
+      if (job.transcript && hasUrdu) {
+        const parsed = parseVttFile(job.transcript);
+        captions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
+      } else if (fs.existsSync(wavPath)) {
+        try {
+          const whisperRes = await transcribeUrduVideo({
+            audioPath: wavPath,
+            videoPath: localVideoPath,
+            language: 'ur',
+            referenceLyrics: job.settings?.referenceLyrics,
+          });
+          captions = whisperRes.captions || [];
+        } catch (sttErr) {
+          console.warn(
+            'Whisper transcription fallback to phrases:',
+            sttErr.message
+          );
+        }
+      }
+
+      // 4. Stage: Aligning & Transliterating Urdu to Roman Urdu
+      updateJob(jobId, {
+        status: 'aligning',
+        current_stage:
+          'Linguistically aligning Urdu script & Roman Urdu transliteration (65%)',
+        progress: 65,
+      });
+
+      const transliterationStyle =
+        job.settings?.transliterationStyle || 'conversational';
+      captions = transliterateUrduCaptions(captions, transliterationStyle);
+    } else {
+      updateJob(jobId, {
+        status: 'selecting_clips',
+        current_stage:
+          'Analyzing video rhythms & identifying viral highlights (50%)',
+        progress: 50,
+      });
     }
-
-    // 4. Stage: Aligning & Transliterating Urdu to Roman Urdu
-    updateJob(jobId, {
-      status: 'aligning',
-      current_stage:
-        'Linguistically aligning Urdu script & Roman Urdu transliteration (65%)',
-      progress: 65,
-    });
-
-    const transliterationStyle =
-      job.settings?.transliterationStyle || 'conversational';
-    captions = transliterateUrduCaptions(captions, transliterationStyle);
 
     // 5. Stage: Selecting Clips
     updateJob(jobId, {

@@ -74,7 +74,11 @@ export async function POST(request) {
         minDuration: durationMin,
         maxDuration: durationMax,
         aspectRatio: settings.aspectRatio || '9:16',
-        autoSubtitles: settings.captionLanguage !== 'off',
+        autoSubtitles: Boolean(
+          settings.autoSubtitles &&
+          settings.captionLanguage &&
+          settings.captionLanguage !== 'off'
+        ),
       },
     });
 
