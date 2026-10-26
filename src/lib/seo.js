@@ -65,6 +65,26 @@ export const toolMetadata = {
     canonical: '/tools/ai-video-shorts-v2',
     ogImage: '/og-web-content.png',
   },
+  'adobe-stock-finder': {
+    title:
+      'AI Adobe Stock Image Finder - Technical Slide Asset Discovery | All Useful Tools',
+    description:
+      'Search real Adobe Stock images powered by AI. Paste your presentation slide title and let AI analyze the technical context, synthesize search queries, and rank the most relevant assets.',
+    keywords:
+      'adobe stock finder, ai stock image finder, slide image finder, technical stock photos, safety training stock photos, osha slide images',
+    canonical: '/tools/adobe-stock-finder',
+    ogImage: '/og-image-converter.png',
+  },
+  'course-json-converter': {
+    title:
+      'LMS Course JSON Converter - Word & PDF to Structured Course Schema | All Useful Tools',
+    description:
+      'Convert Word (.docx) and PDF course documents into exact LMS JSON schemas. Features clean HTML sanitization, assessment isolation, duration formulas, and a 14-point validation engine.',
+    keywords:
+      'course json converter, docx to lms json, pdf to lms json, elearning course builder, word to json converter, lms course import schema, hazwoper course converter',
+    canonical: '/tools/course-json-converter',
+    ogImage: '/og-web-content.png',
+  },
   'web-content': {
     title:
       'Web Content Generator - Extract Structured Web Content from Documents | All Useful Tools',
@@ -315,6 +335,8 @@ export const toolIdToSlug = {
   'ai-video-shorts': 'ai-video-shorts',
   'short-generator-2': 'short-generator-2',
   'ai-video-shorts-v2': 'ai-video-shorts-v2',
+  'adobe-stock-finder': 'adobe-stock-finder',
+  'course-json-converter': 'course-json-converter',
 };
 
 // Reverse mapping
@@ -369,6 +391,42 @@ export const toolInfo = {
     detailedDescription: 'Enterprise cloud AI video shorts generator.',
     benefits: ['Cloud AI clipping', 'Shotstack cloud render', 'Urdu subtitles'],
     howToUse: '1. Paste video URL. 2. Generate shorts.',
+  },
+  'adobe-stock-finder': {
+    name: 'AI Adobe Stock Image Finder',
+    icon: '🔍',
+    description:
+      'Intelligent stock photo discovery for training slides. Paste a slide title and AI automatically searches and ranks authorized Adobe Stock assets.',
+    category: 'Media Tools',
+    detailedDescription:
+      'The AI Adobe Stock Image Finder is purpose-built for course designers, safety trainers, and technical authors. Simply paste any presentation slide title (e.g., "Utility Power Entry and Service Configuration" or "General Industry Hand Protection"). The AI automatically understands the technical subject, equipment, and hazard context, generates targeted queries, retrieves real Adobe Stock images, and ranks results by semantic relevance while penalizing generic or unrelated photos.',
+    benefits: [
+      'Single-Input Simplicity: Paste slide title and click Search — zero manual filters needed',
+      'AI Context Understanding: Automatically identifies equipment, activities, and hazards',
+      'Authorized Adobe Stock Integration: Retrieves real asset IDs, metadata, and preview URLs',
+      'Semantic Relevance Scoring: Ranks technical accuracy and penalizes generic stock photos',
+      '1-Click Asset Workflow: Copy genuine asset IDs or open directly on Adobe Stock',
+    ],
+    howToUse:
+      '1. Paste your slide title into the search field.\n2. Click "Find Best Images".\n3. Preview the AI-ranked image cards.\n4. Click "Copy ID" or "Open on Adobe Stock" to license through your account.',
+  },
+  'course-json-converter': {
+    name: 'LMS Course JSON Converter',
+    icon: '📦',
+    description:
+      'Convert Word (.docx) and PDF course documents into exact LMS-compatible JSON with clean HTML, assessment separation, duration formulas, and 14-point schema validation.',
+    category: 'Content Generation',
+    detailedDescription:
+      'The LMS Course JSON Converter is a production-grade utility that converts lesson and course documents into the structured JSON format required by enterprise LMS systems. Supporting both Lesson-wise (Mode A) and Course-wise (Mode B) pipelines, it strips proprietary Word artifacts (MsoNormal, mso- styles, Office XML) while preserving complete semantic HTML, isolates quizzes and final exams into structured question arrays, automatically calculates word-count-based reading durations, and enforces a 14-point schema validation suite before export.',
+    benefits: [
+      'Dual Mode Conversion: Mode A for individual lessons; Mode B for complete multi-module courses',
+      'Pristine HTML Sanitization: Eliminates Word/PDF junk while retaining all tables, lists, and citations',
+      'Automatic Assessment Isolation: Separates knowledge checks and exams from instructional slides',
+      'Mathematical Duration Consistency: Calculates word-count-based reading times and quiz durations',
+      '14-Point Pre-Flight Validation: Verifies structure, uniqueness, and completeness prior to download',
+    ],
+    howToUse:
+      '1. Upload your Word (.docx) or PDF course document.\n2. Select conversion mode (Mode A Lesson-wise or Mode B Course-wise).\n3. Review detected course, module, and lesson titles.\n4. Inspect topics, clean HTML, and extracted quiz questions.\n5. Verify 14-point validation health and click "Download JSON".',
   },
   'html-design-enhancer': {
     name: 'HTML Design Enhancer',

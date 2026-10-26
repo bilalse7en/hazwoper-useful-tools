@@ -20,3 +20,4 @@ export { SlideGenerator } from './slide-generator';
 export { HtmlDesignEnhancer } from './html-design-enhancer';
 export { AIVideoShorts } from './ai-video-shorts';
 export { ShortGenerator2 } from './ai-video-shorts-v2';
+export { AdobeStockImageFinder } from './adobe-stock-image-finder';

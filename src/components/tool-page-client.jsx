@@ -155,6 +155,22 @@ const ShortGenerator2 = nextDynamic(
   { ssr: false }
 );
 
+const AdobeStockImageFinder = nextDynamic(
+  () =>
+    import('@/components/generators/adobe-stock-image-finder').then(
+      (m) => m.AdobeStockImageFinder || m.default
+    ),
+  { ssr: false }
+);
+
+const CourseJsonConverter = nextDynamic(
+  () =>
+    import('@/components/generators/course-json-converter').then(
+      (m) => m.default || m.CourseJsonConverter
+    ),
+  { ssr: false }
+);
+
 // Map slugs to components
 const toolComponents = {
   'ai-course-creator': AICourseCreatorGenerator,
@@ -183,6 +199,9 @@ const toolComponents = {
   'ai-video-shorts': AIVideoShorts,
   'short-generator-2': ShortGenerator2,
   'ai-video-shorts-v2': ShortGenerator2,
+  'adobe-stock-finder': AdobeStockImageFinder,
+  'adobe-stock-image-finder': AdobeStockImageFinder,
+  'course-json-converter': CourseJsonConverter,
 };
 
 export function ToolPageClient({ toolSlug }) {

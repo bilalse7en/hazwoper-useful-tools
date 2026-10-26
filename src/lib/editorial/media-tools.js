@@ -354,4 +354,80 @@ Result: By stretching the audio and lowering the pitch, maintenance technicians 
       },
     ],
   },
+  'adobe-stock-finder': {
+    overview: `The AI Adobe Stock Image Finder is an intelligent asset discovery utility engineered for instructional designers, industrial safety coordinators, and presentation creators. Instead of requiring users to construct complex keyword combinations, select stock categories, or tweak search filters manually, the tool requires only a single input: the presentation slide title. The underlying AI engine deconstructs the slide title, identifies the exact technical subject (such as utility power entrances, hand protection, fall arrest harnesses, or chemical containment), synthesizes prioritized queries, queries the authorized Adobe Stock API, and evaluates retrieved assets by semantic relevance. Irrelevant lifestyle imagery, generic corporate photography, and medical or domestic false positives are heavily penalized, ensuring that educators and safety professionals receive authentic, training-ready visual assets with working Adobe Stock IDs and direct licensing links.`,
+    stepByStep: `1. Paste your presentation slide title into the main input field (for example, "Utility Power Entry and Service Configuration" or "General Industry Hand Protection").
+2. Click the 'Find Best Images' button to trigger the automated AI search pipeline.
+3. The AI pipeline will automatically parse the technical context, synthesize multiple focused search queries, and search the authorized Adobe Stock catalog.
+4. Review the returned image cards. Each card displays an authentic image preview, real Adobe Stock asset ID, and an AI semantic relevance score.
+5. Click 'Copy ID' to immediately copy the genuine numeric asset ID to your clipboard for asset registries.
+6. Click 'Copy Link' or 'Open Stock' to open the exact asset licensing page directly on stock.adobe.com in your browser.
+7. If more than 6 qualifying results are available, click 'Show More Results' to reveal the next batch of unique assets.
+
+Common errors to avoid:
+- Confusing a consumer Adobe Stock subscription with Adobe Developer Console API credentials: API programmatic searches require creating a free project at developer.adobe.com to obtain an authorized Client ID.
+- Manually typing overly broad keywords into the title field: simply paste the full technical slide title so the AI can extract contextual nuances.
+- Using generic search URLs: always use the verified asset ID button to link directly to individual licensed assets.`,
+    methodology: `The AI Adobe Stock Image Finder operates on a multi-stage semantic ranking pipeline combining natural language processing with provider catalog filtering. The slide title $T$ is decomposed into a technical domain $D$, primary subject $S$, key equipment set $E = \\{e_1, e_2, \\dots, e_n\\}$, and a negative exclusion set $N = \\{n_1, n_2, \\dots, n_m\\}$.
+
+For each candidate asset $A$ returned by the Adobe Stock Search API (\`https://stock.adobe.io/Rest/Media/1/Search/Files\`), a composite semantic relevance score $R(A, T) \\in [0, 100]$ is computed using weighted scoring factors:
+
+$$
+R(A, T) = B + w_s \\cdot M(S, A) + w_e \\cdot M(E, A) + w_t \\cdot M(T_{\\text{edu}}, A) - w_n \\cdot M(N, A)
+$$
+
+Where:
+- $B = 35$ is the initial baseline score.
+- $w_s = 35$ is the primary subject overlap weight.
+- $w_e = 30$ is the technical equipment and hazard keyword match weight.
+- $w_t = 15$ is the educational slide utility and workplace context weight.
+- $w_n = 40$ is the negative penalty weight for generic office, lifestyle, medical, or domestic terms.
+
+Assets with $R(A, T) < 45$ are eliminated below the threshold. Qualifying assets are sorted in strictly descending order of relevance and deduplicated by asset ID.`,
+    examples: `**Example 1: Utility Power Entry and Service Configuration**
+Input Title: "Utility Power Entry and Service Configuration"
+AI Analysis: Identified Domain = Electrical & Utility Distribution; Primary Equipment = utility service entrances, electrical switchgear, transformers, meters.
+Synthesized Queries: "utility service entrance switchgear", "electrical service entrance meter transformer".
+Negative Filter: Suppressed home wall sockets, phone chargers, and domestic living room scenes.
+Output: High-match photos of commercial electrical service entrances, outdoor pad-mounted distribution transformers, and industrial metering switchgear.
+
+**Example 2: General Industry Hand Protection**
+Input Title: "General Industry Hand Protection"
+AI Analysis: Identified Domain = Industrial Safety & Hand Protection; Target Equipment = cut-resistant gloves, chemical gloves, heavy-duty work gloves.
+Synthesized Queries: "worker wearing industrial protective gloves", "cut resistant work gloves manufacturing".
+Negative Filter: Suppressed medical surgical gloves, winter ski gloves, fashion leather accessories, and generic office handshakes.
+Output: High-relevance photography of manufacturing workers wearing high-visibility cut-resistant safety gloves in active workplace scenarios.
+
+**Example 3: Confined Space Tripod and Air Monitoring**
+Input Title: "Confined Space Tripod and Air Monitoring"
+AI Analysis: Identified Domain = Confined Space Safety; Equipment = retrieval tripod, 4-gas atmospheric monitor, ventilation duct.
+Synthesized Queries: "confined space entry tripod winch worker", "gas detector air monitoring manhole".
+Output: Technical images of tripod winches stationed over utility manholes and workers operating multi-gas monitors.`,
+    additionalFaq: [
+      {
+        question:
+          'Why does the tool require an Adobe Developer Console Client ID if I already have a paid Adobe Stock subscription?',
+        answer:
+          'A consumer Adobe Stock subscription grants media licensing and download permissions through the stock.adobe.com web interface. Programmatic search integrations, however, communicate with the Adobe Stock REST API (stock.adobe.io), which requires an application API Key (Client ID) registered through the Adobe Developer Console at developer.adobe.com.',
+      },
+      {
+        question:
+          'How does the AI rank relevance compared to regular stock photo keyword search?',
+        answer:
+          'Standard keyword searches look for any occurrence of words, often returning unrelated images such as fashion gloves for industrial hand protection or kitchen light bulbs for utility power entry. The AI Finder analyzes the technical safety context, identifies specific equipment and hazards, and applies penalty scoring to eliminate generic stock photography and misleading scenes.',
+      },
+      {
+        question:
+          'What happens if no relevant images meet the technical threshold?',
+        answer:
+          'If initial search results fall below the strict quality and technical accuracy threshold (45%), the pipeline automatically dispatches alternative AI-generated queries from different technical angles. If no assets qualify, the tool presents a clear explanation rather than showing loosely related or fabricated photos.',
+      },
+      {
+        question:
+          'Can I license and download the full-resolution asset directly from the tool?',
+        answer:
+          'Yes. Clicking "Open Stock" or using the "Copy Asset ID" button takes you directly to the authentic asset page on Adobe Stock, where you can download the full-resolution vector, photo, or 4K asset using your active Adobe Stock subscription.',
+      },
+    ],
+  },
 };

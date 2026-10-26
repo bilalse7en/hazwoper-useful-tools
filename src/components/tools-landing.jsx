@@ -26,6 +26,7 @@ import {
   AudioWaveform,
   Target,
   Scissors,
+  FileCode,
 } from 'lucide-react';
 import { toolIdToSlug, toolInfo } from '@/lib/seo';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +60,8 @@ const iconMap = {
   'bg-remover': Wand2,
   'pdf-editor': FileText,
   'html-design-enhancer': Sparkles,
+  'adobe-stock-finder': Search,
+  'course-json-converter': FileCode,
 };
 
 // Free tools that anyone can access (even without login)
@@ -78,6 +81,8 @@ const FREE_TOOL_IDS = [
   'bg-remover',
   'pdf-editor',
   'ai-video-shorts',
+  'adobe-stock-finder',
+  'course-json-converter',
 ];
 
 // Generator tools that require login + generator access

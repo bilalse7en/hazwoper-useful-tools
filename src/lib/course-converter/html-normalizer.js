@@ -1,0 +1,169 @@
+/**
+ * html-normalizer.js
+ *
+ * Normalizes and sanitizes HTML from Word documents (mammoth) or PDFs into
+ * clean, semantic, LMS-compliant HTML.
+ *
+ * Rules:
+ * - Strips all class and style attributes from ALL HTML elements (including divs, p, lists, tables).
+ * - Strips Word/Office junk: MsoNormal, style="mso-...", id attributes, empty spans, fonts.
+ * - Preserves semantic formatting: <p>, <ul>, <ol>, <li>, <h2>, <h3>, <h4>, <table>, <thead>, <tbody>,
+ *   <tr>, <th>, <td>, <strong>, <em>, <a>.
+ * - Unwraps redundant nested / inner / empty <div> wrappers.
+ * - Wraps topic content in strictly ONE parent <div> without any classes or styles: <div>...content...</div>.
+ * - Zero content loss: all text, numbers, codes, and citations are preserved.
+ */
+
+/**
+ * Clean and normalize a block of raw HTML
+ * @param {string} rawHtml - HTML snippet or full document HTML
+ * @returns {string} - Clean inner semantic HTML without classes or styles
+ */
+export function normalizeHtmlContent(rawHtml) {
+  if (!rawHtml || typeof rawHtml !== 'string') return '';
+
+  let html = rawHtml;
+
+  // 1. Remove comments and doctype / html / head / body tags
+  html = html.replace(/<!--[\s\S]*?-->/g, '');
+  html = html.replace(/<!DOCTYPE[^>]*>/gi, '');
+  html = html.replace(/<\/?(html|head|body|meta|title|link)[^>]*>/gi, '');
+
+  // 2. Remove XML tags and Word office namespaces (e.g., <o:p>, </o:p>, <w:...>)
+  html = html.replace(/<\/?\w+:[^>]*>/gi, '');
+
+  // 3. Remove non-semantic wrappers: <font>, <span>
+  html = html.replace(/<\/?font[^>]*>/gi, '');
+  html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+
+  // 4. Strip ALL class and style attributes from all elements
+  html = html.replace(/\s*class=(?:"[^"]*"|'[^']*')/gi, '');
+  html = html.replace(/\s*style=(?:"[^"]*"|'[^']*')/gi, '');
+
+  // 5. Strip IDs, lang, and obsolete formatting/presentational attributes
+  html = html.replace(
+    /\s*(id|lang|align|valign|width|height|border|cellspacing|cellpadding|bgcolor|clear|color|face|size)=(?:"[^"]*"|'[^']*')/gi,
+    ''
+  );
+
+  // 6. Standardize headers (strip any remaining attributes, enforce clean tags)
+  html = html.replace(
+    /<h2[^>]*>([\s\S]*?)<\/h2>/gi,
+    (m, text) => `<h2>${text.trim()}</h2>`
+  );
+  html = html.replace(
+    /<h3[^>]*>([\s\S]*?)<\/h3>/gi,
+    (m, text) => `<h3>${text.trim()}</h3>`
+  );
+  html = html.replace(
+    /<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi,
+    (m, text) => `<h4>${text.trim()}</h4>`
+  );
+
+  // 7. Standardize lists and list items
+  html = html.replace(/<ul[^>]*>/gi, '<ul>');
+  html = html.replace(/<ol[^>]*>/gi, '<ol>');
+  html = html.replace(
+    /<li[^>]*>([\s\S]*?)<\/li>/gi,
+    (m, text) => `<li>${text.trim()}</li>`
+  );
+
+  // 8. Standardize paragraphs and drop completely empty paragraphs
+  html = html.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (m, content) => {
+    const trimmed = content.trim();
+    if (
+      !trimmed ||
+      trimmed === '&nbsp;' ||
+      trimmed === '<br>' ||
+      trimmed === '<br/>'
+    ) {
+      return '';
+    }
+    return `<p>${trimmed}</p>`;
+  });
+
+  // 9. Standardize strong and emphasis
+  html = html.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '<strong>$1</strong>');
+  html = html.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '<em>$1</em>');
+  html = html.replace(
+    /<strong[^>]*>([\s\S]*?)<\/strong>/gi,
+    (m, text) => `<strong>${text.trim()}</strong>`
+  );
+  html = html.replace(
+    /<em[^>]*>([\s\S]*?)<\/em>/gi,
+    (m, text) => `<em>${text.trim()}</em>`
+  );
+
+  // 10. Standardize tables
+  html = html.replace(/<table[^>]*>/gi, '<table>');
+  html = html.replace(/<tr[^>]*>/gi, '<tr>');
+  html = html.replace(
+    /<th[^>]*>([\s\S]*?)<\/th>/gi,
+    (m, text) => `<th>${text.trim()}</th>`
+  );
+  html = html.replace(
+    /<td[^>]*>([\s\S]*?)<\/td>/gi,
+    (m, text) => `<td>${text.trim()}</td>`
+  );
+
+  // 11. Clean links (preserve href and target)
+  html = html.replace(
+    /<a\s+[^>]*href=(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi,
+    '<a href="$2" target="_blank" rel="noopener noreferrer">$3</a>'
+  );
+
+  // 12. Unwrap all inner / nested / empty <div> tags so they never nest or create empty wrappers
+  let prev;
+  do {
+    prev = html;
+    html = html.replace(/<div>\s*<\/div>/gi, '');
+    html = html.replace(/<div>([\s\S]*?)<\/div>/gi, '$1');
+  } while (html !== prev);
+
+  // 13. Clean up multiple empty lines or trailing breaks
+  html = html.replace(/<p>\s*<\/p>/gi, '');
+  html = html.replace(/(\r?\n\s*){3,}/g, '\n\n');
+
+  return html.trim();
+}
+
+/**
+ * Wraps clean inner HTML in strictly ONE single parent <div> without any classes or styles:
+ * <div>...content elements...</div>
+ * @param {string} innerHtml - Normalized inner HTML
+ * @returns {string} - Clean LMS editorHtml wrapped in 1 parent div
+ */
+export function wrapInLmsContainer(innerHtml) {
+  const clean = normalizeHtmlContent(innerHtml);
+  return `<div>${clean}</div>`;
+}
+
+/**
+ * Calculates word count from an HTML string or text
+ * @param {string} htmlOrText
+ * @returns {number}
+ */
+export function calculateWordCount(htmlOrText) {
+  if (!htmlOrText) return 0;
+  // Strip tags
+  const plainText = htmlOrText
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!plainText) return 0;
+  return plainText.split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * Calculates reading duration in seconds for a topic
+ * Reference formula: Math.max(30, Math.round(wordCount * 0.5))
+ * @param {number|string} wordCountOrHtml
+ * @returns {number} duration in seconds
+ */
+export function calculateTopicDuration(wordCountOrHtml) {
+  const wordCount =
+    typeof wordCountOrHtml === 'number'
+      ? wordCountOrHtml
+      : calculateWordCount(wordCountOrHtml);
+  return Math.max(30, Math.round(wordCount * 0.5));
+}

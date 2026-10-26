@@ -39,6 +39,7 @@ import {
   Mail,
   Presentation,
   Scissors,
+  FileCode,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +66,12 @@ const navGroups = [
       { id: 'resources', label: 'Resources', icon: FileSpreadsheet },
       { id: 'document-extractor', label: 'Document Extractor', icon: FileText },
       { id: 'lesson-quiz-builder', label: 'Lesson Quiz', icon: Target },
+      {
+        id: 'course-json-converter',
+        label: 'LMS JSON Converter',
+        icon: FileCode,
+        badge: 'NEW',
+      },
       { id: 'slide-generator', label: 'Slide', icon: Presentation },
       {
         id: 'html-design-enhancer',
@@ -90,6 +97,12 @@ const navGroups = [
           { id: 'image-to-text', label: 'Image to Text', icon: ScanText },
           { id: 'watermark-remover', label: 'Watermark Remover', icon: Wand2 },
           { id: 'bg-remover', label: 'Background Remover', icon: Wand2 },
+          {
+            id: 'adobe-stock-finder',
+            label: 'Adobe Stock Finder',
+            icon: Search,
+            badge: 'AI',
+          },
         ],
       },
       {

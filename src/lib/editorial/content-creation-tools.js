@@ -381,4 +381,60 @@ Result: The generator detects 4 customizable fields, maps the text into the resp
       },
     ],
   },
+  'course-json-converter': {
+    overview: `The LMS Course JSON Converter bridges the gap between curriculum authoring in standard Word or PDF documents and ingestion into enterprise Learning Management Systems (LMS). Rather than manually copying paragraphs, writing complex JSON schemas, re-formatting HTML tables, and hand-coding quiz objects, this tool automates the entire ingestion pipeline with 100% data fidelity. Supporting both single-lesson ingestion (Mode A) and comprehensive multi-module curriculum synthesis (Mode B), the engine extracts headings, isolates instructional topics, strips proprietary Word/Office artifacts (such as MsoNormal and inline tab-stops), normalizes markup to clean semantic HTML, segregates quiz questions into dedicated knowledge check arrays, calculates reading durations using empirical word-count benchmarks, and verifies the resulting payload across a strict 14-point pre-flight validation suite.`,
+    stepByStep: `1. Select your target conversion mode: Choose Mode A (Lesson-wise) when uploading a single-lesson document with topics and a knowledge check, or Mode B (Course-wise) when processing a full syllabus with multiple modules, lessons, and a final exam.
+2. Upload your source Word document (.docx, .doc) or PDF document into the interactive dropzone. The system reads the raw document structure, parses OOXML headers or PDF text layers, and extracts metadata.
+3. Review and optionally override the detected Course Title, Module Title, and Lesson Title in the Metadata Review panel to match your exact LMS catalog naming conventions.
+4. Inspect the generated course components across the interactive multi-tab inspector: preview formatted topic slides, inspect isolated quiz question cards with answer keys and explanations, and examine clean, sanitized HTML.
+5. Review the 14-point pre-flight validation report to confirm structural integrity, duration math consistency, and zero quiz leakage. Once verified, click "Download JSON" or "Copy JSON" to export the LMS-compatible file.
+
+Common Errors to Avoid:
+- Mixing Quiz Questions in Body Text: Ensure quiz sections are delineated with clear headers such as "Lesson Quiz" or "Knowledge Check" so the parser segregates them from instructional slides.
+- Heading Style Inconsistency: Use Heading 1 styles for top-level topics, allowing Heading 2 and Heading 3 to remain cleanly nested inside topic slide content.
+- Corrupted Archives: Ensure .docx files are native modern Word documents rather than renamed legacy .doc or .rtf files.`,
+    methodology: `The LMS Course JSON Converter operates through a deterministic 5-stage transformation pipeline:
+
+1. Document Ingestion & Header Metadata Extraction: The engine inspects the Office Open XML package (word/header1.xml) via JSZip to extract institutional titles (Course, Module, Lesson) before parsing the body. For PDF documents, PDF.js extracts the coordinate-based text layer and reconstructs structural blocks.
+
+2. Structural Boundary Segmentation: Content is split on Heading 1 boundaries. In Mode A, instructional sections become topic slides, while sections matching quiz heuristics (e.g., 'Lesson Quiz', 'Knowledge Check') are diverted to the assessment engine. In Mode B, module and lesson regex patterns reconstruct the complete multi-tiered curriculum tree.
+
+3. HTML Normalization & Sanitization: The raw HTML is scrubbed of Microsoft Office artifacts (MsoNormal, tab-stops, office namespaces, inline font styles) while strictly preserving semantic elements (p, ul, ol, li, h2, h3, h4, table, strong, em). Clean HTML is wrapped inside the standard LMS editor container specification.
+
+4. Assessment Isolation & Extraction: Multiple choice questions are parsed into structured objects containing question stems, lettered option values (A-D), sanitized labels, detected correct answers (via inline markers or answer keys), and pedagogical explanations.
+
+5. Duration Synthesis & Validation: Topic reading durations are computed from clean word counts using Math.max(30, Math.round(wordCount * 0.5)), while quiz questions receive a standard 60-second allocation. The complete payload is evaluated against 14 automated schema checks before serialization.`,
+    examples: `Example 1: Mode A Lesson-Wise Ingestion for Electrical Safety
+Input: A 12-page Word document titled "Lesson 1: Utility Power Entry and Service Configuration.docx" with 10 topic sections (Introduction, Fundamentals, Equipment, Single/Three-Phase, etc.) and a 6-question Lesson Quiz.
+Process: The tool extracts header metadata, maps the 10 Heading 1 sections into sequential topic objects, strips MsoNormal classes, computes reading durations (totalling 862 seconds), and isolates all 6 quiz questions with 4 options each into the knowledge_check array.
+Result: Generates a 100% valid course JSON matching the reference LMS schema with total_duration_seconds: 1222, planned_duration_seconds: 1222, and passes all 14 validation checks.
+
+Example 2: Mode B Comprehensive Course Reconstruction
+Input: A 65-page master course curriculum containing "Module 1: Chemical Safety", "Lesson 1: Toxic Gases", multiple topics, a lesson quiz, "Module 2: Emergency Response", and a 25-question "Comprehensive Final Exam".
+Process: The engine detects module and lesson boundaries, partitions topics under their respective lessons, attaches lesson quizzes to their parent lessons, and segregates the final exam at the course root level under the final_exam schema.
+Result: Produces a multi-module course JSON with hierarchical module_id and lesson_id mappings, separate time limits for the final exam (3600s), and reconciled grand total duration.`,
+    additionalFaq: [
+      {
+        question:
+          'Does the converter support tables, bullet lists, and bold text?',
+        answer:
+          'Yes. All semantic HTML formatting including tables, thead/tbody rows, ordered and unordered lists, blockquotes, bold, italics, and regulatory citations (OSHA, NFPA, EPA) are 100% preserved in the clean HTML output.',
+      },
+      {
+        question: 'How are quiz correct answers identified?',
+        answer:
+          'The quiz extractor recognizes inline markers such as (correct), [correct], (answer), or asterisks on option lines, as well as standalone answer keys like "Correct Answer: B" or "Answer: Option C" following the question options.',
+      },
+      {
+        question: 'What happens if a document has no header metadata?',
+        answer:
+          'If header XML is missing, the tool automatically uses the first body heading or preamble as the lesson/course title and allows manual review and one-click updating in the Metadata Review panel.',
+      },
+      {
+        question: 'Can I export the converted JSON directly to my LMS?',
+        answer:
+          'Yes. The generated JSON follows the exact schema expected by the LMS importer. You can use the "Download JSON" button to save the file or "Copy JSON" to paste it into your CMS/LMS upload console.',
+      },
+    ],
+  },
 };

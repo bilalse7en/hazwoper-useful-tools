@@ -11,6 +11,8 @@ export const ROLES = {
     'web-content',
     'slide-generator',
     'slide',
+    'adobe-stock-finder',
+    'course-json-converter',
   ],
   blog_creator: ['blog', 'blog-generator'],
   content_creator: [
@@ -26,6 +28,8 @@ export const ROLES = {
     'lesson-quiz-builder',
     'slide-generator',
     'slide',
+    'adobe-stock-finder',
+    'course-json-converter',
   ],
   user: [],
 };
@@ -74,6 +78,16 @@ export const NAV_ITEMS = [
   { id: 'watermark-remover', label: 'Watermark Remover', icon: 'Wand2' },
   { id: 'bg-remover', label: 'AI Background Remover', icon: 'Wand2' },
   { id: 'pdf-editor', label: 'Free PDF Editor', icon: 'FileText' },
+  {
+    id: 'adobe-stock-finder',
+    label: 'AI Adobe Stock Finder',
+    icon: 'Search',
+  },
+  {
+    id: 'course-json-converter',
+    label: 'LMS Course JSON Converter',
+    icon: 'FileCode',
+  },
   { id: 'ai-assistant', label: 'AI UNIVERSE', icon: 'BrainCircuit' },
 ];
 
