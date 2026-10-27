@@ -239,7 +239,7 @@ export function AppSidebar({
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'overflow-auto h-screen border-r border-border transition-all duration-300 sidebar-wrapper flex flex-col select-none',
+          'overflow-y-auto h-full border-r border-border transition-all duration-300 sidebar-wrapper flex flex-col select-none',
           !className?.includes('w-') && (collapsed ? 'w-16' : 'w-64'),
           className
         )}

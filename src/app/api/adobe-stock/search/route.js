@@ -9,7 +9,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const title = body.title || body.slideTitle || '';
     const offset = parseInt(body.offset || 0, 10);
-    const limit = parseInt(body.limit || 6, 10);
+    const limit = parseInt(body.limit || 12, 10);
     const threshold = parseInt(body.threshold || 45, 10);
 
     if (!title || !title.trim()) {
@@ -42,10 +42,13 @@ export async function POST(request) {
         body.imageType !== 'real-life',
     };
 
+    const provider = body.provider || 'all';
+
     const result = await executeSmartStockSearch({
       title,
       context,
       styleFilter,
+      provider,
       offset,
       limit,
       threshold,
@@ -73,7 +76,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get('title') || searchParams.get('q') || '';
     const offset = parseInt(searchParams.get('offset') || '0', 10);
-    const limit = parseInt(searchParams.get('limit') || '6', 10);
+    const limit = parseInt(searchParams.get('limit') || '12', 10);
     const threshold = parseInt(searchParams.get('threshold') || '45', 10);
 
     if (!title || !title.trim()) {
@@ -106,10 +109,13 @@ export async function GET(request) {
         searchParams.get('imageType') !== 'real-life',
     };
 
+    const provider = searchParams.get('provider') || 'all';
+
     const result = await executeSmartStockSearch({
       title,
       context,
       styleFilter,
+      provider,
       offset,
       limit,
       threshold,

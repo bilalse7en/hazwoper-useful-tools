@@ -144,7 +144,7 @@ function AdminLayoutInner({ children }) {
     : searchParams.get('view') || 'dashboard';
 
   return (
-    <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px)] relative">
+    <div className="flex flex-1 min-h-[calc(100vh-64px)] relative">
       {/* Admin Sidebar */}
       <AppSidebar
         activeTab={currentView}
@@ -161,11 +161,19 @@ function AdminLayoutInner({ children }) {
         user={user}
         onLogout={handleLogout}
         adminMode={true}
-        className="hidden lg:block h-full relative"
+        className={cn(
+          'hidden lg:block fixed top-16 left-0 bottom-0 z-30 transition-all duration-300',
+          sidebarCollapsed ? 'w-16' : 'w-64'
+        )}
       />
 
       {/* Main Content */}
-      <main className={cn('flex-1 transition-all duration-300 ease-in-out')}>
+      <main
+        className={cn(
+          'flex-1 transition-all duration-300 ease-in-out',
+          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+        )}
+      >
         <ScrollArea className="h-full">{children}</ScrollArea>
       </main>
 

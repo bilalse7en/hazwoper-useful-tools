@@ -27,6 +27,7 @@ import {
   Sliders,
   Camera,
   Palette,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   parseCourseTOC,
   extractDocxHeaderMetadata,
@@ -76,6 +89,7 @@ export function AdobeStockImageFinder({
   const [visitedTopics, setVisitedTopics] = useState(new Set());
   const [pastingText, setPastingText] = useState('');
   const [parsingDoc, setParsingDoc] = useState(false);
+  const [showTocDrawer, setShowTocDrawer] = useState(false);
   const fileInputRef = useRef(null);
 
   // Style Filter State: Real Life (Photos) vs Cartoonic (Vectors & Illustrations)
@@ -84,6 +98,10 @@ export function AdobeStockImageFinder({
     photo: true,
     illustration: true,
   });
+
+  // App / Provider Filter State: 'all' | 'unsplash' | 'adobe'
+  const [selectedProvider, setSelectedProvider] = useState('all');
+  const [downloadingId, setDownloadingId] = useState(null);
 
   // Interactive 3-Tier Curriculum Context State
   const [courseName, setCourseName] = useState('');
@@ -105,6 +123,84 @@ export function AdobeStockImageFinder({
       setTitle(initialTitle);
     }
   }, [initialTitle]);
+
+  const handleDownloadUnsplash = async (item, e) => {
+    if (e) e.stopPropagation();
+    if (!item) return;
+    setDownloadingId(item.assetId);
+
+    try {
+      // Notify Unsplash download endpoint if present (API guideline compliance)
+      if (item.downloadApiUrl) {
+        fetch(item.downloadApiUrl).catch(() => {});
+      }
+
+      const downloadUrl =
+        item.downloadUrl || item.largePreviewUrl || item.previewUrl;
+      const res = await fetch(downloadUrl);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `unsplash-${item.assetId || 'photo'}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Download error:', err);
+      // Fallback: Open original image in new tab for direct browser save
+      window.open(item.downloadUrl || item.previewUrl, '_blank');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleSetStyle = (mode) => {
+    let nextStyle;
+    if (mode === 'all') {
+      nextStyle = { photo: true, illustration: true };
+    } else if (mode === 'photo') {
+      nextStyle = { photo: true, illustration: false };
+    } else if (mode === 'illustration') {
+      nextStyle = { photo: false, illustration: true };
+    } else {
+      nextStyle = { photo: true, illustration: true };
+    }
+    setStyleFilter(nextStyle);
+
+    if (title.trim()) {
+      const activeTopic =
+        activeTopicIndex >= 0 && tocData?.topics
+          ? tocData.topics[activeTopicIndex]
+          : null;
+      const context = {
+        course: courseName || activeTopic?.course || tocData?.courseTitle,
+        module: moduleName || activeTopic?.module || tocData?.moduleTitle,
+        lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
+        parentSection: activeTopic?.parentSection,
+      };
+      executeSearch(title, true, context, nextStyle, selectedProvider);
+    }
+  };
+
+  const handleSetProvider = (provider) => {
+    setSelectedProvider(provider);
+
+    if (title.trim()) {
+      const activeTopic =
+        activeTopicIndex >= 0 && tocData?.topics
+          ? tocData.topics[activeTopicIndex]
+          : null;
+      const context = {
+        course: courseName || activeTopic?.course || tocData?.courseTitle,
+        module: moduleName || activeTopic?.module || tocData?.moduleTitle,
+        lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
+        parentSection: activeTopic?.parentSection,
+      };
+      executeSearch(title, true, context, styleFilter, provider);
+    }
+  };
 
   const toggleStyle = (type) => {
     let nextFilter;
@@ -129,7 +225,13 @@ export function AdobeStockImageFinder({
         lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
         parentSection: activeTopic?.parentSection,
       };
-      executeSearch(title, true, context, nextFilter || styleFilter);
+      executeSearch(
+        title,
+        true,
+        context,
+        nextFilter || styleFilter,
+        selectedProvider
+      );
     }
   };
 
@@ -137,7 +239,8 @@ export function AdobeStockImageFinder({
     searchQuery,
     forceRefresh = false,
     context = {},
-    activeStyle = styleFilter
+    activeStyle = styleFilter,
+    activeProvider = selectedProvider
   ) => {
     const cleanTitle = (searchQuery || '').trim();
     if (!cleanTitle) return;
@@ -149,8 +252,8 @@ export function AdobeStockImageFinder({
       parentSection: context.parentSection,
     };
 
-    // Cache key incorporates course, lesson, style filter, and parentSection
-    const styleKey = `${activeStyle.photo ? 'p' : ''}_${activeStyle.illustration ? 'i' : ''}`;
+    // Cache key incorporates course, lesson, style filter, active provider, and parentSection
+    const styleKey = `${activeStyle.photo ? 'p' : ''}_${activeStyle.illustration ? 'i' : ''}_${activeProvider}`;
     const cacheKey =
       `${effectiveContext.course}::${effectiveContext.lesson}::${effectiveContext.parentSection || ''}::${styleKey}::${cleanTitle}`.toLowerCase();
 
@@ -202,7 +305,11 @@ export function AdobeStockImageFinder({
     const timer2 = setTimeout(() => {
       if (searchIdRef.current === currentSearchId) {
         setLoadingStage(
-          'Searching Adobe Stock catalog for matching equipment...'
+          activeProvider === 'unsplash'
+            ? 'Searching Unsplash for free high-resolution photos...'
+            : activeProvider === 'adobe'
+              ? 'Searching Adobe Stock catalog for verified assets...'
+              : 'Searching Unsplash and Adobe Stock catalogs in parallel...'
         );
       }
     }, 900);
@@ -223,8 +330,9 @@ export function AdobeStockImageFinder({
           title: cleanTitle,
           context: effectiveContext,
           styleFilter: activeStyle,
+          provider: activeProvider,
           offset: 0,
-          limit: 6,
+          limit: 12,
           threshold: 45,
         }),
         signal: controller.signal,
@@ -330,8 +438,9 @@ export function AdobeStockImageFinder({
           title: title.trim(),
           context: effectiveContext,
           styleFilter,
+          provider: selectedProvider,
           offset: nextOffset,
-          limit: 6,
+          limit: 12,
           threshold: 45,
         }),
       });
@@ -348,7 +457,7 @@ export function AdobeStockImageFinder({
         setOffset(nextOffset);
 
         // Update the cached results for this topic so returning to it retains the expanded list
-        const styleKey = `${styleFilter.photo ? 'p' : ''}_${styleFilter.illustration ? 'i' : ''}`;
+        const styleKey = `${styleFilter.photo ? 'p' : ''}_${styleFilter.illustration ? 'i' : ''}_${selectedProvider}`;
         const cacheKey =
           `${effectiveContext.course}::${effectiveContext.lesson}::${effectiveContext.parentSection || ''}::${styleKey}::${title.trim()}`.toLowerCase();
         const prevCached = topicCacheRef.current.get(cacheKey) || {};
@@ -887,188 +996,89 @@ export function AdobeStockImageFinder({
             </CardContent>
           </Card>
 
-          {/* TOC Navigator & Search Grid Split View */}
+          {/* Course TOC Mode: Full-Width Card Experience (Zero Squeeze) */}
           {tocData && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              {/* Left Column: Topics Sidebar (10 to 2000 topics) */}
-              <div className="lg:col-span-4 space-y-3">
-                <Card className="border border-border/70 shadow-sm bg-card/70 overflow-hidden flex flex-col h-[650px]">
-                  {/* TOC Header */}
-                  <div className="p-3.5 bg-muted/40 border-b border-border/60 space-y-2 shrink-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-foreground truncate">
-                        <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="truncate" title={tocData.lessonTitle}>
-                          {tocData.lessonTitle || 'Course Curriculum'}
+            <div className="w-full space-y-5">
+              {/* Active Topic Banner Card */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-border/70 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                <div className="space-y-1 min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-bold uppercase tracking-wider bg-primary/5 text-primary border-primary/20"
+                    >
+                      Topic {activeTopicIndex + 1} of {tocData.totalTopics}
+                    </Badge>
+                    {tocData.courseTitle && (
+                      <>
+                        <span>•</span>
+                        <span
+                          className="text-primary font-bold truncate max-w-[220px]"
+                          title={tocData.courseTitle}
+                        >
+                          {tocData.courseTitle}
                         </span>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] font-mono shrink-0"
-                      >
-                        {tocData.totalTopics} Topics
-                      </Badge>
-                    </div>
-
-                    {/* Filter Input for Large Lists */}
-                    <div className="relative">
-                      <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        type="text"
-                        value={tocSearchQuery}
-                        onChange={(e) => setTocSearchQuery(e.target.value)}
-                        placeholder="Filter topics list..."
-                        className="h-8 pl-8 text-xs bg-background/90 rounded-lg border-border/70"
-                      />
-                      {tocSearchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setTocSearchQuery('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      </>
+                    )}
+                    {tocData.moduleTitle && (
+                      <>
+                        <span>•</span>
+                        <span
+                          className="truncate max-w-[200px]"
+                          title={tocData.moduleTitle}
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Scrollable Topics List */}
-                  <div className="flex-1 overflow-y-auto divide-y divide-border/40 p-1">
-                    {filteredTopics.map((topic, idx) => {
-                      const isSelected =
-                        activeTopicIndex !== -1 &&
-                        tocData.topics[activeTopicIndex]?.id === topic.id;
-                      const isVisited = visitedTopics.has(topic.id);
-
-                      return (
-                        <button
-                          key={topic.id}
-                          type="button"
-                          onClick={() => {
-                            const originalIdx = tocData.topics.findIndex(
-                              (t) => t.id === topic.id
-                            );
-                            selectTopic(topic, originalIdx);
-                          }}
-                          className={cn(
-                            'w-full text-left p-2.5 rounded-lg text-xs transition-all duration-150 flex items-start gap-2 cursor-pointer',
-                            isSelected
-                              ? 'bg-primary/10 text-primary font-bold border border-primary/25 shadow-xs'
-                              : 'hover:bg-muted/60 text-foreground/90'
-                          )}
+                          {tocData.moduleTitle}
+                        </span>
+                      </>
+                    )}
+                    {tocData.lessonTitle && (
+                      <>
+                        <span>•</span>
+                        <span
+                          className="truncate max-w-[220px]"
+                          title={tocData.lessonTitle}
                         >
-                          <span className="font-mono text-[10px] text-muted-foreground shrink-0 mt-0.5">
-                            {String(idx + 1).padStart(2, '0')}.
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            {topic.parentSection && (
-                              <div className="text-[10px] text-muted-foreground/80 truncate font-semibold uppercase tracking-wider mb-0.5">
-                                {topic.parentSection}
-                              </div>
-                            )}
-                            <span className="line-clamp-2 leading-tight">
-                              {topic.title}
-                            </span>
-                          </div>
-                          {isVisited && !isSelected && (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600/70 shrink-0 mt-0.5" />
-                          )}
-                          {isSelected && (
-                            <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5 animate-pulse" />
-                          )}
-                        </button>
-                      );
-                    })}
-
-                    {filteredTopics.length === 0 && (
-                      <div className="p-4 text-center text-xs text-muted-foreground">
-                        No topics match &quot;{tocSearchQuery}&quot;
-                      </div>
+                          {tocData.lessonTitle}
+                        </span>
+                      </>
                     )}
                   </div>
 
-                  {/* Quick Replace Button */}
-                  <div className="p-2.5 bg-muted/30 border-t border-border/60 flex items-center justify-between text-xs shrink-0">
-                    <span className="text-[11px] text-muted-foreground">
-                      {visitedTopics.size} of {tocData.totalTopics} viewed
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => {
-                        setTocData(null);
-                        setResults([]);
-                        topicCacheRef.current.clear();
-                      }}
-                      className="h-6 text-[11px] text-muted-foreground hover:text-foreground"
+                  <div>
+                    {tocData.topics[activeTopicIndex]?.parentSection && (
+                      <div className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1">
+                        <span>
+                          {tocData.topics[activeTopicIndex].parentSection}
+                        </span>
+                        <span className="text-primary/70">›</span>
+                      </div>
+                    )}
+                    <h2 className="text-base sm:text-lg font-extrabold text-foreground truncate">
+                      {title}
+                    </h2>
+                  </div>
+                </div>
+
+                {/* Navigation Controls & Drawer Trigger */}
+                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end flex-wrap">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowTocDrawer(true)}
+                    className="h-8 text-xs font-semibold gap-1.5 rounded-lg border-border/80 cursor-pointer hover:bg-muted"
+                  >
+                    <ListOrdered className="h-3.5 w-3.5 text-primary" />
+                    <span>View All Topics</span>
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] h-4.5 px-1 font-mono"
                     >
-                      Clear TOC
-                    </Button>
-                  </div>
-                </Card>
-              </div>
+                      {visitedTopics.size}/{tocData.totalTopics}
+                    </Badge>
+                  </Button>
 
-              {/* Right Column: Search Results for Active Topic */}
-              <div className="lg:col-span-8 space-y-4">
-                {/* Active Topic Banner with Prev/Next Steppers */}
-                <div className="p-3.5 rounded-xl bg-card border border-border/70 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                      <span>
-                        Topic {activeTopicIndex + 1} of {tocData.totalTopics}
-                      </span>
-                      {tocData.courseTitle && (
-                        <>
-                          <span>•</span>
-                          <span
-                            className="text-primary font-bold truncate max-w-[200px]"
-                            title={tocData.courseTitle}
-                          >
-                            {tocData.courseTitle}
-                          </span>
-                        </>
-                      )}
-                      {tocData.moduleTitle && (
-                        <>
-                          <span>•</span>
-                          <span
-                            className="truncate max-w-[180px]"
-                            title={tocData.moduleTitle}
-                          >
-                            {tocData.moduleTitle}
-                          </span>
-                        </>
-                      )}
-                      {tocData.lessonTitle && (
-                        <>
-                          <span>•</span>
-                          <span
-                            className="truncate max-w-[220px]"
-                            title={tocData.lessonTitle}
-                          >
-                            {tocData.lessonTitle}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <div>
-                      {tocData.topics[activeTopicIndex]?.parentSection && (
-                        <div className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1">
-                          <span>
-                            {tocData.topics[activeTopicIndex].parentSection}
-                          </span>
-                          <span className="text-primary/70">›</span>
-                        </div>
-                      )}
-                      <h2 className="text-sm sm:text-base font-extrabold text-foreground truncate">
-                        {title}
-                      </h2>
-                    </div>
-                  </div>
-
-                  {/* Step Navigation Controls */}
-                  <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-end">
+                  <div className="flex items-center gap-1">
                     <Button
                       type="button"
                       size="sm"
@@ -1093,41 +1103,275 @@ export function AdobeStockImageFinder({
                       Next
                       <ChevronRight className="h-3.5 w-3.5" />
                     </Button>
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      const activeTopic =
+                        activeTopicIndex >= 0 && tocData?.topics
+                          ? tocData.topics[activeTopicIndex]
+                          : null;
+                      const context = activeTopic
+                        ? {
+                            course: activeTopic.course || tocData?.courseTitle,
+                            module: activeTopic.module || tocData?.moduleTitle,
+                            lesson: activeTopic.lesson || tocData?.lessonTitle,
+                            parentSection: activeTopic.parentSection,
+                          }
+                        : {};
+                      executeSearch(
+                        title,
+                        true,
+                        context,
+                        styleFilter,
+                        selectedProvider
+                      );
+                    }}
+                    disabled={loading}
+                    className="h-8 text-xs font-semibold gap-1 rounded-lg cursor-pointer"
+                  >
+                    <RefreshCw
+                      className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
+                    />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+
+              {/* Render Full-Width Gallery Content */}
+              {renderSharedContent()}
+
+              {/* Sticky Bottom Topic Navigator Dock with Hover Tooltip Names */}
+              <div className="sticky bottom-3 z-40 w-full max-w-5xl mx-auto px-2 pointer-events-none mt-8">
+                <div className="pointer-events-auto backdrop-blur-xl bg-card/95 border border-border/80 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-xs">
+                  {/* Left Stepper & Drawer button */}
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <Button
-                      type="button"
                       size="sm"
-                      onClick={() => {
-                        const activeTopic =
-                          activeTopicIndex >= 0 && tocData?.topics
-                            ? tocData.topics[activeTopicIndex]
-                            : null;
-                        const context = activeTopic
-                          ? {
-                              course:
-                                activeTopic.course || tocData?.courseTitle,
-                              module:
-                                activeTopic.module || tocData?.moduleTitle,
-                              lesson:
-                                activeTopic.lesson || tocData?.lessonTitle,
-                              parentSection: activeTopic.parentSection,
-                            }
-                          : {};
-                        executeSearch(title, true, context);
-                      }}
-                      disabled={loading}
-                      className="h-8 text-xs font-semibold gap-1 rounded-lg cursor-pointer"
+                      variant="ghost"
+                      disabled={activeTopicIndex <= 0 || loading}
+                      onClick={goToPrevTopic}
+                      className="h-8 px-2 sm:px-3 text-xs gap-1 rounded-xl cursor-pointer"
                     >
-                      <RefreshCw
-                        className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
-                      />
-                      Refresh
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Prev</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowTocDrawer(true)}
+                      className="h-8 px-2 sm:px-3 text-xs gap-1.5 rounded-xl border-border/80 font-semibold cursor-pointer"
+                    >
+                      <ListOrdered className="h-3.5 w-3.5 text-primary" />
+                      <span className="hidden md:inline">Topics</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {activeTopicIndex + 1}/{tocData.totalTopics}
+                      </span>
+                    </Button>
+                  </div>
+
+                  {/* Center Numbered Topic Pills with Hover Tooltips */}
+                  <TooltipProvider delayDuration={50}>
+                    <div className="flex-1 min-w-0 overflow-x-auto py-1 px-1 scrollbar-none flex items-center justify-start sm:justify-center gap-1.5">
+                      {tocData.topics.map((t, idx) => {
+                        const isSelected = idx === activeTopicIndex;
+                        const isVisited = visitedTopics.has(t.id);
+
+                        return (
+                          <Tooltip key={t.id}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => selectTopic(t, idx)}
+                                className={cn(
+                                  'relative h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0',
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground shadow-md scale-110 ring-2 ring-primary/40 font-black'
+                                    : isVisited
+                                      ? 'bg-muted/80 text-foreground hover:bg-primary/20 border border-emerald-500/40'
+                                      : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                )}
+                              >
+                                <span>{idx + 1}</span>
+                                {isVisited && !isSelected && (
+                                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-background" />
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="top"
+                              className="max-w-xs text-xs p-2.5 space-y-1 shadow-xl bg-popover text-popover-foreground border-border"
+                            >
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
+                                <span>
+                                  Topic #{idx + 1} of {tocData.totalTopics}
+                                </span>
+                                {isVisited && (
+                                  <span className="text-emerald-500 font-bold">
+                                    ✓ Viewed
+                                  </span>
+                                )}
+                              </div>
+                              {t.parentSection && (
+                                <div className="text-[10px] text-primary font-bold uppercase truncate">
+                                  {t.parentSection}
+                                </div>
+                              )}
+                              <div className="font-bold text-foreground leading-snug">
+                                {t.title}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground italic pt-0.5">
+                                Click to view matching stock images
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </TooltipProvider>
+
+                  {/* Right Stepper */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={
+                        activeTopicIndex >= tocData.topics.length - 1 || loading
+                      }
+                      onClick={goToNextTopic}
+                      className="h-8 px-2 sm:px-3 text-xs gap-1 rounded-xl cursor-pointer"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-
-                {/* Render Grid & States (Shared) */}
-                {renderSharedContent()}
               </div>
+
+              {/* Slide-Out Drawer for Full Hierarchical TOC */}
+              <Sheet open={showTocDrawer} onOpenChange={setShowTocDrawer}>
+                <SheetContent
+                  side="right"
+                  className="w-full sm:max-w-md p-0 flex flex-col h-full bg-card"
+                >
+                  <SheetHeader className="p-4 border-b border-border/60 shrink-0">
+                    <div className="flex items-center justify-between">
+                      <SheetTitle className="text-sm font-bold flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-primary" />
+                        Course Curriculum Topics
+                      </SheetTitle>
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] font-mono"
+                      >
+                        {visitedTopics.size} / {tocData.totalTopics} viewed
+                      </Badge>
+                    </div>
+                    <div className="relative pt-2">
+                      <Filter className="absolute left-2.5 top-[calc(50%+4px)] -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        value={tocSearchQuery}
+                        onChange={(e) => setTocSearchQuery(e.target.value)}
+                        placeholder="Filter curriculum topics..."
+                        className="h-8 pl-8 text-xs bg-background rounded-lg border-border/70"
+                      />
+                      {tocSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setTocSearchQuery('')}
+                          className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </SheetHeader>
+
+                  <div className="flex-1 overflow-y-auto divide-y divide-border/40 p-2">
+                    {filteredTopics.map((topic, idx) => {
+                      const isSelected =
+                        activeTopicIndex !== -1 &&
+                        tocData.topics[activeTopicIndex]?.id === topic.id;
+                      const isVisited = visitedTopics.has(topic.id);
+
+                      return (
+                        <button
+                          key={topic.id}
+                          type="button"
+                          onClick={() => {
+                            const originalIdx = tocData.topics.findIndex(
+                              (t) => t.id === topic.id
+                            );
+                            selectTopic(topic, originalIdx);
+                            setShowTocDrawer(false);
+                          }}
+                          className={cn(
+                            'w-full text-left p-3 rounded-xl text-xs transition-all flex items-start gap-2.5 cursor-pointer',
+                            isSelected
+                              ? 'bg-primary/10 text-primary font-bold border border-primary/25 shadow-xs'
+                              : 'hover:bg-muted/60 text-foreground/90'
+                          )}
+                        >
+                          <span className="font-mono text-[10px] text-muted-foreground shrink-0 mt-0.5">
+                            {String(idx + 1).padStart(2, '0')}.
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            {topic.parentSection && (
+                              <div className="text-[10px] text-muted-foreground/80 truncate font-semibold uppercase tracking-wider mb-0.5">
+                                {topic.parentSection}
+                              </div>
+                            )}
+                            <span className="line-clamp-2 leading-tight">
+                              {topic.title}
+                            </span>
+                          </div>
+                          {isVisited && !isSelected && (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                          )}
+                          {isSelected && (
+                            <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5 animate-pulse" />
+                          )}
+                        </button>
+                      );
+                    })}
+
+                    {filteredTopics.length === 0 && (
+                      <div className="p-6 text-center text-xs text-muted-foreground">
+                        No topics match &quot;{tocSearchQuery}&quot;
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 border-t border-border/60 bg-muted/20 flex items-center justify-between text-xs">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => setShowTocDrawer(false)}
+                      className="h-7 text-xs cursor-pointer"
+                    >
+                      Close Drawer
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => {
+                        setTocData(null);
+                        setResults([]);
+                        topicCacheRef.current.clear();
+                        setShowTocDrawer(false);
+                      }}
+                      className="h-7 text-[11px] text-muted-foreground hover:text-destructive cursor-pointer"
+                    >
+                      Clear TOC
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           )}
         </div>
@@ -1144,13 +1388,19 @@ export function AdobeStockImageFinder({
         >
           <DialogContent className="max-w-3xl p-6 overflow-hidden">
             <DialogHeader className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className="text-[10px] font-bold uppercase tracking-wider"
-                >
-                  Asset #{previewModalItem.assetId}
-                </Badge>
+              <div className="flex items-center gap-2 flex-wrap">
+                {previewModalItem.provider === 'unsplash' ? (
+                  <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
+                    ✨ Unsplash • Free Commercial License
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 border-red-500/30"
+                  >
+                    🅰️ Adobe Stock #{previewModalItem.assetId}
+                  </Badge>
+                )}
                 {previewModalItem.relevanceScore && (
                   <Badge
                     variant="secondary"
@@ -1181,9 +1431,21 @@ export function AdobeStockImageFinder({
               <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
                 <span>
                   Contributor:{' '}
-                  <strong className="text-foreground">
-                    {previewModalItem.creator}
-                  </strong>
+                  {previewModalItem.provider === 'unsplash' &&
+                  previewModalItem.creatorUrl ? (
+                    <a
+                      href={previewModalItem.creatorUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-foreground font-semibold underline hover:text-primary"
+                    >
+                      {previewModalItem.creator}
+                    </a>
+                  ) : (
+                    <strong className="text-foreground">
+                      {previewModalItem.creator}
+                    </strong>
+                  )}
                 </span>
                 <span>
                   Category:{' '}
@@ -1199,6 +1461,22 @@ export function AdobeStockImageFinder({
                 </span>
               </div>
 
+              {previewModalItem.provider === 'unsplash' && (
+                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-2 text-[11px] text-emerald-800 dark:text-emerald-300">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span>
+                      <strong>100% Free under Unsplash License</strong> • Zero
+                      copyright tension • Safe for commercial & educational
+                      slides
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                    No purchase required
+                  </span>
+                </div>
+              )}
+
               {previewModalItem.keywords &&
                 previewModalItem.keywords.length > 0 && (
                   <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pt-1">
@@ -1213,28 +1491,51 @@ export function AdobeStockImageFinder({
                   </div>
                 )}
 
-              <div className="pt-3 border-t border-border/60 flex items-center justify-between gap-2">
+              <div className="pt-3 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5 h-8 text-xs cursor-pointer"
-                    onClick={() => handleCopyId(previewModalItem.assetId)}
-                  >
-                    {copiedId === previewModalItem.assetId ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 text-emerald-600" />
-                        <span className="text-emerald-600 font-bold">
-                          ID Copied
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                        Copy Asset ID
-                      </>
-                    )}
-                  </Button>
+                  {previewModalItem.provider === 'unsplash' ? (
+                    <Button
+                      size="sm"
+                      className="gap-1.5 h-8 text-xs cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                      disabled={downloadingId === previewModalItem.assetId}
+                      onClick={(e) =>
+                        handleDownloadUnsplash(previewModalItem, e)
+                      }
+                    >
+                      {downloadingId === previewModalItem.assetId ? (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-3.5 w-3.5" />
+                          Download High-Res
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 h-8 text-xs cursor-pointer"
+                      onClick={() => handleCopyId(previewModalItem.assetId)}
+                    >
+                      {copiedId === previewModalItem.assetId ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <span className="text-emerald-600 font-bold">
+                            ID Copied
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                          Copy Asset ID
+                        </>
+                      )}
+                    </Button>
+                  )}
 
                   <Button
                     size="sm"
@@ -1265,7 +1566,8 @@ export function AdobeStockImageFinder({
 
                 <Button
                   size="sm"
-                  className="gap-1.5 h-8 text-xs cursor-pointer"
+                  variant="secondary"
+                  className="gap-1.5 h-8 text-xs cursor-pointer ml-auto"
                   asChild
                 >
                   <a
@@ -1274,7 +1576,9 @@ export function AdobeStockImageFinder({
                     rel="noopener noreferrer"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
-                    Open on Adobe Stock
+                    {previewModalItem.provider === 'unsplash'
+                      ? 'Open on Unsplash'
+                      : 'Open on Adobe Stock'}
                   </a>
                 </Button>
               </div>
@@ -1402,6 +1706,153 @@ export function AdobeStockImageFinder({
           </Card>
         )}
 
+        {/* Free Unsplash Commercial License Assurance Banner (User Request) */}
+        {title.trim() && (
+          <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-3 sm:p-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
+                      <span>
+                        ✨ 100% Free Downloads & Commercial License with
+                        Unsplash
+                      </span>
+                    </h4>
+                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
+                      Zero Copyright Tension • No Purchase Required
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed max-w-3xl">
+                    You{' '}
+                    <strong>do not need to purchase or license images</strong>{' '}
+                    when choosing Unsplash. Every Unsplash photo can be freely
+                    downloaded in original high resolution and safely used for
+                    commercial slides, training modules, and web publishing with{' '}
+                    <strong>zero copyright tension</strong> under the official
+                    Unsplash License.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                {selectedProvider !== 'unsplash' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSetProvider('unsplash')}
+                    className="h-8 text-xs font-semibold cursor-pointer border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  >
+                    ✨ Show Unsplash Only
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Two-Sided Filter Bar (Directly Above Recommended Images Gallery) */}
+        {/* LEFT: Image Style Filter | RIGHT: App / Provider Filter */}
+        <div className="p-2.5 sm:p-3 rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+          {/* LEFT: Image Style Filter */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5 mr-1">
+              <Palette className="h-3.5 w-3.5 text-primary" />
+              Image Style:
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant={
+                styleFilter.photo && styleFilter.illustration
+                  ? 'default'
+                  : 'outline'
+              }
+              onClick={() => handleSetStyle('all')}
+              className="h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg"
+            >
+              All Styles
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={
+                styleFilter.photo && !styleFilter.illustration
+                  ? 'default'
+                  : 'outline'
+              }
+              onClick={() => handleSetStyle('photo')}
+              className="h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg gap-1"
+            >
+              <Camera className="h-3 w-3" />
+              Photos (Real Life)
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={
+                !styleFilter.photo && styleFilter.illustration
+                  ? 'default'
+                  : 'outline'
+              }
+              onClick={() => handleSetStyle('illustration')}
+              className="h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg gap-1"
+            >
+              <Palette className="h-3 w-3" />
+              Illustrations / Vectors
+            </Button>
+          </div>
+
+          {/* RIGHT: App / Provider Filter */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-start md:justify-end">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5 mr-1">
+              <Sliders className="h-3.5 w-3.5 text-primary" />
+              Provider:
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant={selectedProvider === 'all' ? 'default' : 'outline'}
+              onClick={() => handleSetProvider('all')}
+              className="h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg"
+            >
+              🌐 All Providers
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={selectedProvider === 'unsplash' ? 'default' : 'outline'}
+              onClick={() => handleSetProvider('unsplash')}
+              className={cn(
+                'h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg gap-1',
+                selectedProvider === 'unsplash'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
+              )}
+            >
+              <Sparkles className="h-3 w-3" />✨ Unsplash (Free)
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={selectedProvider === 'adobe' ? 'default' : 'outline'}
+              onClick={() => handleSetProvider('adobe')}
+              className={cn(
+                'h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg gap-1',
+                selectedProvider === 'adobe'
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10'
+              )}
+            >
+              🅰️ Adobe Stock
+            </Button>
+          </div>
+        </div>
+
         {/* Results Header (Count & Actions) */}
         {results.length > 0 && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2 border-b border-border/50 pb-3">
@@ -1440,22 +1891,23 @@ export function AdobeStockImageFinder({
                 </Button>
               )}
               <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                Ranked by AI semantic relevance • Genuine Adobe Stock Assets
+                Ranked by AI semantic relevance • Genuine High-Res Assets
               </span>
             </div>
           </div>
         )}
 
-        {/* Image Cards Grid with Razor-Sharp Dark Blurred Percentage Badge */}
+        {/* Image Cards Grid with Razor-Sharp Dark Blurred Percentage Badge & Provider Badges */}
         {results.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {results.map((item) => {
               const isIdCopied = copiedId === item.assetId;
               const isLinkCopied = copiedLink === item.assetId;
+              const isUnsplash = item.provider === 'unsplash';
 
               return (
                 <Card
-                  key={item.assetId}
+                  key={`${item.provider || 'stock'}_${item.assetId}`}
                   className="group overflow-hidden border border-border/70 hover:border-primary/40 transition-all duration-200 bg-card/70 flex flex-col shadow-xs hover:shadow-md"
                 >
                   {/* Visual Preview Container */}
@@ -1478,7 +1930,7 @@ export function AdobeStockImageFinder({
                       }}
                     />
 
-                    {/* High-Contrast Dark Blur Percentage Badge (User Request) */}
+                    {/* High-Contrast Dark Blur Percentage Badge */}
                     {item.relevanceScore && (
                       <div className="absolute top-2.5 left-2.5 z-10">
                         <span
@@ -1507,6 +1959,20 @@ export function AdobeStockImageFinder({
                       </div>
                     )}
 
+                    {/* Provider Tag (Top Right) */}
+                    <div className="absolute top-2.5 right-2.5 z-10">
+                      {isUnsplash ? (
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold backdrop-blur-md shadow-md bg-emerald-600/90 text-white border border-emerald-400/40 flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          Unsplash • Free
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold backdrop-blur-md shadow-md bg-red-600/90 text-white border border-red-400/40 flex items-center gap-1">
+                          🅰️ Adobe Stock
+                        </span>
+                      )}
+                    </div>
+
                     {/* Click to Enlarge Hover Button */}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <span className="px-3 py-1.5 rounded-lg bg-background/90 text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-md">
@@ -1526,16 +1992,47 @@ export function AdobeStockImageFinder({
                       >
                         {item.title}
                       </h3>
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span className="font-mono font-medium text-foreground/80">
-                          ID: {item.assetId}
-                        </span>
-                        {item.creator && (
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
+                        {isUnsplash ? (
                           <>
-                            <span>•</span>
-                            <span className="truncate max-w-[140px]">
-                              {item.creator}
+                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                              Free Commercial Use
                             </span>
+                            {item.creator && (
+                              <>
+                                <span>•</span>
+                                <span>
+                                  By{' '}
+                                  {item.creatorUrl ? (
+                                    <a
+                                      href={item.creatorUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="font-medium text-foreground/90 hover:underline"
+                                    >
+                                      {item.creator}
+                                    </a>
+                                  ) : (
+                                    item.creator
+                                  )}
+                                </span>
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-mono font-medium text-foreground/80">
+                              ID: {item.assetId}
+                            </span>
+                            {item.creator && (
+                              <>
+                                <span>•</span>
+                                <span className="truncate max-w-[140px]">
+                                  {item.creator}
+                                </span>
+                              </>
+                            )}
                           </>
                         )}
                       </div>
@@ -1543,66 +2040,135 @@ export function AdobeStockImageFinder({
 
                     {/* Action Buttons */}
                     <div className="pt-2 border-t border-border/50 flex flex-wrap items-center gap-1.5">
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        className="h-7 text-[11px] px-2 gap-1 rounded-md cursor-pointer hover:bg-muted"
-                        onClick={(e) => handleCopyId(item.assetId, e)}
-                      >
-                        {isIdCopied ? (
-                          <>
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            <span className="text-emerald-600 font-bold">
-                              Copied
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3 text-muted-foreground" />
-                            <span>Copy ID</span>
-                          </>
-                        )}
-                      </Button>
+                      {isUnsplash ? (
+                        <>
+                          <Button
+                            size="xs"
+                            className="h-7 text-[11px] px-2.5 gap-1.5 rounded-md cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                            disabled={downloadingId === item.assetId}
+                            onClick={(e) => handleDownloadUnsplash(item, e)}
+                          >
+                            {downloadingId === item.assetId ? (
+                              <>
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                                <span>Downloading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Download className="h-3 w-3" />
+                                <span>⬇️ Free Download</span>
+                              </>
+                            )}
+                          </Button>
 
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        className="h-7 text-[11px] px-2 gap-1 rounded-md cursor-pointer hover:bg-muted"
-                        onClick={(e) =>
-                          handleCopyLink(item.stockUrl, item.assetId, e)
-                        }
-                      >
-                        {isLinkCopied ? (
-                          <>
-                            <Check className="h-3 w-3 text-emerald-600" />
-                            <span className="text-emerald-600 font-bold">
-                              Copied
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3 text-muted-foreground" />
-                            <span>Copy Link</span>
-                          </>
-                        )}
-                      </Button>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            className="h-7 text-[11px] px-2 gap-1 rounded-md cursor-pointer hover:bg-muted"
+                            onClick={(e) =>
+                              handleCopyLink(
+                                item.downloadUrl || item.stockUrl,
+                                item.assetId,
+                                e
+                              )
+                            }
+                          >
+                            {isLinkCopied ? (
+                              <>
+                                <Check className="h-3 w-3 text-emerald-600" />
+                                <span className="text-emerald-600 font-bold">
+                                  Copied
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3 text-muted-foreground" />
+                                <span>Copy URL</span>
+                              </>
+                            )}
+                          </Button>
 
-                      <Button
-                        size="xs"
-                        variant="secondary"
-                        className="h-7 text-[11px] px-2 gap-1 rounded-md ml-auto cursor-pointer"
-                        asChild
-                      >
-                        <a
-                          href={item.stockUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          <span>Open Stock</span>
-                        </a>
-                      </Button>
+                          <Button
+                            size="xs"
+                            variant="secondary"
+                            className="h-7 text-[11px] px-2 gap-1 rounded-md ml-auto cursor-pointer"
+                            asChild
+                          >
+                            <a
+                              href={item.stockUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              <span>Unsplash</span>
+                            </a>
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            className="h-7 text-[11px] px-2 gap-1 rounded-md cursor-pointer hover:bg-muted"
+                            onClick={(e) => handleCopyId(item.assetId, e)}
+                          >
+                            {isIdCopied ? (
+                              <>
+                                <Check className="h-3 w-3 text-emerald-600" />
+                                <span className="text-emerald-600 font-bold">
+                                  Copied
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3 text-muted-foreground" />
+                                <span>Copy ID</span>
+                              </>
+                            )}
+                          </Button>
+
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            className="h-7 text-[11px] px-2 gap-1 rounded-md cursor-pointer hover:bg-muted"
+                            onClick={(e) =>
+                              handleCopyLink(item.stockUrl, item.assetId, e)
+                            }
+                          >
+                            {isLinkCopied ? (
+                              <>
+                                <Check className="h-3 w-3 text-emerald-600" />
+                                <span className="text-emerald-600 font-bold">
+                                  Copied
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3 text-muted-foreground" />
+                                <span>Copy Link</span>
+                              </>
+                            )}
+                          </Button>
+
+                          <Button
+                            size="xs"
+                            variant="secondary"
+                            className="h-7 text-[11px] px-2 gap-1 rounded-md ml-auto cursor-pointer"
+                            asChild
+                          >
+                            <a
+                              href={item.stockUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              <span>Open Stock</span>
+                            </a>
+                          </Button>
+                        </>
+                      )}
 
                       {onSelectImage && (
                         <Button

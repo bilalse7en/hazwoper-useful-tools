@@ -10,6 +10,7 @@ import {
   searchAdobeStockFiles,
   searchAdobeStockPublicCatalog,
   executeSmartStockSearch,
+  searchUnsplashPhotos,
 } from '@/lib/adobe-stock/adobe-stock-service';
 
 describe('AI-Powered Adobe Stock Finder Test Suite', () => {
@@ -707,6 +708,167 @@ describe('AI-Powered Adobe Stock Finder Test Suite', () => {
           (f) => f.includes('Course') || f.includes('Module')
         )
       ).toBe(true);
+    });
+  });
+
+  describe('9. Unsplash Free High-Res Integration & Multi-Provider Search', () => {
+    it('formats Unsplash API search request and returns structured free assets', async () => {
+      const mockUnsplashResponse = {
+        total: 1,
+        results: [
+          {
+            id: 'photo_abc_123',
+            description: 'Electrical transformer in outdoor utility substation',
+            alt_description: 'Utility transformer substation',
+            urls: {
+              regular: 'https://images.unsplash.com/photo-regular.jpg',
+              small: 'https://images.unsplash.com/photo-small.jpg',
+              full: 'https://images.unsplash.com/photo-full.jpg',
+            },
+            links: {
+              html: 'https://unsplash.com/photos/photo_abc_123',
+              download_location:
+                'https://api.unsplash.com/photos/photo_abc_123/download',
+            },
+            user: {
+              name: 'John Electrician',
+              username: 'johnelec',
+              links: { html: 'https://unsplash.com/@johnelec' },
+            },
+            width: 4000,
+            height: 2667,
+            tags: [{ title: 'transformer' }, { title: 'electricity' }],
+          },
+        ],
+      };
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockUnsplashResponse,
+      });
+
+      const res = await searchUnsplashPhotos({
+        query: 'utility transformer electricity',
+        limit: 6,
+      });
+
+      expect(fetchSpy).toHaveBeenCalled();
+      const calledUrl = new URL(fetchSpy.mock.calls[0][0]);
+      expect(calledUrl.origin).toBe('https://api.unsplash.com');
+      expect(calledUrl.pathname).toBe('/search/photos');
+      expect(calledUrl.searchParams.get('query')).toBe(
+        'utility transformer electricity'
+      );
+
+      expect(res.files.length).toBe(1);
+      const first = res.files[0];
+      expect(first.assetId).toBe('photo_abc_123');
+      expect(first.provider).toBe('unsplash');
+      expect(first.isFreeDownload).toBe(true);
+      expect(first.license).toContain('Unsplash Free Commercial License');
+      expect(first.downloadUrl).toBe(
+        'https://images.unsplash.com/photo-full.jpg'
+      );
+      expect(first.creator).toBe('John Electrician');
+    });
+
+    it('searches only Unsplash when provider="unsplash"', async () => {
+      const mockUnsplashPhoto = {
+        id: 'u_switchgear_99',
+        description: 'Industrial switchgear installation in factory',
+        urls: {
+          regular: 'https://images.unsplash.com/regular.jpg',
+          full: 'https://images.unsplash.com/full.jpg',
+        },
+        links: { html: 'https://unsplash.com/photos/u_switchgear_99' },
+        user: { name: 'Safety Tech' },
+        tags: [{ title: 'switchgear' }, { title: 'industrial' }],
+      };
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('api.unsplash.com/search/photos')) {
+          return {
+            ok: true,
+            json: async () => ({
+              total: 1,
+              results: [mockUnsplashPhoto],
+            }),
+          };
+        }
+        return { ok: false };
+      });
+
+      const res = await executeSmartStockSearch({
+        title: 'Utility Power Entry and Service Configuration',
+        provider: 'unsplash',
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.provider).toBe('unsplash');
+      expect(res.results.length).toBeGreaterThanOrEqual(1);
+      expect(res.results.every((r) => r.provider === 'unsplash')).toBe(true);
+      expect(res.results[0].isFreeDownload).toBe(true);
+    });
+
+    it('searches both Unsplash and Adobe Stock when provider="all"', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('api.unsplash.com/search/photos')) {
+          return {
+            ok: true,
+            json: async () => ({
+              total: 1,
+              results: [
+                {
+                  id: 'unsplash_item_1',
+                  description: 'Utility transformer substation power line',
+                  urls: {
+                    regular: 'https://images.unsplash.com/u1.jpg',
+                    full: 'https://images.unsplash.com/u1_full.jpg',
+                  },
+                  links: { html: 'https://unsplash.com/photos/u1' },
+                  user: { name: 'Photo Pro' },
+                  tags: [{ title: 'transformer' }, { title: 'utility' }],
+                },
+              ],
+            }),
+          };
+        }
+        if (u.includes('duckduckgo.com/?q=')) {
+          return {
+            ok: true,
+            text: async () => 'vqd=test-vqd-token-123',
+          };
+        }
+        if (u.includes('duckduckgo.com/i.js')) {
+          return {
+            ok: true,
+            json: async () => ({
+              results: [
+                {
+                  url: 'https://stock.adobe.com/images/utility-switchgear/888',
+                  image: 'https://as1.ftcdn.net/888.jpg',
+                  title:
+                    'Electrician working on utility service entrance switchgear',
+                },
+              ],
+            }),
+          };
+        }
+        return { ok: false };
+      });
+
+      const res = await executeSmartStockSearch({
+        title: 'Utility Power Entry and Service Configuration',
+        provider: 'all',
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.results.length).toBeGreaterThanOrEqual(2);
+      const providers = res.results.map((r) => r.provider);
+      expect(providers).toContain('unsplash');
+      expect(providers).toContain('adobe');
     });
   });
 });

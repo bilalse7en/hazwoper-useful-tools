@@ -382,7 +382,13 @@ export function synthesizeContextAwareQueries(
 
   const { domainTag, courseAnchor, moduleAnchor, lessonAnchor, parentAnchor } =
     extractContextAnchors(context);
-  const lowerTitle = cleanTitle.toLowerCase();
+
+  // Clean numeric or topic prefix from title to optimize search precision
+  const strippedTitle = (cleanTitle || '')
+    .replace(/^(topic\s*\d+[\s:.-]*|slide\s*\d+[\s:.-]*|\d+[\s:.-]+)/i, '')
+    .trim();
+  const effectiveTitle = strippedTitle || cleanTitle;
+  const lowerTitle = effectiveTitle.toLowerCase();
 
   const photoOnly =
     styleFilter.photo === true && styleFilter.illustration === false;

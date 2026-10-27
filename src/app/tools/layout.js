@@ -44,8 +44,8 @@ export default function ToolsLayout({ children }) {
   const isDetailsPage = pathname.endsWith('/details');
 
   return (
-    <div className="flex flex-1 overflow-hidden h-[calc(100vh-64px)] relative transition-all duration-300">
-      {/* Sidebar - Hidden on details pages */}
+    <div className="flex flex-1 min-h-[calc(100vh-64px)] relative transition-all duration-300">
+      {/* Sidebar - Hidden on details pages, strictly fixed under header on both local and live */}
       {!isDetailsPage && (
         <AppSidebar
           activeTab={activeTab}
@@ -69,12 +69,20 @@ export default function ToolsLayout({ children }) {
           onThemeToggle={() => setThemeDialogOpen(true)}
           user={user}
           onLogout={handleLogout}
-          className="hidden lg:block h-full relative z-30 transition-all duration-300"
+          className={cn(
+            'hidden lg:block fixed top-16 left-0 bottom-0 z-30 transition-all duration-300',
+            sidebarCollapsed ? 'w-16' : 'w-64'
+          )}
         />
       )}
 
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0 flex flex-col relative overflow-hidden transition-all duration-300">
+      {/* Main Content Area - dynamically padded to match fixed sidebar */}
+      <main
+        className={cn(
+          'flex-1 min-w-0 flex flex-col relative transition-all duration-300',
+          !isDetailsPage && (sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64')
+        )}
+      >
         <ScrollArea className="h-full w-full">
           <div className="min-h-full w-full max-w-full min-w-0 flex flex-col">
             <div className="flex-1 w-full max-w-full min-w-0">{children}</div>
