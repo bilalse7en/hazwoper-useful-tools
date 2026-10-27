@@ -19,6 +19,10 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
+  ChevronUp,
+  PanelLeftClose,
+  PanelLeftOpen,
+  EyeOff,
   Sliders,
   FileCode,
   XCircle,
@@ -52,6 +56,8 @@ export default function CourseJsonConverter() {
   const [mode, setMode] = useState('folder');
   const [includeImages, setIncludeImages] = useState(false);
   const [includeQuizzes, setIncludeQuizzes] = useState(true);
+  const [showSourceColumn, setShowSourceColumn] = useState(true);
+  const [showSourceSection, setShowSourceSection] = useState(true);
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -661,558 +667,670 @@ export default function CourseJsonConverter() {
           </p>
         </div>
 
-        {courseJson && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              className="gap-1.5 text-xs"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Convert Another
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopy}
-              className="gap-1.5"
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-emerald-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              {copied ? 'Copied' : 'Copy JSON'}
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleDownload}
-              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Download className="h-4 w-4" />
-              Download Complete JSON
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Toggle Conversion Source Column */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSourceColumn((prev) => !prev)}
+            className={cn(
+              'gap-1.5 text-xs font-semibold',
+              !showSourceColumn
+                ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 shadow-2xs'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            )}
+            title={
+              showSourceColumn
+                ? 'Hide Conversion Source Column'
+                : 'Show Conversion Source Column'
+            }
+          >
+            {showSourceColumn ? (
+              <>
+                <PanelLeftClose className="h-3.5 w-3.5" />
+                Hide Source Column
+              </>
+            ) : (
+              <>
+                <PanelLeftOpen className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                Show Source Column
+              </>
+            )}
+          </Button>
+
+          {courseJson && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                className="gap-1.5 text-xs"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Convert Another
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopy}
+                className="gap-1.5"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                {copied ? 'Copied' : 'Copy JSON'}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleDownload}
+                className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Download className="h-4 w-4" />
+                Download Complete JSON
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Mode Selection & File Dropzone */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div
+        className={cn(
+          'grid gap-6',
+          showSourceColumn ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1'
+        )}
+      >
         {/* Left Column: Mode & File Uploader */}
-        <div className="lg:col-span-1 space-y-4">
-          <Card className="border-slate-200 dark:border-slate-800">
-            <CardContent className="p-5 space-y-4">
-              {/* Conversion Source: Single Column Stacked Rows */}
-              <div>
-                <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                  Conversion Source
-                </label>
-                <div className="flex flex-col gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setMode('folder')}
-                    className={cn(
-                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                      mode === 'folder'
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-                        <Folder className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-white">
-                          Course Folder
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Automated sequential modules &amp; lessons
-                        </div>
-                      </div>
-                    </div>
-                    {mode === 'folder' && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMode('A')}
-                    className={cn(
-                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                      mode === 'A'
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
-                        <FileText className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-white">
-                          Single Lesson Document
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Mode A: 1 Document with topics &amp; quiz
-                        </div>
-                      </div>
-                    </div>
-                    {mode === 'A' && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMode('B')}
-                    className={cn(
-                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                      mode === 'B'
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
-                        <Layers className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-white">
-                          Full Course Document
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Mode B: Full syllabus with modules &amp; exam
-                        </div>
-                      </div>
-                    </div>
-                    {mode === 'B' && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Image & Asset Content Toggle: Single Column Stacked */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                    Images &amp; Media Content
-                  </label>
-                  <Badge variant="outline" className="text-[10px]">
-                    {includeImages ? 'Images ON' : 'Images OFF (Clean)'}
-                  </Badge>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setIncludeImages(false)}
-                    className={cn(
-                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                      !includeImages
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">🚫</span>
-                      <div>
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
-                          Skip Images (OFF)
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Extract codes, clean pure body HTML
-                        </div>
-                      </div>
-                    </div>
-                    {!includeImages && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIncludeImages(true)}
-                    className={cn(
-                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                      includeImages
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">🖼️</span>
-                      <div>
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
-                          Include Images (ON)
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Preserve &lt;img&gt; &amp; image callouts
-                        </div>
-                      </div>
-                    </div>
-                    {includeImages && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Quizzes & Assessments Toggle: Single Column Stacked */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                    Quizzes &amp; Assessments
-                  </label>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'text-[10px]',
-                      includeQuizzes
-                        ? 'border-emerald-300 text-emerald-700 dark:text-emerald-400'
-                        : 'border-slate-300 text-slate-500'
-                    )}
-                  >
-                    {includeQuizzes ? 'Quizzes ON' : 'Quizzes OFF (Excluded)'}
-                  </Badge>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleQuizzes(true)}
-                    className={cn(
-                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                      includeQuizzes
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">📝</span>
-                      <div>
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
-                          Include Quizzes (ON)
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Parse question stems, options, and answer keys
-                        </div>
-                      </div>
-                    </div>
-                    {includeQuizzes && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleToggleQuizzes(false)}
-                    className={cn(
-                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                      !includeQuizzes
-                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">🚫</span>
-                      <div>
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
-                          Exclude Quizzes (OFF)
-                        </div>
-                        <div className="text-[10px] text-slate-500">
-                          Pure instructional topics only, 0 quizzes in JSON
-                        </div>
-                      </div>
-                    </div>
-                    {!includeQuizzes && (
-                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Upload Dropzone */}
-              <div>
-                <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                  <span>
-                    {mode === 'folder'
-                      ? 'Upload Course Directory'
-                      : 'Source Document'}
+        {showSourceColumn && (
+          <div className="lg:col-span-1 space-y-4">
+            <Card className="border-slate-200 dark:border-slate-800 shadow-2xs">
+              <CardContent className="p-5 space-y-4">
+                {/* Column Top Header with Hide Action */}
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Sliders className="h-3.5 w-3.5 text-blue-600" />
+                    Conversion Source &amp; Setup
                   </span>
-                  {mode === 'folder' && (
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">
-                      Drag folder or click below
-                    </span>
-                  )}
-                </label>
-
-                {/* Drop Area */}
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(true);
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(false);
-                  }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragging(false);
-
-                    const scanned = await scanDataTransferItems(e.dataTransfer);
-                    if (
-                      scanned.length > 1 ||
-                      (scanned.length === 1 &&
-                        scanned[0].relativePath.includes('/'))
-                    ) {
-                      // Multi-file or folder detected
-                      await handleFolderUpload(scanned);
-                    } else if (scanned.length === 1) {
-                      // Single file dropped
-                      if (mode === 'folder') {
-                        setMode('A');
-                      }
-                      await handleSingleFileUpload(scanned[0].file);
-                    }
-                  }}
-                  className={cn(
-                    'mt-2 border-2 border-dashed rounded-xl p-5 text-center transition-all flex flex-col items-center justify-center gap-2 select-none',
-                    isDragging
-                      ? 'border-blue-500 bg-blue-100/40 dark:bg-blue-950/40 ring-4 ring-blue-500/20 scale-[1.01]'
-                      : file
-                        ? 'border-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20'
-                        : 'border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900'
-                  )}
-                >
-                  {/* Hidden inputs */}
-                  <input
-                    ref={folderInputRef}
-                    type="file"
-                    webkitdirectory="true"
-                    directory="true"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => handleFolderUpload(e.target.files)}
-                  />
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".docx,.doc,.pdf"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (!files || files.length === 0) return;
-                      if (files.length > 1) {
-                        handleFolderUpload(files);
-                      } else {
-                        handleSingleFileUpload(files[0]);
-                      }
-                    }}
-                  />
-
-                  <div
-                    className={cn(
-                      'p-3 rounded-full transition-colors',
-                      isDragging
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400'
-                    )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSourceColumn(false)}
+                    className="h-6 px-2 text-[11px] text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 gap-1 rounded-md"
+                    title="Hide this column"
                   >
-                    {mode === 'folder' ? (
-                      <FolderOpen className="h-6 w-6" />
-                    ) : (
-                      <Upload className="h-6 w-6" />
-                    )}
-                  </div>
-
-                  <div>
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                      {isDragging
-                        ? 'Drop folder or files here'
-                        : file
-                          ? file.name
-                          : mode === 'folder'
-                            ? 'Drop Course Folder Here'
-                            : 'Upload Word or PDF'}
-                    </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {isDragging
-                        ? 'Release to begin sequential processing'
-                        : mode === 'folder'
-                          ? 'Contains Module folders with Lesson .docx files'
-                          : 'Single .docx or .pdf lesson document'}
-                    </p>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2 pt-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => folderInputRef.current?.click()}
-                      className="text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-                    >
-                      <Folder className="h-3.5 w-3.5" />
-                      Upload Course Folder
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-xs h-8 gap-1.5"
-                    >
-                      <Files className="h-3.5 w-3.5" />
-                      Select File(s)
-                    </Button>
-                  </div>
+                    <PanelLeftClose className="h-3 w-3" />
+                    Hide Column
+                  </Button>
                 </div>
-              </div>
 
-              {/* Progress State */}
-              {isProcessing && (
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold text-blue-900 dark:text-blue-100">
-                    <span className="flex items-center gap-2">
-                      <RefreshCw className="h-3.5 w-3.5 text-blue-600 animate-spin" />
-                      {progressInfo.status || processStep}
-                    </span>
-                    {progressInfo.total > 0 && (
-                      <span className="text-[11px] font-mono text-blue-700 dark:text-blue-300">
-                        {progressInfo.percent}% ({progressInfo.current}/
-                        {progressInfo.total})
-                      </span>
-                    )}
-                  </div>
-                  {progressInfo.total > 0 && (
-                    <div className="w-full bg-blue-200 dark:bg-blue-900/60 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${progressInfo.percent}%` }}
-                      />
-                    </div>
-                  )}
-                  {progressInfo.currentLesson && (
-                    <div className="text-[11px] text-blue-800/80 dark:text-blue-200/80 truncate">
-                      <strong>Current:</strong> {progressInfo.currentLesson}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Error Message */}
-              {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2 text-xs text-red-700 dark:text-red-300">
-                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-red-600" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Detected Course Folder Structure (Pre-Flight Hierarchy Card) */}
-              {folderHierarchy && (
-                <div className="space-y-3 pt-2 border-t">
+                {/* Conversion Source: Single Column Stacked Rows */}
+                <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <Folder className="h-3.5 w-3.5 text-blue-600" />
-                      Detected Course Hierarchy
-                    </span>
-                    <Badge variant="outline" className="text-[10px]">
-                      {folderHierarchy.modules.length} Modules •{' '}
-                      {folderHierarchy.totalFiles} Lessons
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                    {folderHierarchy.modules.map((mod) => (
-                      <div
-                        key={mod.moduleId || mod.moduleFolder}
-                        className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs space-y-1.5"
-                      >
-                        <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                          <span className="truncate">{mod.moduleTitle}</span>
-                          <span className="text-[10px] text-slate-500 shrink-0 ml-2">
-                            {mod.lessons.length} lessons
-                          </span>
-                        </div>
-                        <div className="space-y-1 pl-2 border-l-2 border-blue-400/50">
-                          {mod.lessons.map((les) => (
-                            <div
-                              key={les.fileName}
-                              className="text-[11px] text-slate-600 dark:text-slate-400 truncate flex items-center gap-1.5"
-                            >
-                              <FileText className="h-3 w-3 text-slate-400 shrink-0" />
-                              <span className="truncate">
-                                {les.lessonTitle}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {!courseJson && !isProcessing && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => startSequentialFolderConversion()}
-                      className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-                    >
-                      <Play className="h-3.5 w-3.5 fill-current" />
-                      Convert Whole Course Sequentially
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {/* Metadata Overrides */}
-              {courseJson && (
-                <div className="space-y-3 pt-2 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <Sliders className="h-3.5 w-3.5 text-slate-500" />
-                      Metadata Review
-                    </span>
+                    <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                      Conversion Source
+                    </label>
                     <button
                       type="button"
-                      onClick={handleApplyOverrides}
-                      className="text-[11px] text-blue-600 hover:underline font-medium"
+                      onClick={() => setShowSourceSection((prev) => !prev)}
+                      className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium"
                     >
-                      Update
+                      {showSourceSection ? (
+                        <>
+                          Hide <ChevronUp className="h-3 w-3" />
+                        </>
+                      ) : (
+                        <>
+                          Show <ChevronDown className="h-3 w-3" />
+                        </>
+                      )}
                     </button>
                   </div>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-[11px] text-slate-500">
-                        Course Title
+
+                  {showSourceSection && (
+                    <div className="flex flex-col gap-2 mt-2 animate-in fade-in">
+                      <button
+                        type="button"
+                        onClick={() => setMode('folder')}
+                        className={cn(
+                          'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                          mode === 'folder'
+                            ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+                            <Folder className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-900 dark:text-white">
+                              Course Folder
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              Automated sequential modules &amp; lessons
+                            </div>
+                          </div>
+                        </div>
+                        {mode === 'folder' && (
+                          <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setMode('A')}
+                        className={cn(
+                          'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                          mode === 'A'
+                            ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-900 dark:text-white">
+                              Single Lesson Document
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              Mode A: 1 Document with topics &amp; quiz
+                            </div>
+                          </div>
+                        </div>
+                        {mode === 'A' && (
+                          <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setMode('B')}
+                        className={cn(
+                          'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                          mode === 'B'
+                            ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                            <Layers className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-slate-900 dark:text-white">
+                              Full Course Document
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              Mode B: Full syllabus with modules &amp; exam
+                            </div>
+                          </div>
+                        </div>
+                        {mode === 'B' && (
+                          <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Image & Asset Content Toggle: Single Column Stacked */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                      Images &amp; Media Content
+                    </label>
+                    <Badge variant="outline" className="text-[10px]">
+                      {includeImages ? 'Images ON' : 'Images OFF (Clean)'}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIncludeImages(false)}
+                      className={cn(
+                        'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                        !includeImages
+                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🚫</span>
+                        <div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">
+                            Skip Images (OFF)
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Extract codes, clean pure body HTML
+                          </div>
+                        </div>
+                      </div>
+                      {!includeImages && (
+                        <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIncludeImages(true)}
+                      className={cn(
+                        'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                        includeImages
+                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🖼️</span>
+                        <div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">
+                            Include Images (ON)
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Preserve &lt;img&gt; &amp; image callouts
+                          </div>
+                        </div>
+                      </div>
+                      {includeImages && (
+                        <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quizzes & Assessments Toggle: Single Column Stacked */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                      Quizzes &amp; Assessments
+                    </label>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-[10px]',
+                        includeQuizzes
+                          ? 'border-emerald-300 text-emerald-700 dark:text-emerald-400'
+                          : 'border-slate-300 text-slate-500'
+                      )}
+                    >
+                      {includeQuizzes ? 'Quizzes ON' : 'Quizzes OFF (Excluded)'}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleQuizzes(true)}
+                      className={cn(
+                        'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                        includeQuizzes
+                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">📝</span>
+                        <div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">
+                            Include Quizzes (ON)
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Parse question stems, options, and answer keys
+                          </div>
+                        </div>
+                      </div>
+                      {includeQuizzes && (
+                        <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleQuizzes(false)}
+                      className={cn(
+                        'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                        !includeQuizzes
+                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🚫</span>
+                        <div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">
+                            Exclude Quizzes (OFF)
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            Pure instructional topics only, 0 quizzes in JSON
+                          </div>
+                        </div>
+                      </div>
+                      {!includeQuizzes && (
+                        <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Upload Dropzone */}
+                <div>
+                  <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                    <span>
+                      {mode === 'folder'
+                        ? 'Upload Course Directory'
+                        : 'Source Document'}
+                    </span>
+                    {mode === 'folder' && (
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">
+                        Drag folder or click below
                       </span>
-                      <Input
-                        value={courseTitleOverride}
-                        onChange={(e) => setCourseTitleOverride(e.target.value)}
-                        className="h-8 text-xs mt-0.5"
-                      />
+                    )}
+                  </label>
+
+                  {/* Drop Area */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(true);
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(false);
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(false);
+
+                      const scanned = await scanDataTransferItems(
+                        e.dataTransfer
+                      );
+                      if (
+                        scanned.length > 1 ||
+                        (scanned.length === 1 &&
+                          scanned[0].relativePath.includes('/'))
+                      ) {
+                        // Multi-file or folder detected
+                        await handleFolderUpload(scanned);
+                      } else if (scanned.length === 1) {
+                        // Single file dropped
+                        if (mode === 'folder') {
+                          setMode('A');
+                        }
+                        await handleSingleFileUpload(scanned[0].file);
+                      }
+                    }}
+                    className={cn(
+                      'mt-2 border-2 border-dashed rounded-xl p-5 text-center transition-all flex flex-col items-center justify-center gap-2 select-none',
+                      isDragging
+                        ? 'border-blue-500 bg-blue-100/40 dark:bg-blue-950/40 ring-4 ring-blue-500/20 scale-[1.01]'
+                        : file
+                          ? 'border-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20'
+                          : 'border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+                    )}
+                  >
+                    {/* Hidden inputs */}
+                    <input
+                      ref={folderInputRef}
+                      type="file"
+                      webkitdirectory="true"
+                      directory="true"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => handleFolderUpload(e.target.files)}
+                    />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".docx,.doc,.pdf"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (!files || files.length === 0) return;
+                        if (files.length > 1) {
+                          handleFolderUpload(files);
+                        } else {
+                          handleSingleFileUpload(files[0]);
+                        }
+                      }}
+                    />
+
+                    <div
+                      className={cn(
+                        'p-3 rounded-full transition-colors',
+                        isDragging
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400'
+                      )}
+                    >
+                      {mode === 'folder' ? (
+                        <FolderOpen className="h-6 w-6" />
+                      ) : (
+                        <Upload className="h-6 w-6" />
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        {isDragging
+                          ? 'Drop folder or files here'
+                          : file
+                            ? file.name
+                            : mode === 'folder'
+                              ? 'Drop Course Folder Here'
+                              : 'Upload Word or PDF'}
+                      </span>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {isDragging
+                          ? 'Release to begin sequential processing'
+                          : mode === 'folder'
+                            ? 'Contains Module folders with Lesson .docx files'
+                            : 'Single .docx or .pdf lesson document'}
+                      </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => folderInputRef.current?.click()}
+                        className="text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                      >
+                        <Folder className="h-3.5 w-3.5" />
+                        Upload Course Folder
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-xs h-8 gap-1.5"
+                      >
+                        <Files className="h-3.5 w-3.5" />
+                        Select File(s)
+                      </Button>
                     </div>
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+                {/* Progress State */}
+                {isProcessing && (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold text-blue-900 dark:text-blue-100">
+                      <span className="flex items-center gap-2">
+                        <RefreshCw className="h-3.5 w-3.5 text-blue-600 animate-spin" />
+                        {progressInfo.status || processStep}
+                      </span>
+                      {progressInfo.total > 0 && (
+                        <span className="text-[11px] font-mono text-blue-700 dark:text-blue-300">
+                          {progressInfo.percent}% ({progressInfo.current}/
+                          {progressInfo.total})
+                        </span>
+                      )}
+                    </div>
+                    {progressInfo.total > 0 && (
+                      <div className="w-full bg-blue-200 dark:bg-blue-900/60 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${progressInfo.percent}%` }}
+                        />
+                      </div>
+                    )}
+                    {progressInfo.currentLesson && (
+                      <div className="text-[11px] text-blue-800/80 dark:text-blue-200/80 truncate">
+                        <strong>Current:</strong> {progressInfo.currentLesson}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2 text-xs text-red-700 dark:text-red-300">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-red-600" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {/* Detected Course Folder Structure (Pre-Flight Hierarchy Card) */}
+                {folderHierarchy && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Folder className="h-3.5 w-3.5 text-blue-600" />
+                        Detected Course Hierarchy
+                      </span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {folderHierarchy.modules.length} Modules •{' '}
+                        {folderHierarchy.totalFiles} Lessons
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                      {folderHierarchy.modules.map((mod) => (
+                        <div
+                          key={mod.moduleId || mod.moduleFolder}
+                          className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs space-y-1.5"
+                        >
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                            <span className="truncate">{mod.moduleTitle}</span>
+                            <span className="text-[10px] text-slate-500 shrink-0 ml-2">
+                              {mod.lessons.length} lessons
+                            </span>
+                          </div>
+                          <div className="space-y-1 pl-2 border-l-2 border-blue-400/50">
+                            {mod.lessons.map((les) => (
+                              <div
+                                key={les.fileName}
+                                className="text-[11px] text-slate-600 dark:text-slate-400 truncate flex items-center gap-1.5"
+                              >
+                                <FileText className="h-3 w-3 text-slate-400 shrink-0" />
+                                <span className="truncate">
+                                  {les.lessonTitle}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {!courseJson && !isProcessing && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => startSequentialFolderConversion()}
+                        className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                      >
+                        <Play className="h-3.5 w-3.5 fill-current" />
+                        Convert Whole Course Sequentially
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Metadata Overrides */}
+                {courseJson && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Sliders className="h-3.5 w-3.5 text-slate-500" />
+                        Metadata Review
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleApplyOverrides}
+                        className="text-[11px] text-blue-600 hover:underline font-medium"
+                      >
+                        Update
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-[11px] text-slate-500">
+                          Course Title
+                        </span>
+                        <Input
+                          value={courseTitleOverride}
+                          onChange={(e) =>
+                            setCourseTitleOverride(e.target.value)
+                          }
+                          className="h-8 text-xs mt-0.5"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Right Column: Key Metrics & Inspectors */}
-        <div className="lg:col-span-2 space-y-6">
+        <div
+          className={cn(
+            'space-y-6',
+            showSourceColumn ? 'lg:col-span-2' : 'col-span-1 w-full'
+          )}
+        >
+          {/* Quick Banner when Source Column is Hidden */}
+          {!showSourceColumn && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs shadow-2xs">
+              <div className="flex items-center gap-2">
+                <Folder className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="font-semibold text-blue-950 dark:text-blue-100">
+                  Full-Width Workspace Active
+                </span>
+                <span className="text-[11px] text-blue-700 dark:text-blue-300 hidden sm:inline">
+                  (Conversion Source column is hidden for maximum reading &amp;
+                  editing space)
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setShowSourceColumn(true)}
+                className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-xs"
+              >
+                <PanelLeftOpen className="h-3.5 w-3.5" />
+                Show Source Column
+              </Button>
+            </div>
+          )}
           {/* Dashboard Metrics (When Converted) */}
           {courseJson ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
