@@ -634,6 +634,12 @@ export async function executeSmartStockSearch({
   const analysis = await analyzeSlideTitle(cleanTitle, context, styleFilter);
 
   const useOfficialApi = isAdobeStockConfigured();
+  const hasExternalKey = Boolean(
+    process.env.UNSPLASH_ACCESS_KEY ||
+    process.env.UNSPLASH_API_KEY ||
+    process.env.PIXABAY_API_KEY ||
+    process.env.PEXELS_API_KEY
+  );
   const candidatePool = [];
   const queriesToRun = analysis.queries.slice(0, 3);
   let triedQueries = [];
@@ -641,21 +647,32 @@ export async function executeSmartStockSearch({
   for (const query of queriesToRun) {
     triedQueries.push(query);
     try {
-      const searchRes = useOfficialApi
-        ? await searchAdobeStockFiles({
-            query,
-            limit: 12,
-            offset: 0,
-            styleFilter,
-          })
-        : await searchAdobeStockPublicCatalog({
-            query,
-            limit: 15,
-            styleFilter,
-          });
+      let foundFiles = [];
+      if (useOfficialApi) {
+        const searchRes = await searchAdobeStockFiles({
+          query,
+          limit: 12,
+          offset: 0,
+          styleFilter,
+        });
+        foundFiles = searchRes.files || [];
+      } else if (hasExternalKey) {
+        // Fast, high-resolution direct API retrieval (Unsplash / Pixabay / Pexels)
+        foundFiles = await searchFallbackCuratedStock({
+          query,
+          limit: 12,
+        });
+      } else {
+        const publicRes = await searchAdobeStockPublicCatalog({
+          query,
+          limit: 15,
+          styleFilter,
+        });
+        foundFiles = publicRes.files || [];
+      }
 
-      if (searchRes.files && searchRes.files.length > 0) {
-        candidatePool.push(...searchRes.files);
+      if (foundFiles.length > 0) {
+        candidatePool.push(...foundFiles);
       }
 
       if (candidatePool.length >= 15) {
