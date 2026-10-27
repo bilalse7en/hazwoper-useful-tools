@@ -105,6 +105,18 @@ export function buildCourseJson(parsedData, options = {}) {
     finalExamSeconds = finalExamObj.questions.length * 60;
   }
 
+  // Sanitize topics: ensure raw_body_content is deleted from all topics
+  // so base64 strings and unstripped markers never pollute the exported LMS JSON payload
+  modules.forEach((mod) => {
+    (mod.lessons || []).forEach((les) => {
+      (les.topics || []).forEach((top) => {
+        if ('raw_body_content' in top) {
+          delete top.raw_body_content;
+        }
+      });
+    });
+  });
+
   const grandTotalSeconds =
     totalSlidesSeconds + totalKcSeconds + finalExamSeconds;
 

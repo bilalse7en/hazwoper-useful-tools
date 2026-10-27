@@ -665,6 +665,18 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(courseJson.duration.lessons).toHaveLength(3);
       expect(courseJson.total_duration_seconds).toBeGreaterThan(0);
 
+      // Verify clean topic content without base64 or raw_body_content leakage
+      courseJson.modules.forEach((mod) => {
+        mod.lessons.forEach((les) => {
+          les.topics.forEach((top) => {
+            expect(top).not.toHaveProperty('raw_body_content');
+            expect(top.leftDiv.editorHtml).not.toContain('base64');
+            expect(top.leftDiv.editorHtml).not.toContain('FILE #:');
+            expect(top.leftDiv.editorHtml).not.toMatch(/Slide\s*\d+/);
+          });
+        });
+      });
+
       // 14-Point Validation Suite
       expect(validation.isValid).toBe(true);
       expect(validation.score).toBe(100);

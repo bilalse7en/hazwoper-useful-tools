@@ -123,7 +123,6 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
       image_code: imageCode,
       image_prompt: imagePrompt,
       has_embedded_image: hasEmbeddedImage,
-      raw_body_content: bodyContent,
       datatime: '0',
       captions: [],
       narration_script: '',
@@ -342,7 +341,6 @@ export function segmentCourseWiseHtml(html, metadata = {}, options = {}) {
       image_code: imageCode,
       image_prompt: imagePrompt,
       has_embedded_image: hasEmbeddedImage,
-      raw_body_content: bodyContent,
       datatime: '0',
       captions: [],
       narration_script: '',
@@ -432,7 +430,16 @@ export async function parseDocxDocument(buffer, options = {}) {
   const mammothInput = Buffer.isBuffer(buffer)
     ? { buffer }
     : { arrayBuffer: buffer };
-  const mammothResult = await mammoth.convertToHtml(mammothInput);
+  const stripImages = options.stripImages !== false;
+  const mammothOptions = {};
+  if (stripImages) {
+    // When images are stripped, prevent Mammoth from generating heavy base64 data URIs
+    mammothOptions.convertImage = mammoth.images.imgElement(() => ({}));
+  }
+  const mammothResult = await mammoth.convertToHtml(
+    mammothInput,
+    mammothOptions
+  );
   const rawHtml = mammothResult.value;
 
   if (mode === 'B') {

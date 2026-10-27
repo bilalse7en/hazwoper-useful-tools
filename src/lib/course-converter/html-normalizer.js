@@ -138,20 +138,23 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   // 4. Strip pure slide markers (e.g. <p><strong>Slide 3 </strong></p>, <p>Slide 5</p>, <h3>Slide 6</h3>, <div>Slide 7</div>)
   // Standalone slide markers are PowerPoint/Word layout artifacts, not educational reading content
   html = html.replace(
-    /<(?:p|h[2-6]|div)[^>]*>\s*(?:<[^>]+>\s*)*Slide\s*\d+\s*(?:<[^>]+>\s*)*<\/(?:p|h[2-6]|div)>/gi,
+    /<(?:p|h[1-6]|div)[^>]*>\s*(?:<[^>]+>\s*)*Slide\s*\d+\s*(?:<[^>]+>\s*)*<\/(?:p|h[1-6]|div)>/gi,
     ''
   );
 
-  // Strip leading slide markers from content paragraphs (e.g. <p><strong>Slide 1:</strong> Content here</p> -> <p>Content here</p>)
+  // Strip leading slide markers from content paragraphs/headings (e.g. <p><strong>Slide 1:</strong> Content here</p> -> <p>Content here</p>)
   html = html.replace(
-    /(<p[^>]*>\s*(?:<[^>]+>\s*)*)Slide\s*\d+[\s:.-]+(?:<\/[^>]+>\s*)*(?=\S)/gi,
+    /(<(?:p|h[2-6]|li)[^>]*>(?:\s*<[^>]+>)*)\s*Slide\s*\d+\s*[:.\-–—]*\s*(?:<\/[^>]+>\s*)*(?=\S)/gi,
     '$1'
   );
 
   // 5. Strip images, image links, FILE # codes, and prompts if stripImages is enabled
   if (stripImages) {
-    // Strip <img> tags
+    // Strip <img> tags completely
     html = html.replace(/<img[^>]*>/gi, '');
+
+    // Completely strip any base64 data URIs
+    html = html.replace(/data:image\/[^;]+;base64,[a-zA-Z0-9+/=]+/gi, '');
 
     // Strip entire paragraphs or headings containing FILE #, stock.adobe.com URLs, or Asset IDs
     html = html.replace(

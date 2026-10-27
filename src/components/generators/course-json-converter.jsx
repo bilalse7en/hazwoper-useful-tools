@@ -439,12 +439,11 @@ export default function CourseJsonConverter() {
   // Dynamically compute HTML based on image toggle switch
   const displayedTopicHtml = useMemo(() => {
     if (!activeTopic) return '<p>No content</p>';
-    if (activeTopic.raw_body_content) {
-      return wrapInLmsContainer(activeTopic.raw_body_content, {
-        stripImages: !includeImages,
-      });
+    const baseHtml = activeTopic.leftDiv?.editorHtml || '<p>No content</p>';
+    if (!includeImages) {
+      return wrapInLmsContainer(baseHtml, { stripImages: true });
     }
-    return activeTopic.leftDiv?.editorHtml || '<p>No content</p>';
+    return baseHtml;
   }, [activeTopic, includeImages]);
 
   return (
