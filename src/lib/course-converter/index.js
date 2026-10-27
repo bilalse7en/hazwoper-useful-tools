@@ -9,6 +9,7 @@ export * from './quiz-extractor.js';
 export * from './doc-parser.js';
 export * from './schema-builder.js';
 export * from './validator.js';
+export * from './folder-converter.js';
 
 import { parseDocxDocument, parsePdfDocument } from './doc-parser.js';
 import { buildCourseJson } from './schema-builder.js';

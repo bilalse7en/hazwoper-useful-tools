@@ -11,17 +11,85 @@
  *   <tr>, <th>, <td>, <strong>, <em>, <a>.
  * - Unwraps redundant nested / inner / empty <div> wrappers.
  * - Wraps topic content in strictly ONE parent <div> without any classes or styles: <div>...content...</div>.
- * - Zero content loss: all text, numbers, codes, and citations are preserved.
+ * - Optional Image Handling (stripImages):
+ *   - When TRUE (default): strips all <img> tags, removes image captions, bracketed image codes ([Image: ...]),
+ *     AI image prompt lines, and stock photo codes like #897489635 from the body text.
+ *   - When FALSE: preserves standard <img> tags and image callout text.
  */
+
+/**
+ * Extracts image asset codes (e.g. #897489635) and AI prompt metadata from HTML or text
+ * @param {string} rawHtml
+ * @returns {object} { imageCodes, primaryImageCode, aiPrompts, primaryPrompt, hasImages }
+ */
+export function extractImageMetadata(rawHtml) {
+  if (!rawHtml || typeof rawHtml !== 'string') {
+    return {
+      imageCodes: [],
+      primaryImageCode: '',
+      aiPrompts: [],
+      primaryPrompt: '',
+      hasImages: false,
+    };
+  }
+
+  const hasImages = /<img[^>]*>/i.test(rawHtml);
+
+  // Extract 7-11 digit stock asset codes with # or ID: or Asset:, e.g. #897489635
+  const imageCodes = [];
+  const codeMatches = rawHtml.match(
+    /(?:#|ID:?\s*|Asset:?\s*|Stock\s*#?\s*)(\d{7,11})/gi
+  );
+  if (codeMatches) {
+    codeMatches.forEach((m) => {
+      const numMatch = m.match(/\d{7,11}/);
+      if (numMatch) {
+        const formatted = `#${numMatch[0]}`;
+        if (!imageCodes.includes(formatted)) {
+          imageCodes.push(formatted);
+        }
+      }
+    });
+  }
+
+  // Extract AI image prompts or visual descriptions
+  const aiPrompts = [];
+  const promptMatches = rawHtml.match(
+    /(?:AI\s*Image\s*Prompt|Image\s*Prompt|Visual\s*Description|Visual\s*Prompt|Image\s*Suggestion)[:\s-]+([^<\n\r]+)/gi
+  );
+  if (promptMatches) {
+    promptMatches.forEach((p) => {
+      const cleaned = p
+        .replace(
+          /^(?:AI\s*Image\s*Prompt|Image\s*Prompt|Visual\s*Description|Visual\s*Prompt|Image\s*Suggestion)[:\s-]+/i,
+          ''
+        )
+        .trim();
+      if (cleaned && !aiPrompts.includes(cleaned)) {
+        aiPrompts.push(cleaned);
+      }
+    });
+  }
+
+  return {
+    imageCodes,
+    primaryImageCode: imageCodes[0] || '',
+    aiPrompts,
+    primaryPrompt: aiPrompts[0] || '',
+    hasImages: hasImages || imageCodes.length > 0,
+  };
+}
 
 /**
  * Clean and normalize a block of raw HTML
  * @param {string} rawHtml - HTML snippet or full document HTML
+ * @param {object} [options={}] - { stripImages: boolean }
  * @returns {string} - Clean inner semantic HTML without classes or styles
  */
-export function normalizeHtmlContent(rawHtml) {
+export function normalizeHtmlContent(rawHtml, options = {}) {
   if (!rawHtml || typeof rawHtml !== 'string') return '';
 
+  const stripImages = options.stripImages !== false; // default: true (clean text without image junk)
   let html = rawHtml;
 
   // 1. Remove comments and doctype / html / head / body tags
@@ -36,17 +104,42 @@ export function normalizeHtmlContent(rawHtml) {
   html = html.replace(/<\/?font[^>]*>/gi, '');
   html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
 
-  // 4. Strip ALL class and style attributes from all elements
+  // 4. Strip images and image callout text if stripImages is enabled
+  if (stripImages) {
+    // Strip <img> tags
+    html = html.replace(/<img[^>]*>/gi, '');
+
+    // Strip paragraphs that represent image callouts, captions, bracketed descriptions, or asset codes
+    // e.g. <p>[Image: High-voltage transformer #897489635]</p>
+    // e.g. <p>#897489635</p>
+    // e.g. <p>AI Image Prompt: Photorealistic 8K portrait ...</p>
+    // e.g. <p>Figure 1: Substation #897489635</p>
+    html = html.replace(
+      /<p[^>]*>\s*(?:\[Image:?|\[Figure:?|Image:?|Figure\s*\d+:?|AI\s*Image\s*Prompt:?|Stock\s*Asset:?|#\d{7,11})[\s\S]*?<\/p>/gi,
+      ''
+    );
+
+    // Strip standalone stock asset codes like #897489635 embedded in paragraphs
+    html = html.replace(/#\d{7,11}\b/g, '');
+  } else {
+    // Standardize <img> tags (strip inline styles/classes, preserve src and alt)
+    html = html.replace(
+      /<img\s+[^>]*src=(["'])(.*?)\1[^>]*>/gi,
+      (m, q, src) => `<img src="${src}" alt="Topic Image" />`
+    );
+  }
+
+  // 5. Strip ALL class and style attributes from all elements
   html = html.replace(/\s*class=(?:"[^"]*"|'[^']*')/gi, '');
   html = html.replace(/\s*style=(?:"[^"]*"|'[^']*')/gi, '');
 
-  // 5. Strip IDs, lang, and obsolete formatting/presentational attributes
+  // 6. Strip IDs, lang, and obsolete formatting/presentational attributes
   html = html.replace(
     /\s*(id|lang|align|valign|width|height|border|cellspacing|cellpadding|bgcolor|clear|color|face|size)=(?:"[^"]*"|'[^']*')/gi,
     ''
   );
 
-  // 6. Standardize headers (strip any remaining attributes, enforce clean tags)
+  // 7. Standardize headers (strip any remaining attributes, enforce clean tags)
   html = html.replace(
     /<h2[^>]*>([\s\S]*?)<\/h2>/gi,
     (m, text) => `<h2>${text.trim()}</h2>`
@@ -60,7 +153,7 @@ export function normalizeHtmlContent(rawHtml) {
     (m, text) => `<h4>${text.trim()}</h4>`
   );
 
-  // 7. Standardize lists and list items
+  // 8. Standardize lists and list items
   html = html.replace(/<ul[^>]*>/gi, '<ul>');
   html = html.replace(/<ol[^>]*>/gi, '<ol>');
   html = html.replace(
@@ -68,7 +161,7 @@ export function normalizeHtmlContent(rawHtml) {
     (m, text) => `<li>${text.trim()}</li>`
   );
 
-  // 8. Standardize paragraphs and drop completely empty paragraphs
+  // 9. Standardize paragraphs and drop completely empty paragraphs
   html = html.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (m, content) => {
     const trimmed = content.trim();
     if (
@@ -82,7 +175,7 @@ export function normalizeHtmlContent(rawHtml) {
     return `<p>${trimmed}</p>`;
   });
 
-  // 9. Standardize strong and emphasis
+  // 10. Standardize strong and emphasis
   html = html.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '<strong>$1</strong>');
   html = html.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '<em>$1</em>');
   html = html.replace(
@@ -94,7 +187,7 @@ export function normalizeHtmlContent(rawHtml) {
     (m, text) => `<em>${text.trim()}</em>`
   );
 
-  // 10. Standardize tables
+  // 11. Standardize tables
   html = html.replace(/<table[^>]*>/gi, '<table>');
   html = html.replace(/<tr[^>]*>/gi, '<tr>');
   html = html.replace(
@@ -106,13 +199,13 @@ export function normalizeHtmlContent(rawHtml) {
     (m, text) => `<td>${text.trim()}</td>`
   );
 
-  // 11. Clean links (preserve href and target)
+  // 12. Clean links (preserve href and target)
   html = html.replace(
     /<a\s+[^>]*href=(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi,
     '<a href="$2" target="_blank" rel="noopener noreferrer">$3</a>'
   );
 
-  // 12. Unwrap all inner / nested / empty <div> tags so they never nest or create empty wrappers
+  // 13. Unwrap all inner / nested / empty <div> tags so they never nest or create empty wrappers
   let prev;
   do {
     prev = html;
@@ -120,7 +213,7 @@ export function normalizeHtmlContent(rawHtml) {
     html = html.replace(/<div>([\s\S]*?)<\/div>/gi, '$1');
   } while (html !== prev);
 
-  // 13. Clean up multiple empty lines or trailing breaks
+  // 14. Clean up multiple empty lines or trailing breaks
   html = html.replace(/<p>\s*<\/p>/gi, '');
   html = html.replace(/(\r?\n\s*){3,}/g, '\n\n');
 
@@ -131,10 +224,11 @@ export function normalizeHtmlContent(rawHtml) {
  * Wraps clean inner HTML in strictly ONE single parent <div> without any classes or styles:
  * <div>...content elements...</div>
  * @param {string} innerHtml - Normalized inner HTML
+ * @param {object} [options={}] - { stripImages: boolean }
  * @returns {string} - Clean LMS editorHtml wrapped in 1 parent div
  */
-export function wrapInLmsContainer(innerHtml) {
-  const clean = normalizeHtmlContent(innerHtml);
+export function wrapInLmsContainer(innerHtml, options = {}) {
+  const clean = normalizeHtmlContent(innerHtml, options);
   return `<div>${clean}</div>`;
 }
 

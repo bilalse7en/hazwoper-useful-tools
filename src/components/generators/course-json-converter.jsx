@@ -15,16 +15,17 @@ import {
   ShieldCheck,
   HelpCircle,
   Clock,
-  BookOpen,
   Layers,
   ChevronRight,
   ChevronDown,
-  Info,
   Sliders,
   FileCode,
-  CheckCircle,
   XCircle,
-  FileCheck,
+  Folder,
+  FolderOpen,
+  Files,
+  Play,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,27 +37,41 @@ import {
   convertDocumentToCourseJson,
   validateCourseJson,
   buildCourseJson,
-  segmentLessonWiseHtml,
-  segmentCourseWiseHtml,
+  groupFilesByCourseHierarchy,
+  convertCourseFolderSequentially,
+  wrapInLmsContainer,
 } from '@/lib/course-converter';
 
 export default function CourseJsonConverter() {
-  // Conversion state
-  const [mode, setMode] = useState('A'); // 'A' = Lesson-wise, 'B' = Course-wise
+  // Conversion mode: 'folder' | 'A' | 'B'
+  const [mode, setMode] = useState('folder');
+  const [includeImages, setIncludeImages] = useState(false);
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processStep, setProcessStep] = useState('');
   const [error, setError] = useState(null);
 
+  // Folder & Multi-File state
+  const [folderHierarchy, setFolderHierarchy] = useState(null);
+  const [progressInfo, setProgressInfo] = useState({
+    current: 0,
+    total: 0,
+    percent: 0,
+    currentModule: '',
+    currentLesson: '',
+    status: '',
+  });
+
   // Result state
   const [courseJson, setCourseJson] = useState(null);
   const [validation, setValidation] = useState(null);
   const [parsedData, setParsedData] = useState(null);
 
-  // Active inspectors
+  // Active inspectors & navigation
   const [activeTab, setActiveTab] = useState('hierarchy'); // 'hierarchy' | 'quiz' | 'html' | 'validation' | 'json'
   const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
+  const [selectedModuleFilter, setSelectedModuleFilter] = useState('all');
   const [copied, setCopied] = useState(false);
 
   // Manual Metadata Overrides
@@ -65,6 +80,7 @@ export default function CourseJsonConverter() {
   const [lessonTitleOverride, setLessonTitleOverride] = useState('');
 
   const fileInputRef = useRef(null);
+  const folderInputRef = useRef(null);
 
   // Format seconds to mm:ss or hh:mm:ss
   const formatTime = (seconds) => {
@@ -78,11 +94,173 @@ export default function CourseJsonConverter() {
     return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
   };
 
-  // Handle document upload and conversion
-  const handleFileUpload = async (selectedFile) => {
+  /**
+   * Recursively extracts file items with relative paths from drag-and-drop DataTransfer
+   */
+  const scanDataTransferItems = async (dataTransfer) => {
+    const fileItems = [];
+    const items = dataTransfer.items;
+
+    if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+      const queue = [];
+      for (let i = 0; i < items.length; i++) {
+        const entry = items[i].webkitGetAsEntry();
+        if (entry) queue.push(entry);
+      }
+
+      const traverse = async (entry, pathSoFar = '') => {
+        if (entry.isFile) {
+          await new Promise((resolve) => {
+            entry.file((fileObj) => {
+              const relPath = pathSoFar
+                ? `${pathSoFar}/${fileObj.name}`
+                : fileObj.name;
+              fileItems.push({
+                file: fileObj,
+                relativePath: relPath,
+                name: fileObj.name,
+              });
+              resolve();
+            });
+          });
+        } else if (entry.isDirectory) {
+          const dirPath = pathSoFar ? `${pathSoFar}/${entry.name}` : entry.name;
+          const dirReader = entry.createReader();
+
+          const readAllEntries = () => {
+            return new Promise((resolve) => {
+              dirReader.readEntries((entries) => resolve(entries));
+            });
+          };
+
+          let batch = await readAllEntries();
+          while (batch.length > 0) {
+            for (const child of batch) {
+              await traverse(child, dirPath);
+            }
+            batch = await readAllEntries();
+          }
+        }
+      };
+
+      for (const topEntry of queue) {
+        await traverse(topEntry, '');
+      }
+    }
+
+    if (
+      fileItems.length === 0 &&
+      dataTransfer.files &&
+      dataTransfer.files.length > 0
+    ) {
+      for (let i = 0; i < dataTransfer.files.length; i++) {
+        const f = dataTransfer.files[i];
+        fileItems.push({
+          file: f,
+          relativePath: f.webkitRelativePath || f.name,
+          name: f.name,
+        });
+      }
+    }
+
+    return fileItems;
+  };
+
+  /**
+   * Handle Folder Selection via webkitdirectory input or folder drag-and-drop
+   */
+  const handleFolderUpload = async (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    setError(null);
+
+    const items = Array.from(fileList).map((f) => ({
+      file: f,
+      relativePath: f.webkitRelativePath || f.name,
+      name: f.name,
+    }));
+
+    const hierarchy = groupFilesByCourseHierarchy(items);
+
+    if (hierarchy.totalFiles === 0) {
+      setError(
+        'No valid Word (.docx) or PDF course documents found in the selected folder.'
+      );
+      return;
+    }
+
+    setFolderHierarchy(hierarchy);
+    setMode('folder');
+    setFile({
+      name: `${hierarchy.courseTitle} (${hierarchy.totalFiles} documents)`,
+    });
+
+    // Automatically begin sequential conversion
+    await startSequentialFolderConversion(hierarchy);
+  };
+
+  /**
+   * Start sequential conversion across all modules and lessons
+   */
+  const startSequentialFolderConversion = async (
+    hierarchyToConvert = folderHierarchy
+  ) => {
+    if (!hierarchyToConvert) return;
+    setError(null);
+    setIsProcessing(true);
+    setProgressInfo({
+      current: 0,
+      total: hierarchyToConvert.totalFiles,
+      percent: 0,
+      currentModule: '',
+      currentLesson: '',
+      status: 'Analyzing course folder structure...',
+    });
+
+    try {
+      const options = {
+        course_title: courseTitleOverride || undefined,
+        course_id: 'course_1',
+        stripImages: !includeImages,
+      };
+
+      const res = await convertCourseFolderSequentially(
+        hierarchyToConvert,
+        options,
+        (progress) => {
+          setProgressInfo(progress);
+          setProcessStep(progress.status);
+        }
+      );
+
+      setCourseJson(res.courseJson);
+      setValidation(res.validation);
+      setParsedData({
+        courseTitle: res.courseJson.course_title,
+        modules: res.courseJson.modules,
+      });
+
+      if (!courseTitleOverride && res.courseJson.course_title) {
+        setCourseTitleOverride(res.courseJson.course_title);
+      }
+
+      setSelectedTopicIndex(0);
+      setProcessStep('Whole course conversion completed!');
+    } catch (err) {
+      console.error('Folder conversion error:', err);
+      setError(err.message || 'Failed to convert course folder.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Handle single file upload and conversion (Mode A or Mode B)
+   */
+  const handleSingleFileUpload = async (selectedFile) => {
     if (!selectedFile) return;
     setError(null);
     setFile(selectedFile);
+    setFolderHierarchy(null);
     setIsProcessing(true);
     setProcessStep('Reading file bytes...');
 
@@ -97,10 +275,13 @@ export default function CourseJsonConverter() {
       }
 
       setProcessStep('Extracting structure and headings...');
+      const targetMode = mode === 'folder' ? 'A' : mode;
+
       const options = {
         fileName: selectedFile.name,
-        mode,
+        mode: targetMode,
         pdfjsLib,
+        stripImages: !includeImages,
         overrides: {
           course_title: courseTitleOverride || undefined,
           module_title: moduleTitleOverride || undefined,
@@ -115,7 +296,6 @@ export default function CourseJsonConverter() {
       setValidation(res.validation);
       setParsedData(res.parsedData);
 
-      // Pre-fill override inputs from detected metadata if not already customized
       if (!courseTitleOverride && res.courseJson.course_title) {
         setCourseTitleOverride(res.courseJson.course_title);
       }
@@ -187,23 +367,47 @@ export default function CourseJsonConverter() {
     }
   };
 
+  // Reset conversion state
+  const handleReset = () => {
+    setFile(null);
+    setCourseJson(null);
+    setValidation(null);
+    setParsedData(null);
+    setFolderHierarchy(null);
+    setError(null);
+    setSelectedTopicIndex(0);
+    setCourseTitleOverride('');
+    setModuleTitleOverride('');
+    setLessonTitleOverride('');
+  };
+
   // All topics flat list for easy preview navigation
   const allTopics = useMemo(() => {
     if (!courseJson || !Array.isArray(courseJson.modules)) return [];
     const list = [];
-    courseJson.modules.forEach((m) => {
-      (m.lessons || []).forEach((l) => {
+    courseJson.modules.forEach((m, mIdx) => {
+      (m.lessons || []).forEach((l, lIdx) => {
         (l.topics || []).forEach((t) => {
           list.push({
             ...t,
+            moduleId: m.module_id,
             moduleTitle: m.module_title,
+            moduleIndex: mIdx + 1,
+            lessonId: l.lesson_id,
             lessonTitle: l.lesson_title,
+            lessonIndex: lIdx + 1,
           });
         });
       });
     });
     return list;
   }, [courseJson]);
+
+  // Filtered topics based on module dropdown
+  const filteredTopics = useMemo(() => {
+    if (selectedModuleFilter === 'all') return allTopics;
+    return allTopics.filter((t) => t.moduleId === selectedModuleFilter);
+  }, [allTopics, selectedModuleFilter]);
 
   // All quizzes flat list
   const allQuizzes = useMemo(() => {
@@ -214,7 +418,9 @@ export default function CourseJsonConverter() {
         (l.knowledge_check || []).forEach((q, qIndex) => {
           list.push({
             ...q,
+            moduleId: m.module_id,
             moduleTitle: m.module_title,
+            lessonId: l.lesson_id,
             lessonTitle: l.lesson_title,
             index: qIndex + 1,
           });
@@ -224,7 +430,22 @@ export default function CourseJsonConverter() {
     return list;
   }, [courseJson]);
 
-  const activeTopic = allTopics[selectedTopicIndex] || allTopics[0] || null;
+  const activeTopic =
+    filteredTopics[selectedTopicIndex] ||
+    filteredTopics[0] ||
+    allTopics[0] ||
+    null;
+
+  // Dynamically compute HTML based on image toggle switch
+  const displayedTopicHtml = useMemo(() => {
+    if (!activeTopic) return '<p>No content</p>';
+    if (activeTopic.raw_body_content) {
+      return wrapInLmsContainer(activeTopic.raw_body_content, {
+        stripImages: !includeImages,
+      });
+    }
+    return activeTopic.leftDiv?.editorHtml || '<p>No content</p>';
+  }, [activeTopic, includeImages]);
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 py-6 px-4">
@@ -242,18 +463,27 @@ export default function CourseJsonConverter() {
               variant="outline"
               className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300"
             >
-              Production Standard
+              Multi-Module & Folder Ready
             </Badge>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Transform Word (.docx) and PDF course documents into exact LMS
-            schema specifications with clean HTML, duration calculations, and
-            isolated quizzes.
+            Convert an entire course folder with multiple modules & lessons (or
+            single files) into the exact LMS schema. Automatic sequencing, clean
+            HTML sanitization, assessment isolation, and 14-point validation.
           </p>
         </div>
 
         {courseJson && (
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReset}
+              className="gap-1.5 text-xs"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Convert Another
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -273,7 +503,7 @@ export default function CourseJsonConverter() {
               className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Download className="h-4 w-4" />
-              Download JSON
+              Download Complete JSON
             </Button>
           </div>
         )}
@@ -287,37 +517,111 @@ export default function CourseJsonConverter() {
             <CardContent className="p-5 space-y-4">
               <div>
                 <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                  Conversion Mode
+                  Conversion Source
                 </label>
-                <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setMode('folder')}
+                    className={cn(
+                      'flex flex-col p-2.5 rounded-lg border text-left transition-all text-xs',
+                      mode === 'folder'
+                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    )}
+                  >
+                    <span className="font-semibold text-xs flex items-center gap-1">
+                      <Folder className="h-3.5 w-3.5 text-blue-600" />
+                      Course Folder
+                    </span>
+                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
+                      3 Modules, 12 Lessons
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setMode('A')}
                     className={cn(
-                      'flex flex-col p-3 rounded-lg border text-left transition-all text-xs',
+                      'flex flex-col p-2.5 rounded-lg border text-left transition-all text-xs',
                       mode === 'A'
                         ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
                     )}
                   >
-                    <span className="font-semibold text-sm">Mode A</span>
-                    <span className="mt-0.5 text-[11px] opacity-80">
-                      Lesson-wise (.docx / .pdf)
+                    <span className="font-semibold text-xs flex items-center gap-1">
+                      <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                      Single Lesson
+                    </span>
+                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
+                      Mode A (1 Document)
                     </span>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setMode('B')}
                     className={cn(
-                      'flex flex-col p-3 rounded-lg border text-left transition-all text-xs',
+                      'flex flex-col p-2.5 rounded-lg border text-left transition-all text-xs',
                       mode === 'B'
                         ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
                     )}
                   >
-                    <span className="font-semibold text-sm">Mode B</span>
-                    <span className="mt-0.5 text-[11px] opacity-80">
-                      Course-wise (Full Syllabus)
+                    <span className="font-semibold text-xs flex items-center gap-1">
+                      <Layers className="h-3.5 w-3.5 text-emerald-600" />
+                      Course Doc
+                    </span>
+                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
+                      Mode B (Full Syllabus)
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Image & Asset Content Toggle */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    Images & Media Content
+                  </label>
+                  <Badge variant="outline" className="text-[10px]">
+                    {includeImages ? 'Images ON' : 'Images OFF (Clean)'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIncludeImages(false)}
+                    className={cn(
+                      'p-2 rounded-lg border text-left transition-all text-xs flex flex-col',
+                      !includeImages
+                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    )}
+                  >
+                    <span className="font-semibold text-xs flex items-center gap-1 text-slate-800 dark:text-slate-200">
+                      🚫 Skip Images (OFF)
+                    </span>
+                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
+                      Extract codes, clean body HTML
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIncludeImages(true)}
+                    className={cn(
+                      'p-2 rounded-lg border text-left transition-all text-xs flex flex-col',
+                      includeImages
+                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    )}
+                  >
+                    <span className="font-semibold text-xs flex items-center gap-1 text-slate-800 dark:text-slate-200">
+                      🖼️ Include Images (ON)
+                    </span>
+                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
+                      Preserve &lt;img&gt; &amp; image callouts
                     </span>
                   </button>
                 </div>
@@ -325,11 +629,21 @@ export default function CourseJsonConverter() {
 
               {/* Upload Dropzone */}
               <div>
-                <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                  Source Document
+                <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                  <span>
+                    {mode === 'folder'
+                      ? 'Upload Course Directory'
+                      : 'Source Document'}
+                  </span>
+                  {mode === 'folder' && (
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">
+                      Drag folder or click below
+                    </span>
+                  )}
                 </label>
+
+                {/* Drop Area */}
                 <div
-                  onClick={() => fileInputRef.current?.click()}
                   onDragOver={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -345,17 +659,29 @@ export default function CourseJsonConverter() {
                     e.stopPropagation();
                     setIsDragging(false);
                   }}
-                  onDrop={(e) => {
+                  onDrop={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setIsDragging(false);
-                    const droppedFile = e.dataTransfer?.files?.[0];
-                    if (droppedFile) {
-                      handleFileUpload(droppedFile);
+
+                    const scanned = await scanDataTransferItems(e.dataTransfer);
+                    if (
+                      scanned.length > 1 ||
+                      (scanned.length === 1 &&
+                        scanned[0].relativePath.includes('/'))
+                    ) {
+                      // Multi-file or folder detected
+                      await handleFolderUpload(scanned);
+                    } else if (scanned.length === 1) {
+                      // Single file dropped
+                      if (mode === 'folder') {
+                        setMode('A');
+                      }
+                      await handleSingleFileUpload(scanned[0].file);
                     }
                   }}
                   className={cn(
-                    'mt-2 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 select-none',
+                    'mt-2 border-2 border-dashed rounded-xl p-5 text-center transition-all flex flex-col items-center justify-center gap-2 select-none',
                     isDragging
                       ? 'border-blue-500 bg-blue-100/40 dark:bg-blue-950/40 ring-4 ring-blue-500/20 scale-[1.01]'
                       : file
@@ -363,13 +689,33 @@ export default function CourseJsonConverter() {
                         : 'border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900'
                   )}
                 >
+                  {/* Hidden inputs */}
+                  <input
+                    ref={folderInputRef}
+                    type="file"
+                    webkitdirectory="true"
+                    directory="true"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFolderUpload(e.target.files)}
+                  />
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept=".docx,.doc,.pdf"
+                    multiple
                     className="hidden"
-                    onChange={(e) => handleFileUpload(e.target.files?.[0])}
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (!files || files.length === 0) return;
+                      if (files.length > 1) {
+                        handleFolderUpload(files);
+                      } else {
+                        handleSingleFileUpload(files[0]);
+                      }
+                    }}
                   />
+
                   <div
                     className={cn(
                       'p-3 rounded-full transition-colors',
@@ -378,34 +724,85 @@ export default function CourseJsonConverter() {
                         : 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400'
                     )}
                   >
-                    <Upload className="h-5 w-5" />
+                    {mode === 'folder' ? (
+                      <FolderOpen className="h-6 w-6" />
+                    ) : (
+                      <Upload className="h-6 w-6" />
+                    )}
                   </div>
+
                   <div>
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                       {isDragging
-                        ? 'Drop your Word or PDF file here'
+                        ? 'Drop folder or files here'
                         : file
                           ? file.name
-                          : 'Upload Word or PDF'}
+                          : mode === 'folder'
+                            ? 'Drop Course Folder Here'
+                            : 'Upload Word or PDF'}
                     </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {isDragging
-                        ? 'Release to start conversion immediately'
-                        : file
-                          ? `${(file.size / 1024).toFixed(1)} KB`
-                          : 'Click to browse or drag & drop file here'}
+                        ? 'Release to begin sequential processing'
+                        : mode === 'folder'
+                          ? 'Contains Module folders with Lesson .docx files'
+                          : 'Single .docx or .pdf lesson document'}
                     </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 pt-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => folderInputRef.current?.click()}
+                      className="text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                    >
+                      <Folder className="h-3.5 w-3.5" />
+                      Upload Course Folder
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs h-8 gap-1.5"
+                    >
+                      <Files className="h-3.5 w-3.5" />
+                      Select File(s)
+                    </Button>
                   </div>
                 </div>
               </div>
 
               {/* Progress State */}
               {isProcessing && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
-                  <RefreshCw className="h-4 w-4 text-blue-600 animate-spin flex-shrink-0" />
-                  <span className="text-xs font-medium text-blue-800 dark:text-blue-200">
-                    {processStep}
-                  </span>
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-blue-900 dark:text-blue-100">
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="h-3.5 w-3.5 text-blue-600 animate-spin" />
+                      {progressInfo.status || processStep}
+                    </span>
+                    {progressInfo.total > 0 && (
+                      <span className="text-[11px] font-mono text-blue-700 dark:text-blue-300">
+                        {progressInfo.percent}% ({progressInfo.current}/
+                        {progressInfo.total})
+                      </span>
+                    )}
+                  </div>
+                  {progressInfo.total > 0 && (
+                    <div className="w-full bg-blue-200 dark:bg-blue-900/60 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progressInfo.percent}%` }}
+                      />
+                    </div>
+                  )}
+                  {progressInfo.currentLesson && (
+                    <div className="text-[11px] text-blue-800/80 dark:text-blue-200/80 truncate">
+                      <strong>Current:</strong> {progressInfo.currentLesson}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -414,6 +811,63 @@ export default function CourseJsonConverter() {
                 <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2 text-xs text-red-700 dark:text-red-300">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-red-600" />
                   <span>{error}</span>
+                </div>
+              )}
+
+              {/* Detected Course Folder Structure (Pre-Flight Hierarchy Card) */}
+              {folderHierarchy && (
+                <div className="space-y-3 pt-2 border-t">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Folder className="h-3.5 w-3.5 text-blue-600" />
+                      Detected Course Hierarchy
+                    </span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {folderHierarchy.modules.length} Modules •{' '}
+                      {folderHierarchy.totalFiles} Lessons
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                    {folderHierarchy.modules.map((mod) => (
+                      <div
+                        key={mod.moduleId || mod.moduleFolder}
+                        className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs space-y-1.5"
+                      >
+                        <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                          <span className="truncate">{mod.moduleTitle}</span>
+                          <span className="text-[10px] text-slate-500 shrink-0 ml-2">
+                            {mod.lessons.length} lessons
+                          </span>
+                        </div>
+                        <div className="space-y-1 pl-2 border-l-2 border-blue-400/50">
+                          {mod.lessons.map((les) => (
+                            <div
+                              key={les.fileName}
+                              className="text-[11px] text-slate-600 dark:text-slate-400 truncate flex items-center gap-1.5"
+                            >
+                              <FileText className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="truncate">
+                                {les.lessonTitle}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {!courseJson && !isProcessing && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => startSequentialFolderConversion()}
+                      className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                    >
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                      Convert Whole Course Sequentially
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -441,26 +895,6 @@ export default function CourseJsonConverter() {
                       <Input
                         value={courseTitleOverride}
                         onChange={(e) => setCourseTitleOverride(e.target.value)}
-                        className="h-8 text-xs mt-0.5"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[11px] text-slate-500">
-                        Module Title
-                      </span>
-                      <Input
-                        value={moduleTitleOverride}
-                        onChange={(e) => setModuleTitleOverride(e.target.value)}
-                        className="h-8 text-xs mt-0.5"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[11px] text-slate-500">
-                        Lesson Title
-                      </span>
-                      <Input
-                        value={lessonTitleOverride}
-                        onChange={(e) => setLessonTitleOverride(e.target.value)}
                         className="h-8 text-xs mt-0.5"
                       />
                     </div>
@@ -544,16 +978,17 @@ export default function CourseJsonConverter() {
             <Card className="border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
               <CardContent className="p-8 text-center space-y-3">
                 <div className="inline-flex p-3 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
-                  <FileText className="h-6 w-6" />
+                  <FolderOpen className="h-6 w-6" />
                 </div>
                 <div className="max-w-md mx-auto">
                   <h3 className="font-semibold text-slate-800 dark:text-slate-200">
-                    Ready to Convert LMS Course
+                    Upload Course Directory or Lessons
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Upload your lesson document to extract clean HTML topics,
-                    isolate quizzes into structured question arrays, and produce
-                    fully validated course JSON.
+                    Upload your course folder with Module 1, Module 2, Module 3
+                    subfolders to automatically sequence every lesson, sanitize
+                    HTML into clean parent divs, isolate quizzes, and output
+                    valid LMS JSON.
                   </p>
                 </div>
               </CardContent>
@@ -563,73 +998,96 @@ export default function CourseJsonConverter() {
           {/* Multi-Tab Workspace */}
           {courseJson && (
             <div className="space-y-4">
-              {/* Tab Navigation */}
-              <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto text-xs">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('hierarchy')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                    activeTab === 'hierarchy'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  )}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Hierarchy & Topics ({allTopics.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('quiz')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                    activeTab === 'quiz'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  )}
-                >
-                  <HelpCircle className="h-3.5 w-3.5" />
-                  Quizzes ({allQuizzes.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('html')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                    activeTab === 'html'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  )}
-                >
-                  <FileCode className="h-3.5 w-3.5" />
-                  Clean HTML Inspector
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('validation')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                    activeTab === 'validation'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  )}
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  14-Point Validation ({validation?.summary?.passed || 14}/14)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('json')}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                    activeTab === 'json'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  )}
-                >
-                  <Code className="h-3.5 w-3.5" />
-                  LMS JSON Code
-                </button>
+              {/* Tab Navigation & Module Filter */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                <div className="flex items-center gap-1 overflow-x-auto text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('hierarchy')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                      activeTab === 'hierarchy'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Topics ({allTopics.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('quiz')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                      activeTab === 'quiz'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    <HelpCircle className="h-3.5 w-3.5" />
+                    Quizzes ({allQuizzes.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('html')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                      activeTab === 'html'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    <FileCode className="h-3.5 w-3.5" />
+                    Clean HTML
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('validation')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                      activeTab === 'validation'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    14-Point Validation ({validation?.summary?.passed || 14}/14)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('json')}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                      activeTab === 'json'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    <Code className="h-3.5 w-3.5" />
+                    JSON Code
+                  </button>
+                </div>
+
+                {/* Module Selector Filter */}
+                {courseJson.modules?.length > 1 && (
+                  <select
+                    value={selectedModuleFilter}
+                    onChange={(e) => {
+                      setSelectedModuleFilter(e.target.value);
+                      setSelectedTopicIndex(0);
+                    }}
+                    className="h-7 text-xs border rounded-md px-2 bg-background text-foreground"
+                  >
+                    <option value="all">
+                      All Modules ({courseJson.modules.length})
+                    </option>
+                    {courseJson.modules.map((m) => (
+                      <option key={m.module_id} value={m.module_id}>
+                        {m.module_title}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Tab 1: Hierarchy & Topic Inspector */}
@@ -637,7 +1095,7 @@ export default function CourseJsonConverter() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Topic Sidebar */}
                   <div className="md:col-span-1 border rounded-xl overflow-hidden max-h-[500px] overflow-y-auto divide-y bg-white dark:bg-slate-950">
-                    {allTopics.map((top, idx) => (
+                    {filteredTopics.map((top, idx) => (
                       <button
                         key={top.id || idx}
                         type="button"
@@ -654,8 +1112,8 @@ export default function CourseJsonConverter() {
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="truncate font-semibold">{top.name}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            Duration: {top.allocated_duration_seconds}s
+                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                            {top.moduleTitle} • {top.lessonTitle}
                           </p>
                         </div>
                       </button>
@@ -666,28 +1124,118 @@ export default function CourseJsonConverter() {
                   <div className="md:col-span-2 border rounded-xl p-5 bg-white dark:bg-slate-950 max-h-[500px] overflow-y-auto space-y-4">
                     {activeTopic ? (
                       <div>
-                        <div className="border-b pb-3 mb-4 flex items-center justify-between">
+                        <div className="border-b pb-3 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
                             <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                              Topic {selectedTopicIndex + 1} of{' '}
-                              {allTopics.length}
+                              {activeTopic.moduleTitle} →{' '}
+                              {activeTopic.lessonTitle}
                             </span>
                             <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
                               {activeTopic.name}
                             </h3>
                           </div>
-                          <Badge variant="outline" className="text-xs">
-                            ⏱️ {activeTopic.allocated_duration_seconds}s
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            {/* Live Inspection Image Toggle */}
+                            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 text-[11px]">
+                              <button
+                                type="button"
+                                onClick={() => setIncludeImages(false)}
+                                className={cn(
+                                  'px-2 py-0.5 rounded-md transition-all font-medium',
+                                  !includeImages
+                                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                )}
+                                title="Hide images and image codes, showing pure clean instructional text"
+                              >
+                                🚫 Images OFF
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIncludeImages(true)}
+                                className={cn(
+                                  'px-2 py-0.5 rounded-md transition-all font-medium',
+                                  includeImages
+                                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                )}
+                                title="Show images and media callouts"
+                              >
+                                🖼️ Images ON
+                              </button>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              ⏱️ {activeTopic.allocated_duration_seconds}s
+                            </Badge>
+                          </div>
                         </div>
+
+                        {/* Image Asset Code Banner */}
+                        {activeTopic.image_code && (
+                          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs mb-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                                🖼️ Image Asset Code:
+                              </span>
+                              <code className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/60 rounded text-amber-900 dark:text-amber-100 font-mono font-bold text-xs">
+                                {activeTopic.image_code}
+                              </code>
+                              <span className="text-[11px] text-amber-700 dark:text-amber-300">
+                                {!includeImages
+                                  ? '(Extracted into image_source, stripped from body HTML)'
+                                  : '(Visible in HTML)'}
+                              </span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                navigator.clipboard.writeText(
+                                  activeTopic.image_code.replace(/^#/, '')
+                                );
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }}
+                              className="h-6 text-[10px] border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-100 shrink-0 ml-2"
+                            >
+                              Copy Code
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* AI Image Generation Prompt Banner */}
+                        {activeTopic.image_prompt && (
+                          <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg space-y-1 text-xs mb-3">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-1">
+                                ✨ AI Visual Generation Prompt
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    activeTopic.image_prompt
+                                  );
+                                  setCopied(true);
+                                  setTimeout(() => setCopied(false), 2000);
+                                }}
+                                className="h-6 text-[10px] border-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-900 dark:text-purple-100"
+                              >
+                                Copy Prompt
+                              </Button>
+                            </div>
+                            <p className="text-[11px] text-purple-800 dark:text-purple-300 italic">
+                              &ldquo;{activeTopic.image_prompt}&rdquo;
+                            </p>
+                          </div>
+                        )}
 
                         {/* Rendered HTML Preview */}
                         <div
                           className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300"
                           dangerouslySetInnerHTML={{
-                            __html:
-                              activeTopic.leftDiv?.editorHtml ||
-                              '<p>No content</p>',
+                            __html: displayedTopicHtml,
                           }}
                         />
                       </div>
@@ -711,9 +1259,14 @@ export default function CourseJsonConverter() {
                       >
                         <CardContent className="p-4 space-y-3">
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
-                              Question {idx + 1} ({q.question_id})
-                            </span>
+                            <div>
+                              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
+                                Question {idx + 1} ({q.question_id})
+                              </span>
+                              <span className="text-[11px] text-slate-500 ml-2">
+                                {q.moduleTitle} → {q.lessonTitle}
+                              </span>
+                            </div>
                             <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[11px]">
                               Answer: Option {q.correct_answer}
                             </Badge>
@@ -764,7 +1317,7 @@ export default function CourseJsonConverter() {
                   ) : (
                     <Card>
                       <CardContent className="p-8 text-center text-xs text-slate-500">
-                        No quiz questions detected in this document.
+                        No quiz questions detected across these lessons.
                       </CardContent>
                     </Card>
                   )}
@@ -785,8 +1338,7 @@ export default function CourseJsonConverter() {
                     </span>
                   </div>
                   <pre className="whitespace-pre-wrap break-all leading-relaxed">
-                    {activeTopic?.leftDiv?.editorHtml ||
-                      '<!-- No topic selected -->'}
+                    {displayedTopicHtml}
                   </pre>
                 </div>
               )}

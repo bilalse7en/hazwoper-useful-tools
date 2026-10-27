@@ -19,6 +19,7 @@ import {
   wrapInLmsContainer,
   calculateTopicDuration,
   calculateWordCount,
+  extractImageMetadata,
 } from './html-normalizer.js';
 import {
   isQuizHeading,
@@ -44,7 +45,7 @@ function cleanTitle(str) {
  * @param {object} metadata - { courseTitle, moduleTitle, lessonTitle }
  * @returns {object} { courseTitle, moduleTitle, lessonTitle, topics, knowledge_check }
  */
-export function segmentLessonWiseHtml(html, metadata = {}) {
+export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
   let courseTitle = metadata.courseTitle || '';
   let moduleTitle = metadata.moduleTitle || 'Module 1: General Knowledge';
   let lessonTitle = metadata.lessonTitle || '';
@@ -95,8 +96,10 @@ export function segmentLessonWiseHtml(html, metadata = {}) {
     }
 
     // Normal topic
-    const innerCleanHtml = normalizeHtmlContent(bodyContent);
-    const editorHtml = wrapInLmsContainer(innerCleanHtml);
+    const imgMeta = extractImageMetadata(bodyContent);
+    const stripImages = options.stripImages !== false;
+    const innerCleanHtml = normalizeHtmlContent(bodyContent, { stripImages });
+    const editorHtml = wrapInLmsContainer(innerCleanHtml, { stripImages });
     const duration = calculateTopicDuration(innerCleanHtml);
 
     topics.push({
@@ -109,13 +112,22 @@ export function segmentLessonWiseHtml(html, metadata = {}) {
       slide_type: 'image',
       allocated_duration_seconds: duration,
       topicDuration: duration,
-      image_source: '',
+      image_source: imgMeta.primaryImageCode || '',
+      image_code: imgMeta.primaryImageCode || '',
+      image_prompt: imgMeta.primaryPrompt || '',
+      has_embedded_image: imgMeta.hasImages,
+      raw_body_content: bodyContent,
       datatime: '0',
       captions: [],
       narration_script: '',
       leftDiv: {
         audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
-        image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+        image: {
+          isImage: Boolean(imgMeta.primaryImageCode || imgMeta.hasImages),
+          imageURL: imgMeta.primaryImageCode || '',
+          imageFile: '',
+          imageName: imgMeta.primaryImageCode || '',
+        },
         video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
         width: 'col-12',
         editor: editorHtml,
@@ -168,7 +180,7 @@ export function segmentLessonWiseHtml(html, metadata = {}) {
  * @param {object} metadata - { courseTitle, moduleTitle, lessonTitle }
  * @returns {object} { courseTitle, modules: [...], final_exam: {...} }
  */
-export function segmentCourseWiseHtml(html, metadata = {}) {
+export function segmentCourseWiseHtml(html, metadata = {}, options = {}) {
   let courseTitle = metadata.courseTitle || '';
   const rawParts = html.split(/(?=<h[1-2][^>]*>)/i).filter(Boolean);
 
@@ -296,8 +308,10 @@ export function segmentCourseWiseHtml(html, metadata = {}) {
     const lesIndex = currentModule.lessons.length;
     const topIndex = currentLesson.topics.length + 1;
 
-    const innerCleanHtml = normalizeHtmlContent(bodyContent);
-    const editorHtml = wrapInLmsContainer(innerCleanHtml);
+    const imgMeta = extractImageMetadata(bodyContent);
+    const stripImages = options.stripImages !== false;
+    const innerCleanHtml = normalizeHtmlContent(bodyContent, { stripImages });
+    const editorHtml = wrapInLmsContainer(innerCleanHtml, { stripImages });
     const duration = calculateTopicDuration(innerCleanHtml);
 
     currentLesson.topics.push({
@@ -310,13 +324,22 @@ export function segmentCourseWiseHtml(html, metadata = {}) {
       slide_type: 'image',
       allocated_duration_seconds: duration,
       topicDuration: duration,
-      image_source: '',
+      image_source: imgMeta.primaryImageCode || '',
+      image_code: imgMeta.primaryImageCode || '',
+      image_prompt: imgMeta.primaryPrompt || '',
+      has_embedded_image: imgMeta.hasImages,
+      raw_body_content: bodyContent,
       datatime: '0',
       captions: [],
       narration_script: '',
       leftDiv: {
         audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
-        image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+        image: {
+          isImage: Boolean(imgMeta.primaryImageCode || imgMeta.hasImages),
+          imageURL: imgMeta.primaryImageCode || '',
+          imageFile: '',
+          imageName: imgMeta.primaryImageCode || '',
+        },
         video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
         width: 'col-12',
         editor: editorHtml,
@@ -399,9 +422,9 @@ export async function parseDocxDocument(buffer, options = {}) {
   const rawHtml = mammothResult.value;
 
   if (mode === 'B') {
-    return segmentCourseWiseHtml(rawHtml, mergedMeta);
+    return segmentCourseWiseHtml(rawHtml, mergedMeta, options);
   } else {
-    return segmentLessonWiseHtml(rawHtml, mergedMeta);
+    return segmentLessonWiseHtml(rawHtml, mergedMeta, options);
   }
 }
 
@@ -495,8 +518,8 @@ export async function parsePdfDocument(arrayBuffer, options = {}) {
 
   const mode = options.mode || 'A';
   if (mode === 'B') {
-    return segmentCourseWiseHtml(fullHtml, mergedMeta);
+    return segmentCourseWiseHtml(fullHtml, mergedMeta, options);
   } else {
-    return segmentLessonWiseHtml(fullHtml, mergedMeta);
+    return segmentLessonWiseHtml(fullHtml, mergedMeta, options);
   }
 }

@@ -75,6 +75,56 @@ describe('CourseJsonConverter Core Engine', () => {
       const hundredWords = Array(100).fill('word').join(' ');
       expect(calculateTopicDuration(hundredWords)).toBe(50); // 100 * 0.5 = 50s
     });
+
+    it('skips images, image callouts, and #897489635 asset codes when stripImages is enabled', () => {
+      const rawWithImage = `
+        <p>Before topic text explaining utility service.</p>
+        <p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA" alt="Substation" /></p>
+        <p>[Image: High-voltage substation transformer #897489635]</p>
+        <p>AI Image Prompt: Photorealistic 8K portrait view of utility switchgear</p>
+        <p>Operating principles for high-voltage entrance configuration.</p>
+      `;
+
+      // When stripImages is enabled (default)
+      const cleanWithoutImages = normalizeHtmlContent(rawWithImage, {
+        stripImages: true,
+      });
+      expect(cleanWithoutImages).not.toContain('<img');
+      expect(cleanWithoutImages).not.toContain('#897489635');
+      expect(cleanWithoutImages).not.toContain('AI Image Prompt');
+      expect(cleanWithoutImages).not.toContain('[Image:');
+      expect(cleanWithoutImages).toContain(
+        'Before topic text explaining utility service.'
+      );
+      expect(cleanWithoutImages).toContain(
+        'Operating principles for high-voltage entrance configuration.'
+      );
+
+      // When stripImages is disabled (Images ON)
+      const cleanWithImages = normalizeHtmlContent(rawWithImage, {
+        stripImages: false,
+      });
+      expect(cleanWithImages).toContain('<img');
+      expect(cleanWithImages).toContain('#897489635');
+    });
+
+    it('extracts image asset code #897489635 and AI prompt metadata accurately', async () => {
+      const { extractImageMetadata } =
+        await import('../src/lib/course-converter/html-normalizer.js');
+
+      const sample = `
+        <p>Utility service entry equipment illustration.</p>
+        <p>[Image: Pad-mounted transformer #897489635]</p>
+        <p>AI Image Prompt: Photorealistic 8K portrait of electrical transformer with cooling fins</p>
+      `;
+
+      const meta = extractImageMetadata(sample);
+      expect(meta.primaryImageCode).toBe('#897489635');
+      expect(meta.imageCodes).toContain('#897489635');
+      expect(meta.primaryPrompt).toContain(
+        'Photorealistic 8K portrait of electrical transformer'
+      );
+    });
   });
 
   describe('Quiz Extractor', () => {
@@ -220,6 +270,274 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(courseJson.final_exam.questions).toHaveLength(1);
       expect(validation.isValid).toBe(true);
       expect(validation.score).toBe(100);
+    });
+  });
+
+  describe('Course Folder Ingestion & Sequential Hierarchy Builder', () => {
+    it('accurately normalizes module and lesson titles with underscore formatting', async () => {
+      const { formatHierarchyTitle } =
+        await import('../src/lib/course-converter/folder-converter.js');
+      expect(
+        formatHierarchyTitle(
+          'Module 1_Utility Interconnection & Distribution',
+          'module'
+        )
+      ).toBe('Module 1: Utility Interconnection & Distribution');
+
+      expect(
+        formatHierarchyTitle('Module 2_Transformers & Switchgear', 'module')
+      ).toBe('Module 2: Transformers & Switchgear');
+
+      expect(
+        formatHierarchyTitle(
+          'Module 3_UPS Systems Design & Operations',
+          'module'
+        )
+      ).toBe('Module 3: UPS Systems Design & Operations');
+
+      expect(
+        formatHierarchyTitle(
+          'Lesson 1_Utility Power Entry and Service Configuration.docx',
+          'lesson'
+        )
+      ).toBe('Lesson 1: Utility Power Entry and Service Configuration');
+
+      expect(
+        formatHierarchyTitle(
+          'Lesson 5_Transformer Cooling^J Protection, and Efficiency.docx',
+          'lesson'
+        )
+      ).toBe('Lesson 5: Transformer Cooling, Protection, and Efficiency');
+    });
+
+    it('organizes uploaded course folder into sequenced 3-module 11-lesson hierarchy', async () => {
+      const { groupFilesByCourseHierarchy } =
+        await import('../src/lib/course-converter/folder-converter.js');
+
+      const mockFolderItems = [
+        // Module 1 (3 lessons)
+        {
+          relativePath:
+            'Power Systems/Module 1_Utility Interconnection & Distribution/Lesson 1_Utility Power Entry and Service Configuration.docx',
+        },
+        {
+          relativePath:
+            'Power Systems/Module 1_Utility Interconnection & Distribution/Lesson 3_Distribution Resilience and Backup Power Integration.docx',
+        },
+        {
+          relativePath:
+            'Power Systems/Module 1_Utility Interconnection & Distribution/Lesson 2_Main Distribution Pathways and Topologies.docx',
+        },
+
+        // Module 2 (4 lessons)
+        {
+          relativePath:
+            'Power Systems/Module 2_Transformers & Switchgear/Lesson 4_Transformer Types and Operating Principles.docx',
+        },
+        {
+          relativePath:
+            'Power Systems/Module 2_Transformers & Switchgear/Lesson 6_Medium-Voltage Switchgear and Breaker Topologies.docx',
+        },
+        {
+          relativePath:
+            'Power Systems/Module 2_Transformers & Switchgear/Lesson 5_Transformer Cooling^J Protection, and Efficiency.docx',
+        },
+        {
+          relativePath:
+            'Power Systems/Module 2_Transformers & Switchgear/Lesson 7_Switchgear Maintenance and Operational Safety.docx',
+        },
+
+        // Module 3 (4 lessons)
+        {
+          relativePath:
+            'Power Systems/Module 3_UPS Systems Design & Operations/Lesson 10_UPS Battery Maintenance and Safety Standards.docx',
+        },
+        {
+          relativePath:
+            'Power Systems/Module 3_UPS Systems Design & Operations/Lesson 8_UPS Topology and Architecture in Critical Facilities.docx',
+        },
+        {
+          relativePath:
+            'Power Systems/Module 3_UPS Systems Design & Operations/Lesson 9_UPS Battery Chemistry and Energy Storage.docx',
+        },
+        {
+          relativePath:
+            'Power Systems/Module 3_UPS Systems Design & Operations/Lesson 12_UPS Efficiency and Thermal Management.docx',
+        },
+      ];
+
+      const hierarchy = groupFilesByCourseHierarchy(mockFolderItems);
+
+      expect(hierarchy.courseTitle).toBe('Power Systems');
+      expect(hierarchy.totalFiles).toBe(11);
+      expect(hierarchy.modules).toHaveLength(3);
+
+      // Verify Module 1 ordering and lessons
+      expect(hierarchy.modules[0].moduleTitle).toBe(
+        'Module 1: Utility Interconnection & Distribution'
+      );
+      expect(hierarchy.modules[0].lessons).toHaveLength(3);
+      expect(hierarchy.modules[0].lessons.map((l) => l.lessonNumber)).toEqual([
+        1, 2, 3,
+      ]);
+
+      // Verify Module 2 ordering and lessons
+      expect(hierarchy.modules[1].moduleTitle).toBe(
+        'Module 2: Transformers & Switchgear'
+      );
+      expect(hierarchy.modules[1].lessons).toHaveLength(4);
+      expect(hierarchy.modules[1].lessons.map((l) => l.lessonNumber)).toEqual([
+        4, 5, 6, 7,
+      ]);
+
+      // Verify Module 3 ordering and lessons
+      expect(hierarchy.modules[2].moduleTitle).toBe(
+        'Module 3: UPS Systems Design & Operations'
+      );
+      expect(hierarchy.modules[2].lessons).toHaveLength(4);
+      expect(hierarchy.modules[2].lessons.map((l) => l.lessonNumber)).toEqual([
+        8, 9, 10, 12,
+      ]);
+    });
+
+    it('sequentially converts a multi-module course folder with live progress reporting', async () => {
+      const { Document, Paragraph, HeadingLevel, Packer } =
+        await import('docx');
+      const { convertCourseFolderSequentially } =
+        await import('../src/lib/course-converter/folder-converter.js');
+
+      // Helper to generate a minimal docx buffer with topics and a quiz
+      async function createTestDocx(lessonTitle, topicTitle, questionText) {
+        const doc = new Document({
+          sections: [
+            {
+              children: [
+                new Paragraph({
+                  text: lessonTitle,
+                  heading: HeadingLevel.TITLE,
+                }),
+                new Paragraph({
+                  text: topicTitle,
+                  heading: HeadingLevel.HEADING_1,
+                }),
+                new Paragraph({
+                  text: 'This is the instructional content for ' + topicTitle,
+                }),
+                new Paragraph({
+                  text: 'Lesson Quiz',
+                  heading: HeadingLevel.HEADING_1,
+                }),
+                new Paragraph({
+                  text: questionText,
+                  heading: HeadingLevel.HEADING_3,
+                }),
+                new Paragraph({ text: 'A. Correct Option (correct)' }),
+                new Paragraph({ text: 'B. Distractor Option' }),
+                new Paragraph({ text: 'Explanation: Test explanation.' }),
+              ],
+            },
+          ],
+        });
+        return await Packer.toBuffer(doc);
+      }
+
+      const buf1 = await createTestDocx(
+        'Lesson 1: Utility Power Entry and Service Configuration',
+        'Utility Service Entrance Fundamentals',
+        'Question 1: What is the service entrance?'
+      );
+      const buf2 = await createTestDocx(
+        'Lesson 2: Main Distribution Pathways and Topologies',
+        'Main Switchboard Distribution',
+        'Question 1: What is switchboard topology?'
+      );
+      const buf3 = await createTestDocx(
+        'Lesson 4: Transformer Types and Operating Principles',
+        'Step-Down Transformers',
+        'Question 1: How does a transformer step down voltage?'
+      );
+
+      const mockHierarchy = {
+        courseTitle: 'Power Systems & Electrical Fundamentals',
+        modules: [
+          {
+            moduleNumber: 1,
+            moduleTitle: 'Module 1: Utility Interconnection & Distribution',
+            lessons: [
+              {
+                fileName: 'Lesson 1_Utility Power Entry.docx',
+                lessonNumber: 1,
+                lessonTitle:
+                  'Lesson 1: Utility Power Entry and Service Configuration',
+                file: { name: 'Lesson 1.docx', buffer: buf1 },
+              },
+              {
+                fileName: 'Lesson 2_Main Distribution.docx',
+                lessonNumber: 2,
+                lessonTitle:
+                  'Lesson 2: Main Distribution Pathways and Topologies',
+                file: { name: 'Lesson 2.docx', buffer: buf2 },
+              },
+            ],
+          },
+          {
+            moduleNumber: 2,
+            moduleTitle: 'Module 2: Transformers & Switchgear',
+            lessons: [
+              {
+                fileName: 'Lesson 4_Transformer Types.docx',
+                lessonNumber: 4,
+                lessonTitle:
+                  'Lesson 4: Transformer Types and Operating Principles',
+                file: { name: 'Lesson 4.docx', buffer: buf3 },
+              },
+            ],
+          },
+        ],
+      };
+
+      const progressSteps = [];
+      const result = await convertCourseFolderSequentially(
+        mockHierarchy,
+        { course_id: 'course_power_systems' },
+        (p) => progressSteps.push(p)
+      );
+
+      expect(progressSteps.length).toBe(3);
+      expect(progressSteps[0].current).toBe(1);
+      expect(progressSteps[0].total).toBe(3);
+      expect(progressSteps[2].percent).toBe(100);
+
+      // Verify Course JSON output
+      const { courseJson, validation } = result;
+      expect(courseJson.course_id).toBe('course_power_systems');
+      expect(courseJson.course_title).toBe(
+        'Power Systems & Electrical Fundamentals'
+      );
+      expect(courseJson.total_modules).toBe(2);
+      expect(courseJson.total_topics).toBe(3);
+
+      // Verify Module 1
+      expect(courseJson.modules[0].module_id).toBe('mod_1');
+      expect(courseJson.modules[0].lessons).toHaveLength(2);
+      expect(courseJson.modules[0].lessons[0].lesson_id).toBe('les_1_1');
+      expect(courseJson.modules[0].lessons[0].topics).toHaveLength(1);
+      expect(courseJson.modules[0].lessons[0].knowledge_check).toHaveLength(1);
+      expect(courseJson.modules[0].lessons[1].lesson_id).toBe('les_1_2');
+
+      // Verify Module 2
+      expect(courseJson.modules[1].module_id).toBe('mod_2');
+      expect(courseJson.modules[1].lessons).toHaveLength(1);
+      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_2_1');
+
+      // Verify Durations
+      expect(courseJson.duration.lessons).toHaveLength(3);
+      expect(courseJson.total_duration_seconds).toBeGreaterThan(0);
+
+      // 14-Point Validation Suite
+      expect(validation.isValid).toBe(true);
+      expect(validation.score).toBe(100);
+      expect(validation.summary.errors).toBe(0);
     });
   });
 });
