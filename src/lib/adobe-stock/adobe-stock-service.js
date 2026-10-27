@@ -387,6 +387,213 @@ async function searchFallbackCuratedStock({ query, limit = 12 }) {
     }
   }
 
+  // 3. Unsplash API fallback
+  const unsplashKey =
+    process.env.UNSPLASH_ACCESS_KEY || process.env.UNSPLASH_API_KEY;
+  if (unsplashKey && files.length < limit) {
+    try {
+      const res = await fetch(
+        `https://api.unsplash.com/search/photos?query=${cleanQ}&per_page=${limit}`,
+        {
+          headers: { Authorization: `Client-ID ${unsplashKey}` },
+          signal: AbortSignal.timeout(6000),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        (data.results || []).forEach((u) => {
+          files.push({
+            id: u.id,
+            assetId: String(u.id),
+            title: u.alt_description || u.description || `Stock Photo #${u.id}`,
+            stockUrl: u.links?.html || 'https://unsplash.com',
+            previewUrl: u.urls?.regular || u.urls?.small || '',
+            thumbnailUrl: u.urls?.small || u.urls?.thumb || '',
+            largePreviewUrl: u.urls?.full || u.urls?.regular || '',
+            width: u.width || 1000,
+            height: u.height || 667,
+            creator: u.user?.name || 'Unsplash Contributor',
+            category: 'Stock Photo',
+            keywords: [query],
+          });
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 4. Curated high-resolution fail-safe educational fallback (Zero API Key needed)
+  if (files.length === 0) {
+    const curatedEducationalPool = [
+      {
+        id: 700101,
+        assetId: '700101',
+        title: 'Industrial Equipment & Electrical Infrastructure',
+        stockUrl:
+          'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+        previewUrl:
+          'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80',
+        thumbnailUrl:
+          'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=300&q=80',
+        largePreviewUrl:
+          'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80',
+        width: 1200,
+        height: 800,
+        creator: 'Industrial Stock Contributor',
+        category: 'Industrial',
+        keywords: [
+          'electrical',
+          'power',
+          'transformer',
+          'utility',
+          'equipment',
+          'switchgear',
+          'substation',
+          'voltage',
+        ],
+      },
+      {
+        id: 700102,
+        assetId: '700102',
+        title: 'Safety Inspection & Workplace Protective Equipment',
+        stockUrl:
+          'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1200&q=80',
+        previewUrl:
+          'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=600&q=80',
+        thumbnailUrl:
+          'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=300&q=80',
+        largePreviewUrl:
+          'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1200&q=80',
+        width: 1200,
+        height: 800,
+        creator: 'Safety Compliance Contributor',
+        category: 'Safety',
+        keywords: [
+          'safety',
+          'inspection',
+          'hazard',
+          'protection',
+          'ppe',
+          'worker',
+          'compliance',
+          'regulation',
+        ],
+      },
+      {
+        id: 700103,
+        assetId: '700103',
+        title: 'Technical Operation & Industrial Engineering Facilities',
+        stockUrl:
+          'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80',
+        previewUrl:
+          'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80',
+        thumbnailUrl:
+          'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=300&q=80',
+        largePreviewUrl:
+          'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80',
+        width: 1200,
+        height: 800,
+        creator: 'Engineering Media',
+        category: 'Engineering',
+        keywords: [
+          'engineering',
+          'facility',
+          'plant',
+          'maintenance',
+          'system',
+          'technology',
+          'operation',
+        ],
+      },
+      {
+        id: 700104,
+        assetId: '700104',
+        title: 'Hazardous Materials & Chemical Analysis Protocol',
+        stockUrl:
+          'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80',
+        previewUrl:
+          'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=600&q=80',
+        thumbnailUrl:
+          'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=300&q=80',
+        largePreviewUrl:
+          'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80',
+        width: 1200,
+        height: 800,
+        creator: 'Laboratory Science Contributor',
+        category: 'Chemical',
+        keywords: [
+          'chemical',
+          'laboratory',
+          'hazmat',
+          'hazwoper',
+          'analysis',
+          'substance',
+          'toxic',
+          'spill',
+        ],
+      },
+      {
+        id: 700105,
+        assetId: '700105',
+        title: 'Construction Site Operations & Environmental Safety',
+        stockUrl:
+          'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=1200&q=80',
+        previewUrl:
+          'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=600&q=80',
+        thumbnailUrl:
+          'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=300&q=80',
+        largePreviewUrl:
+          'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&w=1200&q=80',
+        width: 1200,
+        height: 800,
+        creator: 'Construction Visuals',
+        category: 'Construction',
+        keywords: [
+          'construction',
+          'site',
+          'field',
+          'heavy equipment',
+          'excavation',
+          'environmental',
+        ],
+      },
+      {
+        id: 700106,
+        assetId: '700106',
+        title: 'Professional Learning & Workplace Training Session',
+        stockUrl:
+          'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
+        previewUrl:
+          'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=600&q=80',
+        thumbnailUrl:
+          'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=300&q=80',
+        largePreviewUrl:
+          'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
+        width: 1200,
+        height: 800,
+        creator: 'Education Media',
+        category: 'Training',
+        keywords: [
+          'training',
+          'course',
+          'education',
+          'learning',
+          'overview',
+          'summary',
+          'introduction',
+          'guideline',
+        ],
+      },
+    ];
+
+    const qLower = (query || '').toLowerCase();
+    const matched = curatedEducationalPool.filter((item) =>
+      item.keywords.some((kw) => qLower.includes(kw))
+    );
+    files.push(...(matched.length > 0 ? matched : curatedEducationalPool));
+  }
+
   return files;
 }
 

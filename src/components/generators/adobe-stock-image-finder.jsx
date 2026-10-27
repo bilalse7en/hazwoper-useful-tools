@@ -1694,11 +1694,11 @@ export function AdobeStockImageFinder({
                 </div>
                 <div className="flex items-center justify-between">
                   <span>
-                    <strong>PEXELS_API_KEY</strong> or{' '}
-                    <strong>PIXABAY_API_KEY</strong>
+                    <strong>PIXABAY_API_KEY</strong> or{' '}
+                    <strong>UNSPLASH_ACCESS_KEY</strong>
                   </span>
                   <Badge variant="outline" className="text-[10px]">
-                    Optional multi-provider fallback
+                    Instant Free Key (pixabay.com/api/docs)
                   </Badge>
                 </div>
               </div>
