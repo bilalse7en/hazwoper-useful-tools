@@ -1170,8 +1170,8 @@ export default function CourseJsonConverter() {
                           </div>
                         </div>
 
-                        {/* Image Asset Code Banner */}
-                        {activeTopic.image_code && (
+                        {/* Image Asset Code Banner (Shown strictly when Images are ON) */}
+                        {includeImages && activeTopic.image_code && (
                           <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs mb-3">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
@@ -1181,9 +1181,7 @@ export default function CourseJsonConverter() {
                                 {activeTopic.image_code}
                               </code>
                               <span className="text-[11px] text-amber-700 dark:text-amber-300">
-                                {!includeImages
-                                  ? '(Extracted into image_source, stripped from body HTML)'
-                                  : '(Visible in HTML)'}
+                                (Visible in HTML)
                               </span>
                             </div>
                             <Button
@@ -1203,8 +1201,8 @@ export default function CourseJsonConverter() {
                           </div>
                         )}
 
-                        {/* AI Image Generation Prompt Banner */}
-                        {activeTopic.image_prompt && (
+                        {/* AI Image Generation Prompt Banner (Shown strictly when Images are ON) */}
+                        {includeImages && activeTopic.image_prompt && (
                           <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg space-y-1 text-xs mb-3">
                             <div className="flex items-center justify-between">
                               <span className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-1">

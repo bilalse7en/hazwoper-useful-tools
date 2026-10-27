@@ -91,6 +91,7 @@ export function AdobeStockImageFinder({
   const [lessonName, setLessonName] = useState('');
   const [showContextEditor, setShowContextEditor] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [showTopicAiPrompt, setShowTopicAiPrompt] = useState(false);
 
   // Stale request guard
   const abortControllerRef = useRef(null);
@@ -1291,6 +1292,7 @@ export function AdobeStockImageFinder({
         (title || '').trim()
       );
     const activeAiPrompt = generateAiPromptForTopic(title);
+    const shouldShowPrompt = isSummaryTopic || showTopicAiPrompt;
 
     return (
       <div className="space-y-5">
@@ -1321,8 +1323,8 @@ export function AdobeStockImageFinder({
           </Card>
         )}
 
-        {/* Outsource AI Image Generation Prompt Card (Gemini, ChatGPT, Kimi, Midjourney) */}
-        {title.trim() && !loading && (
+        {/* Outsource AI Image Generation Prompt Card (Prominently on Summary, or toggled on normal slides) */}
+        {shouldShowPrompt && title.trim() && !loading && (
           <Card className="border border-primary/25 bg-gradient-to-r from-card via-background to-primary/5 shadow-xs rounded-xl overflow-hidden">
             <div className="p-3.5 sm:p-4 space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-border/60">
@@ -1422,9 +1424,25 @@ export function AdobeStockImageFinder({
                 </Badge>
               )}
             </div>
-            <span className="text-[11px] text-muted-foreground">
-              Ranked by AI semantic relevance • Genuine Adobe Stock Assets
-            </span>
+            <div className="flex items-center gap-2">
+              {!isSummaryTopic && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showTopicAiPrompt ? 'secondary' : 'outline'}
+                  onClick={() => setShowTopicAiPrompt(!showTopicAiPrompt)}
+                  className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                  {showTopicAiPrompt
+                    ? 'Hide AI Prompt'
+                    : '✨ AI Prompt for Outsource'}
+                </Button>
+              )}
+              <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                Ranked by AI semantic relevance • Genuine Adobe Stock Assets
+              </span>
+            </div>
           </div>
         )}
 
@@ -1627,21 +1645,93 @@ export function AdobeStockImageFinder({
           </div>
         )}
 
-        {/* Empty State after full search */}
+        {/* Empty State after full search with Live Vercel Setup Guide */}
         {!loading && title.trim() && results.length === 0 && !error && (
-          <Card className="border border-border/60 bg-card/40 text-center p-8 space-y-3">
-            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-              <Search className="h-6 w-6" />
-            </div>
-            <h3 className="text-base font-bold text-foreground">
-              No Highly Relevant Images Found
-            </h3>
-            <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-              AI automatically attempted multiple alternative queries for
-              &ldquo;{title}&rdquo;, but no stock assets met the strict
-              technical relevance threshold.
-            </p>
-          </Card>
+          <div className="space-y-4">
+            <Card className="border border-border/60 bg-card/40 text-center p-6 space-y-3">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                <Search className="h-6 w-6" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">
+                No Adobe Stock Images Visible On Live Server
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
+                On cloud serverless platforms (like Vercel), public web catalog
+                queries may be firewalled. To unlock direct, fast, unthrottled
+                Adobe Stock image search with genuine asset IDs and preview
+                thumbnails, configure your Adobe Stock credentials in Vercel.
+              </p>
+            </Card>
+
+            {/* Vercel Environment Configuration Card */}
+            <Card className="border border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 p-4 space-y-3 text-xs">
+              <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-200">
+                <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span>Vercel Live Environment Configuration:</span>
+              </div>
+              <p className="text-blue-800 dark:text-blue-300">
+                In your Vercel Dashboard, go to{' '}
+                <strong>Project Settings → Environment Variables</strong> and
+                add:
+              </p>
+              <div className="p-3 rounded-lg bg-blue-100/70 dark:bg-blue-900/50 font-mono text-[11px] text-blue-950 dark:text-blue-100 space-y-1.5 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center justify-between">
+                  <span>
+                    <strong>ADOBE_STOCK_API_KEY</strong>=your_adobe_client_id
+                  </span>
+                  <Badge variant="outline" className="text-[10px]">
+                    Required for official API
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>
+                    <strong>ADOBE_STOCK_PRODUCT_NAME</strong>
+                    =HazwoperUsefulTools/1.0
+                  </span>
+                  <Badge variant="outline" className="text-[10px]">
+                    Optional product header
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>
+                    <strong>PEXELS_API_KEY</strong> or{' '}
+                    <strong>PIXABAY_API_KEY</strong>
+                  </span>
+                  <Badge variant="outline" className="text-[10px]">
+                    Optional multi-provider fallback
+                  </Badge>
+                </div>
+              </div>
+              <p className="text-[11px] text-blue-700 dark:text-blue-400">
+                Free Adobe API Keys can be generated in 2 minutes at{' '}
+                <strong>developer.adobe.com/console</strong> by creating a
+                project and adding the Adobe Stock API service.
+              </p>
+            </Card>
+
+            {/* AI Image Generation Prompt as Instant Alternative */}
+            <Card className="border border-primary/25 bg-gradient-to-r from-card via-background to-primary/5 p-4 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold flex items-center gap-1.5 text-foreground">
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  Instant Alternative: Copy AI Prompt for DALL-E / Gemini /
+                  Midjourney:
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => handleCopyAiPrompt(activeAiPrompt, e)}
+                  className="h-6 text-[10px] font-bold gap-1 cursor-pointer"
+                >
+                  <Copy className="h-3 w-3" />
+                  Copy Prompt
+                </Button>
+              </div>
+              <pre className="p-2.5 rounded bg-muted/60 text-[11px] font-mono whitespace-pre-wrap select-all">
+                {activeAiPrompt}
+              </pre>
+            </Card>
+          </div>
         )}
       </div>
     );

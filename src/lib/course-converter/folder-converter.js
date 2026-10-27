@@ -16,6 +16,23 @@ import { buildCourseJson } from './schema-builder.js';
 import { validateCourseJson } from './validator.js';
 
 /**
+ * Ensures a lesson title starts with the exact, properly formatted "Lesson {number}: " prefix
+ * e.g. "Utility Power Entry" -> "Lesson 1: Utility Power Entry"
+ * e.g. "Lesson 1_Utility Power Entry" -> "Lesson 1: Utility Power Entry"
+ * e.g. "Lesson 2: Transformers" -> "Lesson 2: Transformers"
+ */
+export function ensureLessonNumberPrefix(title, lessonNumber) {
+  if (!title) return `Lesson ${lessonNumber}`;
+  const clean = title.trim();
+  const match = clean.match(/^(?:Lesson|Chapter)\s*\d+[\s_:-]+(.*)$/i);
+  if (match) {
+    const rest = match[1].trim().replace(/^[-_:\s]+/, '');
+    return `Lesson ${lessonNumber}: ${rest}`;
+  }
+  return `Lesson ${lessonNumber}: ${clean}`;
+}
+
+/**
  * Normalizes title string by replacing underscores, repeated spaces, and formatting prefixes
  * e.g. "Module 1_Utility Interconnection & Distribution" -> "Module 1: Utility Interconnection & Distribution"
  * e.g. "Lesson 1_Utility Power Entry and Service Configuration.docx" -> "Lesson 1: Utility Power Entry and Service Configuration"
@@ -312,10 +329,16 @@ export async function convertCourseFolderSequentially(
       }
 
       // Use docx lesson title if detected, otherwise fallback to filename-derived title
-      const effectiveLessonTitle =
+      const rawLessonTitle =
         parsedData.lessonTitle && parsedData.lessonTitle !== 'Lesson 1'
           ? parsedData.lessonTitle
           : lesConfig.lessonTitle;
+
+      // Strictly ensure every lesson title is properly prefixed with "Lesson {number}: "
+      const effectiveLessonTitle = ensureLessonNumberPrefix(
+        rawLessonTitle,
+        lesNum
+      );
 
       // Format topics with exact module and lesson bindings
       const formattedTopics = (parsedData.topics || []).map((top, tIdx) => {

@@ -376,6 +376,71 @@ describe('CourseJsonConverter Core Engine', () => {
       ).toBe('Lesson 5: Transformer Cooling, Protection, and Efficiency');
     });
 
+    it('strictly enforces Lesson 1: Lesson 2: prefix via ensureLessonNumberPrefix', async () => {
+      const { ensureLessonNumberPrefix } =
+        await import('../src/lib/course-converter/folder-converter.js');
+
+      expect(
+        ensureLessonNumberPrefix(
+          'Utility Power Entry and Service Configuration',
+          1
+        )
+      ).toBe('Lesson 1: Utility Power Entry and Service Configuration');
+
+      expect(ensureLessonNumberPrefix('Lesson 1_Utility Power Entry', 1)).toBe(
+        'Lesson 1: Utility Power Entry'
+      );
+
+      expect(
+        ensureLessonNumberPrefix(
+          'Transformer Types and Operating Principles',
+          2
+        )
+      ).toBe('Lesson 2: Transformer Types and Operating Principles');
+
+      expect(ensureLessonNumberPrefix('Lesson 4: Transformer Types', 4)).toBe(
+        'Lesson 4: Transformer Types'
+      );
+    });
+
+    it('strictly omits image codes, image URLs, and sets slide_type to content when stripImages is enabled', async () => {
+      const { segmentLessonWiseHtml } =
+        await import('../src/lib/course-converter/doc-parser.js');
+
+      const htmlWithImage = `
+        <p>Lesson 1: Utility Power Entry and Service Configuration</p>
+        <h1>Utility Service Entrance Fundamentals</h1>
+        <p><a href="https://stock.adobe.com/images/.../202252558"><strong>FILE #: </strong> 202252558</a></p>
+        <p><strong>Slide 3</strong></p>
+        <p>Electric power enters through the service entrance.</p>
+      `;
+
+      const parsed = segmentLessonWiseHtml(
+        htmlWithImage,
+        {
+          courseTitle: 'Power Systems',
+          lessonTitle:
+            'Lesson 1: Utility Power Entry and Service Configuration',
+        },
+        { stripImages: true }
+      );
+
+      expect(parsed.topics).toHaveLength(1);
+      const top = parsed.topics[0];
+      expect(top.image_source).toBe('');
+      expect(top.image_code).toBe('');
+      expect(top.image_prompt).toBe('');
+      expect(top.has_embedded_image).toBe(false);
+      expect(top.slide_type).toBe('image');
+      expect(top.leftDiv.image.isImage).toBe(false);
+      expect(top.leftDiv.image.imageURL).toBe('');
+      expect(top.leftDiv.editorHtml).not.toContain('202252558');
+      expect(top.leftDiv.editorHtml).not.toContain('Slide 3');
+      expect(top.leftDiv.editorHtml).toContain(
+        'Electric power enters through the service entrance.'
+      );
+    });
+
     it('organizes uploaded course folder into sequenced 3-module 11-lesson hierarchy', async () => {
       const { groupFilesByCourseHierarchy } =
         await import('../src/lib/course-converter/folder-converter.js');

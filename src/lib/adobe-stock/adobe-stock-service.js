@@ -310,6 +310,87 @@ export async function searchAdobeStockPublicCatalog({
 }
 
 /**
+ * Searches fallback stock photo providers (Pexels, Pixabay) when environment keys exist
+ */
+async function searchFallbackCuratedStock({ query, limit = 12 }) {
+  const files = [];
+  const cleanQ = encodeURIComponent(
+    query.replace(/[^a-zA-Z0-9\s]/g, ' ').trim()
+  );
+
+  // 1. Pexels API fallback
+  const pexelsKey = process.env.PEXELS_API_KEY;
+  if (pexelsKey && files.length < limit) {
+    try {
+      const res = await fetch(
+        `https://api.pexels.com/v1/search?query=${cleanQ}&per_page=${limit}`,
+        {
+          headers: { Authorization: pexelsKey },
+          signal: AbortSignal.timeout(6000),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        (data.photos || []).forEach((p) => {
+          files.push({
+            id: p.id,
+            assetId: String(p.id),
+            title: p.alt || `Stock Photo #${p.id}`,
+            stockUrl: p.url,
+            previewUrl: p.src?.large || p.src?.medium || '',
+            thumbnailUrl: p.src?.tiny || p.src?.small || '',
+            largePreviewUrl: p.src?.large2x || p.src?.large || '',
+            width: p.width || 1000,
+            height: p.height || 667,
+            creator: p.photographer || 'Stock Contributor',
+            category: 'Stock Photo',
+            keywords: [query],
+          });
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Pixabay API fallback
+  const pixabayKey = process.env.PIXABAY_API_KEY;
+  if (pixabayKey && files.length < limit) {
+    try {
+      const res = await fetch(
+        `https://pixabay.com/api/?key=${pixabayKey}&q=${cleanQ}&per_page=${limit}&image_type=all`,
+        {
+          signal: AbortSignal.timeout(6000),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        (data.hits || []).forEach((h) => {
+          files.push({
+            id: h.id,
+            assetId: String(h.id),
+            title: h.tags || `Stock Asset #${h.id}`,
+            stockUrl: h.pageURL,
+            previewUrl: h.webformatURL || h.largeImageURL,
+            thumbnailUrl: h.previewURL,
+            largePreviewUrl: h.largeImageURL || h.webformatURL,
+            width: h.imageWidth || 1000,
+            height: h.imageHeight || 667,
+            creator: h.user || 'Stock Creator',
+            category: 'Stock Asset',
+            keywords: (h.tags || '').split(',').map((t) => t.trim()),
+          });
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return files;
+}
+
+/**
  * End-to-end Smart AI Search Pipeline
  *
  * 1. Analyzes slide title context (subjects, equipment, actions).
@@ -396,14 +477,55 @@ export async function executeSmartStockSearch({
     }
   }
 
+  // If candidatePool is empty, attempt fallback terms and external providers
+  if (candidatePool.length === 0) {
+    const fallbackTerms = [cleanTitle, analysis.primarySubject].filter(Boolean);
+    for (const term of fallbackTerms) {
+      try {
+        const fallbackRes = await searchAdobeStockPublicCatalog({
+          query: term,
+          limit: 15,
+          styleFilter,
+        });
+        if (fallbackRes.files && fallbackRes.files.length > 0) {
+          candidatePool.push(...fallbackRes.files);
+          break;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (candidatePool.length === 0) {
+      const externalStock = await searchFallbackCuratedStock({
+        query: analysis.primarySubject || cleanTitle,
+        limit: 12,
+      });
+      if (externalStock.length > 0) {
+        candidatePool.push(...externalStock);
+      }
+    }
+  }
+
   // Step 3: Semantic Relevance Evaluation, Deduplication & Ranking
-  const rankedAssets = deduplicateAndRankAssets(
+  let rankedAssets = deduplicateAndRankAssets(
     candidatePool,
     cleanTitle,
     analysis,
     threshold,
     styleFilter
   );
+
+  // Fallback: If strict threshold returned 0 items but candidates exist, relax threshold
+  if (rankedAssets.length === 0 && candidatePool.length > 0) {
+    rankedAssets = deduplicateAndRankAssets(
+      candidatePool,
+      cleanTitle,
+      analysis,
+      0,
+      styleFilter
+    );
+  }
 
   // Step 4: Slicing for Pagination & Incremental Batches
   const totalQualifying = rankedAssets.length;

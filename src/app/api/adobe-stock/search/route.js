@@ -88,22 +88,22 @@ export async function GET(request) {
       );
     }
 
-    const context = body.context || {
-      course: body.course || '',
-      module: body.module || '',
-      lesson: body.lesson || '',
-      parentSection: body.parentSection || '',
+    const context = {
+      course: searchParams.get('course') || '',
+      module: searchParams.get('module') || '',
+      lesson: searchParams.get('lesson') || '',
+      parentSection: searchParams.get('parentSection') || '',
     };
 
-    const styleFilter = body.styleFilter || {
+    const styleFilter = {
       photo:
-        body.photo !== false &&
-        body.imageType !== 'cartoonic' &&
-        body.imageType !== 'illustration',
+        searchParams.get('photo') !== 'false' &&
+        searchParams.get('imageType') !== 'cartoonic' &&
+        searchParams.get('imageType') !== 'illustration',
       illustration:
-        body.illustration !== false &&
-        body.imageType !== 'photo' &&
-        body.imageType !== 'real-life',
+        searchParams.get('illustration') !== 'false' &&
+        searchParams.get('imageType') !== 'photo' &&
+        searchParams.get('imageType') !== 'real-life',
     };
 
     const result = await executeSmartStockSearch({

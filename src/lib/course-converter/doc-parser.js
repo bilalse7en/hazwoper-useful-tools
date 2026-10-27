@@ -102,6 +102,13 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
     const editorHtml = wrapInLmsContainer(innerCleanHtml, { stripImages });
     const duration = calculateTopicDuration(innerCleanHtml);
 
+    // If images are OFF (stripImages = true), skip image codes, prompts, and set slide_type to content
+    const imageCode = stripImages ? '' : imgMeta.primaryImageCode || '';
+    const imagePrompt = stripImages ? '' : imgMeta.primaryPrompt || '';
+    const hasEmbeddedImage = stripImages ? false : imgMeta.hasImages;
+    const isImageSlide =
+      !stripImages && Boolean(imgMeta.primaryImageCode || imgMeta.hasImages);
+
     topics.push({
       id: `top_1_1_${topics.length + 1}`,
       name: headingText,
@@ -112,10 +119,10 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
       slide_type: 'image',
       allocated_duration_seconds: duration,
       topicDuration: duration,
-      image_source: imgMeta.primaryImageCode || '',
-      image_code: imgMeta.primaryImageCode || '',
-      image_prompt: imgMeta.primaryPrompt || '',
-      has_embedded_image: imgMeta.hasImages,
+      image_source: imageCode,
+      image_code: imageCode,
+      image_prompt: imagePrompt,
+      has_embedded_image: hasEmbeddedImage,
       raw_body_content: bodyContent,
       datatime: '0',
       captions: [],
@@ -123,10 +130,10 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
       leftDiv: {
         audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
         image: {
-          isImage: Boolean(imgMeta.primaryImageCode || imgMeta.hasImages),
-          imageURL: imgMeta.primaryImageCode || '',
+          isImage: isImageSlide,
+          imageURL: imageCode,
           imageFile: '',
-          imageName: imgMeta.primaryImageCode || '',
+          imageName: imageCode,
         },
         video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
         width: 'col-12',
@@ -314,6 +321,13 @@ export function segmentCourseWiseHtml(html, metadata = {}, options = {}) {
     const editorHtml = wrapInLmsContainer(innerCleanHtml, { stripImages });
     const duration = calculateTopicDuration(innerCleanHtml);
 
+    // If images are OFF (stripImages = true), skip image codes, prompts, and set slide_type to content
+    const imageCode = stripImages ? '' : imgMeta.primaryImageCode || '';
+    const imagePrompt = stripImages ? '' : imgMeta.primaryPrompt || '';
+    const hasEmbeddedImage = stripImages ? false : imgMeta.hasImages;
+    const isImageSlide =
+      !stripImages && Boolean(imgMeta.primaryImageCode || imgMeta.hasImages);
+
     currentLesson.topics.push({
       id: `top_${modIndex}_${lesIndex}_${topIndex}`,
       name: headingText,
@@ -324,10 +338,10 @@ export function segmentCourseWiseHtml(html, metadata = {}, options = {}) {
       slide_type: 'image',
       allocated_duration_seconds: duration,
       topicDuration: duration,
-      image_source: imgMeta.primaryImageCode || '',
-      image_code: imgMeta.primaryImageCode || '',
-      image_prompt: imgMeta.primaryPrompt || '',
-      has_embedded_image: imgMeta.hasImages,
+      image_source: imageCode,
+      image_code: imageCode,
+      image_prompt: imagePrompt,
+      has_embedded_image: hasEmbeddedImage,
       raw_body_content: bodyContent,
       datatime: '0',
       captions: [],
@@ -335,10 +349,10 @@ export function segmentCourseWiseHtml(html, metadata = {}, options = {}) {
       leftDiv: {
         audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
         image: {
-          isImage: Boolean(imgMeta.primaryImageCode || imgMeta.hasImages),
-          imageURL: imgMeta.primaryImageCode || '',
+          isImage: isImageSlide,
+          imageURL: imageCode,
           imageFile: '',
-          imageName: imgMeta.primaryImageCode || '',
+          imageName: imageCode,
         },
         video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
         width: 'col-12',
