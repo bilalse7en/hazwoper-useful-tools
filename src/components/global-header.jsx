@@ -13,6 +13,7 @@ import {
   UserPlus,
   MessageCircle,
   ChevronRight,
+  ChevronDown,
   Wrench,
   GraduationCap,
   Compass,
@@ -23,6 +24,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AppSidebar } from './app-sidebar';
 import { ThemeDialog } from './theme-dialog';
+import { ToolsMegaMenu } from './tools-mega-menu';
 import { useAuth } from './auth-provider';
 import { useChat } from '@/components/chat-provider';
 import { cn } from '@/lib/utils';
@@ -34,6 +36,7 @@ export function GlobalHeader({ activeTab, onTabChange }) {
   const [mounted, setMounted] = useState(false);
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
   const [hoveredPath, setHoveredPath] = useState(null);
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -43,6 +46,10 @@ export function GlobalHeader({ activeTab, onTabChange }) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setToolsMenuOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -118,7 +125,7 @@ export function GlobalHeader({ activeTab, onTabChange }) {
                   side="left"
                   className="max-w-[300px] p-6 border-r-border flex flex-col justify-between"
                 >
-                  {isToolsPage || isAdminPath ? (
+                  {isAdminPath ? (
                     <AppSidebar
                       activeTab={activeTab}
                       onTabChange={onTabChange}
@@ -146,6 +153,53 @@ export function GlobalHeader({ activeTab, onTabChange }) {
                         {navItems.map((item) => {
                           const isActive = item.active;
                           const Icon = item.icon;
+                          const isTools = item.id === 'tools';
+
+                          if (isTools) {
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                  setToolsMenuOpen(true);
+                                }}
+                                className={cn(
+                                  'px-3.5 py-2.5 rounded-xl text-xs tracking-wide font-semibold transition-all flex items-center justify-between group border w-full text-left cursor-pointer',
+                                  isActive
+                                    ? 'bg-primary/10 text-primary border-primary/20 font-bold shadow-xs'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50 hover:border-border/40'
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className={cn(
+                                      'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
+                                      isActive
+                                        ? 'bg-primary text-primary-foreground shadow-xs'
+                                        : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
+                                    )}
+                                  >
+                                    <Icon className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-semibold">
+                                      {item.label}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground font-normal">
+                                      Explore 27+ Tools Mega Menu
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                    Menu
+                                  </span>
+                                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                                </div>
+                              </button>
+                            );
+                          }
+
                           return (
                             <Link
                               key={item.id || item.href}
@@ -231,6 +285,71 @@ export function GlobalHeader({ activeTab, onTabChange }) {
                     const Icon = item.icon;
                     const isCurrentActive = item.active;
                     const isGlidingHere = currentActive === item.href;
+                    const isTools = item.id === 'tools';
+
+                    if (isTools) {
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setToolsMenuOpen((prev) => !prev)}
+                          onMouseEnter={() => setHoveredPath(item.href)}
+                          className={cn(
+                            'relative px-3 py-1.5 lg:px-3.5 lg:py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 select-none group cursor-pointer flex items-center',
+                            isGlidingHere || toolsMenuOpen
+                              ? 'text-foreground font-bold'
+                              : 'text-muted-foreground/80 hover:text-foreground'
+                          )}
+                          aria-expanded={toolsMenuOpen}
+                          aria-label="Toggle All Useful Tools Mega Menu"
+                        >
+                          {/* Dynamic Framer Motion Magnetic Sliding Pill */}
+                          {(isGlidingHere || toolsMenuOpen) && (
+                            <motion.div
+                              layoutId="header-nav-pill"
+                              className={cn(
+                                'absolute inset-0 rounded-full z-0 pointer-events-none',
+                                isCurrentActive && !hoveredPath
+                                  ? 'bg-background dark:bg-zinc-800 shadow-xs border border-border/80 dark:border-white/15'
+                                  : 'bg-background/90 dark:bg-zinc-800/90 shadow-xs border border-border/60 dark:border-white/10'
+                              )}
+                              transition={{
+                                type: 'spring',
+                                stiffness: 450,
+                                damping: 32,
+                              }}
+                            />
+                          )}
+
+                          <span className="relative z-10 flex items-center gap-1.5">
+                            <Icon
+                              className={cn(
+                                'w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110',
+                                isCurrentActive || toolsMenuOpen
+                                  ? 'text-primary'
+                                  : 'text-muted-foreground/70 group-hover:text-foreground'
+                              )}
+                            />
+                            <span>{item.label}</span>
+                            <ChevronDown
+                              className={cn(
+                                'w-3 h-3 transition-transform duration-200 opacity-60 group-hover:opacity-100',
+                                toolsMenuOpen &&
+                                  'rotate-180 text-primary opacity-100'
+                              )}
+                            />
+
+                            {/* Active Micro Glowing Beacon */}
+                            {isCurrentActive && (
+                              <span className="relative flex h-1.5 w-1.5 ml-0.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary shadow-[0_0_6px_var(--primary)]" />
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      );
+                    }
 
                     return (
                       <Link
@@ -350,6 +469,10 @@ export function GlobalHeader({ activeTab, onTabChange }) {
           </div>
         </div>
       </header>
+      <ToolsMegaMenu
+        isOpen={toolsMenuOpen}
+        onClose={() => setToolsMenuOpen(false)}
+      />
       <ThemeDialog open={themeDialogOpen} onOpenChange={setThemeDialogOpen} />
     </>
   );

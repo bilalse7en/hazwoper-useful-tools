@@ -2,21 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { AppSidebar } from '@/components/app-sidebar';
-import { MainHeader } from '@/components/main-header';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SessionTimer } from '@/components/session-timer';
 import { ThemeDialog } from '@/components/theme-dialog';
-import { slugToToolId } from '@/lib/seo';
 import { supabase } from '@/lib/supabase';
 import { Footer } from '@/components/footer';
 
 export default function ToolsLayout({ children }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [user, setUser] = useState(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -39,50 +33,10 @@ export default function ToolsLayout({ children }) {
     router.push('/');
   };
 
-  const currentToolSlug = pathname.split('/').pop();
-  const activeTab = slugToToolId[currentToolSlug] || 'course';
-  const isDetailsPage = pathname.endsWith('/details');
-
   return (
-    <div className="flex flex-1 min-h-[calc(100vh-64px)] relative transition-all duration-300">
-      {/* Sidebar - Hidden on details pages, strictly fixed under header on both local and live */}
-      {!isDetailsPage && (
-        <AppSidebar
-          activeTab={activeTab}
-          onTabChange={(tab) => {
-            setSidebarCollapsed(true);
-            if (tab === 'admin') {
-              router.push('/admin');
-              return;
-            }
-            if (tab === 'slide-generator' || tab === 'slide') {
-              router.push('/tools/slide-generator');
-              return;
-            }
-            const nextSlug = Object.entries(slugToToolId).find(
-              ([s, id]) => id === tab
-            )?.[0];
-            if (nextSlug) router.push(`/tools/${nextSlug}`);
-          }}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          onThemeToggle={() => setThemeDialogOpen(true)}
-          user={user}
-          onLogout={handleLogout}
-          className={cn(
-            'hidden lg:block fixed top-16 left-0 bottom-0 z-30 transition-all duration-300',
-            sidebarCollapsed ? 'w-16' : 'w-64'
-          )}
-        />
-      )}
-
-      {/* Main Content Area - dynamically padded to match fixed sidebar */}
-      <main
-        className={cn(
-          'flex-1 min-w-0 flex flex-col relative transition-all duration-300',
-          !isDetailsPage && (sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64')
-        )}
-      >
+    <div className="flex flex-1 min-h-[calc(100vh-64px)] w-full relative transition-all duration-300">
+      {/* Main Content Area - 100% full width workspace (zero disruptive sidebars) */}
+      <main className="flex-1 min-w-0 w-full flex flex-col relative transition-all duration-300">
         <ScrollArea className="h-full w-full">
           <div className="min-h-full w-full max-w-full min-w-0 flex flex-col">
             <div className="flex-1 w-full max-w-full min-w-0">{children}</div>

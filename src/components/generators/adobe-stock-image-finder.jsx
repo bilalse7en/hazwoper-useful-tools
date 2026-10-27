@@ -91,6 +91,7 @@ export function AdobeStockImageFinder({
   const [parsingDoc, setParsingDoc] = useState(false);
   const [showTocDrawer, setShowTocDrawer] = useState(false);
   const fileInputRef = useRef(null);
+  const topicsTrackRef = useRef(null);
 
   // Style Filter State: Real Life (Photos) vs Cartoonic (Vectors & Illustrations)
   // By default, BOTH are checked!
@@ -576,6 +577,27 @@ export function AdobeStockImageFinder({
     const nextIdx = activeTopicIndex + 1;
     selectTopic(tocData.topics[nextIdx], nextIdx);
   };
+
+  const scrollTopicsTrack = (direction) => {
+    if (!topicsTrackRef.current) return;
+    const scrollAmount = direction === 'left' ? -220 : 220;
+    topicsTrackRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  };
+
+  // Auto-center active topic pill in bottom dock whenever activeTopicIndex changes
+  useEffect(() => {
+    if (!topicsTrackRef.current || activeTopicIndex < 0) return;
+    const activeEl = topicsTrackRef.current.querySelector(
+      `[data-topic-idx="${activeTopicIndex}"]`
+    );
+    if (activeEl) {
+      activeEl.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    }
+  }, [activeTopicIndex]);
 
   const handleCopyId = (assetId, e) => {
     if (e) e.stopPropagation();
@@ -1143,17 +1165,18 @@ export function AdobeStockImageFinder({
               {/* Render Full-Width Gallery Content */}
               {renderSharedContent()}
 
-              {/* Sticky Bottom Topic Navigator Dock with Hover Tooltip Names */}
+              {/* Sticky Bottom Topic Navigator Dock with Hover Tooltip Names & Responsive Track */}
               <div className="sticky bottom-3 z-40 w-full max-w-5xl mx-auto px-2 pointer-events-none mt-8">
-                <div className="pointer-events-auto backdrop-blur-xl bg-card/95 border border-border/80 shadow-2xl rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 text-xs">
+                <div className="pointer-events-auto backdrop-blur-xl bg-card/95 border border-border/80 shadow-2xl rounded-2xl p-2 sm:p-2.5 flex items-center justify-between gap-1.5 sm:gap-2.5 text-xs">
                   {/* Left Stepper & Drawer button */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                     <Button
                       size="sm"
                       variant="ghost"
                       disabled={activeTopicIndex <= 0 || loading}
                       onClick={goToPrevTopic}
-                      className="h-8 px-2 sm:px-3 text-xs gap-1 rounded-xl cursor-pointer"
+                      className="h-8 px-2 sm:px-2.5 text-xs gap-1 rounded-xl cursor-pointer"
+                      title="Previous Topic"
                     >
                       <ChevronLeft className="h-4 w-4" />
                       <span className="hidden sm:inline">Prev</span>
@@ -1162,7 +1185,8 @@ export function AdobeStockImageFinder({
                       size="sm"
                       variant="outline"
                       onClick={() => setShowTocDrawer(true)}
-                      className="h-8 px-2 sm:px-3 text-xs gap-1.5 rounded-xl border-border/80 font-semibold cursor-pointer"
+                      className="h-8 px-2 sm:px-2.5 text-xs gap-1 rounded-xl border-border/80 font-semibold cursor-pointer"
+                      title="Open All Topics Drawer"
                     >
                       <ListOrdered className="h-3.5 w-3.5 text-primary" />
                       <span className="hidden md:inline">Topics</span>
@@ -1172,63 +1196,156 @@ export function AdobeStockImageFinder({
                     </Button>
                   </div>
 
-                  {/* Center Numbered Topic Pills with Hover Tooltips */}
-                  <TooltipProvider delayDuration={50}>
-                    <div className="flex-1 min-w-0 overflow-x-auto py-1 px-1 scrollbar-none flex items-center justify-start sm:justify-center gap-1.5">
-                      {tocData.topics.map((t, idx) => {
-                        const isSelected = idx === activeTopicIndex;
-                        const isVisited = visitedTopics.has(t.id);
+                  {/* Direct Jump Selector (shown when course has many topics) */}
+                  {tocData.totalTopics > 10 && (
+                    <div className="flex items-center shrink-0">
+                      <select
+                        value={activeTopicIndex}
+                        onChange={(e) => {
+                          const idx = Number(e.target.value);
+                          if (tocData.topics[idx]) {
+                            selectTopic(tocData.topics[idx], idx);
+                          }
+                        }}
+                        className="h-8 px-2 text-xs rounded-xl bg-muted/60 border border-border/80 text-foreground font-semibold focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-[110px] sm:max-w-[140px] truncate"
+                        aria-label="Quick jump to topic"
+                        title="Jump to specific topic"
+                      >
+                        {tocData.topics.map((t, idx) => (
+                          <option key={t.id} value={idx}>
+                            #{idx + 1}: {t.title.slice(0, 22)}...
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                        return (
-                          <Tooltip key={t.id}>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => selectTopic(t, idx)}
-                                className={cn(
-                                  'relative h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0',
-                                  isSelected
-                                    ? 'bg-primary text-primary-foreground shadow-md scale-110 ring-2 ring-primary/40 font-black'
-                                    : isVisited
-                                      ? 'bg-muted/80 text-foreground hover:bg-primary/20 border border-emerald-500/40'
-                                      : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground'
-                                )}
+                  {/* Center Numbered Topic Pills with Track Controls */}
+                  <TooltipProvider delayDuration={50}>
+                    {/* Desktop / Tablet Sliding Track with Left/Right Glide Controls */}
+                    <div className="hidden sm:flex flex-1 min-w-0 items-center gap-1 overflow-hidden px-1">
+                      {tocData.totalTopics > 8 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => scrollTopicsTrack('left')}
+                          className="h-7 w-7 p-0 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                          title="Scroll left"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+
+                      <div
+                        ref={topicsTrackRef}
+                        className="flex-1 min-w-0 overflow-x-auto py-1 px-1 scrollbar-none flex items-center justify-start gap-1.5 scroll-smooth"
+                      >
+                        {tocData.topics.map((t, idx) => {
+                          const isSelected = idx === activeTopicIndex;
+                          const isVisited = visitedTopics.has(t.id);
+
+                          return (
+                            <Tooltip key={t.id}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  data-topic-idx={idx}
+                                  onClick={() => selectTopic(t, idx)}
+                                  className={cn(
+                                    'relative h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0',
+                                    isSelected
+                                      ? 'bg-primary text-primary-foreground shadow-md scale-110 ring-2 ring-primary/40 font-black'
+                                      : isVisited
+                                        ? 'bg-muted/80 text-foreground hover:bg-primary/20 border border-emerald-500/40'
+                                        : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                  )}
+                                >
+                                  <span>{idx + 1}</span>
+                                  {isVisited && !isSelected && (
+                                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-background" />
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="top"
+                                className="max-w-xs text-xs p-2.5 space-y-1 shadow-xl bg-popover text-popover-foreground border-border"
                               >
-                                <span>{idx + 1}</span>
-                                {isVisited && !isSelected && (
-                                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-background" />
-                                )}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="top"
-                              className="max-w-xs text-xs p-2.5 space-y-1 shadow-xl bg-popover text-popover-foreground border-border"
-                            >
-                              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-                                <span>
-                                  Topic #{idx + 1} of {tocData.totalTopics}
-                                </span>
-                                {isVisited && (
-                                  <span className="text-emerald-500 font-bold">
-                                    ✓ Viewed
+                                <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
+                                  <span>
+                                    Topic #{idx + 1} of {tocData.totalTopics}
                                   </span>
-                                )}
-                              </div>
-                              {t.parentSection && (
-                                <div className="text-[10px] text-primary font-bold uppercase truncate">
-                                  {t.parentSection}
+                                  {isVisited && (
+                                    <span className="text-emerald-500 font-bold">
+                                      ✓ Viewed
+                                    </span>
+                                  )}
                                 </div>
-                              )}
-                              <div className="font-bold text-foreground leading-snug">
-                                {t.title}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground italic pt-0.5">
-                                Click to view matching stock images
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        );
-                      })}
+                                {t.parentSection && (
+                                  <div className="text-[10px] text-primary font-bold uppercase truncate">
+                                    {t.parentSection}
+                                  </div>
+                                )}
+                                <div className="font-bold text-foreground leading-snug">
+                                  {t.title}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground italic pt-0.5">
+                                  Click to view matching stock images
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+
+                      {tocData.totalTopics > 8 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => scrollTopicsTrack('right')}
+                          className="h-7 w-7 p-0 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                          title="Scroll right"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Mobile Compact Neighborhood Pills (Never Cuts Off on Mobile) */}
+                    <div className="flex sm:hidden items-center gap-1 shrink-0">
+                      {activeTopicIndex > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            selectTopic(
+                              tocData.topics[activeTopicIndex - 1],
+                              activeTopicIndex - 1
+                            )
+                          }
+                          className="h-7 min-w-[26px] px-1 rounded-lg text-[11px] font-bold bg-muted/40 text-muted-foreground cursor-pointer"
+                        >
+                          {activeTopicIndex}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-black bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/40 cursor-default"
+                      >
+                        {activeTopicIndex + 1}
+                      </button>
+                      {activeTopicIndex < tocData.topics.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            selectTopic(
+                              tocData.topics[activeTopicIndex + 1],
+                              activeTopicIndex + 1
+                            )
+                          }
+                          className="h-7 min-w-[26px] px-1 rounded-lg text-[11px] font-bold bg-muted/40 text-muted-foreground cursor-pointer"
+                        >
+                          {activeTopicIndex + 2}
+                        </button>
+                      )}
                     </div>
                   </TooltipProvider>
 
@@ -1241,7 +1358,8 @@ export function AdobeStockImageFinder({
                         activeTopicIndex >= tocData.topics.length - 1 || loading
                       }
                       onClick={goToNextTopic}
-                      className="h-8 px-2 sm:px-3 text-xs gap-1 rounded-xl cursor-pointer"
+                      className="h-8 px-2 sm:px-2.5 text-xs gap-1 rounded-xl cursor-pointer"
+                      title="Next Topic"
                     >
                       <span className="hidden sm:inline">Next</span>
                       <ChevronRight className="h-4 w-4" />
