@@ -34,7 +34,10 @@ export async function convertDocumentToCourseJson(buffer, options = {}) {
     parsedData = await parseDocxDocument(buffer, { ...options, mode });
   }
 
-  const courseJson = buildCourseJson(parsedData, options.overrides || {});
+  const courseJson = buildCourseJson(parsedData, {
+    ...(options.overrides || {}),
+    includeQuizzes: options.includeQuizzes,
+  });
   const validation = validateCourseJson(courseJson);
 
   return {

@@ -308,12 +308,14 @@ export async function convertCourseFolderSequentially(
           fileName: lesConfig.fileName,
           pdfjsLib: options.pdfjsLib,
           stripImages: options.stripImages,
+          includeQuizzes: options.includeQuizzes,
         });
       } else {
         parsedData = await parseDocxDocument(buffer, {
           mode: 'A',
           fileName: lesConfig.fileName,
           stripImages: options.stripImages,
+          includeQuizzes: options.includeQuizzes,
         });
       }
 
@@ -352,17 +354,20 @@ export async function convertCourseFolderSequentially(
       });
 
       // Format knowledge check with unique sequential question IDs scoped to module and lesson
-      const formattedKc = (parsedData.knowledge_check || []).map((q, qIdx) => {
-        return {
-          ...q,
-          question_id: `q_${modNum}_${lesNum}_${qIdx + 1}`,
-        };
-      });
+      const includeQuizzes = options.includeQuizzes !== false;
+      const formattedKc = includeQuizzes
+        ? (parsedData.knowledge_check || []).map((q, qIdx) => {
+            return {
+              ...q,
+              question_id: `q_${modNum}_${lesNum}_${qIdx + 1}`,
+            };
+          })
+        : [];
 
       moduleLessons.push({
         lesson_id: lessonId,
         lesson_title: effectiveLessonTitle,
-        has_assessment_after: true,
+        has_assessment_after: includeQuizzes && formattedKc.length > 0,
         knowledge_check: formattedKc,
         topics: formattedTopics,
       });
@@ -392,6 +397,7 @@ export async function convertCourseFolderSequentially(
       course_id: options.course_id || 'course_1',
       course_title: finalCourseTitle,
       created_by_name: options.created_by_name || '',
+      includeQuizzes: options.includeQuizzes,
     }
   );
 

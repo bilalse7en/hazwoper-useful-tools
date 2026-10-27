@@ -358,6 +358,49 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(validation.isValid).toBe(true);
       expect(validation.score).toBe(100);
     });
+
+    it('honors includeQuizzes: false by omitting quizzes and final exam completely from Course JSON', () => {
+      const mockHtml = [
+        '<h1>Course: Clean Topics Only Course</h1>',
+        '<h2>Module 1: General Safety</h2>',
+        '<h2>Lesson 1: Introduction</h2>',
+        '<h1>Hazard Identification</h1>',
+        '<p>Learn to spot hazards on the job site.</p>',
+        '<h1>Lesson Quiz</h1>',
+        '<h3>Question 1</h3>',
+        '<p>What is a hazard?</p>',
+        '<p>A. A safe condition</p>',
+        '<p>B. A potential source of harm (correct)</p>',
+        '<h1>Final Exam</h1>',
+        '<h3>Question 1</h3>',
+        '<p>What is OSHA?</p>',
+        '<p>A. Safety administration (correct)</p>',
+        '<p>B. Tax agency</p>',
+      ].join('\n');
+
+      // Segment with includeQuizzes: false
+      const parsedWithoutQuizzes = segmentCourseWiseHtml(
+        mockHtml,
+        {},
+        { includeQuizzes: false }
+      );
+      const courseJson = buildCourseJson(parsedWithoutQuizzes, {
+        includeQuizzes: false,
+      });
+      const validation = validateCourseJson(courseJson);
+
+      expect(courseJson.duration.knowledge_check_seconds).toBe(0);
+      expect(courseJson.duration.final_exam_seconds).toBe(0);
+      expect(courseJson.final_exam).toBeFalsy();
+      courseJson.modules.forEach((mod) => {
+        mod.lessons.forEach((les) => {
+          expect(les.knowledge_check).toHaveLength(0);
+          expect(les.has_assessment_after).toBe(false);
+        });
+      });
+      expect(validation.isValid).toBe(true);
+      expect(validation.score).toBe(100);
+    });
   });
 
   describe('Course Folder Ingestion & Sequential Hierarchy Builder', () => {

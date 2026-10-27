@@ -17,6 +17,7 @@ import {
   Clock,
   Layers,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   Sliders,
   FileCode,
@@ -50,6 +51,7 @@ export default function CourseJsonConverter() {
   // Conversion mode: 'folder' | 'A' | 'B'
   const [mode, setMode] = useState('folder');
   const [includeImages, setIncludeImages] = useState(false);
+  const [includeQuizzes, setIncludeQuizzes] = useState(true);
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -231,6 +233,7 @@ export default function CourseJsonConverter() {
         course_title: courseTitleOverride || undefined,
         course_id: 'course_1',
         stripImages: !includeImages,
+        includeQuizzes,
       };
 
       const res = await convertCourseFolderSequentially(
@@ -292,6 +295,7 @@ export default function CourseJsonConverter() {
         mode: targetMode,
         pdfjsLib,
         stripImages: !includeImages,
+        includeQuizzes,
         overrides: {
           course_title: courseTitleOverride || undefined,
           module_title: moduleTitleOverride || undefined,
@@ -548,6 +552,89 @@ export default function CourseJsonConverter() {
     }
   };
 
+  /**
+   * Dynamically toggle Quizzes on/off across loaded courseJson or pending uploads
+   */
+  const handleToggleQuizzes = (newIncludeQuizzes) => {
+    setIncludeQuizzes(newIncludeQuizzes);
+    if (!courseJson) return;
+
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    if (!newIncludeQuizzes) {
+      // Cache original quizzes and strip them
+      (updated.modules || []).forEach((m) => {
+        (m.lessons || []).forEach((l) => {
+          if (
+            !l._cached_quizzes &&
+            Array.isArray(l.knowledge_check) &&
+            l.knowledge_check.length > 0
+          ) {
+            l._cached_quizzes = l.knowledge_check;
+          }
+          l.knowledge_check = [];
+          l.has_assessment_after = false;
+        });
+      });
+      if (updated.final_exam) {
+        if (!updated._cached_final_exam) {
+          updated._cached_final_exam = updated.final_exam;
+        }
+        updated.final_exam = null;
+      }
+    } else {
+      // Restore quizzes from cache
+      (updated.modules || []).forEach((m) => {
+        (m.lessons || []).forEach((l) => {
+          if (l._cached_quizzes && l._cached_quizzes.length > 0) {
+            l.knowledge_check = l._cached_quizzes;
+            l.has_assessment_after = true;
+          }
+        });
+      });
+      if (updated._cached_final_exam) {
+        updated.final_exam = updated._cached_final_exam;
+      }
+    }
+
+    // Recalculate duration and validation
+    let totalSlidesSeconds = 0;
+    let totalKcSeconds = 0;
+    const lessonsDurationArray = [];
+    (updated.modules || []).forEach((mod) => {
+      (mod.lessons || []).forEach((les) => {
+        let lesSlideSec = 0;
+        (les.topics || []).forEach((top) => {
+          lesSlideSec += Number(top.allocated_duration_seconds) || 30;
+        });
+        const kcSec = (les.knowledge_check || []).length * 60;
+        totalSlidesSeconds += lesSlideSec;
+        totalKcSeconds += kcSec;
+        lessonsDurationArray.push({
+          lesson_id: les.lesson_id,
+          slides_seconds: lesSlideSec,
+          knowledge_check_seconds: kcSec,
+          total_seconds: lesSlideSec + kcSec,
+        });
+      });
+    });
+
+    const finalExamSeconds = (updated.final_exam?.questions?.length || 0) * 60;
+    const grandTotal = totalSlidesSeconds + totalKcSeconds + finalExamSeconds;
+    updated.total_duration_seconds = grandTotal;
+    updated.planned_duration_seconds = grandTotal;
+    if (updated.duration) {
+      updated.duration.total_seconds = grandTotal;
+      updated.duration.slides_seconds = totalSlidesSeconds;
+      updated.duration.knowledge_check_seconds = totalKcSeconds;
+      updated.duration.final_exam_seconds = finalExamSeconds;
+      updated.duration.lessons = lessonsDurationArray;
+    }
+
+    setCourseJson(updated);
+    const val = validateCourseJson(updated);
+    setValidation(val);
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 py-6 px-4">
       {/* Header */}
@@ -616,114 +703,232 @@ export default function CourseJsonConverter() {
         <div className="lg:col-span-1 space-y-4">
           <Card className="border-slate-200 dark:border-slate-800">
             <CardContent className="p-5 space-y-4">
+              {/* Conversion Source: Single Column Stacked Rows */}
               <div>
                 <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
                   Conversion Source
                 </label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
+                <div className="flex flex-col gap-2 mt-2">
                   <button
                     type="button"
                     onClick={() => setMode('folder')}
                     className={cn(
-                      'flex flex-col p-2.5 rounded-lg border text-left transition-all text-xs',
+                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
                       mode === 'folder'
-                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
                     )}
                   >
-                    <span className="font-semibold text-xs flex items-center gap-1">
-                      <Folder className="h-3.5 w-3.5 text-blue-600" />
-                      Course Folder
-                    </span>
-                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
-                      3 Modules, 12 Lessons
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+                        <Folder className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                          Course Folder
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Automated sequential modules &amp; lessons
+                        </div>
+                      </div>
+                    </div>
+                    {mode === 'folder' && (
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                    )}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setMode('A')}
                     className={cn(
-                      'flex flex-col p-2.5 rounded-lg border text-left transition-all text-xs',
+                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
                       mode === 'A'
-                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
                     )}
                   >
-                    <span className="font-semibold text-xs flex items-center gap-1">
-                      <FileText className="h-3.5 w-3.5 text-indigo-600" />
-                      Single Lesson
-                    </span>
-                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
-                      Mode A (1 Document)
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                          Single Lesson Document
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Mode A: 1 Document with topics &amp; quiz
+                        </div>
+                      </div>
+                    </div>
+                    {mode === 'A' && (
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                    )}
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setMode('B')}
                     className={cn(
-                      'flex flex-col p-2.5 rounded-lg border text-left transition-all text-xs',
+                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
                       mode === 'B'
-                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
                     )}
                   >
-                    <span className="font-semibold text-xs flex items-center gap-1">
-                      <Layers className="h-3.5 w-3.5 text-emerald-600" />
-                      Course Doc
-                    </span>
-                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
-                      Mode B (Full Syllabus)
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                        <Layers className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-white">
+                          Full Course Document
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Mode B: Full syllabus with modules &amp; exam
+                        </div>
+                      </div>
+                    </div>
+                    {mode === 'B' && (
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                    )}
                   </button>
                 </div>
               </div>
 
-              {/* Image & Asset Content Toggle */}
+              {/* Image & Asset Content Toggle: Single Column Stacked */}
               <div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                    Images & Media Content
+                    Images &amp; Media Content
                   </label>
                   <Badge variant="outline" className="text-[10px]">
                     {includeImages ? 'Images ON' : 'Images OFF (Clean)'}
                   </Badge>
                 </div>
-                <div className="grid grid-cols-2 gap-2 mt-1.5">
+                <div className="flex flex-col gap-1.5">
                   <button
                     type="button"
                     onClick={() => setIncludeImages(false)}
                     className={cn(
-                      'p-2 rounded-lg border text-left transition-all text-xs flex flex-col',
+                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
                       !includeImages
-                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
                     )}
                   >
-                    <span className="font-semibold text-xs flex items-center gap-1 text-slate-800 dark:text-slate-200">
-                      🚫 Skip Images (OFF)
-                    </span>
-                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
-                      Extract codes, clean body HTML
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">🚫</span>
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
+                          Skip Images (OFF)
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Extract codes, clean pure body HTML
+                        </div>
+                      </div>
+                    </div>
+                    {!includeImages && (
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                    )}
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setIncludeImages(true)}
                     className={cn(
-                      'p-2 rounded-lg border text-left transition-all text-xs flex flex-col',
+                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
                       includeImages
-                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 font-medium'
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
                     )}
                   >
-                    <span className="font-semibold text-xs flex items-center gap-1 text-slate-800 dark:text-slate-200">
-                      🖼️ Include Images (ON)
-                    </span>
-                    <span className="mt-0.5 text-[10px] opacity-80 leading-tight">
-                      Preserve &lt;img&gt; &amp; image callouts
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">🖼️</span>
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
+                          Include Images (ON)
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Preserve &lt;img&gt; &amp; image callouts
+                        </div>
+                      </div>
+                    </div>
+                    {includeImages && (
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Quizzes & Assessments Toggle: Single Column Stacked */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                    Quizzes &amp; Assessments
+                  </label>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px]',
+                      includeQuizzes
+                        ? 'border-emerald-300 text-emerald-700 dark:text-emerald-400'
+                        : 'border-slate-300 text-slate-500'
+                    )}
+                  >
+                    {includeQuizzes ? 'Quizzes ON' : 'Quizzes OFF (Excluded)'}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleQuizzes(true)}
+                    className={cn(
+                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                      includeQuizzes
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">📝</span>
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
+                          Include Quizzes (ON)
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Parse question stems, options, and answer keys
+                        </div>
+                      </div>
+                    </div>
+                    {includeQuizzes && (
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleQuizzes(false)}
+                    className={cn(
+                      'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                      !includeQuizzes
+                        ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">🚫</span>
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-slate-200">
+                          Exclude Quizzes (OFF)
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          Pure instructional topics only, 0 quizzes in JSON
+                        </div>
+                      </div>
+                    </div>
+                    {!includeQuizzes && (
+                      <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -1034,10 +1239,12 @@ export default function CourseJsonConverter() {
                   </span>
                   <div>
                     <div className="text-lg font-bold text-slate-900 dark:text-white">
-                      {allQuizzes.length} Questions
+                      {includeQuizzes
+                        ? `${allQuizzes.length} Questions`
+                        : '0 (Quizzes OFF)'}
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      Lesson Quizzes
+                      {includeQuizzes ? 'Lesson Quizzes' : 'Excluded from JSON'}
                     </div>
                   </div>
                 </CardContent>
@@ -1191,38 +1398,100 @@ export default function CourseJsonConverter() {
                 )}
               </div>
 
-              {/* Tab 1: Hierarchy & Topic Inspector */}
+              {/* Tab 1: Hierarchy & Topic Inspector - Single Column Full-Width View */}
               {activeTab === 'hierarchy' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Topic Sidebar */}
-                  <div className="md:col-span-1 border rounded-xl overflow-hidden max-h-[500px] overflow-y-auto divide-y bg-white dark:bg-slate-950">
-                    {filteredTopics.map((top, idx) => (
-                      <button
-                        key={top.id || idx}
+                <div className="space-y-4">
+                  {/* Topic Navigation & Stepper Toolbar */}
+                  <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                    {/* Topic Selector Dropdown */}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-xs font-semibold text-slate-500 shrink-0">
+                        Topic:
+                      </span>
+                      <select
+                        value={selectedTopicIndex}
+                        onChange={(e) =>
+                          setSelectedTopicIndex(Number(e.target.value))
+                        }
+                        className="h-8 text-xs font-semibold border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 bg-white dark:bg-slate-950 text-foreground w-full max-w-md truncate shadow-2xs"
+                      >
+                        {filteredTopics.map((top, idx) => (
+                          <option key={top.id || idx} value={idx}>
+                            Topic {idx + 1} of {filteredTopics.length}:{' '}
+                            {top.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Step Navigation & Action Buttons */}
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                      <Button
                         type="button"
-                        onClick={() => setSelectedTopicIndex(idx)}
+                        size="sm"
+                        variant="outline"
+                        disabled={selectedTopicIndex <= 0}
+                        onClick={() =>
+                          setSelectedTopicIndex((prev) => Math.max(0, prev - 1))
+                        }
+                        className="h-7 text-xs px-2.5 gap-1"
+                        title="Previous Topic"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                      </Button>
+                      <span className="text-xs text-slate-500 font-mono px-1">
+                        {selectedTopicIndex + 1} / {filteredTopics.length}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          selectedTopicIndex >= filteredTopics.length - 1
+                        }
+                        onClick={() =>
+                          setSelectedTopicIndex((prev) =>
+                            Math.min(filteredTopics.length - 1, prev + 1)
+                          )
+                        }
+                        className="h-7 text-xs px-2.5 gap-1"
+                        title="Next Topic"
+                      >
+                        Next <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+
+                      <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block" />
+
+                      {/* Toggle Topic Editor */}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const next = !isEditingTopic;
+                          setIsEditingTopic(next);
+                          if (next && activeTopic) {
+                            setEditedTopicName(activeTopic.name || '');
+                            setEditedTopicHtml(
+                              activeTopic.leftDiv?.editorHtml || ''
+                            );
+                          }
+                        }}
                         className={cn(
-                          'w-full p-3 text-left transition-colors flex items-start gap-2.5 text-xs',
-                          selectedTopicIndex === idx
-                            ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300'
+                          'h-7 text-xs font-semibold gap-1.5',
+                          isEditingTopic
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600 shadow-sm'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         )}
                       >
-                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-600 dark:text-slate-400">
-                          {idx + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate font-semibold">{top.name}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">
-                            {top.moduleTitle} • {top.lessonTitle}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
+                        <Edit3 className="h-3.5 w-3.5" />
+                        {isEditingTopic ? 'View Preview' : 'Edit Topic'}
+                      </Button>
+                    </div>
                   </div>
 
-                  {/* Topic Content Preview */}
-                  <div className="md:col-span-2 border rounded-xl p-5 bg-white dark:bg-slate-950 max-h-[500px] overflow-y-auto space-y-4">
+                  {/* Topic Content Card (Full Width 1 Column) */}
+                  <div className="w-full border rounded-xl p-5 bg-white dark:bg-slate-950 min-h-[450px] space-y-4 shadow-2xs">
                     {activeTopic ? (
                       <div>
                         <div className="border-b pb-3 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1449,10 +1718,61 @@ export default function CourseJsonConverter() {
                 </div>
               )}
 
-              {/* Tab 2: Quiz & Assessment Inspector */}
+              {/* Tab 2: Quiz & Assessment Inspector - Single Column Spacious View */}
               {activeTab === 'quiz' && (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto">
-                  {allQuizzes.length > 0 ? (
+                <div className="space-y-4 max-h-[550px] overflow-y-auto">
+                  {/* Top Quiz Header / Toggle Toolbar */}
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <HelpCircle className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Quizzes &amp; Knowledge Checks</span>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'text-[10px]',
+                              includeQuizzes && allQuizzes.length > 0
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                : 'bg-slate-100 text-slate-500 border-slate-300'
+                            )}
+                          >
+                            {includeQuizzes
+                              ? `${allQuizzes.length} Questions`
+                              : 'Excluded from JSON'}
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          {includeQuizzes
+                            ? 'Every question is verified with stem, options, and answer keys.'
+                            : 'Quizzes are toggled OFF and excluded from the exported course JSON.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={includeQuizzes ? 'outline' : 'default'}
+                        onClick={() => handleToggleQuizzes(!includeQuizzes)}
+                        className={cn(
+                          'h-7 text-xs font-semibold gap-1.5',
+                          !includeQuizzes
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
+                            : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        )}
+                      >
+                        {includeQuizzes
+                          ? '🚫 Exclude Quizzes'
+                          : '📝 Enable Quizzes'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {includeQuizzes && allQuizzes.length > 0 ? (
                     allQuizzes.map((q, idx) => (
                       <Card
                         key={q.question_id || idx}
@@ -1477,25 +1797,38 @@ export default function CourseJsonConverter() {
                             {q.question}
                           </p>
 
-                          <div className="space-y-1.5 pt-1">
+                          {/* Options: 1 Row 1 Column Each */}
+                          <div className="space-y-2 pt-1">
                             {q.options?.map((opt) => {
                               const isCorrect = opt.value === q.correct_answer;
                               return (
                                 <div
                                   key={opt.value}
                                   className={cn(
-                                    'p-2 rounded-lg text-xs flex items-center justify-between border',
+                                    'w-full p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all',
                                     isCorrect
-                                      ? 'border-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 font-medium'
-                                      : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-400'
+                                      ? 'border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 font-medium ring-1 ring-emerald-500/20'
+                                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300'
                                   )}
                                 >
-                                  <span>
-                                    <strong>{opt.value}.</strong> {opt.label}
-                                  </span>
+                                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                    <span
+                                      className={cn(
+                                        'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0',
+                                        isCorrect
+                                          ? 'bg-emerald-600 text-white'
+                                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                      )}
+                                    >
+                                      {opt.value}
+                                    </span>
+                                    <span className="text-xs leading-normal">
+                                      {opt.label}
+                                    </span>
+                                  </div>
                                   {isCorrect && (
-                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                                      <CheckCircle2 className="h-3 w-3" />{' '}
+                                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 shrink-0 ml-2">
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
                                       Correct
                                     </span>
                                   )}
@@ -1505,7 +1838,7 @@ export default function CourseJsonConverter() {
                           </div>
 
                           {q.explanation && (
-                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 text-xs text-slate-600 dark:text-slate-400 border border-slate-100 dark:border-slate-800">
+                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
                               <strong className="text-slate-800 dark:text-slate-200">
                                 Explanation:{' '}
                               </strong>
@@ -1516,9 +1849,34 @@ export default function CourseJsonConverter() {
                       </Card>
                     ))
                   ) : (
-                    <Card>
-                      <CardContent className="p-8 text-center text-xs text-slate-500">
-                        No quiz questions detected across these lessons.
+                    <Card className="border-slate-200 dark:border-slate-800">
+                      <CardContent className="p-10 text-center space-y-3">
+                        <div className="inline-flex p-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                          <HelpCircle className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                            {!includeQuizzes
+                              ? 'Quizzes Are Excluded'
+                              : 'No Quiz Questions Detected'}
+                          </h4>
+                          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                            {!includeQuizzes
+                              ? 'Quizzes are currently turned OFF. Your exported LMS JSON contains zero quiz questions and zero quiz duration.'
+                              : 'No assessment questions were found in the uploaded document or folder.'}
+                          </p>
+                        </div>
+                        {!includeQuizzes && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleToggleQuizzes(true)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5"
+                          >
+                            <HelpCircle className="h-3.5 w-3.5" />
+                            Enable Quizzes in JSON
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   )}

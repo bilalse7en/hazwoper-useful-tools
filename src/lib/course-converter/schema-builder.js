@@ -45,6 +45,7 @@ export function buildCourseJson(parsedData, options = {}) {
       };
     });
 
+    const includeQuizzes = options.includeQuizzes !== false;
     modules = [
       {
         module_id: moduleId,
@@ -53,13 +54,26 @@ export function buildCourseJson(parsedData, options = {}) {
           {
             lesson_id: lessonId,
             lesson_title: lessonTitle,
-            has_assessment_after: true,
-            knowledge_check: parsedData.knowledge_check || [],
+            has_assessment_after:
+              includeQuizzes && (parsedData.knowledge_check?.length || 0) > 0,
+            knowledge_check: includeQuizzes
+              ? parsedData.knowledge_check || []
+              : [],
             topics,
           },
         ],
       },
     ];
+  }
+
+  // If quizzes are explicitly excluded, strip them from all lessons
+  if (options.includeQuizzes === false) {
+    modules.forEach((mod) => {
+      (mod.lessons || []).forEach((les) => {
+        les.knowledge_check = [];
+        les.has_assessment_after = false;
+      });
+    });
   }
 
   // Calculate durations across all modules and lessons
@@ -94,9 +108,10 @@ export function buildCourseJson(parsedData, options = {}) {
     });
   });
 
-  // Final Exam calculations (if present)
+  // Final Exam calculations (if present and quizzes included)
   let finalExamSeconds = 0;
-  let finalExamObj = parsedData.final_exam || null;
+  let finalExamObj =
+    options.includeQuizzes !== false ? parsedData.final_exam || null : null;
   if (
     finalExamObj &&
     finalExamObj.questions &&

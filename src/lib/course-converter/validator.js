@@ -245,7 +245,9 @@ export function validateCourseJson(courseJson) {
     passedKc,
     passedKc ? 'info' : 'error',
     passedKc
-      ? `${totalKcQuestions} quiz question(s) verified with question stems, options, and matching correct answers.`
+      ? totalKcQuestions > 0
+        ? `${totalKcQuestions} quiz question(s) verified with question stems, options, and matching correct answers.`
+        : 'No quiz questions in this course (Quizzes excluded or not present in source document).'
       : `${invalidKcQuestions} quiz question(s) lack required options, stems, or matching correct answers.`
   );
 

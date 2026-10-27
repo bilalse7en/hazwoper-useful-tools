@@ -83,9 +83,11 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
 
     // Check if this section is a Lesson Quiz / Knowledge Check
     if (isQuizHeading(headingText)) {
-      const parsedQuestions = parseQuizFromHtml(bodyContent || part, 'q');
-      if (parsedQuestions.length > 0) {
-        knowledge_check = parsedQuestions;
+      if (options.includeQuizzes !== false) {
+        const parsedQuestions = parseQuizFromHtml(bodyContent || part, 'q');
+        if (parsedQuestions.length > 0) {
+          knowledge_check = parsedQuestions;
+        }
       }
       continue;
     }
@@ -93,9 +95,11 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
     // Check if this section is a Final Exam
     if (isFinalExamHeading(headingText)) {
       // In lesson-wise mode, if someone included a quiz labeled "exam", treat as quiz
-      const parsedQuestions = parseQuizFromHtml(bodyContent || part, 'q');
-      if (parsedQuestions.length > 0 && knowledge_check.length === 0) {
-        knowledge_check = parsedQuestions;
+      if (options.includeQuizzes !== false) {
+        const parsedQuestions = parseQuizFromHtml(bodyContent || part, 'q');
+        if (parsedQuestions.length > 0 && knowledge_check.length === 0) {
+          knowledge_check = parsedQuestions;
+        }
       }
       continue;
     }
@@ -262,22 +266,26 @@ export function segmentCourseWiseHtml(html, metadata = {}, options = {}) {
 
     // Check if Final Exam
     if (isFinalExamHeading(headingText)) {
-      const questions = parseQuizFromHtml(bodyContent || part, 'fe_q');
-      final_exam_questions.push(...questions);
+      if (options.includeQuizzes !== false) {
+        const questions = parseQuizFromHtml(bodyContent || part, 'fe_q');
+        final_exam_questions.push(...questions);
+      }
       continue;
     }
 
     // Check if Lesson Quiz / Knowledge Check
     if (isQuizHeading(headingText)) {
-      ensureLesson();
-      const modIndex = modules.length;
-      const lesIndex = currentModule.lessons.length;
-      const questions = parseQuizFromHtml(
-        bodyContent || part,
-        `q_${modIndex}_${lesIndex}_`
-      );
-      if (questions.length > 0) {
-        currentLesson.knowledge_check.push(...questions);
+      if (options.includeQuizzes !== false) {
+        ensureLesson();
+        const modIndex = modules.length;
+        const lesIndex = currentModule.lessons.length;
+        const questions = parseQuizFromHtml(
+          bodyContent || part,
+          `q_${modIndex}_${lesIndex}_`
+        );
+        if (questions.length > 0) {
+          currentLesson.knowledge_check.push(...questions);
+        }
       }
       continue;
     }
