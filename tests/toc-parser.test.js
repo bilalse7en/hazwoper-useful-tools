@@ -192,18 +192,8 @@ Question 1: What is ATS?
     expect(titlesList).not.toContain('Three-Phase Service');
   });
 
-  it('extracts exactly the 8 H1 topics from the user reference docx, including Summary and skipping Intro, Objectives, and Quiz', async () => {
-    let html = '';
-    const fs = await import('fs');
-    const docxPath =
-      'C:/Users/User/.gemini/antigravity/brain/e7cfeae1-d1f4-4ff0-914c-3120b50f3d39/.user_uploaded/media_1793034430662_53e10ceb.docx';
-
-    if (fs.existsSync(docxPath)) {
-      const mammoth = await import('mammoth');
-      const { value } = await mammoth.convertToHtml({ path: docxPath });
-      html = value;
-    } else {
-      html = `
+  it('extracts exactly the 8 H1 topics from the user reference docx, including Summary and skipping Intro, Objectives, and Quiz', () => {
+    const html = `
         <p>Utility Power Entry and Service Configuration</p>
         <h1>Introduction</h1>
         <p>This lesson looks at how utility power enters a data center...</p>
@@ -241,7 +231,6 @@ Question 1: What is ATS?
         <h3>Question 1</h3>
         <p>Quiz question text...</p>
       `;
-    }
 
     const result = parseCourseTOC(html, true);
 

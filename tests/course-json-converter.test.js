@@ -125,6 +125,72 @@ describe('CourseJsonConverter Core Engine', () => {
         'Photorealistic 8K portrait of electrical transformer'
       );
     });
+
+    it('extracts FILE #: and Adobe Stock numeric codes while stripping them and Slide markers from body content', async () => {
+      const { extractImageMetadata, normalizeHtmlContent, wrapInLmsContainer } =
+        await import('../src/lib/course-converter/html-normalizer.js');
+
+      const rawWithSlideAndFileCode = `
+        <p><strong><img src="data:image/png;base64,iVBORw0KGgoAAA" alt="Icon" /></strong></p>
+        <p><a href="https://stock.adobe.com/images/stop-symbol-3d-icon-isolated-on-white/43500089?prev_url=detail"><strong>FILE #:  43500089</strong></a></p>
+        <p><strong>Slide 3 </strong></p>
+        <p>The material and information presented in this training is for educational purposes only.</p>
+        <p><strong>Slide 5</strong></p>
+        <p><a href="https://stock.adobe.com/images/certificate-icon/271990967?prev_url=detail"><strong>FILE #: </strong> 271990967</a></p>
+        <p>Participants must complete all required modules before taking the evaluation.</p>
+      `;
+
+      // 1. Verify metadata extraction
+      const meta = extractImageMetadata(rawWithSlideAndFileCode);
+      expect(meta.hasImages).toBe(true);
+      expect(meta.primaryImageCode).toBe('#43500089');
+      expect(meta.imageCodes).toContain('#43500089');
+      expect(meta.imageCodes).toContain('#271990967');
+
+      // 2. Verify HTML normalization with stripImages: true
+      const cleanHtml = normalizeHtmlContent(rawWithSlideAndFileCode, {
+        stripImages: true,
+      });
+
+      expect(cleanHtml).not.toContain('FILE #:');
+      expect(cleanHtml).not.toContain('43500089');
+      expect(cleanHtml).not.toContain('271990967');
+      expect(cleanHtml).not.toContain('Slide 3');
+      expect(cleanHtml).not.toContain('Slide 5');
+      expect(cleanHtml).not.toContain('<img');
+      expect(cleanHtml).not.toContain('stock.adobe.com');
+
+      // 3. Verify clean educational content is preserved
+      expect(cleanHtml).toContain(
+        'The material and information presented in this training is for educational purposes only.'
+      );
+      expect(cleanHtml).toContain(
+        'Participants must complete all required modules before taking the evaluation.'
+      );
+
+      // 4. Verify 1 parent div container
+      const wrapped = wrapInLmsContainer(cleanHtml, { stripImages: true });
+      expect(wrapped.startsWith('<div>')).toBe(true);
+      expect(wrapped.endsWith('</div>')).toBe(true);
+      expect((wrapped.match(/<div>/g) || []).length).toBe(1);
+      expect((wrapped.match(/<\/div>/g) || []).length).toBe(1);
+    });
+
+    it('removes leading Slide prefix from content paragraphs without losing body text', () => {
+      const raw = `
+        <p><strong>Slide 1:</strong> Overview of safety procedures for data centers.</p>
+        <p>Slide 2 - Operating requirements for high-voltage systems.</p>
+      `;
+      const clean = normalizeHtmlContent(raw, { stripImages: true });
+      expect(clean).not.toContain('Slide 1:');
+      expect(clean).not.toContain('Slide 2 -');
+      expect(clean).toContain(
+        'Overview of safety procedures for data centers.'
+      );
+      expect(clean).toContain(
+        'Operating requirements for high-voltage systems.'
+      );
+    });
   });
 
   describe('Quiz Extractor', () => {

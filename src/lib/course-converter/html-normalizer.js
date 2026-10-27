@@ -18,7 +18,7 @@
  */
 
 /**
- * Extracts image asset codes (e.g. #897489635) and AI prompt metadata from HTML or text
+ * Extracts image asset codes (e.g. #897489635, FILE #: 43500089, Adobe Stock URLs) and AI prompt metadata from HTML or text
  * @param {string} rawHtml
  * @returns {object} { imageCodes, primaryImageCode, aiPrompts, primaryPrompt, hasImages }
  */
@@ -33,24 +33,49 @@ export function extractImageMetadata(rawHtml) {
     };
   }
 
-  const hasImages = /<img[^>]*>/i.test(rawHtml);
-
-  // Extract 7-11 digit stock asset codes with # or ID: or Asset:, e.g. #897489635
+  const hasImgTag = /<img[^>]*>/i.test(rawHtml);
   const imageCodes = [];
-  const codeMatches = rawHtml.match(
-    /(?:#|ID:?\s*|Asset:?\s*|Stock\s*#?\s*)(\d{7,11})/gi
-  );
-  if (codeMatches) {
-    codeMatches.forEach((m) => {
-      const numMatch = m.match(/\d{7,11}/);
-      if (numMatch) {
-        const formatted = `#${numMatch[0]}`;
-        if (!imageCodes.includes(formatted)) {
-          imageCodes.push(formatted);
-        }
+
+  // 1. Extract Adobe Stock URLs with numeric asset IDs (e.g. stock.adobe.com/images/.../43500089?prev_url=detail)
+  const stockUrlMatches =
+    rawHtml.match(/stock\.adobe\.com\/[^\s"'>]*\/(\d{6,12})/gi) || [];
+  stockUrlMatches.forEach((u) => {
+    const numMatch = u.match(/\d{6,12}/);
+    if (numMatch) {
+      const formatted = `#${numMatch[0]}`;
+      if (!imageCodes.includes(formatted)) {
+        imageCodes.push(formatted);
       }
-    });
-  }
+    }
+  });
+
+  // 2. Extract FILE #: / File #: patterns (e.g. FILE #:  43500089, FILE #: 271990967)
+  const fileMatches =
+    rawHtml.match(
+      /(?:FILE|File)\s*#?[:\s\u00a0&nbsp;]*(?:<[^>]+>)*[\s\u00a0&nbsp;]*(\d{6,12})/gi
+    ) || [];
+  fileMatches.forEach((f) => {
+    const numMatch = f.match(/\d{6,12}/);
+    if (numMatch) {
+      const formatted = `#${numMatch[0]}`;
+      if (!imageCodes.includes(formatted)) {
+        imageCodes.push(formatted);
+      }
+    }
+  });
+
+  // 3. Extract 6-12 digit stock asset codes with # or ID: or Asset:, e.g. #897489635
+  const codeMatches =
+    rawHtml.match(/(?:#|ID:?\s*|Asset:?\s*|Stock\s*#?\s*)(\d{6,12})/gi) || [];
+  codeMatches.forEach((m) => {
+    const numMatch = m.match(/\d{6,12}/);
+    if (numMatch) {
+      const formatted = `#${numMatch[0]}`;
+      if (!imageCodes.includes(formatted)) {
+        imageCodes.push(formatted);
+      }
+    }
+  });
 
   // Extract AI image prompts or visual descriptions
   const aiPrompts = [];
@@ -71,12 +96,18 @@ export function extractImageMetadata(rawHtml) {
     });
   }
 
+  const hasImages =
+    hasImgTag ||
+    imageCodes.length > 0 ||
+    /stock\.adobe\.com/i.test(rawHtml) ||
+    /FILE\s*#/i.test(rawHtml);
+
   return {
     imageCodes,
     primaryImageCode: imageCodes[0] || '',
     aiPrompts,
     primaryPrompt: aiPrompts[0] || '',
-    hasImages: hasImages || imageCodes.length > 0,
+    hasImages,
   };
 }
 
@@ -104,23 +135,46 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   html = html.replace(/<\/?font[^>]*>/gi, '');
   html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
 
-  // 4. Strip images and image callout text if stripImages is enabled
+  // 4. Strip pure slide markers (e.g. <p><strong>Slide 3 </strong></p>, <p>Slide 5</p>, <h3>Slide 6</h3>, <div>Slide 7</div>)
+  // Standalone slide markers are PowerPoint/Word layout artifacts, not educational reading content
+  html = html.replace(
+    /<(?:p|h[2-6]|div)[^>]*>\s*(?:<[^>]+>\s*)*Slide\s*\d+\s*(?:<[^>]+>\s*)*<\/(?:p|h[2-6]|div)>/gi,
+    ''
+  );
+
+  // Strip leading slide markers from content paragraphs (e.g. <p><strong>Slide 1:</strong> Content here</p> -> <p>Content here</p>)
+  html = html.replace(
+    /(<p[^>]*>\s*(?:<[^>]+>\s*)*)Slide\s*\d+[\s:.-]+(?:<\/[^>]+>\s*)*(?=\S)/gi,
+    '$1'
+  );
+
+  // 5. Strip images, image links, FILE # codes, and prompts if stripImages is enabled
   if (stripImages) {
     // Strip <img> tags
     html = html.replace(/<img[^>]*>/gi, '');
 
-    // Strip paragraphs that represent image callouts, captions, bracketed descriptions, or asset codes
-    // e.g. <p>[Image: High-voltage transformer #897489635]</p>
-    // e.g. <p>#897489635</p>
-    // e.g. <p>AI Image Prompt: Photorealistic 8K portrait ...</p>
-    // e.g. <p>Figure 1: Substation #897489635</p>
+    // Strip entire paragraphs or headings containing FILE #, stock.adobe.com URLs, or Asset IDs
     html = html.replace(
-      /<p[^>]*>\s*(?:\[Image:?|\[Figure:?|Image:?|Figure\s*\d+:?|AI\s*Image\s*Prompt:?|Stock\s*Asset:?|#\d{7,11})[\s\S]*?<\/p>/gi,
+      /<p[^>]*>(?:(?!<\/p>)[\s\S])*(?:FILE\s*#|File\s*#|stock\.adobe\.com|Asset\s*ID:?\s*\d+)(?:(?!<\/p>)[\s\S])*<\/p>/gi,
+      ''
+    );
+    html = html.replace(
+      /<h[2-6][^>]*>(?:(?!<\/h[2-6]>)[\s\S])*(?:FILE\s*#|File\s*#|stock\.adobe\.com|Asset\s*ID:?\s*\d+)(?:(?!<\/h[2-6]>)[\s\S])*<\/h[2-6]>/gi,
       ''
     );
 
-    // Strip standalone stock asset codes like #897489635 embedded in paragraphs
-    html = html.replace(/#\d{7,11}\b/g, '');
+    // Strip paragraphs that represent image callouts, captions, bracketed descriptions, or prompts
+    html = html.replace(
+      /<p[^>]*>(?:(?!<\/p>)[\s\S])*(?:\[Image:?|\[Figure:?|Image:?|Figure\s*\d+:?|AI\s*Image\s*Prompt:?|Visual\s*Description:?|Visual\s*Prompt:?|Image\s*Prompt:?|Stock\s*Asset:?)(?:(?!<\/p>)[\s\S])*<\/p>/gi,
+      ''
+    );
+
+    // Strip any remaining inline stock asset codes or FILE #: embedded in paragraphs
+    html = html.replace(
+      /(?:FILE|File)\s*#?[:\s\u00a0&nbsp;]*(?:<[^>]+>)*[\s\u00a0&nbsp;]*\d{6,12}/gi,
+      ''
+    );
+    html = html.replace(/#\d{6,12}\b/g, '');
   } else {
     // Standardize <img> tags (strip inline styles/classes, preserve src and alt)
     html = html.replace(
@@ -129,17 +183,17 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     );
   }
 
-  // 5. Strip ALL class and style attributes from all elements
+  // 6. Strip ALL class and style attributes from all elements
   html = html.replace(/\s*class=(?:"[^"]*"|'[^']*')/gi, '');
   html = html.replace(/\s*style=(?:"[^"]*"|'[^']*')/gi, '');
 
-  // 6. Strip IDs, lang, and obsolete formatting/presentational attributes
+  // 7. Strip IDs, lang, and obsolete formatting/presentational attributes
   html = html.replace(
     /\s*(id|lang|align|valign|width|height|border|cellspacing|cellpadding|bgcolor|clear|color|face|size)=(?:"[^"]*"|'[^']*')/gi,
     ''
   );
 
-  // 7. Standardize headers (strip any remaining attributes, enforce clean tags)
+  // 8. Standardize headers (strip any remaining attributes, enforce clean tags)
   html = html.replace(
     /<h2[^>]*>([\s\S]*?)<\/h2>/gi,
     (m, text) => `<h2>${text.trim()}</h2>`
@@ -153,7 +207,7 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     (m, text) => `<h4>${text.trim()}</h4>`
   );
 
-  // 8. Standardize lists and list items
+  // 9. Standardize lists and list items
   html = html.replace(/<ul[^>]*>/gi, '<ul>');
   html = html.replace(/<ol[^>]*>/gi, '<ol>');
   html = html.replace(
@@ -161,11 +215,13 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     (m, text) => `<li>${text.trim()}</li>`
   );
 
-  // 9. Standardize paragraphs and drop completely empty paragraphs
+  // 10. Standardize paragraphs and drop completely empty paragraphs (or paragraphs containing only empty tags)
   html = html.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (m, content) => {
+    const textOnly = content.replace(/<[^>]*>/g, '').trim();
+    const hasMedia = /<img[^>]*>/i.test(content);
     const trimmed = content.trim();
     if (
-      !trimmed ||
+      (!textOnly && !hasMedia) ||
       trimmed === '&nbsp;' ||
       trimmed === '<br>' ||
       trimmed === '<br/>'
