@@ -2329,7 +2329,7 @@ export function AdobeStockImageFinder({
           </div>
         )}
 
-        {/* Empty State after full search with Live Vercel Setup Guide */}
+        {/* Clean, Provider-Aware Empty State with Instant Action Suggestions */}
         {!loading && title.trim() && results.length === 0 && !error && (
           <div className="space-y-4">
             <Card className="border border-border/60 bg-card/40 text-center p-6 space-y-3">
@@ -2337,63 +2337,75 @@ export function AdobeStockImageFinder({
                 <Search className="h-6 w-6" />
               </div>
               <h3 className="text-base font-bold text-foreground">
-                No Adobe Stock Images Visible On Live Server
+                {selectedProvider === 'unsplash'
+                  ? 'No Unsplash Photos Found for "' + title + '"'
+                  : selectedProvider === 'adobe'
+                    ? 'No Adobe Stock Assets Found for "' + title + '"'
+                    : 'No Matching Images Found for "' + title + '"'}
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
-                On cloud serverless platforms (like Vercel), public web catalog
-                queries may be firewalled. To unlock direct, fast, unthrottled
-                Adobe Stock image search with genuine asset IDs and preview
-                thumbnails, configure your Adobe Stock credentials in Vercel.
+                Try searching with broader safety terms or click one of the
+                quick suggestions below:
               </p>
+
+              <div className="flex flex-wrap justify-center gap-1.5 pt-2">
+                {selectedProvider !== 'all' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    onClick={() => handleSetProvider('all')}
+                    className="h-7 text-xs rounded-lg cursor-pointer font-bold shadow-xs"
+                  >
+                    ✨ Switch to All Providers (Unsplash + Adobe)
+                  </Button>
+                )}
+                {[
+                  'Personal Protective Equipment',
+                  'Electrical Safety & Switchgear',
+                  'Hazard Warning Signs',
+                  'Workplace Safety Inspection',
+                  'Fire Extinguisher',
+                ].map((sample) => (
+                  <Button
+                    key={sample}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setTitle(sample);
+                      executeSearch(sample, true);
+                    }}
+                    className="h-7 text-xs rounded-lg cursor-pointer hover:bg-primary/10 hover:text-primary"
+                  >
+                    {sample}
+                  </Button>
+                ))}
+              </div>
             </Card>
 
-            {/* Vercel Environment Configuration Card */}
-            <Card className="border border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 p-4 space-y-3 text-xs">
-              <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-200">
-                <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span>Vercel Live Environment Configuration:</span>
-              </div>
-              <p className="text-blue-800 dark:text-blue-300">
-                In your Vercel Dashboard, go to{' '}
-                <strong>Project Settings → Environment Variables</strong> and
-                add:
-              </p>
-              <div className="p-3 rounded-lg bg-blue-100/70 dark:bg-blue-900/50 font-mono text-[11px] text-blue-950 dark:text-blue-100 space-y-1.5 border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center justify-between">
+            {/* Optional Collapsible Adobe Enterprise Key Note (Collapsed by Default) */}
+            {selectedProvider === 'adobe' && (
+              <details className="p-3 rounded-xl border border-border/60 bg-muted/20 text-xs text-muted-foreground group">
+                <summary className="font-semibold text-foreground/80 cursor-pointer select-none list-none flex items-center justify-between">
                   <span>
-                    <strong>ADOBE_STOCK_API_KEY</strong>=your_adobe_client_id
+                    Optional: How to connect paid Adobe Stock Enterprise API on
+                    Vercel
                   </span>
-                  <Badge variant="outline" className="text-[10px]">
-                    Required for official API
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>
-                    <strong>ADOBE_STOCK_PRODUCT_NAME</strong>
-                    =HazwoperUsefulTools/1.0
+                  <span className="text-[10px] text-primary underline">
+                    Toggle setup guide
                   </span>
-                  <Badge variant="outline" className="text-[10px]">
-                    Optional product header
-                  </Badge>
+                </summary>
+                <div className="pt-3 space-y-2 text-[11px] border-t border-border/40 mt-2">
+                  <p>
+                    If your team has an Adobe Stock paid account, you can add{' '}
+                    <strong>ADOBE_STOCK_API_KEY</strong> in Vercel Environment
+                    Variables. Zero-key public Adobe catalog and 100% free
+                    Unsplash image search remain active automatically.
+                  </p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>
-                    <strong>Adobe Stock Public Catalog</strong>
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
-                  >
-                    Active (Zero Keys Required)
-                  </Badge>
-                </div>
-              </div>
-              <p className="text-[11px] text-blue-700 dark:text-blue-400">
-                Free Adobe API Keys can be generated in 2 minutes at{' '}
-                <strong>developer.adobe.com/console</strong> by creating a
-                project and adding the Adobe Stock API service.
-              </p>
-            </Card>
+              </details>
+            )}
 
             {/* AI Image Generation Prompt as Instant Alternative */}
             <Card className="border border-primary/25 bg-gradient-to-r from-card via-background to-primary/5 p-4 space-y-2 text-xs">

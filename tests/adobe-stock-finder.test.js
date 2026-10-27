@@ -870,5 +870,21 @@ describe('AI-Powered Adobe Stock Finder Test Suite', () => {
       expect(providers).toContain('unsplash');
       expect(providers).toContain('adobe');
     });
+
+    it('falls back to curated Unsplash photos when live API returns 0 or fails', async () => {
+      globalThis.fetch = vi.fn(async () => {
+        return { ok: false, status: 403 };
+      });
+
+      const res = await executeSmartStockSearch({
+        title: 'Personal Protective Equipment',
+        provider: 'unsplash',
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.results.length).toBeGreaterThan(0);
+      expect(res.results.every((r) => r.provider === 'unsplash')).toBe(true);
+      expect(res.results.every((r) => r.isFreeDownload === true)).toBe(true);
+    });
   });
 });
