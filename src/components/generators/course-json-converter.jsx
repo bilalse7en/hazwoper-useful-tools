@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Upload,
   FileText,
@@ -26,6 +26,9 @@ import {
   Files,
   Play,
   RotateCcw,
+  Edit3,
+  Save,
+  FileEdit,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +43,7 @@ import {
   groupFilesByCourseHierarchy,
   convertCourseFolderSequentially,
   wrapInLmsContainer,
+  calculateTopicDuration,
 } from '@/lib/course-converter';
 
 export default function CourseJsonConverter() {
@@ -73,6 +77,12 @@ export default function CourseJsonConverter() {
   const [selectedTopicIndex, setSelectedTopicIndex] = useState(0);
   const [selectedModuleFilter, setSelectedModuleFilter] = useState('all');
   const [copied, setCopied] = useState(false);
+
+  // Topic editing state
+  const [isEditingTopic, setIsEditingTopic] = useState(false);
+  const [editedTopicName, setEditedTopicName] = useState('');
+  const [editedTopicHtml, setEditedTopicHtml] = useState('');
+  const [topicSaveSuccess, setTopicSaveSuccess] = useState(false);
 
   // Manual Metadata Overrides
   const [courseTitleOverride, setCourseTitleOverride] = useState('');
@@ -445,6 +455,98 @@ export default function CourseJsonConverter() {
     }
     return baseHtml;
   }, [activeTopic, includeImages]);
+
+  // Keep topic editor fields synchronized when activeTopic changes
+  useEffect(() => {
+    if (activeTopic) {
+      setEditedTopicName(activeTopic.name || '');
+      setEditedTopicHtml(activeTopic.leftDiv?.editorHtml || '');
+      setIsEditingTopic(false);
+      setTopicSaveSuccess(false);
+    }
+  }, [activeTopic?.id]);
+
+  // Save changes to active topic and update entire courseJson payload
+  const handleSaveTopicChanges = () => {
+    if (!courseJson || !activeTopic) return;
+
+    const sanitizedHtml = wrapInLmsContainer(editedTopicHtml, {
+      stripImages: !includeImages,
+    });
+    const newDuration = calculateTopicDuration(sanitizedHtml);
+    const newName = (editedTopicName || '').trim() || activeTopic.name;
+
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    let topicFound = false;
+
+    (updated.modules || []).forEach((mod) => {
+      (mod.lessons || []).forEach((les) => {
+        (les.topics || []).forEach((top) => {
+          if (top.id === activeTopic.id) {
+            top.name = newName;
+            top.headingContent = newName;
+            top.allocated_duration_seconds = newDuration;
+            top.topicDuration = newDuration;
+
+            if (!top.leftDiv) top.leftDiv = {};
+            top.leftDiv.editor = sanitizedHtml;
+            top.leftDiv.editorHtml = sanitizedHtml;
+            top.leftDiv.editorSaved = sanitizedHtml;
+            top.leftDiv.editorHtmlSaved = sanitizedHtml;
+            delete top.raw_body_content;
+
+            topicFound = true;
+          }
+        });
+      });
+    });
+
+    if (topicFound) {
+      let totalSlidesSeconds = 0;
+      let totalKcSeconds = 0;
+      const lessonsDurationArray = [];
+
+      (updated.modules || []).forEach((mod) => {
+        (mod.lessons || []).forEach((les) => {
+          let lesSlideSec = 0;
+          (les.topics || []).forEach((top) => {
+            lesSlideSec += Number(top.allocated_duration_seconds) || 30;
+          });
+          const kcSec = (les.knowledge_check || []).length * 60;
+          totalSlidesSeconds += lesSlideSec;
+          totalKcSeconds += kcSec;
+
+          lessonsDurationArray.push({
+            lesson_id: les.lesson_id,
+            slides_seconds: lesSlideSec,
+            knowledge_check_seconds: kcSec,
+            total_seconds: lesSlideSec + kcSec,
+          });
+        });
+      });
+
+      const finalExamSeconds =
+        (updated.final_exam?.questions?.length || 0) * 60;
+      const grandTotal = totalSlidesSeconds + totalKcSeconds + finalExamSeconds;
+
+      updated.total_duration_seconds = grandTotal;
+      updated.planned_duration_seconds = grandTotal;
+      if (updated.duration) {
+        updated.duration.total_seconds = grandTotal;
+        updated.duration.slides_seconds = totalSlidesSeconds;
+        updated.duration.knowledge_check_seconds = totalKcSeconds;
+        updated.duration.final_exam_seconds = finalExamSeconds;
+        updated.duration.lessons = lessonsDurationArray;
+      }
+
+      setCourseJson(updated);
+      const val = validateCourseJson(updated);
+      setValidation(val);
+      setTopicSaveSuccess(true);
+      setTimeout(() => setTopicSaveSuccess(false), 3000);
+      setIsEditingTopic(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 py-6 px-4">
@@ -1133,7 +1235,33 @@ export default function CourseJsonConverter() {
                               {activeTopic.name}
                             </h3>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Toggle Topic Editor */}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const next = !isEditingTopic;
+                                setIsEditingTopic(next);
+                                if (next && activeTopic) {
+                                  setEditedTopicName(activeTopic.name || '');
+                                  setEditedTopicHtml(
+                                    activeTopic.leftDiv?.editorHtml || ''
+                                  );
+                                }
+                              }}
+                              className={cn(
+                                'h-7 text-xs font-semibold gap-1.5',
+                                isEditingTopic
+                                  ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600 shadow-sm'
+                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                              )}
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                              {isEditingTopic ? 'View Preview' : 'Edit Topic'}
+                            </Button>
+
                             {/* Live Inspection Image Toggle */}
                             <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 text-[11px]">
                               <button
@@ -1169,72 +1297,148 @@ export default function CourseJsonConverter() {
                           </div>
                         </div>
 
-                        {/* Image Asset Code Banner (Shown strictly when Images are ON) */}
-                        {includeImages && activeTopic.image_code && (
-                          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs mb-3">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
-                                🖼️ Image Asset Code:
-                              </span>
-                              <code className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/60 rounded text-amber-900 dark:text-amber-100 font-mono font-bold text-xs">
-                                {activeTopic.image_code}
-                              </code>
-                              <span className="text-[11px] text-amber-700 dark:text-amber-300">
-                                (Visible in HTML)
-                              </span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                navigator.clipboard.writeText(
-                                  activeTopic.image_code.replace(/^#/, '')
-                                );
-                                setCopied(true);
-                                setTimeout(() => setCopied(false), 2000);
-                              }}
-                              className="h-6 text-[10px] border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-100 shrink-0 ml-2"
-                            >
-                              Copy Code
-                            </Button>
+                        {/* Topic Save Success Notification */}
+                        {topicSaveSuccess && (
+                          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-lg flex items-center gap-2 text-xs text-emerald-900 dark:text-emerald-100 font-medium mb-3 animate-in fade-in">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                            Topic saved successfully! Course JSON and duration
+                            calculations have been updated.
                           </div>
                         )}
 
-                        {/* AI Image Generation Prompt Banner (Shown strictly when Images are ON) */}
-                        {includeImages && activeTopic.image_prompt && (
-                          <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg space-y-1 text-xs mb-3">
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-1">
-                                ✨ AI Visual Generation Prompt
-                              </span>
+                        {isEditingTopic ? (
+                          <div className="space-y-4 pt-1 animate-in fade-in">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                                <span>Topic Heading / Title</span>
+                                <span className="text-[10px] font-normal text-slate-500">
+                                  Updates name &amp; headingContent in Course
+                                  JSON
+                                </span>
+                              </label>
+                              <Input
+                                value={editedTopicName}
+                                onChange={(e) =>
+                                  setEditedTopicName(e.target.value)
+                                }
+                                className="text-xs h-9 font-medium bg-slate-50 dark:bg-slate-900"
+                                placeholder="Topic title..."
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                  Instructional Topic HTML (editorHtml)
+                                </label>
+                                <span className="text-[10px] text-slate-500">
+                                  Wrapped in 1 parent &lt;div&gt; with zero
+                                  classes
+                                </span>
+                              </div>
+                              <textarea
+                                value={editedTopicHtml}
+                                onChange={(e) =>
+                                  setEditedTopicHtml(e.target.value)
+                                }
+                                rows={14}
+                                className="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3 font-mono text-xs leading-relaxed text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="<div><p>Instructional reading content...</p></div>"
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between pt-3 border-t">
                               <Button
+                                type="button"
                                 size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    activeTopic.image_prompt
-                                  );
-                                  setCopied(true);
-                                  setTimeout(() => setCopied(false), 2000);
-                                }}
-                                className="h-6 text-[10px] border-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-900 dark:text-purple-100"
+                                onClick={handleSaveTopicChanges}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-semibold px-4 shadow-sm"
                               >
-                                Copy Prompt
+                                <Save className="h-3.5 w-3.5" />
+                                Save Changes &amp; Update JSON
+                              </Button>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsEditingTopic(false)}
+                                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                              >
+                                Cancel
                               </Button>
                             </div>
-                            <p className="text-[11px] text-purple-800 dark:text-purple-300 italic">
-                              &ldquo;{activeTopic.image_prompt}&rdquo;
-                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            {/* Image Asset Code Banner (Shown strictly when Images are ON) */}
+                            {includeImages && activeTopic.image_code && (
+                              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs mb-3">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                                    🖼️ Image Asset Code:
+                                  </span>
+                                  <code className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/60 rounded text-amber-900 dark:text-amber-100 font-mono font-bold text-xs">
+                                    {activeTopic.image_code}
+                                  </code>
+                                  <span className="text-[11px] text-amber-700 dark:text-amber-300">
+                                    (Visible in HTML)
+                                  </span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(
+                                      activeTopic.image_code.replace(/^#/, '')
+                                    );
+                                    setCopied(true);
+                                    setTimeout(() => setCopied(false), 2000);
+                                  }}
+                                  className="h-6 text-[10px] border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-100 shrink-0 ml-2"
+                                >
+                                  Copy Code
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* AI Image Generation Prompt Banner (Shown strictly when Images are ON) */}
+                            {includeImages && activeTopic.image_prompt && (
+                              <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg space-y-1 text-xs mb-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-1">
+                                    ✨ AI Visual Generation Prompt
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(
+                                        activeTopic.image_prompt
+                                      );
+                                      setCopied(true);
+                                      setTimeout(() => setCopied(false), 2000);
+                                    }}
+                                    className="h-6 text-[10px] border-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-900 dark:text-purple-100"
+                                  >
+                                    Copy Prompt
+                                  </Button>
+                                </div>
+                                <p className="text-[11px] text-purple-800 dark:text-purple-300 italic">
+                                  &ldquo;{activeTopic.image_prompt}&rdquo;
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Rendered HTML Preview */}
+                            <div
+                              className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300"
+                              dangerouslySetInnerHTML={{
+                                __html: displayedTopicHtml,
+                              }}
+                            />
                           </div>
                         )}
-
-                        {/* Rendered HTML Preview */}
-                        <div
-                          className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300"
-                          dangerouslySetInnerHTML={{
-                            __html: displayedTopicHtml,
-                          }}
-                        />
                       </div>
                     ) : (
                       <p className="text-xs text-slate-500">
@@ -1329,10 +1533,31 @@ export default function CourseJsonConverter() {
                       Clean LMS HTML for Topic {selectedTopicIndex + 1}:{' '}
                       {activeTopic?.name}
                     </span>
-                    <span>
-                      Length: {activeTopic?.leftDiv?.editorHtml?.length || 0}{' '}
-                      chars
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span>
+                        Length: {activeTopic?.leftDiv?.editorHtml?.length || 0}{' '}
+                        chars
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setActiveTab('hierarchy');
+                          setIsEditingTopic(true);
+                          if (activeTopic) {
+                            setEditedTopicName(activeTopic.name || '');
+                            setEditedTopicHtml(
+                              activeTopic.leftDiv?.editorHtml || ''
+                            );
+                          }
+                        }}
+                        className="h-6 text-[10px] bg-slate-900 border-slate-700 text-blue-400 hover:text-white"
+                      >
+                        <Edit3 className="h-3 w-3 mr-1" />
+                        Edit HTML
+                      </Button>
+                    </div>
                   </div>
                   <pre className="whitespace-pre-wrap break-all leading-relaxed">
                     {displayedTopicHtml}

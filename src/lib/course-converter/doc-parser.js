@@ -16,6 +16,7 @@ import mammoth from 'mammoth';
 import { extractDocxHeaderMetadata } from '../adobe-stock/toc-parser.js';
 import {
   normalizeHtmlContent,
+  purgeInitialStageArtifacts,
   wrapInLmsContainer,
   calculateTopicDuration,
   calculateWordCount,
@@ -28,12 +29,15 @@ import {
 } from './quiz-extractor.js';
 
 /**
- * Clean plain text title
+ * Clean plain text title, strictly removing any file numbers or slide markers
  */
 function cleanTitle(str) {
   if (!str) return '';
   return str
     .replace(/<[^>]*>/g, '')
+    .replace(/(?:FILE|File|file)\s*#?[:\s\u00a0&nbsp;]*#?\d+/gi, '')
+    .replace(/\bSlide\s*\d+\s*[:.\-–—]*/gi, '')
+    .replace(/#\d+\b/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -75,6 +79,7 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
 
     const headingText = cleanTitle(h1Match[1]);
     const bodyContent = h1Match[2] || '';
+    if (!headingText) continue;
 
     // Check if this section is a Lesson Quiz / Knowledge Check
     if (isQuizHeading(headingText)) {
@@ -247,6 +252,7 @@ export function segmentCourseWiseHtml(html, metadata = {}, options = {}) {
 
     const headingText = cleanTitle(hMatch[1]);
     const bodyContent = hMatch[2] || '';
+    if (!headingText) continue;
 
     // Check if Course Title
     if (/^Course[:\s-]+(.*)/i.test(headingText)) {
@@ -440,7 +446,8 @@ export async function parseDocxDocument(buffer, options = {}) {
     mammothInput,
     mammothOptions
   );
-  const rawHtml = mammothResult.value;
+  // Initial stage purge: eradicate all FILE #: <any number>, stock URLs, and slide markers immediately
+  const rawHtml = purgeInitialStageArtifacts(mammothResult.value, options);
 
   if (mode === 'B') {
     return segmentCourseWiseHtml(rawHtml, mergedMeta, options);
@@ -530,6 +537,9 @@ export async function parsePdfDocument(arrayBuffer, options = {}) {
       }
     }
   }
+
+  // Initial stage purge for PDF
+  fullHtml = purgeInitialStageArtifacts(fullHtml, options);
 
   const mergedMeta = {
     courseTitle: options.courseTitle || '',

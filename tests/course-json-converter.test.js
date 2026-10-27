@@ -127,8 +127,29 @@ describe('CourseJsonConverter Core Engine', () => {
     });
 
     it('extracts FILE #: and Adobe Stock numeric codes while stripping them and Slide markers from body content', async () => {
-      const { extractImageMetadata, normalizeHtmlContent, wrapInLmsContainer } =
-        await import('../src/lib/course-converter/html-normalizer.js');
+      const {
+        extractImageMetadata,
+        normalizeHtmlContent,
+        wrapInLmsContainer,
+        purgeInitialStageArtifacts,
+      } = await import('../src/lib/course-converter/html-normalizer.js');
+
+      // Test arbitrary user numbers like FILE #: 2315646879
+      const userArbitraryFile = `
+        <h1>Utility Overview</h1>
+        <p>FILE #: 2315646879</p>
+        <p>File #: #202252558</p>
+        <p>Critical safety procedures for facility operators.</p>
+      `;
+      const purged = purgeInitialStageArtifacts(userArbitraryFile, {
+        stripImages: true,
+      });
+      expect(purged).not.toContain('2315646879');
+      expect(purged).not.toContain('202252558');
+      expect(purged).not.toContain('FILE #:');
+      expect(purged).toContain(
+        'Critical safety procedures for facility operators.'
+      );
 
       const rawWithSlideAndFileCode = `
         <p><strong><img src="data:image/png;base64,iVBORw0KGgoAAA" alt="Icon" /></strong></p>

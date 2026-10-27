@@ -112,6 +112,63 @@ export function extractImageMetadata(rawHtml) {
 }
 
 /**
+ * Rigorously purges file codes (FILE #: <any number>), stock URLs, image asset lines, and slide markers
+ * at the initial ingestion stage, ensuring they never pollute topic segmentation or final HTML.
+ *
+ * @param {string} rawHtml
+ * @param {object} [options={}]
+ * @returns {string} Cleaned HTML free of file numbers and slide markers
+ */
+export function purgeInitialStageArtifacts(rawHtml, options = {}) {
+  if (!rawHtml || typeof rawHtml !== 'string') return '';
+  const stripImages = options.stripImages !== false;
+  let html = rawHtml;
+
+  // If stripImages is true (default), rigorously strip file codes, asset numbers, and images
+  if (stripImages) {
+    // 1. Strip entire paragraphs, headings, anchors, or divs containing FILE # with ANY number, stock.adobe.com, or asset codes
+    html = html.replace(
+      /<(p|h[1-6]|div|li)[^>]*>(?:(?!<\/\1>)[\s\S])*(?:file\s*#|stock\.adobe\.com|asset\s*id:?\s*\d+|image\s*asset\s*code)(?:(?!<\/\1>)[\s\S])*<\/\1>/gi,
+      ''
+    );
+
+    // 2. Strip standalone anchors linking to stock.adobe.com or containing file codes
+    html = html.replace(
+      /<a\s+[^>]*href=["'][^"']*stock\.adobe\.com[^"']*["'][^>]*>[\s\S]*?<\/a>/gi,
+      ''
+    );
+
+    // 3. Strip any inline FILE #: <any number> with ANY digit count, spacing, or punctuation (e.g. FILE #: 2315646879)
+    html = html.replace(
+      /(?:FILE|File|file)\s*#?[:\s\u00a0&nbsp;]*(?:<[^>]+>)*[\s\u00a0&nbsp;]*#?\d+[\s:.-]*/gi,
+      ''
+    );
+
+    // 4. Strip standalone #<number> codes
+    html = html.replace(/#\d+\b/g, '');
+
+    // Strip base64 and <img> tags completely
+    html = html.replace(/data:image\/[^;]+;base64,[a-zA-Z0-9+/=]+/gi, '');
+    html = html.replace(/<img[^>]*>/gi, '');
+  }
+
+  // Standalone and leading Slide markers are ALWAYS stripped regardless of image mode
+  // 5. Strip pure Slide markers (e.g. <p><strong>Slide 3</strong></p>, <h3>Slide 4</h3>, <div>Slide 5</div>)
+  html = html.replace(
+    /<(p|h[1-6]|div|li)[^>]*>(?:\s*<[^>]+>)*\s*Slide\s*\d+\s*(?:<\/[^>]+>\s*)*<\/\1>/gi,
+    ''
+  );
+
+  // 6. Strip leading Slide markers from content paragraphs/headings (e.g. <p>Slide 1: Content...</p> -> <p>Content...</p>)
+  html = html.replace(
+    /(<(?:p|h[1-6]|li)[^>]*>(?:\s*<[^>]+>)*)\s*Slide\s*\d+\s*[:.\-–—]*\s*(?:<\/[^>]+>\s*)*(?=\S)/gi,
+    '$1'
+  );
+
+  return html;
+}
+
+/**
  * Clean and normalize a block of raw HTML
  * @param {string} rawHtml - HTML snippet or full document HTML
  * @param {object} [options={}] - { stripImages: boolean }
@@ -121,7 +178,7 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   if (!rawHtml || typeof rawHtml !== 'string') return '';
 
   const stripImages = options.stripImages !== false; // default: true (clean text without image junk)
-  let html = rawHtml;
+  let html = purgeInitialStageArtifacts(rawHtml, options);
 
   // 1. Remove comments and doctype / html / head / body tags
   html = html.replace(/<!--[\s\S]*?-->/g, '');
@@ -158,11 +215,11 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
 
     // Strip entire paragraphs or headings containing FILE #, stock.adobe.com URLs, or Asset IDs
     html = html.replace(
-      /<p[^>]*>(?:(?!<\/p>)[\s\S])*(?:FILE\s*#|File\s*#|stock\.adobe\.com|Asset\s*ID:?\s*\d+)(?:(?!<\/p>)[\s\S])*<\/p>/gi,
+      /<p[^>]*>(?:(?!<\/p>)[\s\S])*(?:FILE\s*#|File\s*#|file\s*#|stock\.adobe\.com|Asset\s*ID:?\s*\d+)(?:(?!<\/p>)[\s\S])*<\/p>/gi,
       ''
     );
     html = html.replace(
-      /<h[2-6][^>]*>(?:(?!<\/h[2-6]>)[\s\S])*(?:FILE\s*#|File\s*#|stock\.adobe\.com|Asset\s*ID:?\s*\d+)(?:(?!<\/h[2-6]>)[\s\S])*<\/h[2-6]>/gi,
+      /<h[1-6][^>]*>(?:(?!<\/h[1-6]>)[\s\S])*(?:FILE\s*#|File\s*#|file\s*#|stock\.adobe\.com|Asset\s*ID:?\s*\d+)(?:(?!<\/h[1-6]>)[\s\S])*<\/h[1-6]>/gi,
       ''
     );
 
@@ -174,10 +231,10 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
 
     // Strip any remaining inline stock asset codes or FILE #: embedded in paragraphs
     html = html.replace(
-      /(?:FILE|File)\s*#?[:\s\u00a0&nbsp;]*(?:<[^>]+>)*[\s\u00a0&nbsp;]*\d{6,12}/gi,
+      /(?:FILE|File|file)\s*#?[:\s\u00a0&nbsp;]*(?:<[^>]+>)*[\s\u00a0&nbsp;]*#?\d+[\s:.-]*/gi,
       ''
     );
-    html = html.replace(/#\d{6,12}\b/g, '');
+    html = html.replace(/#\d+\b/g, '');
   } else {
     // Standardize <img> tags (strip inline styles/classes, preserve src and alt)
     html = html.replace(
