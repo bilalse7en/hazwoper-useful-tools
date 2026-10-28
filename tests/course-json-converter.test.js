@@ -723,7 +723,10 @@ describe('CourseJsonConverter Core Engine', () => {
       // Verify Module 2
       expect(courseJson.modules[1].module_id).toBe('mod_2');
       expect(courseJson.modules[1].lessons).toHaveLength(1);
-      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_2_1');
+      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_2_3');
+      expect(courseJson.modules[1].lessons[0].lesson_title).toContain(
+        'Lesson 3:'
+      );
 
       // Verify Durations
       expect(courseJson.duration.lessons).toHaveLength(3);
@@ -770,6 +773,20 @@ describe('CourseJsonConverter Core Engine', () => {
                   },
                 ],
               },
+              {
+                lesson_id: 'les_1_2',
+                lesson_title: 'Exposure Routes',
+                topics: [
+                  {
+                    id: 'top_1_2_1',
+                    name: 'Inhalation & Ingestion',
+                    allocated_duration_seconds: 35,
+                    leftDiv: {
+                      editorHtml: '<div><p>Routes of entry.</p></div>',
+                    },
+                  },
+                ],
+              },
             ],
           },
           {
@@ -793,14 +810,38 @@ describe('CourseJsonConverter Core Engine', () => {
               },
             ],
           },
+          {
+            module_id: 'mod_3',
+            module_title: 'Module 2: Emergency Response',
+            lessons: [
+              {
+                lesson_id: 'les_3_1',
+                lesson_title: 'Incident Command',
+                topics: [
+                  {
+                    id: 'top_3_1_1',
+                    name: 'Command Structure',
+                    allocated_duration_seconds: 45,
+                    leftDiv: {
+                      editorHtml: '<div><p>Incident commanders.</p></div>',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
         ],
       };
 
       const courseJson = buildCourseJson(mockRawData);
 
       // Module with course title MUST become Module 0 and be on top (index 0)
+      // User rule: "dont add module 0 with its name let it be"
       expect(courseJson.modules[0].module_id).toBe('mod_0');
-      expect(courseJson.modules[0].module_title).toContain('Module 0:');
+      expect(courseJson.modules[0].module_title).toBe(
+        'HAZWOPER 40-Hour Training Overview'
+      );
+      expect(courseJson.modules[0].module_title).not.toContain('Module 0:');
 
       // Inside Module 0, Lesson 0 MUST be strictly named "Introduction" instead of "Lesson 0"
       expect(courseJson.modules[0].lessons[0].lesson_id).toBe('les_0_0');
@@ -808,12 +849,27 @@ describe('CourseJsonConverter Core Engine', () => {
         'Introduction'
       );
 
-      // The subsequent module MUST be Module 1 with Lesson 1: prefix
+      // The subsequent modules MUST have continuous sequential lesson numbering:
+      // Module 1: Lesson 1 & Lesson 2
       expect(courseJson.modules[1].module_id).toBe('mod_1');
       expect(courseJson.modules[1].module_title).toContain('Module 1:');
       expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_1_1');
       expect(courseJson.modules[1].lessons[0].lesson_title).toBe(
         'Lesson 1: Toxic Chemical Classifications'
+      );
+      expect(courseJson.modules[1].lessons[1].lesson_id).toBe('les_1_2');
+      expect(courseJson.modules[1].lessons[1].lesson_title).toBe(
+        'Lesson 2: Exposure Routes'
+      );
+
+      // Module 2: Continues sequentially from Lesson 3
+      expect(courseJson.modules[2].module_id).toBe('mod_2');
+      expect(courseJson.modules[2].module_title).toBe(
+        'Module 2: Emergency Response'
+      );
+      expect(courseJson.modules[2].lessons[0].lesson_id).toBe('les_2_3');
+      expect(courseJson.modules[2].lessons[0].lesson_title).toBe(
+        'Lesson 3: Incident Command'
       );
     });
 

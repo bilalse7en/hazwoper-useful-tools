@@ -443,6 +443,27 @@ export default function CourseJsonConverter() {
     return allTopics.filter((t) => t.moduleId === selectedModuleFilter);
   }, [allTopics, selectedModuleFilter]);
 
+  // Group filtered topics by module and lesson for structured dropdown preview
+  const groupedTopicSections = useMemo(() => {
+    const groups = [];
+    let currentGroup = null;
+
+    filteredTopics.forEach((top, idx) => {
+      const groupKey = `${top.moduleId}___${top.lessonId}`;
+      if (!currentGroup || currentGroup.key !== groupKey) {
+        currentGroup = {
+          key: groupKey,
+          label: `${top.moduleTitle} → ${top.lessonTitle}`,
+          topics: [],
+        };
+        groups.push(currentGroup);
+      }
+      currentGroup.topics.push({ ...top, globalIndex: idx });
+    });
+
+    return groups;
+  }, [filteredTopics]);
+
   // All quizzes flat list
   const allQuizzes = useMemo(() => {
     if (!courseJson || !Array.isArray(courseJson.modules)) return [];
@@ -1641,13 +1662,19 @@ export default function CourseJsonConverter() {
                         onChange={(e) =>
                           setSelectedTopicIndex(Number(e.target.value))
                         }
-                        className="h-8 text-xs font-semibold border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 bg-white dark:bg-slate-950 text-foreground w-full max-w-md truncate shadow-2xs"
+                        className="h-8 text-xs font-semibold border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 bg-white dark:bg-slate-950 text-foreground w-full max-w-lg truncate shadow-2xs"
                       >
-                        {filteredTopics.map((top, idx) => (
-                          <option key={top.id || idx} value={idx}>
-                            Topic {idx + 1} of {filteredTopics.length}:{' '}
-                            {top.name}
-                          </option>
+                        {groupedTopicSections.map((group) => (
+                          <optgroup key={group.key} label={group.label}>
+                            {group.topics.map((t) => (
+                              <option
+                                key={t.id || t.globalIndex}
+                                value={t.globalIndex}
+                              >
+                                Topic {t.globalIndex + 1}: {t.name}
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </div>

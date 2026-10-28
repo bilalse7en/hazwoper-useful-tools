@@ -284,12 +284,17 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
     (sortedModules[0].moduleNumber === 0 ||
       isIntroductoryModule(sortedModules[0].moduleTitle, detectedCourseTitle));
 
+  let globalLessonCounter = 1;
+
   // Sort lessons inside each module numerically by lessonNumber and sequence IDs
   sortedModules.forEach((mod, mIdx) => {
     if (hasModule0 && mIdx === 0) {
       mod.moduleIndex = 0;
       mod.moduleId = 'mod_0';
-      mod.moduleTitle = ensureModuleNumberPrefix(mod.moduleTitle, 0);
+      // User requirement: with course name module take it as module 0 and make it top but dont add module 0 with its name let it be
+      mod.moduleTitle =
+        (mod.moduleTitle || '').replace(/^module\s*0\s*[:\s_-]*/i, '').trim() ||
+        mod.moduleTitle;
       mod.lessons.sort((a, b) => {
         if (a.lessonNumber !== b.lessonNumber) {
           return a.lessonNumber - b.lessonNumber;
@@ -322,11 +327,14 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
           sensitivity: 'base',
         });
       });
-      mod.lessons.forEach((les, lIdx) => {
-        const realLesNum = lIdx + 1;
-        les.lessonIndex = realLesNum;
-        les.lessonId = `les_${realModNum}_${realLesNum}`;
-        les.lessonTitle = ensureLessonNumberPrefix(les.lessonTitle, realLesNum);
+      mod.lessons.forEach((les) => {
+        const currentLesNum = globalLessonCounter++;
+        les.lessonIndex = currentLesNum;
+        les.lessonId = `les_${realModNum}_${currentLesNum}`;
+        les.lessonTitle = ensureLessonNumberPrefix(
+          les.lessonTitle,
+          currentLesNum
+        );
       });
     }
   });
@@ -373,21 +381,26 @@ export async function convertCourseFolderSequentially(
       modules[0].moduleIndex === 0 ||
       isIntroductoryModule(modules[0].moduleTitle, hierarchy.courseTitle));
 
+  let globalLessonCounter = 1;
+
   for (let mIdx = 0; mIdx < modules.length; mIdx++) {
     const modConfig = modules[mIdx];
     const isMod0 = hasModule0 && mIdx === 0;
     const modNum = isMod0 ? 0 : hasModule0 ? mIdx : mIdx + 1;
     const moduleId = `mod_${modNum}`;
-    const moduleTitle =
-      modConfig.moduleTitle ||
-      ensureModuleNumberPrefix(modConfig.moduleTitle, modNum);
+    const moduleTitle = isMod0
+      ? (modConfig.moduleTitle || '')
+          .replace(/^module\s*0\s*[:\s_-]*/i, '')
+          .trim() || modConfig.moduleTitle
+      : modConfig.moduleTitle ||
+        ensureModuleNumberPrefix(modConfig.moduleTitle, modNum);
 
     const moduleLessons = [];
 
     for (let lIdx = 0; lIdx < modConfig.lessons.length; lIdx++) {
       const lesConfig = modConfig.lessons[lIdx];
       const isLes0 = isMod0 && lIdx === 0;
-      const lesNum = isLes0 ? 0 : isMod0 ? lIdx : lIdx + 1;
+      const lesNum = isLes0 ? 0 : globalLessonCounter++;
       const lessonId = `les_${modNum}_${lesNum}`;
       processedCount += 1;
 

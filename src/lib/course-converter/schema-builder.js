@@ -84,15 +84,13 @@ export function normalizeCourseHierarchy(
     const introMod = rawModules[introIndex];
     const restModules = rawModules.filter((_, idx) => idx !== introIndex);
 
-    // Build Module 0
+    // Build Module 0: Keep its title as it is (do NOT add "Module 0:" prefix)
     const rawIntroTitle = (introMod.module_title || '').trim();
-    let mod0Title = rawIntroTitle;
-    if (!/^module\s*0\b/i.test(mod0Title)) {
-      const cleanName = mod0Title
-        .replace(/^(?:module|unit|section)\s*\d*[:\s_-]*/i, '')
-        .trim();
-      mod0Title = `Module 0: ${cleanName || cleanCourse || 'Introduction'}`;
-    }
+    const mod0Title =
+      rawIntroTitle.replace(/^(?:module\s*0\s*[:\s_-]*)/i, '').trim() ||
+      rawIntroTitle ||
+      cleanCourse ||
+      'Introduction';
 
     const mod0Lessons = (introMod.lessons || []).map((les, lIdx) => {
       const lesId = `les_0_${lIdx}`;
@@ -134,19 +132,24 @@ export function normalizeCourseHierarchy(
       lessons: mod0Lessons,
     });
 
-    // Number remaining modules starting from Module 1
+    // Number remaining modules starting from Module 1, with sequential global lesson numbering across all modules
+    let globalLessonNumber = 1;
+
     restModules.forEach((mod, idx) => {
       const modNum = idx + 1;
       const modId = `mod_${modNum}`;
       const modTitle = ensureModuleNumberPrefix(mod.module_title, modNum);
 
-      const modLessons = (mod.lessons || []).map((les, lIdx) => {
-        const lesNum = lIdx + 1;
-        const lesId = `les_${modNum}_${lesNum}`;
-        const lesTitle = ensureLessonNumberPrefix(les.lesson_title, lesNum);
+      const modLessons = (mod.lessons || []).map((les) => {
+        const currentLesNum = globalLessonNumber++;
+        const lesId = `les_${modNum}_${currentLesNum}`;
+        const lesTitle = ensureLessonNumberPrefix(
+          les.lesson_title,
+          currentLesNum
+        );
         const formattedTopics = (les.topics || []).map((top, tIdx) => ({
           ...top,
-          id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
+          id: `top_${modNum}_${currentLesNum}_${tIdx + 1}`,
           lessonId: lesId,
           moduleId: modId,
         }));
@@ -167,19 +170,24 @@ export function normalizeCourseHierarchy(
       });
     });
   } else {
-    // No introductory module -> Modules start from Module 1
+    // No introductory module -> Modules start from Module 1, with sequential global lesson numbering across all modules
+    let globalLessonNumber = 1;
+
     rawModules.forEach((mod, idx) => {
       const modNum = idx + 1;
       const modId = `mod_${modNum}`;
       const modTitle = ensureModuleNumberPrefix(mod.module_title, modNum);
 
-      const modLessons = (mod.lessons || []).map((les, lIdx) => {
-        const lesNum = lIdx + 1;
-        const lesId = `les_${modNum}_${lesNum}`;
-        const lesTitle = ensureLessonNumberPrefix(les.lesson_title, lesNum);
+      const modLessons = (mod.lessons || []).map((les) => {
+        const currentLesNum = globalLessonNumber++;
+        const lesId = `les_${modNum}_${currentLesNum}`;
+        const lesTitle = ensureLessonNumberPrefix(
+          les.lesson_title,
+          currentLesNum
+        );
         const formattedTopics = (les.topics || []).map((top, tIdx) => ({
           ...top,
-          id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
+          id: `top_${modNum}_${currentLesNum}_${tIdx + 1}`,
           lessonId: lesId,
           moduleId: modId,
         }));

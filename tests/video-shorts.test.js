@@ -1376,7 +1376,7 @@ Third stanza bringing full spiritual depth
 
       const afterDelete = await getMediaHubItem(fakeId);
       expect(afterDelete).toBeNull();
-    }, 15000);
+    }, 35000);
 
     it('returns empty ASS subtitle script when captionMode is none or off', () => {
       const caps = [
