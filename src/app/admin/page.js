@@ -212,8 +212,18 @@ function AdminDashboard() {
                   </span>
                 )}
                 {!isMaster && u.role === 'course_creator' && (
-                  <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
                     ✨ Course Creator PRO
+                  </span>
+                )}
+                {!isMaster && u.role === 'blog_creator' && (
+                  <span className="px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                    📝 Blog Editor
+                  </span>
+                )}
+                {!isMaster && u.role === 'content_creator' && (
+                  <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                    🎨 Content Specialist
                   </span>
                 )}
               </div>
@@ -1016,8 +1026,20 @@ function AdminDashboard() {
     }
 
     const autoGrantGenerator =
-      newRole === 'admin' || newRole === 'course_creator';
+      newRole === 'admin' ||
+      newRole === 'superadmin' ||
+      newRole === 'course_creator' ||
+      newRole === 'blog_creator' ||
+      newRole === 'content_creator';
 
+    const autoGrantCourse =
+      newRole === 'admin' ||
+      newRole === 'superadmin' ||
+      newRole === 'course_creator';
+
+    const autoGrantAi = newRole === 'admin' || newRole === 'superadmin';
+
+    // Optimistic UI state update
     setUsers((prev) =>
       prev.map((u) =>
         u.id === userId
@@ -1027,33 +1049,107 @@ function AdminDashboard() {
               has_generator_access: autoGrantGenerator
                 ? true
                 : u.has_generator_access,
-              has_course_creator_access: autoGrantGenerator
+              has_course_creator_access: autoGrantCourse
                 ? true
                 : u.has_course_creator_access,
+              has_ai_access: autoGrantAi ? true : u.has_ai_access,
             }
           : u
       )
     );
 
+    // Sync localStorage if editing current user's profile
+    if (userId === currentUserId) {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.role = newRole;
+          if (autoGrantGenerator) parsed.has_generator_access = true;
+          if (autoGrantCourse) parsed.has_course_creator_access = true;
+          if (autoGrantAi) parsed.has_ai_access = true;
+          localStorage.setItem('user', JSON.stringify(parsed));
+        }
+      } catch {}
+    }
+
     try {
+      const updatePayload = {
+        role: newRole,
+        updated_at: new Date().toISOString(),
+        ...(autoGrantGenerator ? { has_generator_access: true } : {}),
+        ...(autoGrantCourse ? { has_course_creator_access: true } : {}),
+        ...(autoGrantAi ? { has_ai_access: true } : {}),
+      };
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          role: newRole,
-          ...(autoGrantGenerator
-            ? { has_generator_access: true, has_course_creator_access: true }
-            : {}),
-        })
+        .update(updatePayload)
         .eq('id', userId);
 
-      if (error) throw error;
+      if (error) {
+        // Detect PostgreSQL Check Constraint Violation (error code 23514 / profiles_role_check)
+        const isConstraintViolation =
+          error.code === '23514' ||
+          String(error.message || '').includes('profiles_role_check');
+
+        if (isConstraintViolation) {
+          console.warn(
+            '[Admin] profiles_role_check constraint triggered. Applying permissions flags fallback...',
+            error
+          );
+
+          // Graceful database fallback: grant permission flags without writing the restricted role string
+          const fallbackPayload = {
+            updated_at: new Date().toISOString(),
+            ...(autoGrantGenerator ? { has_generator_access: true } : {}),
+            ...(autoGrantCourse ? { has_course_creator_access: true } : {}),
+            ...(autoGrantAi ? { has_ai_access: true } : {}),
+          };
+
+          const { error: fallbackError } = await supabase
+            .from('profiles')
+            .update(fallbackPayload)
+            .eq('id', userId);
+
+          if (fallbackError) {
+            console.error('[Admin] Fallback update error:', fallbackError);
+          }
+
+          const sqlFix = `ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;\nALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('admin', 'superadmin', 'course_creator', 'blog_creator', 'content_creator', 'user'));`;
+
+          showConfirm({
+            title: 'Supabase Role Constraint Detected',
+            text: `Permissions for ${newRole.replace('_', ' ').toUpperCase()} were activated! However, your Supabase PostgreSQL table has a legacy check constraint ("profiles_role_check") that restricts the role text column. Run the SQL fix in your Supabase SQL editor to allow all roles permanently.`,
+            icon: 'warning',
+            confirmButtonText: '📋 Copy SQL Fix',
+            cancelButtonText: 'Dismiss',
+          }).then((res) => {
+            if (res.isConfirmed) {
+              if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText(sqlFix);
+                showToast('SQL Fix copied to clipboard!', 'success');
+              }
+            }
+          });
+
+          // Do NOT call fetchUsers() rollback — keep optimistic role and updated permissions active
+          return;
+        }
+
+        throw error;
+      }
+
       showSuccess(
         'Role Reconfigured',
         `User clearance upgraded to ${newRole.replace('_', ' ').toUpperCase()} by Master Admin.`
       );
     } catch (err) {
       console.error('Error updating role:', err);
-      showToast('Role update failed', 'error');
+      showToast(
+        'Role update failed: ' + (err.message || 'Database error'),
+        'error'
+      );
       await fetchUsers(true);
     }
   }
@@ -1671,20 +1767,78 @@ function AdminDashboard() {
           </div>
         )}
 
-        <div className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card/80 dark:bg-black/50 text-foreground transition-all border border-border space-y-4 shadow-sm relative overflow-hidden group">
+        <div className="p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-card/80 dark:bg-black/50 text-foreground transition-all border border-border space-y-5 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 opacity-5 scale-150 rotate-12 group-hover:rotate-0 transition-transform duration-1000 pointer-events-none">
             <Shield className="w-48 h-48" />
           </div>
-          <div className="relative z-10">
-            <h3 className="text-lg sm:text-xl font-black flex items-center gap-2.5">
-              <code className="bg-primary/10 px-2.5 py-0.5 rounded-lg text-primary text-xs sm:text-sm font-mono">
-                SQL
-              </code>{' '}
-              Override Guide
-            </h3>
-            <pre className="bg-black/50 p-4 sm:p-5 rounded-xl mt-3 border border-white/10 font-mono text-xs sm:text-sm overflow-x-auto">
-              {`UPDATE public.profiles SET role = 'admin', has_generator_access = true WHERE email = 'architect@example.com';`}
-            </pre>
+          <div className="relative z-10 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-lg sm:text-xl font-black flex items-center gap-2.5">
+                <code className="bg-primary/10 px-2.5 py-0.5 rounded-lg text-primary text-xs sm:text-sm font-mono">
+                  SQL
+                </code>{' '}
+                Database & Role Configuration Guide
+              </h3>
+              <Badge
+                variant="outline"
+                className="text-[10px] font-mono text-muted-foreground border-border"
+              >
+                Supabase SQL Editor Ready
+              </Badge>
+            </div>
+
+            {/* Constraint Fix Box */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-amber-500 dark:text-amber-400">
+                <span>
+                  ⚡ Fix Role Check Constraint (Error 23514 /
+                  profiles_role_check):
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sql = `ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;\nALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('admin', 'superadmin', 'course_creator', 'blog_creator', 'content_creator', 'user'));`;
+                    navigator.clipboard?.writeText(sql);
+                    showToast(
+                      'Constraint Fix SQL copied to clipboard!',
+                      'success'
+                    );
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-all cursor-pointer border border-amber-500/30"
+                >
+                  <Copy className="w-3 h-3" />
+                  Copy Constraint Fix
+                </button>
+              </div>
+              <pre className="bg-black/60 p-3.5 rounded-xl border border-white/10 font-mono text-xs text-amber-300 dark:text-amber-200 overflow-x-auto select-all">
+                {`ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;\nALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('admin', 'superadmin', 'course_creator', 'blog_creator', 'content_creator', 'user'));`}
+              </pre>
+            </div>
+
+            {/* Admin Override Box */}
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                <span>👑 Manual Direct Admin Escalation:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sql = `UPDATE public.profiles SET role = 'admin', has_generator_access = true, has_course_creator_access = true, has_ai_access = true WHERE email = 'architect@example.com';`;
+                    navigator.clipboard?.writeText(sql);
+                    showToast(
+                      'Admin Escalation SQL copied to clipboard!',
+                      'success'
+                    );
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-all cursor-pointer border border-primary/30"
+                >
+                  <Copy className="w-3 h-3" />
+                  Copy Escalation SQL
+                </button>
+              </div>
+              <pre className="bg-black/50 p-3.5 rounded-xl border border-white/10 font-mono text-xs text-muted-foreground overflow-x-auto select-all">
+                {`UPDATE public.profiles SET role = 'admin', has_generator_access = true, has_course_creator_access = true, has_ai_access = true WHERE email = 'architect@example.com';`}
+              </pre>
+            </div>
           </div>
         </div>
       </div>

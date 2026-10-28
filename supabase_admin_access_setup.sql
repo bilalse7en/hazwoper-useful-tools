@@ -79,7 +79,17 @@ BEGIN
     ) THEN
         ALTER TABLE public.profiles ADD COLUMN last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
     END IF;
+
+    -- Safely drop old or restrictive check constraint if it exists on role (fixes error 23514 / profiles_role_check)
+    ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+    ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check 
+        CHECK (role IN ('admin', 'superadmin', 'course_creator', 'blog_creator', 'content_creator', 'user'));
 END $$;
+
+-- Fix role check constraint explicitly (runs safely regardless of DO block)
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check 
+    CHECK (role IN ('admin', 'superadmin', 'course_creator', 'blog_creator', 'content_creator', 'user'));
 
 -- Add comments for documentation
 COMMENT ON COLUMN public.profiles.role IS 'User authorization role: admin, superadmin, course_creator, blog_creator, content_creator, user';
@@ -178,6 +188,39 @@ BEGIN
     END IF;
 
     RETURN 'Successfully upgraded ' || target_email || ' to role: ' || target_role;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Master Function: Set user role by ID
+CREATE OR REPLACE FUNCTION public.set_user_role_by_id(target_user_id UUID, target_role TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    matched_count INTEGER;
+BEGIN
+    UPDATE public.profiles
+    SET role = target_role,
+        has_generator_access = CASE 
+            WHEN target_role IN ('admin', 'superadmin', 'course_creator') THEN TRUE 
+            ELSE has_generator_access 
+        END,
+        has_course_creator_access = CASE 
+            WHEN target_role IN ('admin', 'superadmin', 'course_creator') THEN TRUE 
+            ELSE has_course_creator_access 
+        END,
+        has_ai_access = CASE 
+            WHEN target_role IN ('admin', 'superadmin') THEN TRUE 
+            ELSE has_ai_access 
+        END,
+        updated_at = timezone('utc'::text, now())
+    WHERE id = target_user_id;
+
+    GET DIAGNOSTICS matched_count = ROW_COUNT;
+
+    IF matched_count = 0 THEN
+        RETURN 'No profile found with id: ' || target_user_id;
+    END IF;
+
+    RETURN 'Successfully upgraded user to role: ' || target_role;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
