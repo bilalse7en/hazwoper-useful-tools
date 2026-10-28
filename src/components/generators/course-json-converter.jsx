@@ -34,17 +34,26 @@ import {
   Edit3,
   Save,
   FileEdit,
+  Sparkles,
+  Wand2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { loadPdfJs } from '@/lib/pdf-js-loader';
 import {
   convertDocumentToCourseJson,
   validateCourseJson,
   buildCourseJson,
+  enhanceAndCleanCourseJson,
   groupFilesByCourseHierarchy,
   convertCourseFolderSequentially,
   wrapInLmsContainer,
@@ -63,6 +72,11 @@ export default function CourseJsonConverter() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processStep, setProcessStep] = useState('');
   const [error, setError] = useState(null);
+
+  // Enhance & Clean JSON state
+  const [showEnhanceModal, setShowEnhanceModal] = useState(false);
+  const [rawJsonInput, setRawJsonInput] = useState('');
+  const [enhanceSuccessMessage, setEnhanceSuccessMessage] = useState('');
 
   // Folder & Multi-File state
   const [folderHierarchy, setFolderHierarchy] = useState(null);
@@ -641,6 +655,67 @@ export default function CourseJsonConverter() {
     setValidation(val);
   };
 
+  /**
+   * Dynamically toggle Images on/off across loaded courseJson
+   * When turned OFF: purges images, file codes, and slide titles from all slides
+   */
+  const handleToggleImages = (newIncludeImages) => {
+    setIncludeImages(newIncludeImages);
+    if (!courseJson) return;
+
+    try {
+      const res = enhanceAndCleanCourseJson(courseJson, {
+        stripImages: !newIncludeImages,
+        includeQuizzes,
+        course_title: courseJson.course_title,
+      });
+      if (res.success && res.courseJson) {
+        setCourseJson(res.courseJson);
+        setValidation(res.validation);
+        setEnhanceSuccessMessage(
+          !newIncludeImages
+            ? 'Images OFF: Removed images, file codes, and slide titles from all slides.'
+            : 'Images ON: Preserving image elements and references.'
+        );
+        setTimeout(() => setEnhanceSuccessMessage(''), 4000);
+      }
+    } catch (err) {
+      console.error('Error toggling images on JSON:', err);
+    }
+  };
+
+  /**
+   * Enhances and cleans JSON:
+   * - Applies Module 0 & Lesson 0 Introduction rules
+   * - Enforces Lesson 1:, Lesson 2:, Lesson 3: numbering
+   * - Strips images, file codes, and slide titles from content if Images are OFF
+   * - Sanitizes HTML into single parent <div> without classes/styles
+   * - Recalculates durations and schema health
+   */
+  const handleEnhanceJson = (customJson = null) => {
+    try {
+      const target = customJson || rawJsonInput || courseJson;
+      if (!target) return;
+      const res = enhanceAndCleanCourseJson(target, {
+        stripImages: !includeImages,
+        includeQuizzes,
+      });
+      if (res.success && res.courseJson) {
+        setCourseJson(res.courseJson);
+        setValidation(res.validation);
+        setEnhanceSuccessMessage(
+          'JSON enhanced & cleaned! Module 0: Introduction rules applied, lessons formatted, slide titles & file codes purged, clean HTML verified.'
+        );
+        setShowEnhanceModal(false);
+        setRawJsonInput('');
+        setTimeout(() => setEnhanceSuccessMessage(''), 5000);
+      }
+    } catch (err) {
+      console.error('Enhance JSON error:', err);
+      alert('Invalid JSON structure: ' + err.message);
+    }
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 py-6 px-4">
       {/* Header */}
@@ -699,6 +774,23 @@ export default function CourseJsonConverter() {
             )}
           </Button>
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (courseJson) {
+                handleEnhanceJson();
+              } else {
+                setShowEnhanceModal(true);
+              }
+            }}
+            className="gap-1.5 border-purple-300 dark:border-purple-800 bg-purple-50/70 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-xs shadow-2xs font-semibold"
+            title="Enhance & Clean Code: apply Module 0 / Introduction rules, format lesson numbering, purge slide titles & file codes"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+            {courseJson ? 'Enhance & Clean JSON' : 'Enhance JSON'}
+          </Button>
+
           {courseJson && (
             <>
               <Button
@@ -735,6 +827,23 @@ export default function CourseJsonConverter() {
           )}
         </div>
       </div>
+
+      {/* Enhance / Clean Notification Banner */}
+      {enhanceSuccessMessage && (
+        <div className="p-3.5 rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 text-xs flex items-center justify-between shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+            <span className="font-medium">{enhanceSuccessMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEnhanceSuccessMessage('')}
+            className="text-purple-600 hover:text-purple-800 text-xs font-bold px-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Mode Selection & File Dropzone */}
       <div
@@ -892,7 +1001,7 @@ export default function CourseJsonConverter() {
                   <div className="flex flex-col gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setIncludeImages(false)}
+                      onClick={() => handleToggleImages(false)}
                       className={cn(
                         'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
                         !includeImages
@@ -907,7 +1016,8 @@ export default function CourseJsonConverter() {
                             Skip Images (OFF)
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            Extract codes, clean pure body HTML
+                            Remove images, file codes &amp; slide titles from
+                            content
                           </div>
                         </div>
                       </div>
@@ -918,7 +1028,7 @@ export default function CourseJsonConverter() {
 
                     <button
                       type="button"
-                      onClick={() => setIncludeImages(true)}
+                      onClick={() => handleToggleImages(true)}
                       className={cn(
                         'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
                         includeImages
@@ -2091,18 +2201,29 @@ export default function CourseJsonConverter() {
                       Full LMS Course Payload (
                       {JSON.stringify(courseJson).length} bytes)
                     </span>
-                    <button
-                      type="button"
-                      onClick={handleCopy}
-                      className="text-blue-400 hover:underline flex items-center gap-1"
-                    >
-                      {copied ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                      {copied ? 'Copied' : 'Copy'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleEnhanceJson()}
+                        className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 font-medium"
+                        title="Enhance & Clean Code: apply Module 0 / Introduction, format lesson numbering, purge slide titles & file codes"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        Enhance &amp; Clean Code
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopy}
+                        className="text-blue-400 hover:underline flex items-center gap-1"
+                      >
+                        {copied ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                        {copied ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
                   </div>
                   <pre className="whitespace-pre-wrap leading-relaxed">
                     {JSON.stringify(courseJson, null, 2)}
@@ -2113,6 +2234,62 @@ export default function CourseJsonConverter() {
           )}
         </div>
       </div>
+
+      {/* Enhance & Clean JSON Modal */}
+      <Dialog open={showEnhanceModal} onOpenChange={setShowEnhanceModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Enhance &amp; Clean Course JSON
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Paste any raw or existing Course JSON below to automatically
+              format, sanitize HTML into single parent &lt;div&gt; containers,
+              apply <strong>Module 0: Introduction</strong> rules, enforce
+              consistent <strong>Lesson 1:, Lesson 2:, Lesson 3:</strong>{' '}
+              numbering, and purge unwanted image file codes and slide titles
+              from slide content.
+            </p>
+
+            <textarea
+              value={rawJsonInput}
+              onChange={(e) => setRawJsonInput(e.target.value)}
+              placeholder='Paste your course JSON here... { "course_title": "...", "modules": [...] }'
+              rows={10}
+              className="w-full font-mono text-xs p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-950 text-emerald-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="text-[11px] text-slate-500">
+                LMS JSON Schema built-in format is 100% preserved.
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowEnhanceModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!rawJsonInput.trim()}
+                  onClick={() => handleEnhanceJson()}
+                  className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Enhance, Clean &amp; Load JSON
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

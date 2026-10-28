@@ -152,16 +152,16 @@ export function purgeInitialStageArtifacts(rawHtml, options = {}) {
     html = html.replace(/<img[^>]*>/gi, '');
   }
 
-  // Standalone and leading Slide markers are ALWAYS stripped regardless of image mode
-  // 5. Strip pure Slide markers (e.g. <p><strong>Slide 3</strong></p>, <h3>Slide 4</h3>, <div>Slide 5</div>)
+  // Standalone and leading Slide markers & Slide Titles are stripped
+  // 5. Strip pure Slide markers and Slide Title tags (e.g. <p><strong>Slide 3</strong></p>, <p>Slide Title</p>, <h3>Slide 4</h3>, <div>Slide 5</div>)
   html = html.replace(
-    /<(p|h[1-6]|div|li)[^>]*>(?:\s*<[^>]+>)*\s*Slide\s*\d+\s*(?:<\/[^>]+>\s*)*<\/\1>/gi,
+    /<(p|h[1-6]|div|li)[^>]*>(?:\s*<[^>]+>)*\s*(?:Slide\s*\d+|Slide\s*Title|Slide\s*Name)\s*[:.\-–—]*\s*(?:<\/[^>]+>\s*)*<\/\1>/gi,
     ''
   );
 
-  // 6. Strip leading Slide markers from content paragraphs/headings (e.g. <p>Slide 1: Content...</p> -> <p>Content...</p>)
+  // 6. Strip leading Slide markers and Slide Title prefixes from content paragraphs/headings (e.g. <p>Slide 1: Content...</p> -> <p>Content...</p>)
   html = html.replace(
-    /(<(?:p|h[1-6]|li)[^>]*>(?:\s*<[^>]+>)*)\s*Slide\s*\d+\s*[:.\-–—]*\s*(?:<\/[^>]+>\s*)*(?=\S)/gi,
+    /(<(?:p|h[1-6]|li)[^>]*>(?:\s*<[^>]+>)*)\s*(?:Slide\s*\d+\s*[:.\-–—]*|Slide\s*Title\s*[:.\-–—]*)+\s*(?:<\/[^>]+>\s*)*(?=\S)/gi,
     '$1'
   );
 
@@ -192,18 +192,31 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   html = html.replace(/<\/?font[^>]*>/gi, '');
   html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
 
-  // 4. Strip pure slide markers (e.g. <p><strong>Slide 3 </strong></p>, <p>Slide 5</p>, <h3>Slide 6</h3>, <div>Slide 7</div>)
+  // 4. Strip pure slide markers and Slide Titles (e.g. <p><strong>Slide 3 </strong></p>, <p>Slide Title</p>, <h3>Slide 6</h3>, <div>Slide 7</div>)
   // Standalone slide markers are PowerPoint/Word layout artifacts, not educational reading content
   html = html.replace(
-    /<(?:p|h[1-6]|div)[^>]*>\s*(?:<[^>]+>\s*)*Slide\s*\d+\s*(?:<[^>]+>\s*)*<\/(?:p|h[1-6]|div)>/gi,
+    /<(?:p|h[1-6]|div)[^>]*>\s*(?:<[^>]+>\s*)*(?:Slide\s*\d+|Slide\s*Title|Slide\s*Name)\s*[:.\-–—]*\s*(?:<[^>]+>\s*)*<\/(?:p|h[1-6]|div)>/gi,
     ''
   );
 
-  // Strip leading slide markers from content paragraphs/headings (e.g. <p><strong>Slide 1:</strong> Content here</p> -> <p>Content here</p>)
+  // Strip leading slide markers and Slide Title prefixes from content paragraphs/headings (e.g. <p><strong>Slide 1:</strong> Content here</p> -> <p>Content here</p>)
   html = html.replace(
-    /(<(?:p|h[2-6]|li)[^>]*>(?:\s*<[^>]+>)*)\s*Slide\s*\d+\s*[:.\-–—]*\s*(?:<\/[^>]+>\s*)*(?=\S)/gi,
+    /(<(?:p|h[2-6]|li)[^>]*>(?:\s*<[^>]+>)*)\s*(?:Slide\s*\d+\s*[:.\-–—]*|Slide\s*Title\s*[:.\-–—]*)+\s*(?:<\/[^>]+>\s*)*(?=\S)/gi,
     '$1'
   );
+
+  // If topicTitle is provided and stripImages is true, strip any leading paragraph or heading repeating the topic title
+  if (options.topicTitle && stripImages) {
+    const escapedTitle = options.topicTitle.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&'
+    );
+    const titleRegex = new RegExp(
+      `^\\s*<(?:p|h[1-6]|div)[^>]*>(?:\\s*<[^>]+>)*\\s*${escapedTitle}\\s*(?:<\\/[^>]+>\\s*)*<\\/(?:p|h[1-6]|div)>`,
+      'i'
+    );
+    html = html.replace(titleRegex, '');
+  }
 
   // 5. Strip images, image links, FILE # codes, and prompts if stripImages is enabled
   if (stripImages) {

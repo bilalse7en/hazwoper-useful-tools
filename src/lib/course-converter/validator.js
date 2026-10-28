@@ -333,7 +333,7 @@ export function validateCourseJson(courseJson) {
   for (const t of allTopics) {
     if (
       t.selectedTemplate !== 1 ||
-      t.slide_type !== 'image' ||
+      (t.slide_type !== 'image' && t.slide_type !== 'content') ||
       t.leftDiv?.width !== 'col-12'
     ) {
       invalidDefaults += 1;
@@ -346,7 +346,7 @@ export function validateCourseJson(courseJson) {
     passedDefaults,
     passedDefaults ? 'info' : 'warning',
     passedDefaults
-      ? 'All topics correctly configured with selectedTemplate: 1, slide_type: "image", width: "col-12".'
+      ? 'All topics correctly configured with selectedTemplate: 1, valid slide_type ("image" or "content"), width: "col-12".'
       : `${invalidDefaults} topic(s) deviate from required LMS slide defaults.`
   );
 

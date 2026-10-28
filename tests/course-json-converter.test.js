@@ -746,5 +746,190 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(validation.score).toBe(100);
       expect(validation.summary.errors).toBe(0);
     });
+
+    it('enforces Module 0 & Lesson 0 Introduction rules when a module matches the course title', () => {
+      const mockRawData = {
+        course_id: 'course_hazwoper_40',
+        courseTitle: 'HAZWOPER 40-Hour Training',
+        modules: [
+          {
+            module_id: 'mod_1',
+            module_title: 'Module 1: Chemical Safety & Toxicology',
+            lessons: [
+              {
+                lesson_id: 'les_1_1',
+                lesson_title: 'Toxic Chemical Classifications',
+                topics: [
+                  {
+                    id: 'top_1_1_1',
+                    name: 'Toxicology Basics',
+                    allocated_duration_seconds: 40,
+                    leftDiv: {
+                      editorHtml: '<div><p>Chemical exposure limits.</p></div>',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            module_id: 'mod_2',
+            module_title: 'HAZWOPER 40-Hour Training Overview',
+            lessons: [
+              {
+                lesson_id: 'les_2_1',
+                lesson_title: 'Lesson 0',
+                topics: [
+                  {
+                    id: 'top_2_1_1',
+                    name: 'Course Scope & Welcome',
+                    allocated_duration_seconds: 30,
+                    leftDiv: {
+                      editorHtml:
+                        '<div><p>Welcome to 40-hour training.</p></div>',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const courseJson = buildCourseJson(mockRawData);
+
+      // Module with course title MUST become Module 0 and be on top (index 0)
+      expect(courseJson.modules[0].module_id).toBe('mod_0');
+      expect(courseJson.modules[0].module_title).toContain('Module 0:');
+
+      // Inside Module 0, Lesson 0 MUST be strictly named "Introduction" instead of "Lesson 0"
+      expect(courseJson.modules[0].lessons[0].lesson_id).toBe('les_0_0');
+      expect(courseJson.modules[0].lessons[0].lesson_title).toBe(
+        'Introduction'
+      );
+
+      // The subsequent module MUST be Module 1 with Lesson 1: prefix
+      expect(courseJson.modules[1].module_id).toBe('mod_1');
+      expect(courseJson.modules[1].module_title).toContain('Module 1:');
+      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_1_1');
+      expect(courseJson.modules[1].lessons[0].lesson_title).toBe(
+        'Lesson 1: Toxic Chemical Classifications'
+      );
+    });
+
+    it('removes images, file codes, and slide titles when images are OFF', () => {
+      const rawHtml = `
+        <h1>Topic 1: Electrical Service</h1>
+        <p><strong>Slide 1: Electrical Service</strong></p>
+        <p>Slide Title: Utility Power Entrance</p>
+        <p><img src="https://ftcdn.net/sample.jpg" alt="switchgear" /></p>
+        <p>FILE #: 2315646879</p>
+        <p>#43500089</p>
+        <p>Primary utility service switchgear distributes high-voltage current safely.</p>
+      `;
+
+      const mockData = {
+        courseTitle: 'Electrical Training',
+        topics: [
+          {
+            id: 'top_1_1_1',
+            name: 'Topic 1: Electrical Service',
+            headingContent: 'Topic 1: Electrical Service',
+            slide_type: 'image',
+            image_source: '#2315646879',
+            image_code: '#2315646879',
+            image_prompt: 'High-res switchgear photo',
+            has_embedded_image: true,
+            leftDiv: {
+              image: { isImage: true, imageURL: '#2315646879' },
+              editorHtml: rawHtml,
+            },
+          },
+        ],
+      };
+
+      const courseJson = buildCourseJson(mockData, { stripImages: true });
+      const topic = courseJson.modules[0].lessons[0].topics[0];
+
+      // Verifies all image codes and slide type are converted
+      expect(topic.slide_type).toBe('content');
+      expect(topic.image_source).toBe('');
+      expect(topic.image_code).toBe('');
+      expect(topic.image_prompt).toBe('');
+      expect(topic.has_embedded_image).toBe(false);
+      expect(topic.leftDiv.image.isImage).toBe(false);
+
+      // Verifies HTML content is purged of img, file codes, and slide title repetitions
+      const cleanHtml = topic.leftDiv.editorHtml;
+      expect(cleanHtml).not.toContain('<img');
+      expect(cleanHtml).not.toContain('2315646879');
+      expect(cleanHtml).not.toContain('#43500089');
+      expect(cleanHtml).not.toContain('Slide Title');
+      expect(cleanHtml).not.toContain('Slide 1:');
+      expect(cleanHtml).toContain(
+        'Primary utility service switchgear distributes high-voltage current safely.'
+      );
+    });
+
+    it('enhanceAndCleanCourseJson cleans and validates arbitrary JSON payloads', () => {
+      const legacyJson = {
+        course_id: 'legacy_course',
+        course_title: 'Confined Space Safety',
+        modules: [
+          {
+            module_id: 'mod_1',
+            module_title: 'Confined Space Overview',
+            lessons: [
+              {
+                lesson_id: 'les_1',
+                lesson_title: 'Lesson 0',
+                topics: [
+                  {
+                    id: 'top_1',
+                    name: 'Course Intro',
+                    slide_type: 'image',
+                    image_code: '#99887766',
+                    has_embedded_image: true,
+                    leftDiv: {
+                      editorHtml:
+                        '<p class="MsoNormal">Slide 1: Course Intro</p><p>FILE #: 99887766</p><p>Proper entry protocols.</p>',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const { success, courseJson, validation } = buildCourseJson
+        ? import('../src/lib/course-converter/schema-builder.js').then((m) =>
+            m.enhanceAndCleanCourseJson(legacyJson, { stripImages: true })
+          )
+        : {};
+
+      return import('../src/lib/course-converter/schema-builder.js').then(
+        (m) => {
+          const res = m.enhanceAndCleanCourseJson(legacyJson, {
+            stripImages: true,
+          });
+          expect(res.success).toBe(true);
+          expect(res.courseJson.modules[0].module_id).toBe('mod_0');
+          expect(res.courseJson.modules[0].lessons[0].lesson_title).toBe(
+            'Introduction'
+          );
+          expect(
+            res.courseJson.modules[0].lessons[0].topics[0].slide_type
+          ).toBe('content');
+          expect(
+            res.courseJson.modules[0].lessons[0].topics[0].leftDiv.editorHtml
+          ).not.toContain('FILE #:');
+          expect(
+            res.courseJson.modules[0].lessons[0].topics[0].leftDiv.editorHtml
+          ).not.toContain('Slide 1');
+          expect(res.validation.isValid).toBe(true);
+        }
+      );
+    });
   });
 });

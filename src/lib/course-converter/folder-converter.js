@@ -20,8 +20,12 @@ import { validateCourseJson } from './validator.js';
  * e.g. "Utility Power Entry" -> "Lesson 1: Utility Power Entry"
  * e.g. "Lesson 1_Utility Power Entry" -> "Lesson 1: Utility Power Entry"
  * e.g. "Lesson 2: Transformers" -> "Lesson 2: Transformers"
+ * When lessonNumber is 0, strictly returns "Introduction" (never "Lesson 0")
  */
 export function ensureLessonNumberPrefix(title, lessonNumber) {
+  if (lessonNumber === 0) {
+    return 'Introduction';
+  }
   if (!title) return `Lesson ${lessonNumber}`;
   const clean = title.trim();
   const match = clean.match(/^(?:Lesson|Chapter)\s*\d+[\s_:-]+(.*)$/i);
@@ -30,6 +34,62 @@ export function ensureLessonNumberPrefix(title, lessonNumber) {
     return `Lesson ${lessonNumber}: ${rest}`;
   }
   return `Lesson ${lessonNumber}: ${clean}`;
+}
+
+/**
+ * Ensures a module title starts with the exact, properly formatted "Module {number}: " prefix
+ * e.g. "Utility Interconnection" -> "Module 1: Utility Interconnection"
+ * When moduleNumber is 0, formats as "Module 0: {title}" or "Module 0: Introduction"
+ */
+export function ensureModuleNumberPrefix(title, moduleNumber) {
+  if (moduleNumber === 0) {
+    if (!title) return 'Module 0: Introduction';
+    const clean = title.trim();
+    if (/^module\s*0\b/i.test(clean)) return clean;
+    const rest = clean
+      .replace(/^(?:Module|Unit|Section)\s*\d*[\s_:-]*/i, '')
+      .trim();
+    return `Module 0: ${rest || 'Introduction'}`;
+  }
+  if (!title) return `Module ${moduleNumber}`;
+  const clean = title.trim();
+  const match = clean.match(/^(?:Module|Unit|Section)\s*\d+[\s_:-]+(.*)$/i);
+  if (match) {
+    const rest = match[1].trim().replace(/^[-_:\s]+/, '');
+    return `Module ${moduleNumber}: ${rest}`;
+  }
+  return `Module ${moduleNumber}: ${clean}`;
+}
+
+/**
+ * Checks if a module is an introductory module or matches the course title
+ */
+export function isIntroductoryModule(moduleTitle = '', courseTitle = '') {
+  if (!moduleTitle) return false;
+  const cleanMod = moduleTitle.toLowerCase().trim();
+  const cleanCourse = (courseTitle || '').toLowerCase().trim();
+
+  if (
+    /\b(?:module\s*0\b|intro(?:duction)?\b|overview\b|course\s*overview\b|syllabus\b)/i.test(
+      cleanMod
+    )
+  ) {
+    return true;
+  }
+  if (cleanCourse && cleanCourse.length > 3) {
+    const modWithoutPrefix = cleanMod
+      .replace(/^(?:module|unit|section)\s*\d*[:\s_-]*/i, '')
+      .trim();
+    if (
+      modWithoutPrefix &&
+      (modWithoutPrefix === cleanCourse ||
+        modWithoutPrefix.includes(cleanCourse) ||
+        cleanCourse.includes(modWithoutPrefix))
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -207,23 +267,68 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
     });
   });
 
-  // Sort lessons inside each module numerically by lessonNumber
+  // Check if any module is an introductory module matching the course title or titled "Module 0" / "Introduction"
+  const introIndex = sortedModules.findIndex(
+    (m) =>
+      m.moduleNumber === 0 ||
+      isIntroductoryModule(m.moduleTitle, detectedCourseTitle)
+  );
+
+  if (introIndex > 0) {
+    const [introMod] = sortedModules.splice(introIndex, 1);
+    sortedModules.unshift(introMod);
+  }
+
+  const hasModule0 =
+    sortedModules.length > 0 &&
+    (sortedModules[0].moduleNumber === 0 ||
+      isIntroductoryModule(sortedModules[0].moduleTitle, detectedCourseTitle));
+
+  // Sort lessons inside each module numerically by lessonNumber and sequence IDs
   sortedModules.forEach((mod, mIdx) => {
-    mod.moduleIndex = mIdx + 1;
-    mod.moduleId = `mod_${mIdx + 1}`;
-    mod.lessons.sort((a, b) => {
-      if (a.lessonNumber !== b.lessonNumber) {
-        return a.lessonNumber - b.lessonNumber;
-      }
-      return a.lessonTitle.localeCompare(b.lessonTitle, undefined, {
-        numeric: true,
-        sensitivity: 'base',
+    if (hasModule0 && mIdx === 0) {
+      mod.moduleIndex = 0;
+      mod.moduleId = 'mod_0';
+      mod.moduleTitle = ensureModuleNumberPrefix(mod.moduleTitle, 0);
+      mod.lessons.sort((a, b) => {
+        if (a.lessonNumber !== b.lessonNumber) {
+          return a.lessonNumber - b.lessonNumber;
+        }
+        return a.lessonTitle.localeCompare(b.lessonTitle, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
       });
-    });
-    mod.lessons.forEach((les, lIdx) => {
-      les.lessonIndex = lIdx + 1;
-      les.lessonId = `les_${mIdx + 1}_${lIdx + 1}`;
-    });
+      mod.lessons.forEach((les, lIdx) => {
+        les.lessonIndex = lIdx;
+        les.lessonId = `les_0_${lIdx}`;
+        // Lesson 0 is strictly named "Introduction" instead of "Lesson 0"
+        les.lessonTitle =
+          lIdx === 0
+            ? 'Introduction'
+            : ensureLessonNumberPrefix(les.lessonTitle, lIdx);
+      });
+    } else {
+      const realModNum = hasModule0 ? mIdx : mIdx + 1;
+      mod.moduleIndex = realModNum;
+      mod.moduleId = `mod_${realModNum}`;
+      mod.moduleTitle = ensureModuleNumberPrefix(mod.moduleTitle, realModNum);
+      mod.lessons.sort((a, b) => {
+        if (a.lessonNumber !== b.lessonNumber) {
+          return a.lessonNumber - b.lessonNumber;
+        }
+        return a.lessonTitle.localeCompare(b.lessonTitle, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      });
+      mod.lessons.forEach((les, lIdx) => {
+        const realLesNum = lIdx + 1;
+        les.lessonIndex = realLesNum;
+        les.lessonId = `les_${realModNum}_${realLesNum}`;
+        les.lessonTitle = ensureLessonNumberPrefix(les.lessonTitle, realLesNum);
+      });
+    }
   });
 
   return {
@@ -262,17 +367,27 @@ export async function convertCourseFolderSequentially(
   let detectedHeaderCourseTitle = '';
   const constructedModules = [];
 
+  const hasModule0 =
+    modules.length > 0 &&
+    (modules[0].moduleId === 'mod_0' ||
+      modules[0].moduleIndex === 0 ||
+      isIntroductoryModule(modules[0].moduleTitle, hierarchy.courseTitle));
+
   for (let mIdx = 0; mIdx < modules.length; mIdx++) {
     const modConfig = modules[mIdx];
-    const modNum = mIdx + 1;
+    const isMod0 = hasModule0 && mIdx === 0;
+    const modNum = isMod0 ? 0 : hasModule0 ? mIdx : mIdx + 1;
     const moduleId = `mod_${modNum}`;
-    const moduleTitle = modConfig.moduleTitle || `Module ${modNum}`;
+    const moduleTitle =
+      modConfig.moduleTitle ||
+      ensureModuleNumberPrefix(modConfig.moduleTitle, modNum);
 
     const moduleLessons = [];
 
     for (let lIdx = 0; lIdx < modConfig.lessons.length; lIdx++) {
       const lesConfig = modConfig.lessons[lIdx];
-      const lesNum = lIdx + 1;
+      const isLes0 = isMod0 && lIdx === 0;
+      const lesNum = isLes0 ? 0 : isMod0 ? lIdx : lIdx + 1;
       const lessonId = `les_${modNum}_${lesNum}`;
       processedCount += 1;
 
@@ -336,11 +451,10 @@ export async function convertCourseFolderSequentially(
           ? parsedData.lessonTitle
           : lesConfig.lessonTitle;
 
-      // Strictly ensure every lesson title is properly prefixed with "Lesson {number}: "
-      const effectiveLessonTitle = ensureLessonNumberPrefix(
-        rawLessonTitle,
-        lesNum
-      );
+      // Strictly ensure every lesson title: if Lesson 0 -> "Introduction", else "Lesson {number}: ..."
+      const effectiveLessonTitle = isLes0
+        ? 'Introduction'
+        : ensureLessonNumberPrefix(rawLessonTitle, lesNum);
 
       // Format topics with exact module and lesson bindings
       const formattedTopics = (parsedData.topics || []).map((top, tIdx) => {

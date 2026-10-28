@@ -9,7 +9,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const title = body.title || body.slideTitle || '';
     const offset = parseInt(body.offset || 0, 10);
-    const limit = parseInt(body.limit || 12, 10);
+    const limit = Math.min(100, Math.max(1, parseInt(body.limit || 24, 10)));
     const threshold = parseInt(body.threshold || 45, 10);
 
     if (!title || !title.trim()) {
@@ -76,7 +76,10 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get('title') || searchParams.get('q') || '';
     const offset = parseInt(searchParams.get('offset') || '0', 10);
-    const limit = parseInt(searchParams.get('limit') || '12', 10);
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get('limit') || '24', 10))
+    );
     const threshold = parseInt(searchParams.get('threshold') || '45', 10);
 
     if (!title || !title.trim()) {

@@ -890,11 +890,12 @@ export async function searchAdobeStockFiles({
 /**
  * Searches the public Adobe Stock catalog without requiring an enterprise API key.
  * Retrieves genuine Adobe Stock assets with real IDs, ftcdn.net previews, and stock.adobe.com URLs.
- * Uses enhanced multi-query synthesis so images never repeat or stall on empty sets.
+ * Uses Bing image index (primary, high availability on cloud/Vercel) + DuckDuckGo fallback
+ * to deliver up to 100 genuine, unthrottled, unrepeated Adobe Stock photos.
  */
 export async function searchAdobeStockPublicCatalog({
   query,
-  limit = 15,
+  limit = 30,
   styleFilter = { photo: true, illustration: true },
 }) {
   const photo = styleFilter?.photo !== false;
@@ -912,9 +913,6 @@ export async function searchAdobeStockPublicCatalog({
     queryModifier = ' vector illustration';
   }
 
-  // To guarantee diverse, rich results without repeating images:
-  // Primary query: 'adobe stock ' + query (which yields up to 100 genuine indexed assets with ftcdn.net links!)
-  // Fallback / secondary: 'site:stock.adobe.com ' + query
   const cleanQ = (query || '').trim();
   const searchQueries = [
     `adobe stock ${cleanQ}${queryModifier}`.trim(),
@@ -924,95 +922,197 @@ export async function searchAdobeStockPublicCatalog({
   const files = [];
   const seenIds = new Set();
 
+  // Engine 1: Primary High-Yield Index (Bing Images) - Up to 100 unblocked Adobe Stock assets
   for (const searchQuery of searchQueries) {
-    try {
-      const initUrl = `https://duckduckgo.com/?q=${encodeURIComponent(searchQuery)}`;
-      const initRes = await fetch(initUrl, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-
-      if (!initRes.ok) continue;
-
-      const html = await initRes.text();
-      const vqdMatch =
-        html.match(/vqd=([a-zA-Z0-9_-]+)/) ||
-        html.match(/vqd=["']([^"']+)["']/);
-
-      if (!vqdMatch) continue;
-
-      const vqd = vqdMatch[1];
-      const imgApiUrl = `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(searchQuery)}&vqd=${vqd}`;
-
-      const imgRes = await fetch(imgApiUrl, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          Referer: 'https://duckduckgo.com/',
-        },
-        signal: AbortSignal.timeout(8000),
-      });
-
-      if (!imgRes.ok) continue;
-
-      const data = await imgRes.json().catch(() => ({}));
-      const rawResults = Array.isArray(data.results) ? data.results : [];
-
-      for (const item of rawResults) {
-        const isAdobe =
-          (item.url && item.url.includes('stock.adobe.com')) ||
-          (item.image && item.image.includes('ftcdn.net')) ||
-          (item.thumbnail && item.thumbnail.includes('ftcdn.net')) ||
-          (item.url && item.url.includes('adobe'));
-
-        if (!isAdobe) continue;
-
-        const urlMatch = (item.url || '').match(/\/(\d{3,12})(\?|\.html|$|\/)/);
-        const imgMatch = (item.image || '').match(/_(\d{3,12})_/);
-        const assetId = urlMatch ? urlMatch[1] : imgMatch ? imgMatch[1] : null;
-
-        if (!assetId || seenIds.has(assetId)) continue;
-        seenIds.add(assetId);
-
-        if (item.url && item.url.includes('/search')) continue;
-
-        const title = (item.title || '')
-          .replace(/\|?\s*Adobe Stock.*$/i, '')
-          .replace(/Stock Photo.*$/i, '')
-          .replace(/Stock Vector.*$/i, '')
-          .replace(/Stock Illustration.*$/i, '')
-          .trim();
-
-        files.push({
-          id: Number(assetId),
-          assetId: String(assetId),
-          provider: 'adobe',
-          isFreeDownload: false,
-          license: 'Adobe Stock Standard / Extended License',
-          title: title || `Adobe Stock Asset #${assetId}`,
-          stockUrl: `https://stock.adobe.com/${assetId}`,
-          previewUrl: item.image || item.thumbnail || '',
-          thumbnailUrl: item.thumbnail || item.image || '',
-          largePreviewUrl: item.image || item.thumbnail || '',
-          width: item.width || 1000,
-          height: item.height || 667,
-          creator: 'Adobe Stock Contributor',
-          category: 'Adobe Stock',
-          keywords: (title || '')
-            .toLowerCase()
-            .split(/[\s,.-]+/)
-            .filter((w) => w.length > 2),
+    const pageOffsets = [1, 36, 71];
+    for (const first of pageOffsets) {
+      if (files.length >= limit) break;
+      try {
+        const bingUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(searchQuery)}&form=HDRSC2&first=${first}`;
+        const res = await fetch(bingUrl, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml',
+          },
+          signal: AbortSignal.timeout(6000),
         });
 
-        if (files.length >= limit) break;
-      }
+        if (!res.ok) continue;
 
-      if (files.length >= limit) break;
-    } catch {
-      // Continue to secondary search query
+        const html = await res.text();
+        const mMatches = [...html.matchAll(/m="(\{[^"]+\})"/g)];
+
+        for (const m of mMatches) {
+          try {
+            const rawJson = m[1].replace(/&quot;/g, '"');
+            const item = JSON.parse(rawJson);
+            const isAdobe =
+              (item.purl && item.purl.includes('stock.adobe.com')) ||
+              (item.murl && item.murl.includes('ftcdn.net')) ||
+              (item.desc &&
+                (item.desc.includes('Adobe Stock') ||
+                  item.desc.includes('Adobe')));
+
+            if (!isAdobe) continue;
+
+            const urlMatch = (item.purl || '').match(
+              /\/(\d{3,12})(\?|\.html|$|\/)/
+            );
+            const imgMatch = (item.murl || '').match(/_(\d{3,12})_/);
+            const assetId = urlMatch
+              ? urlMatch[1]
+              : imgMatch
+                ? imgMatch[1]
+                : null;
+
+            if (!assetId || seenIds.has(assetId)) continue;
+            seenIds.add(assetId);
+
+            if (item.purl && item.purl.includes('/search')) continue;
+
+            const title = (item.desc || '')
+              .replace(/[\uE000\uE001]/g, '')
+              .replace(/\|?\s*Adobe Stock.*$/i, '')
+              .replace(/Stock (Photo|Vector|Illustration).*$/i, '')
+              .trim();
+
+            const previewUrl = item.murl || item.turl || '';
+            const thumbUrl = item.turl
+              ? item.turl.replace(/&amp;/g, '&')
+              : previewUrl;
+
+            files.push({
+              id: Number(assetId) || assetId,
+              assetId: String(assetId),
+              provider: 'adobe',
+              isFreeDownload: false,
+              license: 'Adobe Stock Standard / Extended License',
+              title: title || `Adobe Stock Asset #${assetId}`,
+              stockUrl: `https://stock.adobe.com/${assetId}`,
+              previewUrl,
+              thumbnailUrl: thumbUrl,
+              largePreviewUrl: item.murl || previewUrl,
+              width: item.w || 1000,
+              height: item.h || 667,
+              creator: 'Adobe Stock Contributor',
+              category: 'Adobe Stock',
+              keywords: (title || '')
+                .toLowerCase()
+                .split(/[\s,.-]+/)
+                .filter((w) => w.length > 2),
+            });
+
+            if (files.length >= limit) break;
+          } catch {
+            // continue next match
+          }
+        }
+      } catch {
+        // continue next offset / query
+      }
+    }
+    if (files.length >= limit) break;
+  }
+
+  // Engine 2: Fallback Engine (DuckDuckGo) if Bing yielded fewer than 6 assets
+  if (files.length < 6) {
+    for (const searchQuery of searchQueries) {
+      try {
+        const initUrl = `https://duckduckgo.com/?q=${encodeURIComponent(searchQuery)}`;
+        const initRes = await fetch(initUrl, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          },
+          signal: AbortSignal.timeout(6000),
+        });
+
+        if (!initRes.ok) continue;
+
+        const html = await initRes.text();
+        const vqdMatch =
+          html.match(/vqd=([a-zA-Z0-9_-]+)/) ||
+          html.match(/vqd=["']([^"']+)["']/);
+
+        if (!vqdMatch) continue;
+
+        const vqd = vqdMatch[1];
+        const imgApiUrl = `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(searchQuery)}&vqd=${vqd}`;
+
+        const imgRes = await fetch(imgApiUrl, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            Referer: 'https://duckduckgo.com/',
+          },
+          signal: AbortSignal.timeout(8000),
+        });
+
+        if (!imgRes.ok) continue;
+
+        const data = await imgRes.json().catch(() => ({}));
+        const rawResults = Array.isArray(data.results) ? data.results : [];
+
+        for (const item of rawResults) {
+          const isAdobe =
+            (item.url && item.url.includes('stock.adobe.com')) ||
+            (item.image && item.image.includes('ftcdn.net')) ||
+            (item.thumbnail && item.thumbnail.includes('ftcdn.net')) ||
+            (item.url && item.url.includes('adobe'));
+
+          if (!isAdobe) continue;
+
+          const urlMatch = (item.url || '').match(
+            /\/(\d{3,12})(\?|\.html|$|\/)/
+          );
+          const imgMatch = (item.image || '').match(/_(\d{3,12})_/);
+          const assetId = urlMatch
+            ? urlMatch[1]
+            : imgMatch
+              ? imgMatch[1]
+              : null;
+
+          if (!assetId || seenIds.has(assetId)) continue;
+          seenIds.add(assetId);
+
+          if (item.url && item.url.includes('/search')) continue;
+
+          const title = (item.title || '')
+            .replace(/\|?\s*Adobe Stock.*$/i, '')
+            .replace(/Stock Photo.*$/i, '')
+            .replace(/Stock Vector.*$/i, '')
+            .replace(/Stock Illustration.*$/i, '')
+            .trim();
+
+          files.push({
+            id: Number(assetId),
+            assetId: String(assetId),
+            provider: 'adobe',
+            isFreeDownload: false,
+            license: 'Adobe Stock Standard / Extended License',
+            title: title || `Adobe Stock Asset #${assetId}`,
+            stockUrl: `https://stock.adobe.com/${assetId}`,
+            previewUrl: item.image || item.thumbnail || '',
+            thumbnailUrl: item.thumbnail || item.image || '',
+            largePreviewUrl: item.image || item.thumbnail || '',
+            width: item.width || 1000,
+            height: item.height || 667,
+            creator: 'Adobe Stock Contributor',
+            category: 'Adobe Stock',
+            keywords: (title || '')
+              .toLowerCase()
+              .split(/[\s,.-]+/)
+              .filter((w) => w.length > 2),
+          });
+
+          if (files.length >= limit) break;
+        }
+
+        if (files.length >= limit) break;
+      } catch {
+        // Continue to secondary search query
+      }
     }
   }
 
@@ -1441,6 +1541,7 @@ export async function executeSmartStockSearch({
 
   const shouldSearchUnsplash = provider === 'all' || provider === 'unsplash';
   const shouldSearchAdobe = provider === 'all' || provider === 'adobe';
+  const maxPoolTarget = Math.max(60, offset + limit * 2);
 
   for (const query of queriesToRun) {
     triedQueries.push(query);
@@ -1450,7 +1551,7 @@ export async function executeSmartStockSearch({
       try {
         const unsplashRes = await searchUnsplashPhotos({
           query,
-          limit: provider === 'unsplash' ? 15 : 8,
+          limit: provider === 'unsplash' ? Math.max(25, limit) : 15,
           offset: 0,
           styleFilter,
         });
@@ -1472,7 +1573,7 @@ export async function executeSmartStockSearch({
         if (useOfficialApi) {
           const searchRes = await searchAdobeStockFiles({
             query,
-            limit: provider === 'adobe' ? 12 : 8,
+            limit: provider === 'adobe' ? Math.max(30, limit) : 15,
             offset: 0,
             styleFilter,
           });
@@ -1481,7 +1582,7 @@ export async function executeSmartStockSearch({
           // Direct authentic Adobe Stock Catalog Search
           const publicRes = await searchAdobeStockPublicCatalog({
             query,
-            limit: provider === 'adobe' ? 15 : 10,
+            limit: provider === 'adobe' ? Math.max(35, limit) : 20,
             styleFilter,
           });
           foundFiles = publicRes.files || [];
@@ -1500,7 +1601,7 @@ export async function executeSmartStockSearch({
           try {
             const publicRes = await searchAdobeStockPublicCatalog({
               query,
-              limit: 15,
+              limit: Math.max(30, limit),
               styleFilter,
             });
             if (publicRes.files && publicRes.files.length > 0) {
@@ -1513,7 +1614,7 @@ export async function executeSmartStockSearch({
       }
     }
 
-    if (candidatePool.length >= 20) {
+    if (candidatePool.length >= maxPoolTarget) {
       break;
     }
   }

@@ -333,7 +333,7 @@ export function AdobeStockImageFinder({
           styleFilter: activeStyle,
           provider: activeProvider,
           offset: 0,
-          limit: 12,
+          limit: 24,
           threshold: 45,
         }),
         signal: controller.signal,
@@ -441,7 +441,7 @@ export function AdobeStockImageFinder({
           styleFilter,
           provider: selectedProvider,
           offset: nextOffset,
-          limit: 12,
+          limit: 24,
           threshold: 45,
         }),
       });
