@@ -252,7 +252,7 @@ export async function enhanceImageWithCanvas(
 export const REALISTIC_PHOTO_COLLECTIONS = {
   // 1. Fall Protection & Harnesses
   fall_protection: [
-    'https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=1200&auto=format&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&auto=format&fit=crop&q=85',
     'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&auto=format&fit=crop&q=85',
     'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1200&auto=format&fit=crop&q=85',
     'https://images.unsplash.com/photo-1590486803833-1c5dc8ddd4c8?w=1200&auto=format&fit=crop&q=85',

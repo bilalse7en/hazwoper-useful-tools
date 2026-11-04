@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useEffect } from 'react';
 import { InitialLoadingShell } from '@/components/initial-loading-shell';
-import { showSuccess, showAlert } from '@/lib/swal';
+import { showSuccess } from '@/lib/swal';
 import { ToolsLanding } from '@/components/tools-landing';
 import { useAuth } from '@/components/auth-provider';
 
@@ -28,11 +28,6 @@ const ProfessionalOverview = dynamic(
     import('@/components/professional-overview').then(
       (mod) => mod.ProfessionalOverview
     ),
-  { ssr: true }
-);
-
-const BlogSection = dynamic(
-  () => import('@/components/blog-section').then((mod) => mod.BlogSection),
   { ssr: true }
 );
 
@@ -91,7 +86,6 @@ export function HomePageClient() {
       <FeaturedCoursesSection />
       <IndustryInsights />
       <ProfessionalOverview />
-      <BlogSection />
     </>
   );
 }

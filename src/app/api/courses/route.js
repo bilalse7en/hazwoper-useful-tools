@@ -68,7 +68,7 @@ export async function POST(request) {
       duration_label: body.durationLabel || '2 Hours',
       thumbnail:
         body.thumbnail ||
-        'https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
       status: body.status || 'published',
       settings: body.settings || {},
       modules: body.modules || [],

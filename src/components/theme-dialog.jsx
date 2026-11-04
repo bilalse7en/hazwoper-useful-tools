@@ -48,7 +48,11 @@ export function ThemeDialog({ open, onOpenChange }) {
   const togglePerformanceMode = (value) => {
     setPerformanceMode(value);
     localStorage.setItem('performance_mode', value ? 'true' : 'false');
-    window.location.reload();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('visual_effects_toggled'));
+      window.dispatchEvent(new Event('storage'));
+      window.location.reload();
+    }
   };
 
   const handleThemeChange = (themeId) => {

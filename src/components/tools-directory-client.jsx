@@ -141,7 +141,7 @@ export function ToolsDirectoryClient() {
               <div className="pt-2 flex flex-wrap items-center gap-3 text-xs font-bold text-muted-foreground">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card border border-border/80 shadow-xs">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span>100% Client-Side WASM</span>
+                  <span>100% Client-Side Execution</span>
                 </div>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card border border-border/80 shadow-xs">
                   <Lock className="w-4 h-4 text-primary" />
@@ -210,7 +210,7 @@ export function ToolsDirectoryClient() {
                       &lt; 50ms
                     </span>
                     <span className="text-[10px] text-muted-foreground/80 font-medium">
-                      WASM Accelerators
+                      Hardware Accelerated
                     </span>
                   </div>
                   <div className="p-3.5 rounded-xl sm:rounded-2xl bg-muted/30 border border-border/60">

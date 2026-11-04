@@ -490,7 +490,7 @@ export function generateComponentDefaults(type, options = {}) {
           badge: 'VISUAL AID',
           imageUrl:
             options.imageUrl ||
-            'https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800&auto=format&fit=crop&q=80',
+            'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
           caption:
             'High-tensile polyester full body harness with forged dorsal D-ring and quick-connect leg straps.',
           content:
@@ -785,7 +785,7 @@ export function generateComponentDefaults(type, options = {}) {
     case 'gallery': {
       const photos = [
         {
-          url: 'https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800&auto=format&fit=crop&q=80',
+          url: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
           caption: 'Full Body Harness Donning Inspection',
         },
         {

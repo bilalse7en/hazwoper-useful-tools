@@ -373,6 +373,7 @@ export async function convertCourseFolderSequentially(
 
   let processedCount = 0;
   let detectedHeaderCourseTitle = '';
+  let detectedFinalExam = null;
   const constructedModules = [];
 
   const hasModule0 =
@@ -447,6 +448,11 @@ export async function convertCourseFolderSequentially(
         });
       }
 
+      // Check if document contains a course final exam
+      if (!detectedFinalExam && parsedData.final_exam) {
+        detectedFinalExam = parsedData.final_exam;
+      }
+
       // Check if docx headers identify an explicit course title (not just fallback lesson title)
       if (
         !detectedHeaderCourseTitle &&
@@ -519,6 +525,7 @@ export async function convertCourseFolderSequentially(
     {
       courseTitle: finalCourseTitle,
       modules: constructedModules,
+      final_exam: detectedFinalExam || hierarchy.final_exam || null,
     },
     {
       course_id: options.course_id || 'course_1',

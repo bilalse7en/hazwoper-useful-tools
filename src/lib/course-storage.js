@@ -270,7 +270,7 @@ export const DEFAULT_INITIAL_COURSES = [
     keywords:
       'osha full body harness, fall protection, pfas inspection, construction safety, 29 cfr 1926.502, fall arrest training',
     thumbnail:
-      'https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
     status: 'published',
     createdAt: '2026-01-10T10:00:00.000Z',
     updatedAt: '2026-01-10T10:00:00.000Z',
@@ -299,7 +299,7 @@ export const DEFAULT_INITIAL_COURSES = [
                 imagePrompt:
                   'Photorealistic full body shot of a professional safety worker wearing OSHA hard hat, safety goggles, and high-visibility reflective vest holding a large hardboard sign with "OSHA Full Body Harness & Fall Protection Training" clearly written on it in bold lettering, industrial safety background, ultra-sharp 8k',
                 imageUrl:
-                  'https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800&auto=format&fit=crop&q=80',
+                  'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
                 narrationText:
                   'Welcome to OSHA Full Body Harness and Fall Protection Training. This course covers personal fall arrest systems, harness inspection, anchoring guidelines, and emergency rescue protocols compliant with OSHA 1926.502 regulations.',
               },
@@ -387,7 +387,7 @@ export const DEFAULT_INITIAL_COURSES = [
                 imagePrompt:
                   'Safety inspector checking worker safety harness fit on industrial platform, 8k',
                 imageUrl:
-                  'https://images.unsplash.com/photo-1541888946425-d0fbb180c5f5?w=800&auto=format&fit=crop&q=80',
+                  'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&auto=format&fit=crop&q=80',
                 narrationText:
                   'This concludes Lesson 1. Take the 6 question practice check below to test your understanding.',
               },

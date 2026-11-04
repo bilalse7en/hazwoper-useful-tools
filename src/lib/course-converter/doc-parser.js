@@ -53,9 +53,120 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
   let courseTitle = metadata.courseTitle || '';
   let moduleTitle = metadata.moduleTitle || 'Module 1: General Knowledge';
   let lessonTitle = metadata.lessonTitle || '';
+  let final_exam = null;
+
+  // Check if document as a whole is a dedicated Final Exam
+  const isDedicatedFinalExam =
+    isFinalExamHeading(lessonTitle) ||
+    isFinalExamHeading(metadata.fileName) ||
+    isFinalExamHeading(options.fileName) ||
+    /^(?:<[^>]+>\s*)*(?:Comprehensive\s*)?Final\s*Exam/i.test(html) ||
+    /(?:<h[1-6][^>]*>|<p[^>]*><strong>?)\s*(?:Comprehensive\s*)?Final\s*Exam/i.test(
+      html
+    ) ||
+    (!/<h1[^>]*>/i.test(html) &&
+      /(?:Question\s*\d+|1[.:]\s+.*?[A-D][.:]\s+)/i.test(html) &&
+      /final\s*exam/i.test(html));
+
+  if (isDedicatedFinalExam && options.includeQuizzes !== false) {
+    const examQuestions = parseQuizFromHtml(html, 'fe_q');
+    if (examQuestions.length > 0) {
+      const finalExamTitle =
+        lessonTitle && isFinalExamHeading(lessonTitle)
+          ? lessonTitle
+          : 'Comprehensive Final Exam';
+      final_exam = {
+        id: 'final_exam',
+        title: finalExamTitle,
+        passingScore: 80,
+        timeLimit: Math.max(1800, examQuestions.length * 120),
+        questionCount: examQuestions.length,
+        questions: examQuestions,
+      };
+
+      const introTopic = {
+        id: 'top_1_1_1',
+        name: `${finalExamTitle} Instructions`,
+        headingContent: `${finalExamTitle} Instructions`,
+        selectedTemplate: 1,
+        lessonId: 'les_1_1',
+        moduleId: 'mod_1',
+        slide_type: 'content',
+        allocated_duration_seconds: 60,
+        topicDuration: 60,
+        image_source: '',
+        image_code: '',
+        image_prompt: '',
+        has_embedded_image: false,
+        datatime: '0',
+        captions: [],
+        narration_script: '',
+        leftDiv: {
+          audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
+          image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+          video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
+          width: 'col-12',
+          editor: wrapInLmsContainer(
+            `<p>Welcome to the ${finalExamTitle}. This comprehensive assessment consists of ${examQuestions.length} questions. A minimum passing score of 80% is required for completion.</p>`
+          ),
+          editorHtml: wrapInLmsContainer(
+            `<p>Welcome to the ${finalExamTitle}. This comprehensive assessment consists of ${examQuestions.length} questions. A minimum passing score of 80% is required for completion.</p>`
+          ),
+          editorSaved: wrapInLmsContainer(
+            `<p>Welcome to the ${finalExamTitle}. This comprehensive assessment consists of ${examQuestions.length} questions. A minimum passing score of 80% is required for completion.</p>`
+          ),
+          editorHtmlSaved: wrapInLmsContainer(
+            `<p>Welcome to the ${finalExamTitle}. This comprehensive assessment consists of ${examQuestions.length} questions. A minimum passing score of 80% is required for completion.</p>`
+          ),
+          captureTime: [],
+          mediaDuration: 0,
+          isEditorSelected: true,
+          mediaCurrentTime: 0,
+        },
+        rightDiv: {
+          audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
+          image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+          video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
+          width: 'col-12',
+          editor: '',
+          editorHtml: '',
+          editorSaved: '',
+          editorHtmlSaved: '',
+          captureTime: [],
+          mediaDuration: 0,
+          isEditorSelected: false,
+          mediaCurrentTime: 0,
+        },
+      };
+
+      return {
+        courseTitle: courseTitle || metadata.courseTitle || 'Course Final Exam',
+        moduleTitle: moduleTitle || 'Module 1: Final Assessment',
+        lessonTitle: finalExamTitle,
+        topics: [introTopic],
+        knowledge_check: [],
+        final_exam,
+      };
+    }
+  }
+
+  // Fallback heading normalization if no <h1> tags are present in source Word doc
+  let normalizedHtml = html;
+  if (!/<h1[^>]*>/i.test(normalizedHtml)) {
+    if (/<h2[^>]*>/i.test(normalizedHtml)) {
+      normalizedHtml = normalizedHtml
+        .replace(/<h2([^>]*)>/gi, '<h1$1>')
+        .replace(/<\/h2>/gi, '</h1>');
+    } else if (/<p[^>]*><strong>([^<]+)<\/strong><\/p>/i.test(normalizedHtml)) {
+      normalizedHtml = normalizedHtml.replace(
+        /<p[^>]*><strong>([^<]+)<\/strong><\/p>/gi,
+        '<h1>$1</h1>'
+      );
+    }
+  }
 
   // Split HTML into blocks by <h1> tags
-  const rawParts = html.split(/(?=<h1[^>]*>)/i).filter(Boolean);
+  const rawParts = normalizedHtml.split(/(?=<h1[^>]*>)/i).filter(Boolean);
 
   const topics = [];
   let knowledge_check = [];
@@ -94,11 +205,20 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
 
     // Check if this section is a Final Exam
     if (isFinalExamHeading(headingText)) {
-      // In lesson-wise mode, if someone included a quiz labeled "exam", treat as quiz
       if (options.includeQuizzes !== false) {
-        const parsedQuestions = parseQuizFromHtml(bodyContent || part, 'q');
-        if (parsedQuestions.length > 0 && knowledge_check.length === 0) {
-          knowledge_check = parsedQuestions;
+        const parsedQuestions = parseQuizFromHtml(bodyContent || part, 'fe_q');
+        if (parsedQuestions.length > 0) {
+          final_exam = {
+            id: 'final_exam',
+            title: headingText || 'Comprehensive Final Exam',
+            passingScore: 80,
+            timeLimit: Math.max(1800, parsedQuestions.length * 120),
+            questionCount: parsedQuestions.length,
+            questions: parsedQuestions,
+          };
+          if (knowledge_check.length === 0) {
+            knowledge_check = parsedQuestions;
+          }
         }
       }
       continue;
@@ -185,6 +305,7 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
     lessonTitle,
     topics,
     knowledge_check,
+    final_exam: final_exam || null,
   };
 }
 

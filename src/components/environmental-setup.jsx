@@ -103,7 +103,7 @@ export function EnvironmentalSetup() {
                     Performance & Engine Mode
                   </h2>
                   <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our platform uses local-first WebAssembly processing. Choose
+                    Our platform uses high-performance client execution. Choose
                     your hardware profile for optimal efficiency.
                   </p>
                 </div>
@@ -133,7 +133,7 @@ export function EnvironmentalSetup() {
                         High Performance
                       </h4>
                       <p className="text-xs text-muted-foreground mt-1 font-medium">
-                        Full WebAssembly multi-threading & visuals
+                        Full multi-threaded processing & visuals
                       </p>
                     </div>
                   </button>

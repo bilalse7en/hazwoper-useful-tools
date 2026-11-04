@@ -15,6 +15,7 @@ import {
   ensureModuleNumberPrefix,
   isIntroductoryModule,
 } from './folder-converter.js';
+import { normalizeQuizQuestion, normalizeFinalExam } from './quiz-extractor.js';
 import { validateCourseJson } from './validator.js';
 
 /**
@@ -363,15 +364,23 @@ export function buildCourseJson(parsedData, options = {}) {
   // Apply Module 0 & Lesson 0 Introduction rules and consistent lesson numbering
   modules = normalizeCourseHierarchy(modules, course_title, options);
 
-  // If quizzes are explicitly excluded, strip them from all lessons
-  if (options.includeQuizzes === false) {
-    modules.forEach((mod) => {
-      (mod.lessons || []).forEach((les) => {
+  // Normalize quiz questions in every lesson
+  modules.forEach((mod) => {
+    (mod.lessons || []).forEach((les) => {
+      if (options.includeQuizzes === false) {
         les.knowledge_check = [];
         les.has_assessment_after = false;
-      });
+      } else if (Array.isArray(les.knowledge_check)) {
+        les.knowledge_check = les.knowledge_check.map((q, qIdx) =>
+          normalizeQuizQuestion(
+            q,
+            `q_${les.lesson_id ? les.lesson_id.replace(/^les_/, '') : '1'}_${qIdx + 1}`
+          )
+        );
+        les.has_assessment_after = les.knowledge_check.length > 0;
+      }
     });
-  }
+  });
 
   // Sanitize topics and strip images / slide titles if stripImages is enabled
   const stripImages = options.stripImages !== false;
@@ -418,7 +427,9 @@ export function buildCourseJson(parsedData, options = {}) {
   // Final Exam calculations (if present and quizzes included)
   let finalExamSeconds = 0;
   let finalExamObj =
-    options.includeQuizzes !== false ? parsedData.final_exam || null : null;
+    options.includeQuizzes !== false
+      ? normalizeFinalExam(parsedData.final_exam)
+      : null;
   if (
     finalExamObj &&
     finalExamObj.questions &&

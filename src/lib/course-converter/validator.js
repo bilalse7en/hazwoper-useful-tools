@@ -226,12 +226,26 @@ export function validateCourseJson(courseJson) {
     (m.lessons || []).forEach((l) => {
       (l.knowledge_check || []).forEach((q) => {
         totalKcQuestions += 1;
+        const stem = (q.question || q.question_text || '').trim();
+        const opts = Array.isArray(q.options) ? q.options : [];
+        const ans = (
+          q.correct_answer ||
+          opts.find((o) => o.is_correct === true)?.value ||
+          ''
+        )
+          .toString()
+          .trim()
+          .toUpperCase();
+        const hasMatchingAnswer = opts.some(
+          (o) =>
+            (o.value && o.value.toString().trim().toUpperCase() === ans) ||
+            o.is_correct === true
+        );
         if (
-          !q.question ||
-          !Array.isArray(q.options) ||
-          q.options.length < 2 ||
-          !q.correct_answer ||
-          !q.options.some((o) => o.value === q.correct_answer)
+          !stem ||
+          opts.length < 2 ||
+          (!ans && !opts.some((o) => o.is_correct)) ||
+          !hasMatchingAnswer
         ) {
           invalidKcQuestions += 1;
         }
@@ -256,13 +270,24 @@ export function validateCourseJson(courseJson) {
   let examMsg =
     'No final exam in this course (Lesson-wise mode or course without comprehensive exam).';
   if (courseJson.final_exam) {
-    const fe = courseJson.final_exam;
-    const qCount = fe.questions?.length || 0;
-    if (qCount === 0 || !fe.id || !fe.title) {
+    let fe = courseJson.final_exam;
+    if (Array.isArray(fe)) {
+      fe = {
+        questions: fe,
+        id: 'final_exam',
+        title: 'Comprehensive Final Exam',
+      };
+    }
+    const qCount = fe.questions?.length || (Array.isArray(fe) ? fe.length : 0);
+    if (
+      qCount === 0 ||
+      (!fe.id && !Array.isArray(courseJson.final_exam)) ||
+      (!fe.title && !Array.isArray(courseJson.final_exam))
+    ) {
       passedExam = false;
       examMsg = 'Final exam object is missing ID, title, or questions.';
     } else {
-      examMsg = `Final exam verified with ${qCount} questions, passing score ${fe.passingScore}%, and time limit ${fe.timeLimit}s.`;
+      examMsg = `Final exam verified with ${qCount} questions, passing score ${fe.passingScore || 80}%, and time limit ${fe.timeLimit || 1800}s.`;
     }
   }
   addCheck(

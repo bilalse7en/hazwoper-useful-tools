@@ -85,6 +85,9 @@ old_docx_processor*.js
 /public/temp-shorts/
 /bin/
 
+# reference archive zips
+*.zip
+
 
 /public/media-hub/
 /data/
