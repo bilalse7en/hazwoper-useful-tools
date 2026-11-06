@@ -9,7 +9,7 @@ export async function GET(request) {
     const supabase = await createClient();
     const selectQuery = isFull
       ? '*'
-      : 'id, title, slug, description, category, duration, duration_label, thumbnail, status, author, settings, updated_at';
+      : 'id, title, slug, description, category, duration, duration_label, thumbnail, status, author_id, settings, updated_at';
 
     const { data, error } = await supabase
       .from('courses')

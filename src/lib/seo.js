@@ -1300,22 +1300,22 @@ export const toolInfo = {
     name: 'Free PDF Editor',
     icon: '📄',
     description:
-      'Edit PDFs online: add pages, insert images, edit text, draw, and sign',
+      'Annotate, redact, whiteout & replace text, insert images, sign, and organize PDF pages',
     category: 'Document Tools',
     detailedDescription:
-      'Full-featured client-side PDF Editor. Edit text, add new blank pages, insert images, draw annotations, whiteout/redact content, place digital signatures and official rubber stamps, reorder pages, and export crisp PDFs with full undo/redo support.',
+      'Client-side PDF editing, annotation, and redaction suite. To modify existing document text, use the Whiteout tool to cover old text, then place custom formatted text boxes on top. Features digital signing, stamp insertion, freehand drawing, and full page management with zero server uploads.',
     benefits: [
       'Insert new pages anywhere with custom page sizes (Letter, A4, Legal)',
-      'Add & edit text with custom font families, colors, and styling',
+      'Add formatted text boxes with custom font families, colors, size, and alignment',
+      'Whiteout & redact tool to conceal and replace existing text',
       'Upload images, logos, and signatures with drag-and-drop',
-      'Whiteout & blackout redact sensitive document content',
       'Freehand drawing pen & highlighter tools',
       'Preset official rubber stamps (Approved, Confidential, Draft, etc.)',
       'Reorder, duplicate, rotate, and delete pages visually',
       'Full Undo / Redo history stack',
     ],
     howToUse:
-      'Upload an existing PDF or click "New Blank", select tools from the top bar to add text, images, drawings, or stamps, manage pages from the sidebar, and click "Download PDF" to save.',
+      '1. Open a PDF document or click "New Blank".\n2. To modify or delete existing text, select "Whiteout" to cover it, then select "Text" to type replacement text with custom fonts, colors, and sizing.\n3. Add annotations, signatures, shapes, or stamps anywhere.\n4. Rotate, duplicate, reorder, or add pages using the left sidebar.\n5. Click "Export PDF" to download your finished document.',
     useCases: [
       {
         title: 'Contract & Form Signing',

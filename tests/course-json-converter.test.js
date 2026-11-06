@@ -987,5 +987,301 @@ describe('CourseJsonConverter Core Engine', () => {
         }
       );
     });
+
+    describe('Merge Introduction & Learning Objectives in Numbered Lessons', () => {
+      it('getLessonBaseTitle strips lesson and chapter prefixes cleanly', async () => {
+        const { getLessonBaseTitle } =
+          await import('../src/lib/course-converter/course-manager.js');
+        expect(
+          getLessonBaseTitle('Lesson 1: Utility Power Service Entrance')
+        ).toBe('Utility Power Service Entrance');
+        expect(
+          getLessonBaseTitle('Lesson 2 - Electrical Safety & Transformers')
+        ).toBe('Electrical Safety & Transformers');
+        expect(getLessonBaseTitle('Chapter 3: Lockout and Tagout')).toBe(
+          'Lockout and Tagout'
+        );
+        expect(getLessonBaseTitle('Excavation Safety')).toBe(
+          'Excavation Safety'
+        );
+      });
+
+      it('detectSeparateIntroAndObjectives detects numbered lessons with separate slides', async () => {
+        const { detectSeparateIntroAndObjectives } =
+          await import('../src/lib/course-converter/course-manager.js');
+
+        const sampleCourse = {
+          course_id: 'sample_course',
+          course_title: 'Safety Training',
+          modules: [
+            {
+              module_id: 'mod_0',
+              module_title: 'Introduction',
+              lessons: [
+                {
+                  lesson_id: 'les_0_0',
+                  lesson_title: 'Introduction',
+                  topics: [
+                    {
+                      name: 'Introduction',
+                      leftDiv: { editorHtml: '<p>Course intro</p>' },
+                    },
+                    {
+                      name: 'Learning Objectives',
+                      leftDiv: { editorHtml: '<p>Course objectives</p>' },
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              module_id: 'mod_1',
+              module_title: 'Module 1: General Hazards',
+              lessons: [
+                {
+                  lesson_id: 'les_1_1',
+                  lesson_title: 'Lesson 1: Chemical Safety',
+                  topics: [
+                    {
+                      name: 'Lesson 1: Chemical Safety',
+                      leftDiv: { editorHtml: '<p>Old title slide</p>' },
+                    },
+                    {
+                      name: 'Introduction',
+                      leftDiv: {
+                        editorHtml: '<p>Introductory chemical text.</p>',
+                      },
+                    },
+                    {
+                      name: 'Learning Objectives',
+                      leftDiv: { editorHtml: '<ul><li>Obj 1</li></ul>' },
+                    },
+                    {
+                      name: 'Chemical Handling',
+                      leftDiv: { editorHtml: '<p>Handling info.</p>' },
+                    },
+                  ],
+                },
+                {
+                  lesson_id: 'les_1_2',
+                  lesson_title: 'Lesson 2: Biological Safety',
+                  topics: [
+                    {
+                      name: 'Biological Safety',
+                      leftDiv: { editorHtml: '<div></div>' },
+                    },
+                    {
+                      name: 'Introduction / Learning Objectives',
+                      leftDiv: { editorHtml: '<p>Already merged</p>' },
+                    },
+                    {
+                      name: 'Bio Hazards',
+                      leftDiv: { editorHtml: '<p>Bio info.</p>' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        const candidates = detectSeparateIntroAndObjectives(sampleCourse);
+        expect(candidates).toHaveLength(1);
+        expect(candidates[0].lessonId).toBe('les_1_1');
+        expect(candidates[0].lessonBaseTitle).toBe('Chemical Safety');
+      });
+
+      it('mergeIntroAndLearningObjectives merges intro first then objectives, and creates empty title slide with base lesson name', async () => {
+        const { mergeIntroAndLearningObjectives } =
+          await import('../src/lib/course-converter/course-manager.js');
+
+        const courseToMerge = {
+          course_id: 'course_101',
+          course_title: 'HAZWOPER 40-Hour',
+          modules: [
+            {
+              module_id: 'mod_1',
+              module_title: 'Module 1: Site Safety',
+              lessons: [
+                {
+                  lesson_id: 'les_1_1',
+                  lesson_title: 'Lesson 1: Spill Containment Fundamentals',
+                  knowledge_check: [],
+                  topics: [
+                    {
+                      id: 'top_1_1_1',
+                      name: 'Lesson 1: Spill Containment Fundamentals',
+                      leftDiv: {
+                        editorHtml: '<p>Old non-empty title slide</p>',
+                      },
+                    },
+                    {
+                      id: 'top_1_1_2',
+                      name: 'Introduction',
+                      leftDiv: {
+                        editorHtml:
+                          '<div><p>Spill containment prevents hazardous substances from entering water systems.</p></div>',
+                      },
+                    },
+                    {
+                      id: 'top_1_1_3',
+                      name: 'Learning Objectives',
+                      leftDiv: {
+                        editorHtml:
+                          '<div><p>By the end of this lesson, you will be able to:</p><ul><li>Deploy berms and absorbent booms.</li><li>Calculate secondary containment capacity.</li></ul></div>',
+                      },
+                    },
+                    {
+                      id: 'top_1_1_4',
+                      name: 'Deploying Booms and Berms',
+                      leftDiv: {
+                        editorHtml:
+                          '<div><p>Deployment procedure details.</p></div>',
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        const res = mergeIntroAndLearningObjectives(courseToMerge, {
+          stripImages: true,
+        });
+
+        expect(res.success).toBe(true);
+        expect(res.mergedCount).toBe(1);
+
+        const lesson = res.courseJson.modules[0].lessons[0];
+        expect(lesson.topics).toHaveLength(3); // 1 title slide + 1 merged intro/objectives + 1 deployment slide
+
+        // 1. First topic must be empty without content, with title = base lesson name (NO "Lesson 1:")
+        const firstTopic = lesson.topics[0];
+        expect(firstTopic.name).toBe('Spill Containment Fundamentals');
+        expect(firstTopic.headingContent).toBe(
+          'Spill Containment Fundamentals'
+        );
+        expect(firstTopic.name).not.toContain('Lesson 1');
+        expect(firstTopic.leftDiv.editorHtml).toBe('<div></div>');
+        expect(firstTopic.leftDiv.editor).toBe('<div></div>');
+        expect(firstTopic.allocated_duration_seconds).toBe(30);
+
+        // 2. Second topic must be "Introduction / Learning Objectives" with introduction paragraph first then learning objectives
+        const secondTopic = lesson.topics[1];
+        expect(secondTopic.name).toBe('Introduction / Learning Objectives');
+        expect(secondTopic.headingContent).toBe(
+          'Introduction / Learning Objectives'
+        );
+
+        const html = secondTopic.leftDiv.editorHtml;
+        expect(html.startsWith('<div>')).toBe(true);
+        expect(html.endsWith('</div>')).toBe(true);
+        expect(html).toContain(
+          'Spill containment prevents hazardous substances from entering water systems.'
+        );
+        expect(html).toContain('Deploy berms and absorbent booms.');
+        expect(html).not.toContain('<strong>Learning Objectives:</strong>');
+        expect(html).not.toContain(
+          '<p><strong>Learning Objectives:</strong></p>'
+        );
+
+        // Introduction paragraph must appear BEFORE Learning Objectives in the HTML string
+        const introPos = html.indexOf(
+          'Spill containment prevents hazardous substances'
+        );
+        const objPos = html.indexOf('Deploy berms and absorbent booms');
+        expect(introPos).toBeGreaterThan(-1);
+        expect(objPos).toBeGreaterThan(-1);
+        expect(introPos).toBeLessThan(objPos);
+
+        // 3. Third topic is original following topic
+        const thirdTopic = lesson.topics[2];
+        expect(thirdTopic.name).toBe('Deploying Booms and Berms');
+        expect(thirdTopic.id).toBe('top_1_1_3');
+
+        // Durations and schema validation
+        expect(res.courseJson.total_topics).toBe(3);
+        expect(res.validation.isValid).toBe(true);
+      });
+
+      it('handles lesson where Introduction was topic 0 (no preceding title slide)', async () => {
+        const { mergeIntroAndLearningObjectives } =
+          await import('../src/lib/course-converter/course-manager.js');
+
+        const courseWithoutPrecedingTitle = {
+          course_id: 'course_102',
+          course_title: 'Confined Space Entry',
+          modules: [
+            {
+              module_id: 'mod_1',
+              module_title: 'Module 1: Entry Protocols',
+              lessons: [
+                {
+                  lesson_id: 'les_1_1',
+                  lesson_title: 'Lesson 1: Permit-Required Confined Spaces',
+                  knowledge_check: [],
+                  topics: [
+                    {
+                      id: 'top_1',
+                      name: 'Introduction',
+                      leftDiv: {
+                        editorHtml:
+                          '<p>Permit spaces contain atmospheric hazards.</p>',
+                      },
+                    },
+                    {
+                      id: 'top_2',
+                      name: 'Learning Objectives',
+                      leftDiv: {
+                        editorHtml: '<ul><li>Identify permit spaces</li></ul>',
+                      },
+                    },
+                    {
+                      id: 'top_3',
+                      name: 'Ventilation Techniques',
+                      leftDiv: {
+                        editorHtml: '<p>Continuous forced air ventilation.</p>',
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+
+        const res = mergeIntroAndLearningObjectives(
+          courseWithoutPrecedingTitle,
+          {
+            stripImages: true,
+          }
+        );
+
+        expect(res.success).toBe(true);
+        const lesson = res.courseJson.modules[0].lessons[0];
+        expect(lesson.topics).toHaveLength(3);
+
+        // Topic 0: created empty title slide with base lesson name
+        expect(lesson.topics[0].name).toBe('Permit-Required Confined Spaces');
+        expect(lesson.topics[0].name).not.toContain('Lesson 1');
+        expect(lesson.topics[0].leftDiv.editorHtml).toBe('<div></div>');
+
+        // Topic 1: Merged Intro & Objectives
+        expect(lesson.topics[1].name).toBe(
+          'Introduction / Learning Objectives'
+        );
+        expect(lesson.topics[1].leftDiv.editorHtml).toContain(
+          'Permit spaces contain atmospheric hazards.'
+        );
+        expect(lesson.topics[1].leftDiv.editorHtml).toContain(
+          'Identify permit spaces'
+        );
+
+        // Topic 2: Ventilation Techniques
+        expect(lesson.topics[2].name).toBe('Ventilation Techniques');
+        expect(res.validation.isValid).toBe(true);
+      });
+    });
   });
 });

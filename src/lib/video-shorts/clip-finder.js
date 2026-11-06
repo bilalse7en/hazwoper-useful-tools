@@ -165,13 +165,13 @@ export function discoverClips({
     }
   }
 
-  // 1. Elastic Duration Bounds: 30s to 85s (up to 1m 25s so continuous verses and Ash'aar are never truncated)
+  // 1. Strict YouTube Shorts Duration Bounds: 30s to 60s
   let minDuration = 30;
-  let maxDuration = 85;
+  let maxDuration = 60;
 
   if (settings.durationPreset === 'standard' || !settings.durationPreset) {
     minDuration = 30;
-    maxDuration = 85;
+    maxDuration = 60;
   } else if (settings.durationPreset === 'short') {
     minDuration = 15;
     maxDuration = 45;
@@ -180,15 +180,15 @@ export function discoverClips({
     settings.durationPreset === 'long'
   ) {
     minDuration = 45;
-    maxDuration = 90;
+    maxDuration = 60;
   } else if (settings.durationPreset === 'medium') {
     minDuration = 30;
-    maxDuration = 75;
+    maxDuration = 60;
   } else if (settings.durationPreset === 'custom') {
-    minDuration = Math.max(25, settings.customMinDuration || 30);
+    minDuration = Math.max(20, Math.min(60, settings.customMinDuration || 30));
     maxDuration = Math.min(
-      videoDuration,
-      Math.max(minDuration + 10, settings.customMaxDuration || 85)
+      60,
+      Math.max(minDuration, settings.customMaxDuration || 60)
     );
   }
 
@@ -366,24 +366,24 @@ export function discoverClips({
           : true;
         const isPoeticVerseBoundary = curEndPhrase.isVerseBoundary || isPause;
 
-        // If we hit a natural verse boundary within flexible range (28s to maxDuration + 20s)
+        // If we hit a natural verse boundary within strict range (minDuration to maxDuration)
         if (
           isPoeticVerseBoundary &&
           dur >= Math.min(28, minDuration) &&
-          dur <= maxDuration + 20
+          dur <= maxDuration
         ) {
           bestEndPhraseIndex = j;
           bestDuration = dur;
           foundVerseBoundary = true;
-          // If we reached an optimal complete stanza length (e.g. 40s - 75s), break cleanly!
+          // If we reached an optimal complete stanza length (e.g. 38s - 58s), break cleanly!
           if (dur >= 38) break;
         }
 
         // If duration is in acceptable range, keep it as candidate
-        if (dur >= minDuration && dur <= maxDuration + 15) {
+        if (dur >= minDuration && dur <= maxDuration) {
           bestEndPhraseIndex = j;
           bestDuration = dur;
-        } else if (dur > maxDuration + 25) {
+        } else if (dur > maxDuration) {
           if (bestDuration === 0 && j > currentStartIndex) {
             bestEndPhraseIndex = j - 1;
             bestDuration = realCaptions[j - 1].end - start;
@@ -414,8 +414,12 @@ export function discoverClips({
           );
         }
 
-        const end = Math.min(
+        const maxEndAllowed = Math.min(
           videoDuration,
+          parseFloat((start + maxDuration).toFixed(2))
+        );
+        const end = Math.min(
+          maxEndAllowed,
           parseFloat((curEndPhrase.end + postPause).toFixed(2))
         );
         const matchedCaptions = realCaptions.slice(
@@ -492,7 +496,7 @@ export function discoverClips({
       );
       const singleDuration = parseFloat((singleSnappedEnd - start).toFixed(2));
 
-      if (singleDuration >= minDuration && singleDuration <= maxDuration + 10) {
+      if (singleDuration >= minDuration && singleDuration <= maxDuration) {
         const matchedLyric = referenceStanzas[i]?.text || null;
         candidateClips.push(
           buildCandidateClip(start, singleSnappedEnd, singleDuration, {
@@ -524,7 +528,10 @@ export function discoverClips({
           }
           const multiCandidateEnd = Math.min(
             videoDuration,
-            parseFloat((accumulatedEnd + multiPostPause).toFixed(2))
+            Math.min(
+              start + maxDuration,
+              parseFloat((accumulatedEnd + multiPostPause).toFixed(2))
+            )
           );
           const multiSnappedEnd = snapToCleanBoundary(
             multiCandidateEnd,
@@ -536,10 +543,7 @@ export function discoverClips({
             (multiSnappedEnd - start).toFixed(2)
           );
 
-          if (
-            multiDuration >= minDuration &&
-            multiDuration <= maxDuration + 20
-          ) {
+          if (multiDuration >= minDuration && multiDuration <= maxDuration) {
             const joinedLyrics =
               referenceStanzas
                 .slice(i, i + stanzasCombined)
@@ -554,7 +558,7 @@ export function discoverClips({
               })
             );
             break;
-          } else if (multiDuration > maxDuration + 20) {
+          } else if (multiDuration > maxDuration) {
             break;
           }
         }
@@ -614,8 +618,8 @@ export function discoverClips({
       .filter((s) => s >= 0 && s <= videoDuration - minDuration)
       .sort((a, b) => a - b);
 
-    // Dynamic varied durations (38s, 52s, 68s, 1m 15s)
-    const naturalSpanTargets = [38, 52, 65, 78, 44, 58];
+    // Dynamic varied durations strictly between 30s and 60s
+    const naturalSpanTargets = [38, 48, 55, 42, 50, 58];
     let spanIdx = 0;
 
     for (const rawStart of uniqueStarts) {

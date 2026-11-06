@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { setupSafeWebGLCanvas } from '@/lib/webgl-utils';
 
 // --- GEOMETRY UTILITIES ---
 function getPolygonSignedArea(pts) {
@@ -506,13 +507,16 @@ export function FacetGlassSuite({ user, isGuest }) {
     let width = container.clientWidth || 1100;
     let height = container.clientHeight || 600;
 
+    setupSafeWebGLCanvas(canvas);
+
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
       alpha: true,
       powerPreference: 'high-performance',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.debug.checkShaderErrors = false;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.setSize(width, height);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -843,8 +847,10 @@ export function FacetGlassSuite({ user, isGuest }) {
     const mouseNdc = new THREE.Vector2(-999, -999);
     let hoveredShard = null;
     let isHoveredCTA = false;
+    let pointerMoved = true;
 
     const handlePointerMove = (e) => {
+      pointerMoved = true;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -901,6 +907,7 @@ export function FacetGlassSuite({ user, isGuest }) {
     };
 
     const handlePointerLeave = () => {
+      pointerMoved = true;
       mouseNdc.set(-999, -999);
       cursorHoverUniform.value = 0.0;
       if (isHoveredCTA) {
@@ -910,6 +917,7 @@ export function FacetGlassSuite({ user, isGuest }) {
     };
 
     const handleClick = () => {
+      pointerMoved = true;
       if (isHoveredCTA) {
         handleCTAClick();
       } else {
@@ -927,35 +935,63 @@ export function FacetGlassSuite({ user, isGuest }) {
       shatterStartTime: 0,
     };
 
+    // Pre-allocate mesh list to eliminate per-frame GC allocations
+    const allMeshes = shards.map((s) => s.glassMesh);
+
     // Animation Loop with Viewport Visibility Optimization
     let animId = null;
     let lastTime = performance.now();
     let isVisible = true;
 
+    const startLoop = () => {
+      if (!animId && isVisible) {
+        lastTime = performance.now();
+        animId = requestAnimationFrame(loop);
+      }
+    };
+
+    const stopLoop = () => {
+      if (animId) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+    };
+
     const observer = new IntersectionObserver(
       ([entry]) => {
+        const wasVisible = isVisible;
         isVisible = entry.isIntersecting;
+        if (isVisible && !wasVisible) {
+          startLoop();
+        } else if (!isVisible && wasVisible) {
+          stopLoop();
+        }
       },
       { rootMargin: '250px' }
     );
     observer.observe(container);
 
     const loop = () => {
+      if (!isVisible) {
+        animId = null;
+        return;
+      }
       animId = requestAnimationFrame(loop);
-      if (!isVisible) return;
 
       const now = performance.now();
       const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
 
-      // Raycasting
-      raycaster.setFromCamera(mouseNdc, camera);
-      const allMeshes = shards.map((s) => s.glassMesh);
-      const intersects = raycaster.intersectObjects(allMeshes);
-      hoveredShard =
-        intersects.length > 0
-          ? shardsById.get(intersects[0].object.name)
-          : null;
+      // Raycasting only when pointer state changes or shattering
+      if (pointerMoved) {
+        raycaster.setFromCamera(mouseNdc, camera);
+        const intersects = raycaster.intersectObjects(allMeshes);
+        hoveredShard =
+          intersects.length > 0
+            ? shardsById.get(intersects[0].object.name)
+            : null;
+        pointerMoved = false;
+      }
 
       const engine = engineRef.current;
       const isShattering = engine && engine.shatterPhase === 'shattering';
@@ -1062,6 +1098,7 @@ export function FacetGlassSuite({ user, isGuest }) {
       if (!container) return;
       width = container.clientWidth || 1100;
       height = container.clientHeight || 600;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
       renderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();

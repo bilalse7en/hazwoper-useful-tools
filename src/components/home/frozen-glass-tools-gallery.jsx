@@ -407,26 +407,48 @@ export function FrozenGlassToolsGallery() {
     const container = containerRef.current;
     let observer = null;
 
+    const startTick = () => {
+      if (!frameId.current && isVisible) {
+        frameId.current = requestAnimationFrame(tick);
+      }
+    };
+
+    const stopTick = () => {
+      if (frameId.current) {
+        cancelAnimationFrame(frameId.current);
+        frameId.current = null;
+      }
+    };
+
+    const tick = () => {
+      if (!isVisible) {
+        frameId.current = null;
+        return;
+      }
+      frameId.current = requestAnimationFrame(tick);
+      renderLoop();
+    };
+
     if (container && typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver(
         ([entry]) => {
+          const wasVisible = isVisible;
           isVisible = entry.isIntersecting;
+          if (isVisible && !wasVisible) {
+            startTick();
+          } else if (!isVisible && wasVisible) {
+            stopTick();
+          }
         },
         { rootMargin: '350px' }
       );
       observer.observe(container);
     }
 
-    const tick = () => {
-      frameId.current = requestAnimationFrame(tick);
-      if (!isVisible) return;
-      renderLoop();
-    };
-
-    frameId.current = requestAnimationFrame(tick);
+    startTick();
     return () => {
       if (observer) observer.disconnect();
-      cancelAnimationFrame(frameId.current);
+      stopTick();
     };
   }, [metrics]);
 

@@ -9,11 +9,22 @@ const AuthContext = createContext({
   refreshUser: () => {},
   logout: () => {},
   toolSettings: {},
+  toolAdminVisibility: {},
+  setToolAdminVisibility: () => {},
 });
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [toolSettings, setToolSettings] = useState({});
+  const [toolAdminVisibility, setToolAdminVisibility] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('admin_tool_visibility');
+        if (cached) return JSON.parse(cached);
+      } catch (_) {}
+    }
+    return {};
+  });
   const [loading, setLoading] = useState(true);
 
   // Use a ref to track the current user ID for cleanup in auth state changes
@@ -176,21 +187,38 @@ export function AuthProvider({ children }) {
     const initAuth = async () => {
       setLoading(true);
       try {
-        // Fetch Tool Settings
+        // Fetch Tool Settings & Admin Visibility
         const { data: settings, error } = await supabase
           .from('tool_settings')
-          .select('id, is_free');
+          .select('*');
         if (error) {
           console.warn(
             'Tool settings query notice (fallback active):',
             error?.message || error
           );
         } else if (settings) {
-          const settingsMap = settings.reduce((acc, curr) => {
-            acc[curr.id] = curr.is_free;
-            return acc;
-          }, {});
+          const settingsMap = {};
+          const visibilityMap = {};
+          settings.forEach((curr) => {
+            settingsMap[curr.id] = curr.is_free;
+            if (
+              curr.is_visible_admin !== undefined &&
+              curr.is_visible_admin !== null
+            ) {
+              visibilityMap[curr.id] = curr.is_visible_admin;
+            }
+          });
           setToolSettings(settingsMap);
+          setToolAdminVisibility((prev) => {
+            const merged = { ...prev, ...visibilityMap };
+            try {
+              localStorage.setItem(
+                'admin_tool_visibility',
+                JSON.stringify(merged)
+              );
+            } catch (_) {}
+            return merged;
+          });
         }
 
         const {
@@ -408,7 +436,15 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, refreshUser, logout, toolSettings }}
+      value={{
+        user,
+        loading,
+        refreshUser,
+        logout,
+        toolSettings,
+        toolAdminVisibility,
+        setToolAdminVisibility,
+      }}
     >
       {children}
     </AuthContext.Provider>

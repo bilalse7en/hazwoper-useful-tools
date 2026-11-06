@@ -193,7 +193,7 @@ export function AppSidebar({
   adminMode = false,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const { toolSettings } = useAuth();
+  const { toolSettings, toolAdminVisibility } = useAuth();
   const [expandedGroups, setExpandedGroups] = useState([
     'generators',
     'tools',
@@ -203,6 +203,22 @@ export function AppSidebar({
   const [hoverCoords, setHoverCoords] = useState({ top: 0, left: 0 });
 
   const currentNavGroups = adminMode ? adminNavGroups : navGroups;
+
+  const isItemVisible = (itemId) => {
+    if (adminMode && toolAdminVisibility) {
+      if (toolAdminVisibility[itemId] === false) return false;
+      // Support mapped tool slug/id resolution
+      const slugMap = {
+        course: 'web-content',
+        blog: 'blog-generator',
+        glossary: 'glossary-generator',
+        resources: 'resource-generator',
+      };
+      const mappedSlug = slugMap[itemId];
+      if (mappedSlug && toolAdminVisibility[mappedSlug] === false) return false;
+    }
+    return true;
+  };
 
   const toggleGroup = (groupId) => {
     setExpandedGroups((prev) =>
@@ -217,9 +233,11 @@ export function AppSidebar({
       ...group,
       items: group.items
         .map((item) => {
+          if (!isItemVisible(item.id)) return null;
           if (item.isParent && item.subItems) {
             const filteredSubs = item.subItems.filter(
               (sub) =>
+                isItemVisible(sub.id) &&
                 (adminMode || hasAccess(user, sub.id, toolSettings)) &&
                 sub.label.toLowerCase().includes(searchQuery.toLowerCase())
             );

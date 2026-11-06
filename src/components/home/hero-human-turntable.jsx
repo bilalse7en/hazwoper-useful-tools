@@ -58,8 +58,18 @@ export function HeroHumanTurntable() {
 
     video.addEventListener('seeked', handleSeeked);
 
+    let isVisible = true;
+    let observer = null;
+    if (containerRef.current && typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(([entry]) => {
+        isVisible = entry.isIntersecting;
+      });
+      observer.observe(containerRef.current);
+    }
+
     // Desktop mouse tracking across the entire hero / window
     const handleMouseMove = (e) => {
+      if (!isVisible) return;
       if (window.innerWidth < 1024) return;
       if (!video.duration || Number.isNaN(video.duration)) return;
 
@@ -114,10 +124,11 @@ export function HeroHumanTurntable() {
       video.play().catch(() => {});
     }
 
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
     window.addEventListener('resize', handleResize);
 
     return () => {
+      if (observer) observer.disconnect();
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
       video.removeEventListener('loadeddata', handleLoaded);

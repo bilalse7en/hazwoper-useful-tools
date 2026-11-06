@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { loadPdfJs } from '@/lib/pdf-js-loader';
 import { createBlankPdf, exportModifiedPdf } from '@/lib/pdf-editor-engine';
 import { PageThumbnailSidebar } from './pdf-editor/page-thumbnail-sidebar';
@@ -13,6 +14,7 @@ import { generateCoverPagePdf } from '@/lib/cover-page-engine';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -1144,6 +1146,36 @@ export function PDFEditor() {
             )}
           </div>
         )}
+      </div>
+
+      {/* 2b. CLEAR FUNCTIONALITY & HOW-TO BANNER */}
+      <div className="bg-muted/40 border-b border-border px-3.5 py-1.5 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge
+            variant="outline"
+            className="text-[9px] uppercase font-black text-primary border-primary/30 tracking-wider px-2 py-0.5"
+          >
+            How PDF Text Editing Works
+          </Badge>
+          <span className="text-muted-foreground text-[11px] leading-tight">
+            PDF text is rendered into fixed vector streams. To modify existing
+            text: Click{' '}
+            <strong className="text-foreground font-bold">Whiteout</strong> to
+            cover old words, then click{' '}
+            <strong className="text-foreground font-bold">Text</strong> to place
+            your updated text.
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/tools/image-to-text"
+            className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 shrink-0"
+            title="Have a scanned PDF document? Extract text using OCR"
+          >
+            <Sparkles className="w-3 h-3" /> Scanned PDF? Use OCR Image-to-Text
+            →
+          </Link>
+        </div>
       </div>
 
       {/* 3. FLOATING FORMATTING BAR FOR SELECTED ITEM */}

@@ -79,6 +79,15 @@ function AdminDashboard() {
   const [historyItems, setHistoryItems] = useState([]);
   const [blogItems, setBlogItems] = useState([]);
   const [toolSettings, setToolSettings] = useState({});
+  const [toolAdminVisibility, setToolAdminVisibility] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('admin_tool_visibility');
+        if (cached) return JSON.parse(cached);
+      } catch (_) {}
+    }
+    return {};
+  });
 
   const isMasterAdmin = useMemo(() => {
     const role = (currentUser?.role || '').toLowerCase();
@@ -181,6 +190,50 @@ function AdminDashboard() {
             >
               {isFree ? 'Open' : 'Restricted'}
             </Badge>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor((row) => toolAdminVisibility[row[0]] ?? true, {
+      id: 'adminVisibility',
+      header: 'Admin Visibility',
+      cell: (info) => {
+        const isVisible = info.getValue() !== false;
+        const toolId = info.row.original[0];
+        const isPersonalTool = [
+          'blog-generator',
+          'web-content',
+          'resource-generator',
+          'glossary-generator',
+        ].includes(toolId);
+
+        return (
+          <div className="flex items-center gap-2.5 justify-center">
+            <span
+              className={cn(
+                'text-[10px] font-black uppercase tracking-tighter transition-colors',
+                isVisible
+                  ? 'text-primary font-bold'
+                  : 'text-muted-foreground opacity-50'
+              )}
+            >
+              {isVisible ? 'Visible' : 'Hidden'}
+            </span>
+            <Switch
+              checked={isVisible}
+              onCheckedChange={(checked) =>
+                toggleToolAdminVisibility(toolId, checked)
+              }
+              className="scale-75 data-[state=checked]:bg-primary"
+            />
+            {isPersonalTool && (
+              <Badge
+                variant="outline"
+                className="text-[8px] font-black px-1.5 py-0 border-primary/30 text-primary uppercase"
+              >
+                Personal
+              </Badge>
+            )}
           </div>
         );
       },
@@ -877,13 +930,70 @@ function AdminDashboard() {
         }
         throw error;
       }
-      const settingsMap = (data || []).reduce((acc, curr) => {
-        acc[curr.id] = curr.is_free;
-        return acc;
-      }, {});
+      const settingsMap = {};
+      const visibilityMap = {};
+
+      try {
+        const cached = localStorage.getItem('admin_tool_visibility');
+        if (cached) Object.assign(visibilityMap, JSON.parse(cached));
+      } catch (_) {}
+
+      (data || []).forEach((curr) => {
+        settingsMap[curr.id] = curr.is_free;
+        if (
+          curr.is_visible_admin !== undefined &&
+          curr.is_visible_admin !== null
+        ) {
+          visibilityMap[curr.id] = curr.is_visible_admin;
+        }
+      });
+
       setToolSettings(settingsMap);
+      setToolAdminVisibility(visibilityMap);
+      try {
+        localStorage.setItem(
+          'admin_tool_visibility',
+          JSON.stringify(visibilityMap)
+        );
+      } catch (_) {}
     } catch (err) {
       console.error('Error fetching tool settings:', err);
+    }
+  }
+
+  async function toggleToolAdminVisibility(toolId, isVisible) {
+    if (!isMasterAdmin) {
+      showToast(
+        'Unauthorized: Only administrators can modify tool visibility',
+        'error'
+      );
+      return;
+    }
+    try {
+      const nextMap = { ...toolAdminVisibility, [toolId]: isVisible };
+      setToolAdminVisibility(nextMap);
+      try {
+        localStorage.setItem('admin_tool_visibility', JSON.stringify(nextMap));
+      } catch (_) {}
+
+      const { error } = await supabase.from('tool_settings').upsert({
+        id: toolId,
+        is_visible_admin: isVisible,
+        updated_at: new Date().toISOString(),
+      });
+      if (error && error.code !== '42703') {
+        throw error;
+      }
+      showSuccess(
+        'Visibility Updated',
+        `${toolInfo[toolId]?.name || toolId} is now ${isVisible ? 'VISIBLE' : 'HIDDEN'} in the admin panel.`
+      );
+    } catch (err) {
+      console.error('Error updating admin visibility:', err);
+      showToast(
+        'Visibility saved locally. Run Supabase migration to persist to DB.',
+        'info'
+      );
     }
   }
 
@@ -1738,7 +1848,35 @@ function AdminDashboard() {
             />
           </div>
         ) : activeView === 'tools' ? (
-          <div className="space-y-8 animate-in-fade">
+          <div className="space-y-6 animate-in-fade">
+            <Card className="rounded-2xl sm:rounded-3xl border-border bg-card/40 backdrop-blur-xl p-5 sm:p-6 shadow-sm overflow-hidden relative group">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                    <Shield className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black tracking-tight">
+                      Tool Monetization &amp; Admin Visibility
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Configure public access levels and toggle visibility of
+                      individual tools in the admin navigation. Hiding a tool
+                      never deletes or disables it.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-bold border-primary/30 text-primary uppercase px-3 py-1"
+                  >
+                    Personal Tools Protected
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+
             <DataTable
               columns={toolColumns}
               data={Object.entries(toolInfo).sort((a, b) =>

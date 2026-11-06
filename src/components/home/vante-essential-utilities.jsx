@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from 'next-themes';
+import { setupSafeWebGLCanvas } from '@/lib/webgl-utils';
 
 // 14 Real, Production Essential Tools with clean metadata & descriptions
 // Unified 1-color animated luxury theme (Electric Sky Cyan #38bdf8)
@@ -688,12 +689,15 @@ export function VanteEssentialUtilities({ user, isGuest }) {
     if (!canvas || !stage || !track) return;
 
     // Three.js Setup
+    setupSafeWebGLCanvas(canvas);
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
       alpha: true,
       powerPreference: 'high-performance',
     });
+    renderer.debug.checkShaderErrors = false;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.setClearColor(0, 0); // Transparent so sky stars drift through
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -883,7 +887,7 @@ export function VanteEssentialUtilities({ user, isGuest }) {
       W = window.innerWidth;
       H = window.innerHeight;
       asp = W / H;
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
       renderer.setSize(W, H, false);
 
       camera.aspect = asp;
@@ -1182,17 +1186,39 @@ export function VanteEssentialUtilities({ user, isGuest }) {
     let animId = null;
     let isVisible = true;
 
+    const startLoop = () => {
+      if (!animId && isVisible) {
+        animId = requestAnimationFrame(loop);
+      }
+    };
+
+    const stopLoop = () => {
+      if (animId) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+    };
+
     const observer = new IntersectionObserver(
       ([entry]) => {
+        const wasVisible = isVisible;
         isVisible = entry.isIntersecting;
+        if (isVisible && !wasVisible) {
+          startLoop();
+        } else if (!isVisible && wasVisible) {
+          stopLoop();
+        }
       },
       { rootMargin: '350px' }
     );
     observer.observe(track);
 
     function loop() {
+      if (!isVisible) {
+        animId = null;
+        return;
+      }
       animId = requestAnimationFrame(loop);
-      if (!isVisible) return;
 
       p += (target - p) * 0.09;
       if (Math.abs(target - p) < 0.00005) p = target;

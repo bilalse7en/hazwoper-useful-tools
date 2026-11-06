@@ -9,8 +9,16 @@
  */
 
 import { parseQuizFromHtml } from './quiz-extractor.js';
-import { ensureLessonNumberPrefix } from './folder-converter.js';
+import {
+  ensureLessonNumberPrefix,
+  isIntroductoryModule,
+} from './folder-converter.js';
 import { validateCourseJson } from './validator.js';
+import {
+  normalizeHtmlContent,
+  wrapInLmsContainer,
+  calculateTopicDuration,
+} from './html-normalizer.js';
 
 /**
  * Recalculates total slide seconds, knowledge check seconds, final exam seconds, and durations.
@@ -516,4 +524,446 @@ export function deleteQuestionFromCourse(courseJson, questionId, options = {}) {
   const validation = validateCourseJson(updated);
 
   return { courseJson: updated, validation };
+}
+
+/**
+ * Strips lesson or chapter numbering prefix (e.g. "Lesson 1: ", "Lesson 2 - ")
+ * and returns strictly the base title of the lesson.
+ * e.g. "Lesson 1: Spill Containment Fundamentals" -> "Spill Containment Fundamentals"
+ *
+ * @param {string} title
+ * @returns {string} Base lesson title
+ */
+export function getLessonBaseTitle(title = '') {
+  if (!title) return '';
+  const clean = String(title).trim();
+  const match = clean.match(
+    /^(?:Lesson|Chapter|Unit|Module)\s*\d+[\s_:-]+(.*)$/i
+  );
+  if (match && match[1]?.trim()) {
+    return match[1].trim();
+  }
+  const stripped = clean
+    .replace(/^(?:Lesson|Chapter|Unit|Module)\s*\d+[:\s_-]*/i, '')
+    .trim();
+  return stripped || clean;
+}
+
+/**
+ * Checks if a topic title corresponds to an Introduction slide.
+ */
+function isIntroSlideTitle(title) {
+  if (!title) return false;
+  const t = String(title).trim();
+  if (/objectives?/i.test(t)) return false; // Not already merged
+  return /^(?:(?:lesson|chapter|unit|slide)\s*\d*[:\s_-]*)?(?:(?:lesson|course)\s+)?(?:introduction|intro)\b/i.test(
+    t
+  );
+}
+
+/**
+ * Checks if a topic title corresponds to a Learning Objectives slide.
+ */
+function isObjectivesSlideTitle(title) {
+  if (!title) return false;
+  const t = String(title).trim();
+  if (/intro(?:duction)?/i.test(t)) return false; // Not already merged
+  return /^(?:(?:lesson|chapter|unit|slide)\s*\d*[:\s_-]*)?(?:(?:lesson|course)\s+)?(?:learning\s+objectives?|objectives?)\b/i.test(
+    t
+  );
+}
+
+/**
+ * Scans a Course JSON structure to find numbered lessons (e.g. Lesson 1, Lesson 2, ...)
+ * that contain separate Introduction and Learning Objectives slides.
+ *
+ * @param {object} courseJson
+ * @returns {Array<object>} Array of candidate lesson descriptors
+ */
+export function detectSeparateIntroAndObjectives(courseJson) {
+  if (!courseJson || !Array.isArray(courseJson.modules)) return [];
+
+  const candidateLessons = [];
+
+  courseJson.modules.forEach((mod) => {
+    const isMod0 =
+      mod.module_id === 'mod_0' ||
+      isIntroductoryModule(mod.module_title, courseJson.course_title);
+
+    (mod.lessons || []).forEach((les, lIdx) => {
+      // Skip Module 0 Lesson 0 (Course Introduction)
+      if (isMod0 && lIdx === 0) return;
+      if (les.lesson_id === 'les_0_0') return;
+
+      const topics = les.topics || [];
+      if (topics.length < 2) return;
+
+      let introIdx = -1;
+      let objIdx = -1;
+
+      topics.forEach((top, idx) => {
+        const title = (top.name || top.headingContent || '').trim();
+        if (introIdx === -1 && isIntroSlideTitle(title)) {
+          introIdx = idx;
+        }
+        if (objIdx === -1 && isObjectivesSlideTitle(title)) {
+          objIdx = idx;
+        }
+      });
+
+      if (introIdx !== -1 && objIdx !== -1 && introIdx !== objIdx) {
+        candidateLessons.push({
+          moduleId: mod.module_id,
+          moduleTitle: mod.module_title,
+          lessonId: les.lesson_id,
+          lessonTitle: les.lesson_title,
+          lessonBaseTitle: getLessonBaseTitle(les.lesson_title),
+          introIdx,
+          objIdx,
+        });
+      }
+    });
+  });
+
+  return candidateLessons;
+}
+
+/**
+ * Merges separate Introduction and Learning Objectives slides into 1 slide named
+ * "Introduction / Learning Objectives" across all numbered lessons where they are separate.
+ * In each merged lesson, ensures:
+ * 1. The first topic is an empty slide without content, titled with strictly the lesson name (no lesson numbering).
+ * 2. The second topic is "Introduction / Learning Objectives", with Introduction paragraphs first followed by Learning Objectives.
+ * 3. All remaining topics follow sequentially.
+ *
+ * @param {object} courseJson
+ * @param {object} [options={}] - { stripImages }
+ * @returns {{ success: boolean, courseJson: object, validation: object, mergedCount: number }}
+ */
+export function mergeIntroAndLearningObjectives(courseJson, options = {}) {
+  if (!courseJson || !Array.isArray(courseJson.modules)) {
+    return { success: false, courseJson, validation: null, mergedCount: 0 };
+  }
+
+  const updatedCourse = JSON.parse(JSON.stringify(courseJson));
+  let mergedLessonsCount = 0;
+
+  const stripOuterDiv = (html) => {
+    if (!html) return '';
+    let s = html.trim();
+    if (/^<div[^>]*>[\s\S]*<\/div>$/i.test(s)) {
+      s = s.replace(/^<div[^>]*>/i, '').replace(/<\/div>$/i, '');
+    }
+    return s.trim();
+  };
+
+  const getTopicHtml = (topic) => {
+    if (!topic) return '';
+    return (
+      topic.leftDiv?.editorHtml ||
+      topic.leftDiv?.editor ||
+      topic.leftDiv?.editorSaved ||
+      topic.raw_body_content ||
+      topic.content ||
+      ''
+    );
+  };
+
+  updatedCourse.modules.forEach((mod) => {
+    const isMod0 =
+      mod.module_id === 'mod_0' ||
+      isIntroductoryModule(mod.module_title, updatedCourse.course_title);
+
+    (mod.lessons || []).forEach((les, lIdx) => {
+      // Skip Module 0 Lesson 0 (Course Introduction)
+      if (isMod0 && lIdx === 0) return;
+      if (les.lesson_id === 'les_0_0') return;
+
+      const topics = les.topics || [];
+      if (topics.length < 2) return;
+
+      let introIdx = -1;
+      let objIdx = -1;
+
+      topics.forEach((top, idx) => {
+        const title = (top.name || top.headingContent || '').trim();
+        if (introIdx === -1 && isIntroSlideTitle(title)) {
+          introIdx = idx;
+        }
+        if (objIdx === -1 && isObjectivesSlideTitle(title)) {
+          objIdx = idx;
+        }
+      });
+
+      if (introIdx === -1 || objIdx === -1 || introIdx === objIdx) {
+        return;
+      }
+
+      mergedLessonsCount += 1;
+
+      const introTopic = topics[introIdx];
+      const objTopic = topics[objIdx];
+      const lessonBaseName =
+        getLessonBaseTitle(les.lesson_title) || 'Lesson Overview';
+
+      // 1. Combine HTML: Introduction paragraphs first, then Learning Objectives
+      const introInner = stripOuterDiv(getTopicHtml(introTopic));
+      let cleanObjInner = stripOuterDiv(getTopicHtml(objTopic));
+
+      // Strip any leading heading or paragraph repeating "Learning Objectives" or "Learning Objectives:"
+      cleanObjInner = cleanObjInner
+        .replace(
+          /^\s*<(?:p|h[1-6]|div)[^>]*>\s*(?:<[^>]+>\s*)*(?:Learning\s+Objectives?|Objectives?)\s*[:.\-–—]*\s*(?:<\/[^>]+>\s*)*<\/(?:p|h[1-6]|div)>/gi,
+          ''
+        )
+        .trim();
+
+      const combinedInner = [introInner, cleanObjInner]
+        .filter(Boolean)
+        .join('\n');
+      const stripImages = options.stripImages !== false;
+      const cleanCombined = normalizeHtmlContent(combinedInner, {
+        stripImages,
+      });
+      const wrappedCombined = wrapInLmsContainer(cleanCombined, {
+        stripImages,
+      });
+      const combinedDuration = calculateTopicDuration(cleanCombined);
+
+      // Create merged topic
+      const mergedTopic = {
+        ...introTopic,
+        name: 'Introduction / Learning Objectives',
+        headingContent: 'Introduction / Learning Objectives',
+        selectedTemplate: 1,
+        slide_type: 'content',
+        allocated_duration_seconds: combinedDuration,
+        topicDuration: combinedDuration,
+        image_source: '',
+        image_code: '',
+        image_prompt: '',
+        has_embedded_image: false,
+        leftDiv: {
+          ...(introTopic.leftDiv || {}),
+          width: 'col-12',
+          isEditorSelected: true,
+          editor: wrappedCombined,
+          editorHtml: wrappedCombined,
+          editorSaved: wrappedCombined,
+          editorHtmlSaved: wrappedCombined,
+          image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+        },
+        rightDiv: introTopic.rightDiv || {
+          audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
+          image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+          video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
+          width: 'col-12',
+          editor: '',
+          editorHtml: '',
+          editorSaved: '',
+          editorHtmlSaved: '',
+          captureTime: [],
+          mediaDuration: 0,
+          isEditorSelected: false,
+          mediaCurrentTime: 0,
+        },
+      };
+
+      // 2. Prepare first topic: always empty without content, strictly the lesson name (no lesson numbering)
+      const emptyDiv = '<div></div>';
+      let titleTopic;
+
+      if (introIdx > 0 && objIdx > 0) {
+        // topics[0] exists before intro and objectives
+        titleTopic = {
+          ...topics[0],
+          name: lessonBaseName,
+          headingContent: lessonBaseName,
+          selectedTemplate: 1,
+          slide_type: 'content',
+          allocated_duration_seconds: 30,
+          topicDuration: 30,
+          image_source: '',
+          image_code: '',
+          image_prompt: '',
+          has_embedded_image: false,
+          leftDiv: {
+            ...(topics[0].leftDiv || {}),
+            width: 'col-12',
+            isEditorSelected: true,
+            editor: emptyDiv,
+            editorHtml: emptyDiv,
+            editorSaved: emptyDiv,
+            editorHtmlSaved: emptyDiv,
+            image: {
+              isImage: false,
+              imageURL: '',
+              imageFile: '',
+              imageName: '',
+            },
+          },
+          rightDiv: topics[0].rightDiv || {
+            audio: {
+              isAudio: false,
+              audioURL: '',
+              audioFile: '',
+              audioName: '',
+            },
+            image: {
+              isImage: false,
+              imageURL: '',
+              imageFile: '',
+              imageName: '',
+            },
+            video: {
+              isVideo: false,
+              videoURL: '',
+              videoFile: '',
+              videoName: '',
+            },
+            width: 'col-12',
+            editor: '',
+            editorHtml: '',
+            editorSaved: '',
+            editorHtmlSaved: '',
+            captureTime: [],
+            mediaDuration: 0,
+            isEditorSelected: false,
+            mediaCurrentTime: 0,
+          },
+        };
+      } else {
+        // introIdx === 0 or objIdx === 0 (no preceding title slide)
+        titleTopic = {
+          id: `${les.lesson_id}_1`,
+          name: lessonBaseName,
+          headingContent: lessonBaseName,
+          selectedTemplate: 1,
+          lessonId: les.lesson_id,
+          moduleId: mod.module_id,
+          slide_type: 'content',
+          allocated_duration_seconds: 30,
+          topicDuration: 30,
+          image_source: '',
+          image_code: '',
+          image_prompt: '',
+          has_embedded_image: false,
+          leftDiv: {
+            width: 'col-12',
+            isEditorSelected: true,
+            editor: emptyDiv,
+            editorHtml: emptyDiv,
+            editorSaved: emptyDiv,
+            editorHtmlSaved: emptyDiv,
+            image: {
+              isImage: false,
+              imageURL: '',
+              imageFile: '',
+              imageName: '',
+            },
+          },
+          rightDiv: {
+            audio: {
+              isAudio: false,
+              audioURL: '',
+              audioFile: '',
+              audioName: '',
+            },
+            image: {
+              isImage: false,
+              imageURL: '',
+              imageFile: '',
+              imageName: '',
+            },
+            video: {
+              isVideo: false,
+              videoURL: '',
+              videoFile: '',
+              videoName: '',
+            },
+            width: 'col-12',
+            editor: '',
+            editorHtml: '',
+            editorSaved: '',
+            editorHtmlSaved: '',
+            captureTime: [],
+            mediaDuration: 0,
+            isEditorSelected: false,
+            mediaCurrentTime: 0,
+          },
+        };
+      }
+
+      // 3. Assemble other remaining topics
+      const otherTopics = [];
+      topics.forEach((top, idx) => {
+        if (introIdx > 0 && objIdx > 0 && idx === 0) return;
+        if (idx === introIdx || idx === objIdx) return;
+        otherTopics.push(top);
+      });
+
+      const newTopics = [titleTopic, mergedTopic, ...otherTopics];
+
+      // Re-index topic IDs and enforce LMS schema defaults
+      newTopics.forEach((top, tIdx) => {
+        const topNum = tIdx + 1;
+        const cleanLessonId = (les.lesson_id || 'les_1_1').replace(/^les_/, '');
+        top.id = `top_${cleanLessonId}_${topNum}`;
+        top.lessonId = les.lesson_id;
+        top.moduleId = mod.module_id;
+        if (!top.headingContent)
+          top.headingContent = top.name || 'Topic Content';
+        if (!top.name) top.name = top.headingContent;
+        if (!top.selectedTemplate) top.selectedTemplate = 1;
+        if (!top.slide_type) top.slide_type = 'content';
+        if (!top.leftDiv) top.leftDiv = {};
+        if (!top.leftDiv.width) top.leftDiv.width = 'col-12';
+        if (top.leftDiv.isEditorSelected === undefined)
+          top.leftDiv.isEditorSelected = true;
+        if (!top.rightDiv) {
+          top.rightDiv = {
+            audio: {
+              isAudio: false,
+              audioURL: '',
+              audioFile: '',
+              audioName: '',
+            },
+            image: {
+              isImage: false,
+              imageURL: '',
+              imageFile: '',
+              imageName: '',
+            },
+            video: {
+              isVideo: false,
+              videoURL: '',
+              videoFile: '',
+              videoName: '',
+            },
+            width: 'col-12',
+            editor: '',
+            editorHtml: '',
+            editorSaved: '',
+            editorHtmlSaved: '',
+            captureTime: [],
+            mediaDuration: 0,
+            isEditorSelected: false,
+            mediaCurrentTime: 0,
+          };
+        }
+      });
+
+      les.topics = newTopics;
+    });
+  });
+
+  recalculateCourseDurations(updatedCourse);
+  const validation = validateCourseJson(updatedCourse);
+
+  return {
+    success: true,
+    courseJson: updatedCourse,
+    validation,
+    mergedCount: mergedLessonsCount,
+  };
 }

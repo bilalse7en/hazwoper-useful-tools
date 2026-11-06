@@ -83,6 +83,9 @@ import {
   normalizeQuizQuestion,
   normalizeFinalExam,
   isIntroductoryModule,
+  getLessonBaseTitle,
+  detectSeparateIntroAndObjectives,
+  mergeIntroAndLearningObjectives,
 } from '@/lib/course-converter';
 
 export default function CourseJsonConverter() {
@@ -169,6 +172,11 @@ export default function CourseJsonConverter() {
   // Lesson Drag and Reorder states
   const [draggedLessonIndex, setDraggedLessonIndex] = useState(null);
   const [dragOverLessonIndex, setDragOverLessonIndex] = useState(null);
+
+  // Separate Introduction and Learning Objectives Merge modal state
+  const [showMergeIntroModal, setShowMergeIntroModal] = useState(false);
+  const [pendingMergeCandidates, setPendingMergeCandidates] = useState([]);
+  const [pendingMergeCourse, setPendingMergeCourse] = useState(null);
 
   // User feedback toast/action banner
   const [actionMessage, setActionMessage] = useState('');
@@ -407,6 +415,16 @@ export default function CourseJsonConverter() {
           showToast(
             'Course JSON file successfully imported and normalized with 100% Schema Health!'
           );
+
+          // Detect separate Introduction and Learning Objectives slides in numbered lessons
+          const separateCandidates = detectSeparateIntroAndObjectives(
+            res.courseJson
+          );
+          if (separateCandidates.length > 0) {
+            setPendingMergeCandidates(separateCandidates);
+            setPendingMergeCourse(res.courseJson);
+            setShowMergeIntroModal(true);
+          }
         }
         return;
       }
@@ -1008,11 +1026,70 @@ export default function CourseJsonConverter() {
         setShowEnhanceModal(false);
         setRawJsonInput('');
         setTimeout(() => setEnhanceSuccessMessage(''), 5000);
+
+        const candidates = detectSeparateIntroAndObjectives(res.courseJson);
+        if (candidates.length > 0) {
+          setPendingMergeCandidates(candidates);
+          setPendingMergeCourse(res.courseJson);
+          setShowMergeIntroModal(true);
+        }
       }
     } catch (err) {
       console.error('Enhance JSON error:', err);
       alert('Invalid JSON structure: ' + err.message);
     }
+  };
+
+  /**
+   * Executes merging of separate Introduction and Learning Objectives slides across all numbered lessons:
+   * 1. Merges Introduction paragraph first, then Learning Objectives into 1 slide named "Introduction / Learning Objectives".
+   * 2. Formats the first topic as an empty slide without content, with title = lesson name (without "Lesson X:").
+   */
+  const handleExecuteMergeIntroAndObjectives = () => {
+    const targetCourse = pendingMergeCourse || courseJson;
+    if (!targetCourse) return;
+
+    try {
+      const res = mergeIntroAndLearningObjectives(targetCourse, {
+        stripImages: !includeImages,
+      });
+
+      if (res.success && res.courseJson) {
+        setCourseJson(res.courseJson);
+        setValidation(res.validation);
+        setParsedData({
+          courseTitle: res.courseJson.course_title,
+          modules: res.courseJson.modules,
+        });
+        setShowMergeIntroModal(false);
+        setPendingMergeCandidates([]);
+        setPendingMergeCourse(null);
+        setSelectedTopicIndex(0);
+        showToast(
+          `Merged Introduction & Learning Objectives across ${res.mergedCount} lesson(s) and set empty title slides!`
+        );
+      }
+    } catch (err) {
+      console.error('Error merging introduction and learning objectives:', err);
+      alert('Failed to merge slides: ' + err.message);
+    }
+  };
+
+  /**
+   * Manual trigger from UI to check & prompt for merging Introduction and Learning Objectives
+   */
+  const handleMergeIntroAndObjectivesClick = () => {
+    if (!courseJson) return;
+    const candidates = detectSeparateIntroAndObjectives(courseJson);
+    if (candidates.length === 0) {
+      showToast(
+        'No separate Introduction and Learning Objectives slides found to merge.'
+      );
+      return;
+    }
+    setPendingMergeCandidates(candidates);
+    setPendingMergeCourse(courseJson);
+    setShowMergeIntroModal(true);
   };
 
   /**
@@ -1491,6 +1568,19 @@ export default function CourseJsonConverter() {
             <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
             {courseJson ? 'Enhance & Clean JSON' : 'Enhance JSON'}
           </Button>
+
+          {courseJson && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMergeIntroAndObjectivesClick}
+              className="gap-1.5 border-indigo-300 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-xs shadow-2xs font-semibold"
+              title="Merge separate Introduction and Learning Objectives slides into 1 slide with an empty lesson title slide"
+            >
+              <Layers className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+              Merge Intro &amp; Objectives
+            </Button>
+          )}
 
           {courseJson && (
             <>
@@ -4256,6 +4346,103 @@ export default function CourseJsonConverter() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Merge Introduction & Learning Objectives Confirmation */}
+      <Dialog open={showMergeIntroModal} onOpenChange={setShowMergeIntroModal}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
+              <Layers className="h-5 w-5 text-indigo-600" />
+              Merge Introduction &amp; Learning Objectives?
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-2 text-sm text-slate-600 dark:text-slate-300">
+            <p>
+              We detected separate <strong>Introduction</strong> and{' '}
+              <strong>Learning Objectives</strong> slides in{' '}
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                {pendingMergeCandidates.length} numbered lesson
+                {pendingMergeCandidates.length > 1 ? 's' : ''}
+              </span>{' '}
+              (e.g.,{' '}
+              {pendingMergeCandidates
+                .slice(0, 3)
+                .map((c) => c.lessonTitle || c.lessonId)
+                .join(', ')}
+              {pendingMergeCandidates.length > 3 ? '...' : ''}).
+            </p>
+
+            <div className="max-h-36 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-2.5 text-xs space-y-1.5">
+              {pendingMergeCandidates.map((c, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between text-slate-700 dark:text-slate-200 font-medium"
+                >
+                  <span className="truncate max-w-[320px]">
+                    📖 {c.lessonTitle || c.lessonId}
+                  </span>
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                  >
+                    Separate Slides
+                  </Badge>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-2.5 text-xs text-amber-800 dark:text-amber-300 space-y-1.5">
+              <div className="font-semibold flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                Actions to be performed:
+              </div>
+              <ul className="list-disc pl-4 space-y-1 text-[11px] leading-relaxed">
+                <li>
+                  Combine Introduction paragraph first, then Learning Objectives
+                  content into 1 slide named{' '}
+                  <span className="font-mono font-semibold">
+                    &quot;Introduction / Learning Objectives&quot;
+                  </span>
+                  .
+                </li>
+                <li>
+                  Make the first slide an empty title slide containing strictly
+                  the lesson name (without lesson numbering prefixes like
+                  &quot;Lesson 1:&quot;).
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowMergeIntroModal(false);
+                setPendingMergeCandidates([]);
+                setPendingMergeCourse(null);
+                showToast(
+                  'Kept separate Introduction and Learning Objectives slides.'
+                );
+              }}
+            >
+              Keep Separate
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleExecuteMergeIntroAndObjectives}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold gap-1.5"
+            >
+              <Check className="h-4 w-4" />
+              Merge Slides
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

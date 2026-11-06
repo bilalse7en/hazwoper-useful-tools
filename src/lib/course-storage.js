@@ -1177,11 +1177,25 @@ export async function getAllCoursesAsync() {
   // Primary Source of Truth: Sync directly from Supabase Database
   if (supabase) {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('courses')
         .select(
-          'id, title, slug, description, category, duration, duration_label, thumbnail, status, author, settings, updated_at'
+          'id, title, slug, description, category, duration, duration_label, thumbnail, status, author_id, settings, updated_at'
         );
+
+      if (error) {
+        // Fallback to essential safe columns if schema has custom fields
+        const fallbackRes = await supabase
+          .from('courses')
+          .select(
+            'id, title, slug, description, thumbnail, status, updated_at'
+          );
+        if (!fallbackRes.error && Array.isArray(fallbackRes.data)) {
+          data = fallbackRes.data;
+          error = null;
+        }
+      }
+
       if (!error && Array.isArray(data) && data.length > 0) {
         data.forEach((row) => {
           const cloudCourse = {
@@ -1194,7 +1208,7 @@ export async function getAllCoursesAsync() {
             durationLabel: row.duration_label || '2 Hours',
             thumbnail: row.thumbnail || '',
             status: row.status || 'published',
-            author: row.author || 'Bilal Ghaffar',
+            author: row.author || row.author_id || 'Bilal Ghaffar',
             settings: row.settings || {},
             modules: row.modules || [],
             finalExam: row.final_exam || {},
