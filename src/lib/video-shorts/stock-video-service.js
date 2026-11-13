@@ -88,7 +88,10 @@ export async function searchIslamicStockVideos({
   }
 
   // 2. Dynamic Pixabay Search if API key exists
-  const pixabayKey = process.env.PIXABAY_API_KEY;
+  const pixabayKey =
+    process.env.PIXABAY_API_KEY ||
+    process.env.PIXABAY_KEY ||
+    '33253478-0541b400df369e65277a2af2f';
   if (pixabayKey && (provider === 'all' || provider === 'pixabay')) {
     try {
       const pixRes = await fetch(
