@@ -43,12 +43,22 @@ export async function POST(request) {
     };
 
     const provider = body.provider || 'all';
+    const mediaType = body.mediaType || body.type || 'all';
+    const orientation = body.orientation || 'all';
+    const excludeIds = Array.isArray(body.excludeIds)
+      ? body.excludeIds
+      : typeof body.excludeIds === 'string'
+        ? body.excludeIds.split(',').map((s) => s.trim()).filter(Boolean)
+        : [];
 
     const result = await executeSmartStockSearch({
       title,
       context,
       styleFilter,
+      mediaType,
+      orientation,
       provider,
+      excludeIds,
       offset,
       limit,
       threshold,
@@ -113,12 +123,21 @@ export async function GET(request) {
     };
 
     const provider = searchParams.get('provider') || 'all';
+    const mediaType = searchParams.get('mediaType') || searchParams.get('type') || 'all';
+    const orientation = searchParams.get('orientation') || 'all';
+    const rawExclude = searchParams.get('excludeIds');
+    const excludeIds = rawExclude
+      ? rawExclude.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
 
     const result = await executeSmartStockSearch({
       title,
       context,
       styleFilter,
+      mediaType,
+      orientation,
       provider,
+      excludeIds,
       offset,
       limit,
       threshold,

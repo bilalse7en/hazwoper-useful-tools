@@ -9,14 +9,19 @@ export async function GET(request) {
   }
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'image/*',
-        Referer: 'https://pollinations.ai/',
-      },
-    });
+    const isWikimedia = url.includes('wikimedia.org') || url.includes('wikipedia.org');
+    const headers = {
+      'User-Agent': isWikimedia
+        ? 'HazwoperUsefulTools/1.0 (https://hazwoper-useful-tools.vercel.app; admin@hazwoper.com)'
+        : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Accept: 'image/*',
+    };
+
+    if (!isWikimedia) {
+      headers.Referer = 'https://pollinations.ai/';
+    }
+
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       console.error(

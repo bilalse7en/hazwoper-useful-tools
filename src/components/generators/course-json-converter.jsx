@@ -787,6 +787,19 @@ export default function CourseJsonConverter() {
     allTopics[0] ||
     null;
 
+  // Compute quiz question count for active lesson in topic inspector
+  const currentLessonQuizCount = useMemo(() => {
+    if (!activeTopic || !courseJson?.modules) return 0;
+    for (const mod of courseJson.modules) {
+      for (const les of mod.lessons || []) {
+        if (les.lesson_id === activeTopic.lessonId) {
+          return (les.knowledge_check || []).length;
+        }
+      }
+    }
+    return 0;
+  }, [activeTopic, courseJson]);
+
   // Dynamically compute HTML based on image toggle switch
   const displayedTopicHtml = useMemo(() => {
     if (!activeTopic) return '<p>No content</p>';
@@ -2415,7 +2428,11 @@ export default function CourseJsonConverter() {
                 </Card>
 
                 {/* 4. Total Quizzes (Quiz & F/E) */}
-                <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-amber-300 dark:hover:border-amber-800 transition-colors">
+                <Card
+                  onClick={() => setActiveTab('quiz')}
+                  className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-amber-400 dark:hover:border-amber-600 hover:ring-2 hover:ring-amber-500/20 cursor-pointer transition-all"
+                  title="Click to view & manage Quizzes"
+                >
                   <CardContent className="p-3 flex flex-col justify-between h-full">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -2459,7 +2476,11 @@ export default function CourseJsonConverter() {
                 </Card>
 
                 {/* 5. Total Questions (Q/A & F/E) */}
-                <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-emerald-300 dark:hover:border-emerald-800 transition-colors">
+                <Card
+                  onClick={() => setActiveTab('quiz')}
+                  className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-emerald-400 dark:hover:border-emerald-600 hover:ring-2 hover:ring-emerald-500/20 cursor-pointer transition-all"
+                  title="Click to view & manage Questions"
+                >
                   <CardContent className="p-3 flex flex-col justify-between h-full">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -3016,6 +3037,17 @@ export default function CourseJsonConverter() {
                                 🖼️ Images ON
                               </button>
                             </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setActiveTab('quiz')}
+                              className="h-7 text-xs font-semibold gap-1.5 border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 shadow-2xs"
+                              title="Inspect & manage quizzes for this lesson"
+                            >
+                              <HelpCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                              Quiz ({currentLessonQuizCount} Q)
+                            </Button>
                             <Badge variant="outline" className="text-xs">
                               ⏱️ {activeTopic.allocated_duration_seconds}s
                             </Badge>
@@ -3298,66 +3330,90 @@ export default function CourseJsonConverter() {
 
                           {/* Options with Clickable Correct Answer Selection */}
                           <div className="space-y-2 pt-1">
-                            {q.options?.map((opt, optIdx) => {
-                              const optLetter = (
-                                opt.value ||
-                                ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][
-                                  optIdx
-                                ] ||
-                                `${optIdx + 1}`
-                              ).toUpperCase();
-                              const optLabel =
-                                opt.label || opt.option_text || '';
-                              const isCorrect =
-                                optLetter === q.correct_answer ||
-                                opt.is_correct === true ||
-                                opt.value === q.correct_answer;
-                              return (
-                                <button
+                            {q.options && q.options.length > 0 ? (
+                              q.options.map((opt, optIdx) => {
+                                const optLetter = (
+                                  opt.value ||
+                                  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][
+                                    optIdx
+                                  ] ||
+                                  `${optIdx + 1}`
+                                ).toUpperCase();
+                                const optLabel =
+                                  opt.label || opt.option_text || '';
+                                const isCorrect =
+                                  optLetter === q.correct_answer ||
+                                  opt.is_correct === true ||
+                                  opt.value === q.correct_answer;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={`${q.question_id || 'kc'}_opt_${optLetter}_${optIdx}`}
+                                    onClick={() =>
+                                      handleSelectCorrectAnswer(
+                                        q.question_id,
+                                        optLetter,
+                                        false
+                                      )
+                                    }
+                                    className={cn(
+                                      'w-full p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all cursor-pointer text-left',
+                                      isCorrect
+                                        ? 'border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 font-medium ring-1 ring-emerald-500/20'
+                                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:border-emerald-300 hover:bg-emerald-50/20'
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                      <span
+                                        className={cn(
+                                          'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-transform',
+                                          isCorrect
+                                            ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                        )}
+                                      >
+                                        {optLetter}
+                                      </span>
+                                      <span className="text-xs leading-normal">
+                                        {optLabel}
+                                      </span>
+                                    </div>
+                                    {isCorrect ? (
+                                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 shrink-0 ml-2">
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        Correct
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 hover:text-emerald-600 font-medium shrink-0 ml-2 opacity-0 hover:opacity-100 transition-opacity">
+                                        Click to select
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })
+                            ) : (
+                              <div className="p-3 rounded-xl border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs flex items-center justify-between gap-2">
+                                <span className="text-amber-800 dark:text-amber-300">
+                                  No options currently defined for this question.
+                                </span>
+                                <Button
                                   type="button"
-                                  key={`${q.question_id || 'kc'}_opt_${optLetter}_${optIdx}`}
+                                  size="sm"
+                                  variant="outline"
                                   onClick={() =>
-                                    handleSelectCorrectAnswer(
-                                      q.question_id,
-                                      optLetter,
-                                      false
+                                    handleOpenEditQuestion(
+                                      q,
+                                      false,
+                                      q.moduleId,
+                                      q.lessonId
                                     )
                                   }
-                                  className={cn(
-                                    'w-full p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all cursor-pointer text-left',
-                                    isCorrect
-                                      ? 'border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 font-medium ring-1 ring-emerald-500/20'
-                                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:border-emerald-300 hover:bg-emerald-50/20'
-                                  )}
+                                  className="h-6 text-[10px] gap-1 border-amber-300 text-amber-800 dark:text-amber-200"
                                 >
-                                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                    <span
-                                      className={cn(
-                                        'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-transform',
-                                        isCorrect
-                                          ? 'bg-emerald-600 text-white shadow-xs scale-105'
-                                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                      )}
-                                    >
-                                      {optLetter}
-                                    </span>
-                                    <span className="text-xs leading-normal">
-                                      {optLabel}
-                                    </span>
-                                  </div>
-                                  {isCorrect ? (
-                                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 shrink-0 ml-2">
-                                      <CheckCircle2 className="h-3.5 w-3.5" />
-                                      Correct
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] text-slate-400 hover:text-emerald-600 font-medium shrink-0 ml-2 opacity-0 hover:opacity-100 transition-opacity">
-                                      Click to select
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
+                                  <Plus className="h-3 w-3" /> Add Options
+                                </Button>
+                              </div>
+                            )}
                           </div>
 
                           {q.explanation && (

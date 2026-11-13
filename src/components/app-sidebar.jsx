@@ -99,9 +99,9 @@ const navGroups = [
           { id: 'bg-remover', label: 'Background Remover', icon: Wand2 },
           {
             id: 'adobe-stock-finder',
-            label: 'Adobe Stock Finder',
+            label: 'Global Stock Finder',
             icon: Search,
-            badge: 'AI',
+            badge: 'Global AI',
           },
         ],
       },

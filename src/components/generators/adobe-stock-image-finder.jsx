@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   Search,
   Sparkles,
@@ -9,8 +9,6 @@ import {
   Check,
   Maximize2,
   AlertCircle,
-  Key,
-  Info,
   RefreshCw,
   ChevronDown,
   ChevronLeft,
@@ -28,6 +26,13 @@ import {
   Camera,
   Palette,
   Download,
+  Video,
+  Play,
+  Film,
+  Trash2,
+  Archive,
+  Plus,
+  ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,7 +70,7 @@ export function AdobeStockImageFinder({
   // Navigation / Mode state: 'single' (one-title) | 'toc' (course TOC upload)
   const [activeTab, setActiveTab] = useState('single');
 
-  // Single Search State
+  // Search Query & Results
   const [title, setTitle] = useState(initialTitle);
   const [loading, setLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState('');
@@ -74,13 +79,33 @@ export function AdobeStockImageFinder({
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState(null);
-  const [configInfo, setConfigInfo] = useState(null);
   const [analysis, setAnalysis] = useState(null);
-  const [copiedId, setCopiedId] = useState(null);
-  const [copiedLink, setCopiedLink] = useState(null);
-  const [previewModalItem, setPreviewModalItem] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [searchMode, setSearchMode] = useState('public-catalog');
+
+  // Filters
+  const [mediaType, setMediaType] = useState('all'); // 'all' | 'photo' | 'video' | 'illustration'
+  const [orientation, setOrientation] = useState('all'); // 'all' | 'landscape' | 'portrait'
+  const [selectedProvider, setSelectedProvider] = useState('all'); // 'all' | 'adobe' | 'pixabay' | 'unsplash' | 'pexels' | 'wikimedia'
+  const [styleFilter, setStyleFilter] = useState({
+    photo: true,
+    illustration: true,
+  });
+
+  // Course Media Bin: Tracks assets assigned/downloaded per course to eliminate duplicates
+  const [usedAssets, setUsedAssets] = useState([]);
+  const [hideUsedAssets, setHideUsedAssets] = useState(true);
+  const [showMediaBinDrawer, setShowMediaBinDrawer] = useState(false);
+
+  // Modals & Drawers
+  const [previewModalItem, setPreviewModalItem] = useState(null);
+  const [showAiPromptModal, setShowAiPromptModal] = useState(false);
+  const [showTocDrawer, setShowTocDrawer] = useState(false);
+
+  // Interactive 3-Tier Curriculum Context
+  const [courseName, setCourseName] = useState('');
+  const [moduleName, setModuleName] = useState('');
+  const [lessonName, setLessonName] = useState('');
+  const [showContextEditor, setShowContextEditor] = useState(false);
 
   // TOC / Word Document State
   const [tocData, setTocData] = useState(null);
@@ -89,34 +114,55 @@ export function AdobeStockImageFinder({
   const [visitedTopics, setVisitedTopics] = useState(new Set());
   const [pastingText, setPastingText] = useState('');
   const [parsingDoc, setParsingDoc] = useState(false);
-  const [showTocDrawer, setShowTocDrawer] = useState(false);
+
+  // Interaction feedback states
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(null);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+
+  // Refs
   const fileInputRef = useRef(null);
   const topicsTrackRef = useRef(null);
-
-  // Style Filter State: Real Life (Photos) vs Cartoonic (Vectors & Illustrations)
-  // By default, BOTH are checked!
-  const [styleFilter, setStyleFilter] = useState({
-    photo: true,
-    illustration: true,
-  });
-
-  // App / Provider Filter State: 'all' | 'unsplash' | 'adobe'
-  const [selectedProvider, setSelectedProvider] = useState('all');
-  const [downloadingId, setDownloadingId] = useState(null);
-
-  // Interactive 3-Tier Curriculum Context State
-  const [courseName, setCourseName] = useState('');
-  const [moduleName, setModuleName] = useState('');
-  const [lessonName, setLessonName] = useState('');
-  const [showContextEditor, setShowContextEditor] = useState(false);
-  const [copiedPrompt, setCopiedPrompt] = useState(false);
-  const [showTopicAiPrompt, setShowTopicAiPrompt] = useState(false);
-
-  // Stale request guard
   const abortControllerRef = useRef(null);
   const searchIdRef = useRef(0);
-  // Topic search results cache: Map<string, { results, totalFound, offset, hasMore, analysis, mode }>
   const topicCacheRef = useRef(new Map());
+
+  // Storage key based on course name
+  const storageKey = useMemo(() => {
+    const raw = courseName || tocData?.courseTitle || 'default_course';
+    return `hazwoper_used_media_${raw.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`;
+  }, [courseName, tocData?.courseTitle]);
+
+  // Load assigned assets from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setUsedAssets(parsed);
+        }
+      } else {
+        setUsedAssets([]);
+      }
+    } catch {
+      setUsedAssets([]);
+    }
+  }, [storageKey]);
+
+  // Persist assigned assets to localStorage
+  const persistUsedAssets = (nextAssets) => {
+    setUsedAssets(nextAssets);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(nextAssets));
+      } catch (err) {
+        console.warn('Failed to save used assets:', err);
+      }
+    }
+  };
 
   // Sync if initialTitle changes
   useEffect(() => {
@@ -125,123 +171,141 @@ export function AdobeStockImageFinder({
     }
   }, [initialTitle]);
 
-  const handleDownloadUnsplash = async (item, e) => {
+  // Set of assigned asset IDs for fast lookup
+  const usedAssetIds = useMemo(() => {
+    return new Set(usedAssets.map((a) => String(a.assetId)));
+  }, [usedAssets]);
+
+  // Filtered results: hides already assigned items if hideUsedAssets is active
+  const displayedResults = useMemo(() => {
+    if (!hideUsedAssets) return results;
+    return results.filter((item) => !usedAssetIds.has(String(item.assetId)));
+  }, [results, hideUsedAssets, usedAssetIds]);
+
+  // Assign an asset to the current course topic
+  const handleAssignAsset = useCallback(
+    (item, e) => {
+      if (e) e.stopPropagation();
+      if (!item) return;
+
+      const activeTopic =
+        activeTopicIndex >= 0 && tocData?.topics
+          ? tocData.topics[activeTopicIndex]
+          : null;
+
+      const assignment = {
+        assetId: String(item.assetId || item.id),
+        title: item.title,
+        previewUrl: item.previewUrl,
+        largePreviewUrl: item.largePreviewUrl || item.previewUrl,
+        downloadUrl: item.downloadUrl,
+        videoUrl: item.videoUrl,
+        provider: item.provider || 'stock',
+        mediaType: item.mediaType || (item.videoUrl ? 'video' : 'photo'),
+        orientation: item.orientation || 'landscape',
+        course:
+          courseName || activeTopic?.course || tocData?.courseTitle || 'General Course',
+        module: moduleName || activeTopic?.module || tocData?.moduleTitle || '',
+        lesson:
+          lessonName || activeTopic?.lesson || tocData?.lessonTitle || 'General Lesson',
+        topicTitle: activeTopic?.title || title || 'Current Slide',
+        topicIndex: activeTopicIndex,
+        assignedAt: Date.now(),
+      };
+
+      const exists = usedAssets.some((u) => u.assetId === assignment.assetId);
+      const next = exists
+        ? usedAssets.map((u) => (u.assetId === assignment.assetId ? assignment : u))
+        : [assignment, ...usedAssets];
+
+      persistUsedAssets(next);
+      if (onSelectImage) onSelectImage(item);
+    },
+    [activeTopicIndex, tocData, courseName, moduleName, lessonName, title, usedAssets, onSelectImage]
+  );
+
+  // Release an asset from the Course Media Bin back to the gallery
+  const handleReleaseAsset = (assetId, e) => {
+    if (e) e.stopPropagation();
+    const next = usedAssets.filter((u) => u.assetId !== String(assetId));
+    persistUsedAssets(next);
+  };
+
+  // Clear all assigned assets for this course
+  const handleClearAllUsedAssets = () => {
+    if (window.confirm('Release all assigned assets back to the recommendation gallery?')) {
+      persistUsedAssets([]);
+    }
+  };
+
+  // Download an asset via server-side proxy and mark as assigned
+  const handleDownloadFreeImage = async (item, e) => {
     if (e) e.stopPropagation();
     if (!item) return;
     setDownloadingId(item.assetId);
 
+    // Automatically assign to this lesson so it never repeats
+    handleAssignAsset(item);
+
     try {
-      // Notify Unsplash download endpoint if present (API guideline compliance)
       if (item.downloadApiUrl) {
         fetch(item.downloadApiUrl).catch(() => {});
       }
 
-      const downloadUrl =
-        item.downloadUrl || item.largePreviewUrl || item.previewUrl;
-      const res = await fetch(downloadUrl);
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
+      const isVideo = item.mediaType === 'video' || Boolean(item.videoUrl);
+      const rawUrl =
+        item.downloadUrl || item.videoUrl || item.largePreviewUrl || item.previewUrl;
+      const ext = isVideo ? 'mp4' : 'jpg';
+      const prov = item.provider || 'stock';
+      const filename = `${prov}-${item.assetId || Date.now()}.${ext}`;
+
+      const proxyUrl = `/api/adobe-stock/download?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(filename)}`;
       const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `unsplash-${item.assetId || 'photo'}.jpg`;
+      a.href = proxyUrl;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error('Download error:', err);
-      // Fallback: Open original image in new tab for direct browser save
-      window.open(item.downloadUrl || item.previewUrl, '_blank');
+      window.open(item.downloadUrl || item.videoUrl || item.previewUrl, '_blank');
     } finally {
-      setDownloadingId(null);
+      setTimeout(() => setDownloadingId(null), 1000);
     }
   };
 
-  const handleSetStyle = (mode) => {
-    let nextStyle;
-    if (mode === 'all') {
-      nextStyle = { photo: true, illustration: true };
-    } else if (mode === 'photo') {
-      nextStyle = { photo: true, illustration: false };
-    } else if (mode === 'illustration') {
-      nextStyle = { photo: false, illustration: true };
-    } else {
-      nextStyle = { photo: true, illustration: true };
-    }
-    setStyleFilter(nextStyle);
-
-    if (title.trim()) {
-      const activeTopic =
-        activeTopicIndex >= 0 && tocData?.topics
-          ? tocData.topics[activeTopicIndex]
-          : null;
-      const context = {
-        course: courseName || activeTopic?.course || tocData?.courseTitle,
-        module: moduleName || activeTopic?.module || tocData?.moduleTitle,
-        lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
-        parentSection: activeTopic?.parentSection,
-      };
-      executeSearch(title, true, context, nextStyle, selectedProvider);
-    }
-  };
-
-  const handleSetProvider = (provider) => {
-    setSelectedProvider(provider);
-
-    if (title.trim()) {
-      const activeTopic =
-        activeTopicIndex >= 0 && tocData?.topics
-          ? tocData.topics[activeTopicIndex]
-          : null;
-      const context = {
-        course: courseName || activeTopic?.course || tocData?.courseTitle,
-        module: moduleName || activeTopic?.module || tocData?.moduleTitle,
-        lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
-        parentSection: activeTopic?.parentSection,
-      };
-      executeSearch(title, true, context, styleFilter, provider);
-    }
-  };
-
-  const toggleStyle = (type) => {
-    let nextFilter;
-    setStyleFilter((prev) => {
-      const next = { ...prev, [type]: !prev[type] };
-      // Prevent unchecking both: at least one must remain active
-      if (!next.photo && !next.illustration) {
-        return prev;
+  // Batch download all items in the Media Bin
+  const handleBatchDownloadUsedAssets = async () => {
+    if (usedAssets.length === 0) return;
+    for (const item of usedAssets) {
+      try {
+        const isVideo = item.mediaType === 'video' || Boolean(item.videoUrl);
+        const rawUrl = item.downloadUrl || item.videoUrl || item.previewUrl;
+        const ext = isVideo ? 'mp4' : 'jpg';
+        const filename = `${item.provider || 'stock'}-${item.assetId}.${ext}`;
+        const proxyUrl = `/api/adobe-stock/download?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(filename)}`;
+        const a = document.createElement('a');
+        a.href = proxyUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        await new Promise((r) => setTimeout(r, 400));
+      } catch (err) {
+        console.warn('Batch download item error:', err);
       }
-      nextFilter = next;
-      return next;
-    });
-
-    if (title.trim()) {
-      const activeTopic =
-        activeTopicIndex >= 0 && tocData?.topics
-          ? tocData.topics[activeTopicIndex]
-          : null;
-      const context = {
-        course: courseName || activeTopic?.course || tocData?.courseTitle,
-        module: moduleName || activeTopic?.module || tocData?.moduleTitle,
-        lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
-        parentSection: activeTopic?.parentSection,
-      };
-      executeSearch(
-        title,
-        true,
-        context,
-        nextFilter || styleFilter,
-        selectedProvider
-      );
     }
   };
 
+  // Search Execution Engine
   const executeSearch = async (
     searchQuery,
     forceRefresh = false,
     context = {},
     activeStyle = styleFilter,
-    activeProvider = selectedProvider
+    activeProvider = selectedProvider,
+    activeMediaType = mediaType,
+    activeOrientation = orientation
   ) => {
     const cleanTitle = (searchQuery || '').trim();
     if (!cleanTitle) return;
@@ -253,75 +317,49 @@ export function AdobeStockImageFinder({
       parentSection: context.parentSection,
     };
 
-    // Cache key incorporates course, lesson, style filter, active provider, and parentSection
-    const styleKey = `${activeStyle.photo ? 'p' : ''}_${activeStyle.illustration ? 'i' : ''}_${activeProvider}`;
+    // Cache key incorporates course, lesson, style, provider, mediaType, orientation, and topic
+    const styleKey = `${activeStyle.photo ? 'p' : ''}_${activeStyle.illustration ? 'i' : ''}_${activeProvider}_${activeMediaType}_${activeOrientation}`;
     const cacheKey =
       `${effectiveContext.course}::${effectiveContext.lesson}::${effectiveContext.parentSection || ''}::${styleKey}::${cleanTitle}`.toLowerCase();
 
-    // 1-Time Search: If this topic has already been searched and forceRefresh is false,
-    // immediately restore cached results with zero network re-request and zero reload delay.
     if (!forceRefresh && topicCacheRef.current.has(cacheKey)) {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      if (abortControllerRef.current) abortControllerRef.current.abort();
       const cached = topicCacheRef.current.get(cacheKey);
       setResults(cached.results || []);
       setTotalFound(cached.totalFound || 0);
       setOffset(cached.offset || 0);
       setHasMore(cached.hasMore || false);
       setAnalysis(cached.analysis || null);
-      if (cached.mode) setSearchMode(cached.mode);
       setError(null);
-      setConfigInfo(null);
       setLoading(false);
       setLoadingStage('');
       return;
     }
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
     const currentSearchId = ++searchIdRef.current;
-
     setLoading(true);
     setError(null);
-    setConfigInfo(null);
     setResults([]);
     setTotalFound(0);
     setOffset(0);
     setHasMore(false);
 
-    setLoadingStage('Analyzing curriculum context & technical subject...');
+    setLoadingStage('Analyzing curriculum subject...');
     const timer1 = setTimeout(() => {
       if (searchIdRef.current === currentSearchId) {
-        setLoadingStage(
-          'Synthesizing lesson & topic specific queries with 3-tier context...'
-        );
+        setLoadingStage('Searching multi-provider stock catalogs...');
       }
-    }, 450);
+    }, 400);
 
     const timer2 = setTimeout(() => {
       if (searchIdRef.current === currentSearchId) {
-        setLoadingStage(
-          activeProvider === 'unsplash'
-            ? 'Searching Unsplash for free high-resolution photos...'
-            : activeProvider === 'adobe'
-              ? 'Searching Adobe Stock catalog for verified assets...'
-              : 'Searching Unsplash and Adobe Stock catalogs in parallel...'
-        );
+        setLoadingStage('Evaluating relevance and removing duplicates...');
       }
     }, 900);
-
-    const timer3 = setTimeout(() => {
-      if (searchIdRef.current === currentSearchId) {
-        setLoadingStage(
-          'Ranking semantic relevance and excluding duplicate concepts...'
-        );
-      }
-    }, 1400);
 
     try {
       const response = await fetch('/api/adobe-stock/search', {
@@ -332,6 +370,9 @@ export function AdobeStockImageFinder({
           context: effectiveContext,
           styleFilter: activeStyle,
           provider: activeProvider,
+          mediaType: activeMediaType,
+          orientation: activeOrientation,
+          excludeIds: hideUsedAssets ? usedAssets.map((a) => a.assetId) : [],
           offset: 0,
           limit: 24,
           threshold: 45,
@@ -340,16 +381,10 @@ export function AdobeStockImageFinder({
       });
 
       const data = await response.json();
-
       if (searchIdRef.current !== currentSearchId) return;
 
       if (!response.ok) {
-        if (data.configured === false || response.status === 401) {
-          setConfigInfo(data);
-          setAnalysis(data.analysis || null);
-        } else {
-          setError(data.message || 'An error occurred while finding images.');
-        }
+        setError(data.message || 'An error occurred while finding media.');
         return;
       }
 
@@ -358,36 +393,29 @@ export function AdobeStockImageFinder({
       const freshHasMore = Boolean(data.hasMore);
       const freshOffset = data.offset || 0;
       const freshAnalysis = data.analysis || null;
-      const freshMode = data.mode || 'public-catalog';
 
       setResults(freshResults);
       setTotalFound(freshTotalFound);
       setHasMore(freshHasMore);
       setOffset(freshOffset);
       setAnalysis(freshAnalysis);
-      if (data.mode) setSearchMode(freshMode);
 
-      // Persist in client-side topic cache for instantaneous navigation
       topicCacheRef.current.set(cacheKey, {
         results: freshResults,
         totalFound: freshTotalFound,
         hasMore: freshHasMore,
         offset: freshOffset,
         analysis: freshAnalysis,
-        mode: freshMode,
       });
     } catch (err) {
       if (err.name === 'AbortError') return;
       if (searchIdRef.current === currentSearchId) {
         console.error('Search request error:', err);
-        setError(
-          'Network error: Unable to reach search service. Please try again.'
-        );
+        setError('Network error: Unable to reach search service. Please try again.');
       }
     } finally {
       clearTimeout(timer1);
       clearTimeout(timer2);
-      clearTimeout(timer3);
       if (searchIdRef.current === currentSearchId) {
         setLoading(false);
         setLoadingStage('');
@@ -410,24 +438,9 @@ export function AdobeStockImageFinder({
         ? tocData.topics[activeTopicIndex]
         : null;
     const effectiveContext = {
-      course: (
-        courseName ||
-        activeTopic?.course ||
-        tocData?.courseTitle ||
-        ''
-      ).trim(),
-      module: (
-        moduleName ||
-        activeTopic?.module ||
-        tocData?.moduleTitle ||
-        ''
-      ).trim(),
-      lesson: (
-        lessonName ||
-        activeTopic?.lesson ||
-        tocData?.lessonTitle ||
-        ''
-      ).trim(),
+      course: (courseName || activeTopic?.course || tocData?.courseTitle || '').trim(),
+      module: (moduleName || activeTopic?.module || tocData?.moduleTitle || '').trim(),
+      lesson: (lessonName || activeTopic?.lesson || tocData?.lessonTitle || '').trim(),
       parentSection: activeTopic?.parentSection,
     };
 
@@ -440,6 +453,9 @@ export function AdobeStockImageFinder({
           context: effectiveContext,
           styleFilter,
           provider: selectedProvider,
+          mediaType,
+          orientation,
+          excludeIds: hideUsedAssets ? usedAssets.map((a) => a.assetId) : [],
           offset: nextOffset,
           limit: 24,
           threshold: 45,
@@ -457,8 +473,7 @@ export function AdobeStockImageFinder({
         setHasMore(nextHasMore);
         setOffset(nextOffset);
 
-        // Update the cached results for this topic so returning to it retains the expanded list
-        const styleKey = `${styleFilter.photo ? 'p' : ''}_${styleFilter.illustration ? 'i' : ''}_${selectedProvider}`;
+        const styleKey = `${styleFilter.photo ? 'p' : ''}_${styleFilter.illustration ? 'i' : ''}_${selectedProvider}_${mediaType}_${orientation}`;
         const cacheKey =
           `${effectiveContext.course}::${effectiveContext.lesson}::${effectiveContext.parentSection || ''}::${styleKey}::${title.trim()}`.toLowerCase();
         const prevCached = topicCacheRef.current.get(cacheKey) || {};
@@ -477,7 +492,65 @@ export function AdobeStockImageFinder({
     }
   };
 
-  // Word / DOCX or Text File Upload handler
+  // Filter setters with auto-search
+  const handleSetMediaType = (type) => {
+    setMediaType(type);
+    let nextStyle = styleFilter;
+    if (type === 'all') nextStyle = { photo: true, illustration: true };
+    else if (type === 'photo') nextStyle = { photo: true, illustration: false };
+    else if (type === 'illustration') nextStyle = { photo: false, illustration: true };
+    setStyleFilter(nextStyle);
+
+    if (title.trim()) {
+      const activeTopic =
+        activeTopicIndex >= 0 && tocData?.topics
+          ? tocData.topics[activeTopicIndex]
+          : null;
+      const context = {
+        course: courseName || activeTopic?.course || tocData?.courseTitle,
+        module: moduleName || activeTopic?.module || tocData?.moduleTitle,
+        lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
+        parentSection: activeTopic?.parentSection,
+      };
+      executeSearch(title, true, context, nextStyle, selectedProvider, type, orientation);
+    }
+  };
+
+  const handleSetOrientation = (orient) => {
+    setOrientation(orient);
+    if (title.trim()) {
+      const activeTopic =
+        activeTopicIndex >= 0 && tocData?.topics
+          ? tocData.topics[activeTopicIndex]
+          : null;
+      const context = {
+        course: courseName || activeTopic?.course || tocData?.courseTitle,
+        module: moduleName || activeTopic?.module || tocData?.moduleTitle,
+        lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
+        parentSection: activeTopic?.parentSection,
+      };
+      executeSearch(title, true, context, styleFilter, selectedProvider, mediaType, orient);
+    }
+  };
+
+  const handleSetProvider = (provider) => {
+    setSelectedProvider(provider);
+    if (title.trim()) {
+      const activeTopic =
+        activeTopicIndex >= 0 && tocData?.topics
+          ? tocData.topics[activeTopicIndex]
+          : null;
+      const context = {
+        course: courseName || activeTopic?.course || tocData?.courseTitle,
+        module: moduleName || activeTopic?.module || tocData?.moduleTitle,
+        lesson: lessonName || activeTopic?.lesson || tocData?.lessonTitle,
+        parentSection: activeTopic?.parentSection,
+      };
+      executeSearch(title, true, context, styleFilter, provider, mediaType, orientation);
+    }
+  };
+
+  // Word / DOCX file upload handler
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -505,7 +578,6 @@ export function AdobeStockImageFinder({
     }
   };
 
-  // Paste Text parser
   const handleParsePastedText = () => {
     if (!pastingText.trim()) return;
     const parsed = parseCourseTOC(pastingText, false);
@@ -515,9 +587,7 @@ export function AdobeStockImageFinder({
 
   const applyParsedTOC = (parsed) => {
     if (!parsed.topics || parsed.topics.length === 0) {
-      setError(
-        'No topics found in the uploaded content. Quizzes and boilerplate were excluded.'
-      );
+      setError('No lesson topics found in the document.');
       return;
     }
     topicCacheRef.current.clear();
@@ -530,10 +600,6 @@ export function AdobeStockImageFinder({
     setCourseName(detectedCourse);
     setModuleName(detectedModule);
     setLessonName(detectedLesson);
-
-    if (!detectedCourse || !detectedLesson) {
-      setShowContextEditor(true);
-    }
 
     setError(null);
     setActiveTab('toc');
@@ -572,32 +638,10 @@ export function AdobeStockImageFinder({
   };
 
   const goToNextTopic = () => {
-    if (!tocData?.topics || activeTopicIndex >= tocData.topics.length - 1)
-      return;
+    if (!tocData?.topics || activeTopicIndex >= tocData.topics.length - 1) return;
     const nextIdx = activeTopicIndex + 1;
     selectTopic(tocData.topics[nextIdx], nextIdx);
   };
-
-  const scrollTopicsTrack = (direction) => {
-    if (!topicsTrackRef.current) return;
-    const scrollAmount = direction === 'left' ? -220 : 220;
-    topicsTrackRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-  };
-
-  // Auto-center active topic pill in bottom dock whenever activeTopicIndex changes
-  useEffect(() => {
-    if (!topicsTrackRef.current || activeTopicIndex < 0) return;
-    const activeEl = topicsTrackRef.current.querySelector(
-      `[data-topic-idx="${activeTopicIndex}"]`
-    );
-    if (activeEl) {
-      activeEl.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'center',
-      });
-    }
-  }, [activeTopicIndex]);
 
   const handleCopyId = (assetId, e) => {
     if (e) e.stopPropagation();
@@ -618,32 +662,19 @@ export function AdobeStockImageFinder({
     if (navigator?.clipboard) {
       navigator.clipboard.writeText(promptText);
       setCopiedPrompt(true);
-      setTimeout(() => setCopiedPrompt(false), 2200);
+      setTimeout(() => setCopiedPrompt(false), 2000);
     }
   };
 
   const generateAiPromptForTopic = (topicTitle) => {
     const clean = (topicTitle || title || '').trim();
-    const isSummary = /^(summary|lesson\s+summary|course\s+summary)$/i.test(
-      clean
-    );
-    const cName =
-      courseName ||
-      tocData?.courseTitle ||
-      'Power Systems & Electrical Fundamentals';
-    const lName =
-      lessonName ||
-      tocData?.lessonTitle ||
-      'Utility Power Entry and Service Configuration';
+    const cName = courseName || tocData?.courseTitle || 'Industrial Workplace Safety';
+    const lName = lessonName || tocData?.lessonTitle || 'Equipment & Hazard Mitigation';
 
-    if (isSummary) {
-      return `Vertical 9:16 portrait orientation professional architectural photograph of a modern high-voltage electrical power distribution facility and substation for ${cName}. In the background through reinforced structural glass, high-voltage utility transmission lines and large step-down power transformers with ribbed cooling radiators and ceramic insulator bushings stand under a dramatic twilight sky. In the foreground interior, pristine rows of industrial metal-clad switchgear cabinets, main service disconnect enclosures, heavy-gauge copper busbars, and cable raceways gleam under clean architectural downlighting with subtle ambient industrial blue and amber indicator reflections. Ultra-realistic, photorealistic commercial engineering photography, shot on Sony A7R V with 35mm f/2.8 lens, natural depth of field, sharp textures of brushed galvanized steel and copper conduits, rich contrast, documentary realism. Absolutely NO text, NO words, NO letters, NO numbers, NO labels, NO logos, NO signs, NO watermarks, NO people. Pure industrial infrastructure.`;
-    }
-
-    return `Vertical 9:16 portrait orientation professional documentary industrial photograph illustrating "${clean}" in the context of ${cName} (${lName}). High-detail workplace setting showing authentic industrial electrical components, enclosures, and utility distribution hardware in crisp focus, realistic lighting, commercial industrial photography, shot on Sony A7R V with 35mm f/2.8 lens. Absolutely NO text, NO words, NO letters, NO numbers, NO labels, NO logos, NO signs, NO watermarks, NO overlays. Clean educational visual.`;
+    return `Vertical 9:16 portrait orientation professional documentary industrial photograph illustrating "${clean}" in the context of ${cName} (${lName}). High-detail workplace setting showing authentic industrial safety components and enclosures in crisp focus, realistic lighting, commercial industrial photography, shot on Sony A7R V with 35mm f/2.8 lens. Absolutely NO text, NO words, NO letters, NO numbers, NO labels, NO watermarks. Clean educational visual.`;
   };
 
-  // Filtered topics for large lists (10 to 2000 items)
+  // Filtered topics for search in TOC drawer
   const filteredTopics = useMemo(() => {
     if (!tocData?.topics) return [];
     if (!tocSearchQuery.trim()) return tocData.topics;
@@ -657,1046 +688,1051 @@ export function AdobeStockImageFinder({
   }, [tocData, tocSearchQuery]);
 
   return (
-    <div className={cn('w-full max-w-7xl mx-auto space-y-6', className)}>
-      {/* Header & Title Section */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-xs">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-              AI Adobe Stock Image Finder
-              <Badge
-                variant="outline"
-                className="text-[10px] font-bold uppercase tracking-wider bg-primary/5 text-primary border-primary/20"
-              >
-                {searchMode === 'official-api'
-                  ? 'Enterprise API'
-                  : 'Real Adobe Stock Direct'}
-              </Badge>
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              Paste a slide title or upload a course Word document (.docx). AI
-              automatically analyzes each topic, filters out quizzes, and finds
-              matching Adobe Stock images.
-            </p>
-          </div>
+    <div className={cn('w-full max-w-7xl mx-auto space-y-4 sm:space-y-5', className)}>
+      {/* 1. Header: Clean, modern, uncluttered */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            Global Stock Finder
+            <Badge
+              variant="outline"
+              className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-border/80"
+            >
+              Curriculum Aligned
+            </Badge>
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Discover commercial photos and videos matched to your training slides with 95%+ precision.
+          </p>
         </div>
 
-        {/* Tab Switcher: Single Title vs Course TOC Mode */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/80 border border-border/60 shrink-0">
+        {/* Action Controls: Mode Switcher & Media Bin Button */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center p-0.5 rounded-lg bg-muted border border-border/60">
+            <button
+              type="button"
+              onClick={() => setActiveTab('single')}
+              className={cn(
+                'px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer',
+                activeTab === 'single'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Single Search
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('toc')}
+              className={cn(
+                'px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+                activeTab === 'toc'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Course Document
+              {tocData?.totalTopics > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-primary/20 text-primary text-[10px] font-bold">
+                  {tocData.totalTopics}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Used Media Bin Trigger */}
           <Button
             type="button"
+            variant={usedAssets.length > 0 ? 'default' : 'outline'}
             size="sm"
-            variant={activeTab === 'single' ? 'default' : 'ghost'}
-            className={cn(
-              'h-8 text-xs font-semibold gap-1.5 rounded-lg cursor-pointer',
-              activeTab === 'single' && 'shadow-xs'
-            )}
-            onClick={() => setActiveTab('single')}
+            onClick={() => setShowMediaBinDrawer(true)}
+            className="h-8 text-xs font-bold gap-1.5 rounded-lg cursor-pointer shrink-0"
           >
-            <Search className="h-3.5 w-3.5" />
-            Single Title
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={activeTab === 'toc' ? 'default' : 'ghost'}
-            className={cn(
-              'h-8 text-xs font-semibold gap-1.5 rounded-lg cursor-pointer',
-              activeTab === 'toc' && 'shadow-xs'
-            )}
-            onClick={() => setActiveTab('toc')}
-          >
-            <ListOrdered className="h-3.5 w-3.5" />
-            Course TOC Mode
-            {tocData?.totalTopics > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-primary/20 text-[10px] font-black">
-                {tocData.totalTopics}
-              </span>
-            )}
+            <Archive className="h-3.5 w-3.5" />
+            <span>Used Media Bin</span>
+            <span
+              className={cn(
+                'px-1.5 py-0.2 rounded-full text-[10px] font-black',
+                usedAssets.length > 0
+                  ? 'bg-primary-foreground text-primary'
+                  : 'bg-muted text-muted-foreground'
+              )}
+            >
+              {usedAssets.length}
+            </span>
           </Button>
         </div>
       </div>
 
-      {/* Global Filter Bar: Style (Real Life vs Cartoonic) & 3-Tier Curriculum Context */}
-      <Card className="border border-border/70 shadow-xs bg-card/70 backdrop-blur-xs">
-        <CardContent className="p-3.5 sm:p-4 space-y-3">
-          {/* Top Row: Style Filter Pills & Context Toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-2.5">
-            {/* Style Filter: Real Life vs Cartoonic */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-foreground flex items-center gap-1.5 mr-1">
-                <Palette className="h-3.5 w-3.5 text-primary" />
-                Image Style:
-              </span>
-              <button
-                type="button"
-                onClick={() => toggleStyle('photo')}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer',
-                  styleFilter.photo
-                    ? 'bg-blue-500/10 border-blue-500 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'bg-muted/40 border-border/60 text-muted-foreground hover:bg-muted'
-                )}
-              >
-                <Camera className="h-3.5 w-3.5" />
-                <span>Real Life (Photos)</span>
-                {styleFilter.photo && (
-                  <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 stroke-[3]" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleStyle('illustration')}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer',
-                  styleFilter.illustration
-                    ? 'bg-purple-500/10 border-purple-500 text-purple-600 dark:text-purple-400 shadow-xs'
-                    : 'bg-muted/40 border-border/60 text-muted-foreground hover:bg-muted'
-                )}
-              >
-                <Palette className="h-3.5 w-3.5" />
-                <span>Cartoonic (Vectors & Illustrations)</span>
-                {styleFilter.illustration && (
-                  <Check className="h-3 w-3 text-purple-600 dark:text-purple-400 stroke-[3]" />
-                )}
-              </button>
-              <span className="text-[10px] text-muted-foreground hidden md:inline ml-1">
-                (By default both are selected)
-              </span>
-            </div>
+      {/* 2. Curriculum Context Alignment Bar (Compact & Sleek) */}
+      <div className="px-3.5 py-2 rounded-lg bg-card/80 border border-border/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+            <BookOpen className="h-3.5 w-3.5 text-primary" />
+            Curriculum:
+          </span>
+          {courseName || lessonName ? (
+            <span className="font-semibold text-foreground truncate max-w-md">
+              {courseName && <span className="text-primary font-bold">{courseName}</span>}
+              {courseName && lessonName && <span className="text-muted-foreground mx-1">›</span>}
+              {lessonName && <span>{lessonName}</span>}
+            </span>
+          ) : (
+            <span className="text-muted-foreground italic">
+              Set Course & Lesson below to ensure 95%+ precision.
+            </span>
+          )}
+        </div>
 
-            {/* Context Status Badge & Toggle */}
-            <div className="flex items-center gap-2">
-              {courseName && lessonName && moduleName ? (
-                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
-                  ✨ 3-Tier Context Active
-                </Badge>
-              ) : courseName && lessonName ? (
-                <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] font-bold">
-                  ✓ 2-Tier Context Active
-                </Badge>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold"
-                >
-                  ⚠️ Context Missing
-                </Badge>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowContextEditor(!showContextEditor)}
-                className="h-7 text-xs font-semibold text-muted-foreground hover:text-foreground gap-1 px-2"
-              >
-                <Sliders className="h-3 w-3" />
-                {showContextEditor
-                  ? 'Hide Curriculum Info'
-                  : 'Edit Curriculum Info'}
-                <ChevronDown
-                  className={cn(
-                    'h-3 w-3 transition-transform',
-                    showContextEditor && 'rotate-180'
-                  )}
-                />
-              </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowContextEditor(!showContextEditor)}
+          className="h-6 text-[11px] font-semibold text-muted-foreground hover:text-foreground gap-1 px-2 cursor-pointer"
+        >
+          <Sliders className="h-3 w-3" />
+          {showContextEditor ? 'Hide Details' : 'Edit Course Info'}
+          <ChevronDown
+            className={cn('h-3 w-3 transition-transform', showContextEditor && 'rotate-180')}
+          />
+        </Button>
+
+        {showContextEditor && (
+          <div className="w-full pt-2.5 mt-1 border-t border-border/50 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                Course Name
+              </label>
+              <Input
+                type="text"
+                value={courseName}
+                onChange={(e) => setCourseName(e.target.value)}
+                placeholder="e.g. Electrical Safety & Arc Flash"
+                className="h-8 text-xs mt-0.5 bg-background"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                Module Name (Optional)
+              </label>
+              <Input
+                type="text"
+                value={moduleName}
+                onChange={(e) => setModuleName(e.target.value)}
+                placeholder="e.g. Module 1: Hazard Assessment"
+                className="h-8 text-xs mt-0.5 bg-background"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                Lesson Name
+              </label>
+              <Input
+                type="text"
+                value={lessonName}
+                onChange={(e) => setLessonName(e.target.value)}
+                placeholder="e.g. Lesson 2: LOTO & Isolation"
+                className="h-8 text-xs mt-0.5 bg-background"
+              />
             </div>
           </div>
+        )}
+      </div>
 
-          {/* 3-Tier Curriculum Context Editor */}
-          {(showContextEditor || (!courseName && !lessonName)) && (
-            <div className="p-3 rounded-lg bg-muted/40 border border-border/60 space-y-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-                <span>
-                  Course, Module & Lesson Alignment (Ensures 100% relevant
-                  equipment & hazard images):
-                </span>
-                {(!courseName || !lessonName) && (
-                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                    Please provide Course & Lesson name below
-                  </span>
-                )}
+      {/* 3. Input Zone: Single Search OR Course Document Ingestion */}
+      {activeTab === 'single' ? (
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Paste or type slide title (e.g. Utility Power Entry and Service Configuration)..."
+              className="pl-10 h-10 text-xs sm:text-sm bg-background border-border/80 focus-visible:ring-primary rounded-lg shadow-2xs"
+              disabled={loading}
+            />
+            {title && (
+              <button
+                type="button"
+                onClick={() => setTitle('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <Button
+            type="submit"
+            disabled={loading || !title.trim()}
+            className="h-10 px-5 rounded-lg text-xs font-bold gap-2 cursor-pointer shadow-2xs"
+          >
+            {loading ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                <span>Searching...</span>
+              </>
+            ) : (
+              <>
+                <Search className="h-3.5 w-3.5" />
+                <span>Find Media</span>
+              </>
+            )}
+          </Button>
+        </form>
+      ) : (
+        <div className="space-y-3">
+          {/* Document Upload Bar */}
+          {!tocData ? (
+            <div className="p-5 rounded-xl border border-dashed border-border/90 bg-card/60 text-center space-y-3">
+              <div className="flex flex-col items-center justify-center gap-1.5">
+                <div className="p-3 rounded-full bg-primary/10 text-primary">
+                  <Upload className="h-5 w-5" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">
+                  Upload Course Table of Contents (Word .docx or Text)
+                </h3>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Upload your course Word file. Headings and lesson topics are parsed automatically, and quizzes are excluded.
+                </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">
-                    1. Course Name
-                  </label>
-                  <Input
-                    type="text"
-                    value={courseName}
-                    onChange={(e) => setCourseName(e.target.value)}
-                    placeholder="e.g. Power Systems & Electrical Fundamentals"
-                    className="h-8 text-xs mt-0.5 bg-background"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">
-                    2. Module Name (Optional)
-                  </label>
-                  <Input
-                    type="text"
-                    value={moduleName}
-                    onChange={(e) => setModuleName(e.target.value)}
-                    placeholder="e.g. Module 1: Utility Interconnection & Distribution"
-                    className="h-8 text-xs mt-0.5 bg-background"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">
-                    3. Lesson Name
-                  </label>
-                  <Input
-                    type="text"
-                    value={lessonName}
-                    onChange={(e) => setLessonName(e.target.value)}
-                    placeholder="e.g. Lesson 1: Utility Power Entry and Service Configuration"
-                    className="h-8 text-xs mt-0.5 bg-background"
-                  />
-                </div>
+
+              <div className="flex items-center justify-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".docx,.txt"
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  disabled={parsingDoc}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2 h-9 text-xs font-bold rounded-lg cursor-pointer"
+                >
+                  {parsingDoc ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      Extracting Headings...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-3.5 w-3.5" />
+                      Select Word File (.docx)
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="pt-2 border-t border-border/50 max-w-lg mx-auto space-y-2">
+                <textarea
+                  value={pastingText}
+                  onChange={(e) => setPastingText(e.target.value)}
+                  placeholder="Or paste your course outline / lesson headings here..."
+                  className="w-full h-20 p-2.5 text-xs font-mono bg-background rounded-lg border border-border/80 focus:ring-1 focus:ring-primary focus:outline-hidden"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleParsePastedText}
+                  disabled={!pastingText.trim()}
+                  className="h-7 text-xs font-semibold gap-1.5 rounded-lg cursor-pointer"
+                >
+                  <ListOrdered className="h-3 w-3" />
+                  Parse Pasted Outline
+                </Button>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* MODE 1: Single Slide Title Search */}
-      {activeTab === 'single' && (
-        <Card className="border border-border/70 shadow-sm bg-card/60 backdrop-blur-xs">
-          <CardContent className="p-4 sm:p-6">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-col sm:flex-row gap-3"
-            >
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Paste your slide title (e.g., Utility Power Entry and Service Configuration)"
-                  className="pl-10 h-12 text-sm sm:text-base bg-background/80 border-border/80 focus-visible:ring-primary shadow-xs rounded-xl"
-                  disabled={loading}
-                />
-                {title && (
-                  <button
-                    type="button"
-                    onClick={() => setTitle('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading || !title.trim()}
-                className="h-12 px-6 rounded-xl font-semibold gap-2 shadow-sm transition-all duration-200 cursor-pointer text-sm sm:text-base shrink-0"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    Find Best Images
-                  </>
-                )}
-              </Button>
-            </form>
-
-            {/* Quick Technical Suggestions */}
-            {!results.length && !loading && !configInfo && (
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground/80">
-                  Try technical examples:
-                </span>
-                {[
-                  'Utility Power Entry and Service Configuration',
-                  'General Industry Hand Protection',
-                  'Hazardous Energy Lockout/Tagout Isolation',
-                  'Confined Space Tripod and Air Monitoring',
-                ].map((sample) => (
-                  <button
-                    key={sample}
-                    type="button"
-                    onClick={() => {
-                      setTitle(sample);
-                      executeSearch(sample);
-                    }}
-                    className="px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-[11px] font-medium text-foreground/80 transition-colors border border-border/50 cursor-pointer"
-                  >
-                    {sample}
-                  </button>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* MODE 2: Course TOC & Word Document Upload / Navigator */}
-      {activeTab === 'toc' && (
-        <div className="space-y-4">
-          {/* Document Ingestion Zone */}
-          <Card className="border border-border/80 bg-card/60 shadow-xs">
-            <CardContent className="p-4 sm:p-5 space-y-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    Import Course Table of Contents (Word .docx or Text)
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Upload your Word file or paste content. Course and lesson
-                    titles are extracted automatically, and all
-                    quizzes/questions are safely ignored.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept=".docx,.txt"
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={parsingDoc}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="gap-1.5 text-xs h-9 rounded-xl border-dashed border-border/90 cursor-pointer hover:bg-muted/70"
-                  >
-                    {parsingDoc ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        Extracting Headings...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-3.5 w-3.5 text-primary" />
-                        Upload Word (.docx)
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Paste or Sample Text Collapsible Area */}
-              {!tocData && (
-                <div className="space-y-2 pt-2 border-t border-border/50">
-                  <textarea
-                    value={pastingText}
-                    onChange={(e) => setPastingText(e.target.value)}
-                    placeholder="Or paste your course outline / lesson text here..."
-                    className="w-full h-24 p-3 text-xs font-mono bg-background/80 rounded-xl border border-border/80 focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <div className="flex items-center justify-between">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleParsePastedText}
-                      disabled={!pastingText.trim()}
-                      className="h-8 text-xs font-semibold gap-1.5 rounded-lg cursor-pointer"
-                    >
-                      <ListOrdered className="h-3.5 w-3.5" />
-                      Parse Topics & Build TOC
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Course TOC Mode: Full-Width Card Experience (Zero Squeeze) */}
-          {tocData && (
-            <div className="w-full space-y-5">
-              {/* Active Topic Banner Card */}
-              <div className="p-3.5 sm:p-4 rounded-xl bg-card border border-border/70 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] font-bold uppercase tracking-wider bg-primary/5 text-primary border-primary/20"
-                    >
-                      Topic {activeTopicIndex + 1} of {tocData.totalTopics}
-                    </Badge>
-                    {tocData.courseTitle && (
-                      <>
-                        <span>•</span>
-                        <span
-                          className="text-primary font-bold truncate max-w-[220px]"
-                          title={tocData.courseTitle}
-                        >
-                          {tocData.courseTitle}
-                        </span>
-                      </>
-                    )}
-                    {tocData.moduleTitle && (
-                      <>
-                        <span>•</span>
-                        <span
-                          className="truncate max-w-[200px]"
-                          title={tocData.moduleTitle}
-                        >
-                          {tocData.moduleTitle}
-                        </span>
-                      </>
-                    )}
-                    {tocData.lessonTitle && (
-                      <>
-                        <span>•</span>
-                        <span
-                          className="truncate max-w-[220px]"
-                          title={tocData.lessonTitle}
-                        >
-                          {tocData.lessonTitle}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  <div>
-                    {tocData.topics[activeTopicIndex]?.parentSection && (
-                      <div className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1">
-                        <span>
-                          {tocData.topics[activeTopicIndex].parentSection}
-                        </span>
-                        <span className="text-primary/70">›</span>
-                      </div>
-                    )}
-                    <h2 className="text-base sm:text-lg font-extrabold text-foreground truncate">
-                      {title}
-                    </h2>
-                  </div>
-                </div>
-
-                {/* Navigation Controls & Drawer Trigger */}
-                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end flex-wrap">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowTocDrawer(true)}
-                    className="h-8 text-xs font-semibold gap-1.5 rounded-lg border-border/80 cursor-pointer hover:bg-muted"
-                  >
-                    <ListOrdered className="h-3.5 w-3.5 text-primary" />
-                    <span>View All Topics</span>
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] h-4.5 px-1 font-mono"
-                    >
-                      {visitedTopics.size}/{tocData.totalTopics}
-                    </Badge>
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={activeTopicIndex <= 0 || loading}
-                      onClick={goToPrevTopic}
-                      className="h-8 text-xs gap-1 rounded-lg cursor-pointer"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                      Prev
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={
-                        activeTopicIndex >= tocData.topics.length - 1 || loading
-                      }
-                      onClick={goToNextTopic}
-                      className="h-8 text-xs gap-1 rounded-lg cursor-pointer"
-                    >
-                      Next
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      const activeTopic =
-                        activeTopicIndex >= 0 && tocData?.topics
-                          ? tocData.topics[activeTopicIndex]
-                          : null;
-                      const context = activeTopic
-                        ? {
-                            course: activeTopic.course || tocData?.courseTitle,
-                            module: activeTopic.module || tocData?.moduleTitle,
-                            lesson: activeTopic.lesson || tocData?.lessonTitle,
-                            parentSection: activeTopic.parentSection,
-                          }
-                        : {};
-                      executeSearch(
-                        title,
-                        true,
-                        context,
-                        styleFilter,
-                        selectedProvider
-                      );
-                    }}
-                    disabled={loading}
-                    className="h-8 text-xs font-semibold gap-1 rounded-lg cursor-pointer"
-                  >
-                    <RefreshCw
-                      className={cn('h-3.5 w-3.5', loading && 'animate-spin')}
-                    />
-                    Refresh
-                  </Button>
-                </div>
-              </div>
-
-              {/* Render Full-Width Gallery Content */}
-              {renderSharedContent()}
-
-              {/* Sticky Bottom Topic Navigator Dock with Hover Tooltip Names & Responsive Track */}
-              <div className="sticky bottom-3 z-40 w-full max-w-5xl mx-auto px-2 pointer-events-none mt-8">
-                <div className="pointer-events-auto backdrop-blur-xl bg-card/95 border border-border/80 shadow-2xl rounded-2xl p-2 sm:p-2.5 flex items-center justify-between gap-1.5 sm:gap-2.5 text-xs">
-                  {/* Left Stepper & Drawer button */}
-                  <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={activeTopicIndex <= 0 || loading}
-                      onClick={goToPrevTopic}
-                      className="h-8 px-2 sm:px-2.5 text-xs gap-1 rounded-xl cursor-pointer"
-                      title="Previous Topic"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="hidden sm:inline">Prev</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setShowTocDrawer(true)}
-                      className="h-8 px-2 sm:px-2.5 text-xs gap-1 rounded-xl border-border/80 font-semibold cursor-pointer"
-                      title="Open All Topics Drawer"
-                    >
-                      <ListOrdered className="h-3.5 w-3.5 text-primary" />
-                      <span className="hidden md:inline">Topics</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {activeTopicIndex + 1}/{tocData.totalTopics}
-                      </span>
-                    </Button>
-                  </div>
-
-                  {/* Direct Jump Selector (shown when course has many topics) */}
-                  {tocData.totalTopics > 10 && (
-                    <div className="flex items-center shrink-0">
-                      <select
-                        value={activeTopicIndex}
-                        onChange={(e) => {
-                          const idx = Number(e.target.value);
-                          if (tocData.topics[idx]) {
-                            selectTopic(tocData.topics[idx], idx);
-                          }
-                        }}
-                        className="h-8 px-2 text-xs rounded-xl bg-muted/60 border border-border/80 text-foreground font-semibold focus:outline-hidden focus:ring-1 focus:ring-primary cursor-pointer max-w-[110px] sm:max-w-[140px] truncate"
-                        aria-label="Quick jump to topic"
-                        title="Jump to specific topic"
-                      >
-                        {tocData.topics.map((t, idx) => (
-                          <option key={t.id} value={idx}>
-                            #{idx + 1}: {t.title.slice(0, 22)}...
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+          ) : (
+            /* Active Topic Navigation Bar */
+            <div className="p-3 rounded-xl bg-card border border-border/80 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground flex-wrap">
+                  <Badge variant="secondary" className="text-[10px] font-bold px-1.5 py-0.2">
+                    Topic {activeTopicIndex + 1} / {tocData.totalTopics}
+                  </Badge>
+                  {tocData.topics[activeTopicIndex]?.parentSection && (
+                    <span className="text-muted-foreground/80 font-medium">
+                      {tocData.topics[activeTopicIndex].parentSection} ›
+                    </span>
                   )}
-
-                  {/* Center Numbered Topic Pills with Track Controls */}
-                  <TooltipProvider delayDuration={50}>
-                    {/* Desktop / Tablet Sliding Track with Left/Right Glide Controls */}
-                    <div className="hidden sm:flex flex-1 min-w-0 items-center gap-1 overflow-hidden px-1">
-                      {tocData.totalTopics > 8 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => scrollTopicsTrack('left')}
-                          className="h-7 w-7 p-0 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
-                          title="Scroll left"
-                        >
-                          <ChevronLeft className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-
-                      <div
-                        ref={topicsTrackRef}
-                        className="flex-1 min-w-0 overflow-x-auto py-1 px-1 scrollbar-none flex items-center justify-start gap-1.5 scroll-smooth"
-                      >
-                        {tocData.topics.map((t, idx) => {
-                          const isSelected = idx === activeTopicIndex;
-                          const isVisited = visitedTopics.has(t.id);
-
-                          return (
-                            <Tooltip key={t.id}>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  data-topic-idx={idx}
-                                  onClick={() => selectTopic(t, idx)}
-                                  className={cn(
-                                    'relative h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer shrink-0',
-                                    isSelected
-                                      ? 'bg-primary text-primary-foreground shadow-md scale-110 ring-2 ring-primary/40 font-black'
-                                      : isVisited
-                                        ? 'bg-muted/80 text-foreground hover:bg-primary/20 border border-emerald-500/40'
-                                        : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground'
-                                  )}
-                                >
-                                  <span>{idx + 1}</span>
-                                  {isVisited && !isSelected && (
-                                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-background" />
-                                  )}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="top"
-                                className="max-w-xs text-xs p-2.5 space-y-1 shadow-xl bg-popover text-popover-foreground border-border"
-                              >
-                                <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-                                  <span>
-                                    Topic #{idx + 1} of {tocData.totalTopics}
-                                  </span>
-                                  {isVisited && (
-                                    <span className="text-emerald-500 font-bold">
-                                      ✓ Viewed
-                                    </span>
-                                  )}
-                                </div>
-                                {t.parentSection && (
-                                  <div className="text-[10px] text-primary font-bold uppercase truncate">
-                                    {t.parentSection}
-                                  </div>
-                                )}
-                                <div className="font-bold text-foreground leading-snug">
-                                  {t.title}
-                                </div>
-                                <div className="text-[10px] text-muted-foreground italic pt-0.5">
-                                  Click to view matching stock images
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          );
-                        })}
-                      </div>
-
-                      {tocData.totalTopics > 8 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => scrollTopicsTrack('right')}
-                          className="h-7 w-7 p-0 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
-                          title="Scroll right"
-                        >
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Mobile Compact Neighborhood Pills (Never Cuts Off on Mobile) */}
-                    <div className="flex sm:hidden items-center gap-1 shrink-0">
-                      {activeTopicIndex > 0 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            selectTopic(
-                              tocData.topics[activeTopicIndex - 1],
-                              activeTopicIndex - 1
-                            )
-                          }
-                          className="h-7 min-w-[26px] px-1 rounded-lg text-[11px] font-bold bg-muted/40 text-muted-foreground cursor-pointer"
-                        >
-                          {activeTopicIndex}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-black bg-primary text-primary-foreground shadow-sm ring-2 ring-primary/40 cursor-default"
-                      >
-                        {activeTopicIndex + 1}
-                      </button>
-                      {activeTopicIndex < tocData.topics.length - 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            selectTopic(
-                              tocData.topics[activeTopicIndex + 1],
-                              activeTopicIndex + 1
-                            )
-                          }
-                          className="h-7 min-w-[26px] px-1 rounded-lg text-[11px] font-bold bg-muted/40 text-muted-foreground cursor-pointer"
-                        >
-                          {activeTopicIndex + 2}
-                        </button>
-                      )}
-                    </div>
-                  </TooltipProvider>
-
-                  {/* Right Stepper */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={
-                        activeTopicIndex >= tocData.topics.length - 1 || loading
-                      }
-                      onClick={goToNextTopic}
-                      className="h-8 px-2 sm:px-2.5 text-xs gap-1 rounded-xl cursor-pointer"
-                      title="Next Topic"
-                    >
-                      <span className="hidden sm:inline">Next</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
                 </div>
+                <h2 className="text-sm sm:text-base font-extrabold text-foreground truncate">
+                  {title}
+                </h2>
               </div>
 
-              {/* Slide-Out Drawer for Full Hierarchical TOC */}
-              <Sheet open={showTocDrawer} onOpenChange={setShowTocDrawer}>
-                <SheetContent
-                  side="right"
-                  className="w-full sm:max-w-md p-0 flex flex-col h-full bg-card"
+              {/* Navigation Controls */}
+              <div className="flex items-center gap-1.5 shrink-0 self-end md:self-center">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={activeTopicIndex <= 0 || loading}
+                  onClick={goToPrevTopic}
+                  className="h-8 px-2.5 text-xs gap-1 rounded-lg cursor-pointer"
                 >
-                  <SheetHeader className="p-4 border-b border-border/60 shrink-0">
-                    <div className="flex items-center justify-between">
-                      <SheetTitle className="text-sm font-bold flex items-center gap-2">
-                        <BookOpen className="h-4 w-4 text-primary" />
-                        Course Curriculum Topics
-                      </SheetTitle>
-                      <Badge
-                        variant="secondary"
-                        className="text-[10px] font-mono"
-                      >
-                        {visitedTopics.size} / {tocData.totalTopics} viewed
-                      </Badge>
-                    </div>
-                    <div className="relative pt-2">
-                      <Filter className="absolute left-2.5 top-[calc(50%+4px)] -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        type="text"
-                        value={tocSearchQuery}
-                        onChange={(e) => setTocSearchQuery(e.target.value)}
-                        placeholder="Filter curriculum topics..."
-                        className="h-8 pl-8 text-xs bg-background rounded-lg border-border/70"
-                      />
-                      {tocSearchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setTocSearchQuery('')}
-                          className="absolute right-2 top-[calc(50%+4px)] -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  </SheetHeader>
-
-                  <div className="flex-1 overflow-y-auto divide-y divide-border/40 p-2">
-                    {filteredTopics.map((topic, idx) => {
-                      const isSelected =
-                        activeTopicIndex !== -1 &&
-                        tocData.topics[activeTopicIndex]?.id === topic.id;
-                      const isVisited = visitedTopics.has(topic.id);
-
-                      return (
-                        <button
-                          key={topic.id}
-                          type="button"
-                          onClick={() => {
-                            const originalIdx = tocData.topics.findIndex(
-                              (t) => t.id === topic.id
-                            );
-                            selectTopic(topic, originalIdx);
-                            setShowTocDrawer(false);
-                          }}
-                          className={cn(
-                            'w-full text-left p-3 rounded-xl text-xs transition-all flex items-start gap-2.5 cursor-pointer',
-                            isSelected
-                              ? 'bg-primary/10 text-primary font-bold border border-primary/25 shadow-xs'
-                              : 'hover:bg-muted/60 text-foreground/90'
-                          )}
-                        >
-                          <span className="font-mono text-[10px] text-muted-foreground shrink-0 mt-0.5">
-                            {String(idx + 1).padStart(2, '0')}.
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            {topic.parentSection && (
-                              <div className="text-[10px] text-muted-foreground/80 truncate font-semibold uppercase tracking-wider mb-0.5">
-                                {topic.parentSection}
-                              </div>
-                            )}
-                            <span className="line-clamp-2 leading-tight">
-                              {topic.title}
-                            </span>
-                          </div>
-                          {isVisited && !isSelected && (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                          )}
-                          {isSelected && (
-                            <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5 animate-pulse" />
-                          )}
-                        </button>
-                      );
-                    })}
-
-                    {filteredTopics.length === 0 && (
-                      <div className="p-6 text-center text-xs text-muted-foreground">
-                        No topics match &quot;{tocSearchQuery}&quot;
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-3 border-t border-border/60 bg-muted/20 flex items-center justify-between text-xs">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      onClick={() => setShowTocDrawer(false)}
-                      className="h-7 text-xs cursor-pointer"
-                    >
-                      Close Drawer
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => {
-                        setTocData(null);
-                        setResults([]);
-                        topicCacheRef.current.clear();
-                        setShowTocDrawer(false);
-                      }}
-                      className="h-7 text-[11px] text-muted-foreground hover:text-destructive cursor-pointer"
-                    >
-                      Clear TOC
-                    </Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Prev
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={activeTopicIndex >= tocData.topics.length - 1 || loading}
+                  onClick={goToNextTopic}
+                  className="h-8 px-2.5 text-xs gap-1 rounded-lg cursor-pointer"
+                >
+                  Next
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setShowTocDrawer(true)}
+                  className="h-8 px-2.5 text-xs gap-1.5 rounded-lg cursor-pointer font-bold"
+                >
+                  <ListOrdered className="h-3.5 w-3.5 text-primary" />
+                  All Topics
+                </Button>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Shared Results Content when in Single Mode */}
-      {activeTab === 'single' && renderSharedContent()}
+      {/* 4. Unified Clean Filter Toolbar (Format, Ratio, Source, Deduplication Toggle) */}
+      <div className="p-2.5 sm:p-3 rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs space-y-2">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5">
+          {/* Left: Media Format & Aspect Ratio */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mr-1">
+              Format:
+            </span>
+            <Button
+              type="button"
+              size="xs"
+              variant={mediaType === 'all' ? 'default' : 'outline'}
+              onClick={() => handleSetMediaType('all')}
+              className="h-7 text-xs font-semibold px-2 rounded-md cursor-pointer"
+            >
+              All Media
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={mediaType === 'photo' ? 'default' : 'outline'}
+              onClick={() => handleSetMediaType('photo')}
+              className="h-7 text-xs font-semibold px-2 rounded-md cursor-pointer gap-1"
+            >
+              <Camera className="h-3 w-3" />
+              Photos
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={mediaType === 'video' ? 'default' : 'outline'}
+              onClick={() => handleSetMediaType('video')}
+              className={cn(
+                'h-7 text-xs font-semibold px-2 rounded-md cursor-pointer gap-1',
+                mediaType === 'video'
+                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                  : 'border-purple-500/40 text-purple-600 dark:text-purple-400'
+              )}
+            >
+              <Video className="h-3 w-3" />
+              Videos
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={mediaType === 'illustration' ? 'default' : 'outline'}
+              onClick={() => handleSetMediaType('illustration')}
+              className="h-7 text-xs font-semibold px-2 rounded-md cursor-pointer gap-1"
+            >
+              <Palette className="h-3 w-3" />
+              Vectors
+            </Button>
 
-      {/* Detailed Image Lightbox Modal */}
-      {previewModalItem && (
-        <Dialog
-          open={Boolean(previewModalItem)}
-          onOpenChange={() => setPreviewModalItem(null)}
-        >
-          <DialogContent className="max-w-3xl p-6 overflow-hidden">
-            <DialogHeader className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                {previewModalItem.provider === 'unsplash' ? (
-                  <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
-                    ✨ Unsplash • Free Commercial License
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 border-red-500/30"
-                  >
-                    🅰️ Adobe Stock #{previewModalItem.assetId}
-                  </Badge>
+            <span className="text-border mx-1 hidden sm:inline">|</span>
+
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mr-1">
+              Ratio:
+            </span>
+            <Button
+              type="button"
+              size="xs"
+              variant={orientation === 'all' ? 'default' : 'outline'}
+              onClick={() => handleSetOrientation('all')}
+              className="h-7 text-xs font-semibold px-2 rounded-md cursor-pointer"
+            >
+              All Ratios
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={orientation === 'landscape' ? 'default' : 'outline'}
+              onClick={() => handleSetOrientation('landscape')}
+              className="h-7 text-xs font-semibold px-2 rounded-md cursor-pointer"
+            >
+              16:9
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={orientation === 'portrait' ? 'default' : 'outline'}
+              onClick={() => handleSetOrientation('portrait')}
+              className="h-7 text-xs font-semibold px-2 rounded-md cursor-pointer"
+            >
+              9:16
+            </Button>
+          </div>
+
+          {/* Right: Deduplication Toggle */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setHideUsedAssets(!hideUsedAssets)}
+              className={cn(
+                'px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border',
+                hideUsedAssets
+                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-muted/50 border-border/80 text-muted-foreground hover:bg-muted'
+              )}
+            >
+              {hideUsedAssets ? (
+                <Check className="h-3 w-3 stroke-[3]" />
+              ) : (
+                <Plus className="h-3 w-3" />
+              )}
+              <span>Hide Already Assigned ({usedAssets.length})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Catalog Selector Strip */}
+        <div className="pt-2 border-t border-border/50 flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mr-1">
+            Source:
+          </span>
+          <Button
+            type="button"
+            size="xs"
+            variant={selectedProvider === 'all' ? 'default' : 'outline'}
+            onClick={() => handleSetProvider('all')}
+            className="h-6 text-[11px] px-2 rounded-md cursor-pointer"
+          >
+            All Sources
+          </Button>
+          <Button
+            type="button"
+            size="xs"
+            variant={selectedProvider === 'adobe' ? 'default' : 'outline'}
+            onClick={() => handleSetProvider('adobe')}
+            className={cn(
+              'h-6 text-[11px] px-2 rounded-md cursor-pointer',
+              selectedProvider === 'adobe' && 'bg-red-600 hover:bg-red-700 text-white'
+            )}
+          >
+            🅰️ Adobe Stock
+          </Button>
+          <Button
+            type="button"
+            size="xs"
+            variant={selectedProvider === 'pixabay' ? 'default' : 'outline'}
+            onClick={() => handleSetProvider('pixabay')}
+            className={cn(
+              'h-6 text-[11px] px-2 rounded-md cursor-pointer',
+              selectedProvider === 'pixabay' && 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            )}
+          >
+            🖼️ Pixabay (Photos & Videos)
+          </Button>
+          <Button
+            type="button"
+            size="xs"
+            variant={selectedProvider === 'unsplash' ? 'default' : 'outline'}
+            onClick={() => handleSetProvider('unsplash')}
+            className={cn(
+              'h-6 text-[11px] px-2 rounded-md cursor-pointer',
+              selectedProvider === 'unsplash' && 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            )}
+          >
+            ✨ Unsplash
+          </Button>
+          <Button
+            type="button"
+            size="xs"
+            variant={selectedProvider === 'pexels' ? 'default' : 'outline'}
+            onClick={() => handleSetProvider('pexels')}
+            className={cn(
+              'h-6 text-[11px] px-2 rounded-md cursor-pointer',
+              selectedProvider === 'pexels' && 'bg-teal-600 hover:bg-teal-700 text-white'
+            )}
+          >
+            📸 Pexels
+          </Button>
+          <Button
+            type="button"
+            size="xs"
+            variant={selectedProvider === 'wikimedia' ? 'default' : 'outline'}
+            onClick={() => handleSetProvider('wikimedia')}
+            className={cn(
+              'h-6 text-[11px] px-2 rounded-md cursor-pointer',
+              selectedProvider === 'wikimedia' && 'bg-amber-600 hover:bg-amber-700 text-white'
+            )}
+          >
+            🏛️ Wikimedia
+          </Button>
+        </div>
+      </div>
+
+      {/* 5. Results Status Bar & AI Prompt Modal Trigger */}
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2">
+          {loading ? (
+            <span className="text-primary font-semibold flex items-center gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              {loadingStage || 'Searching catalog...'}
+            </span>
+          ) : displayedResults.length > 0 ? (
+            <span className="font-bold text-foreground">
+              {displayedResults.length} {displayedResults.length === 1 ? 'asset' : 'assets'} available
+              {hideUsedAssets && usedAssets.length > 0 && (
+                <span className="text-muted-foreground font-normal ml-1">
+                  ({usedAssets.length} assigned hidden)
+                </span>
+              )}
+            </span>
+          ) : title.trim() ? (
+            <span className="text-muted-foreground">No matching images found.</span>
+          ) : null}
+        </div>
+
+        {title.trim() && !loading && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowAiPromptModal(true)}
+            className="h-7 text-xs font-bold text-amber-600 dark:text-amber-400 gap-1.5 cursor-pointer"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            AI Image Prompt
+          </Button>
+        )}
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive text-xs flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* 6. Media Cards Gallery Grid */}
+      {displayedResults.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {displayedResults.map((item) => {
+            const isAssigned = usedAssetIds.has(String(item.assetId));
+            const isVideo = item.mediaType === 'video' || Boolean(item.videoUrl);
+            const isPortrait = item.orientation === 'portrait';
+
+            return (
+              <Card
+                key={`${item.provider || 'stock'}_${item.assetId}`}
+                className={cn(
+                  'group overflow-hidden border border-border/70 hover:border-primary/40 transition-all duration-200 bg-card/70 flex flex-col shadow-2xs hover:shadow-sm',
+                  isAssigned && 'ring-2 ring-emerald-500/40 opacity-75'
                 )}
-                {previewModalItem.relevanceScore && (
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] font-semibold"
+              >
+                {/* Media Viewport */}
+                <div
+                  className={cn(
+                    'relative bg-muted overflow-hidden cursor-pointer',
+                    isPortrait ? 'aspect-9/16 max-h-[360px] w-full' : 'aspect-16/10'
+                  )}
+                  onClick={() => setPreviewModalItem(item)}
+                >
+                  <img
+                    src={item.previewUrl}
+                    alt={item.title}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const currentSrc = e.target.src;
+                      if (item.thumbnailUrl && currentSrc !== item.thumbnailUrl) {
+                        e.target.src = item.thumbnailUrl;
+                      } else if (item.largePreviewUrl && currentSrc !== item.largePreviewUrl) {
+                        e.target.src = item.largePreviewUrl;
+                      } else if (item.downloadUrl && currentSrc !== item.downloadUrl) {
+                        e.target.src = item.downloadUrl;
+                      } else if (!currentSrc.includes('/api/proxy-image')) {
+                        e.target.src = `/api/proxy-image?url=${encodeURIComponent(item.previewUrl || item.downloadUrl || '')}`;
+                      }
+                    }}
+                  />
+
+                  {/* Top-Left: Relevance Percentage Badge */}
+                  {item.relevanceScore && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-black backdrop-blur-md shadow-md bg-black/85 text-white border border-white/20 flex items-center gap-1">
+                        <span
+                          className={cn(
+                            'h-1.5 w-1.5 rounded-full shrink-0',
+                            item.relevanceScore >= 80 ? 'bg-emerald-400' : 'bg-cyan-400'
+                          )}
+                        />
+                        {item.relevanceScore}%
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Bottom-Left: Video Badge */}
+                  {isVideo && (
+                    <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/85 backdrop-blur-md text-white text-[10px] font-bold border border-white/20">
+                      <Play className="h-2.5 w-2.5 fill-white text-white" />
+                      <span>{item.duration ? `${item.duration}s` : 'Video'}</span>
+                      <span className="text-zinc-300">• {isPortrait ? '9:16' : '16:9'}</span>
+                    </div>
+                  )}
+
+                  {/* Top-Right: Provider Badge */}
+                  <div className="absolute top-2 right-2 z-10">
+                    <span
+                      className={cn(
+                        'px-2 py-0.5 rounded-full text-[10px] font-black backdrop-blur-md shadow-md text-white border',
+                        item.provider === 'adobe'
+                          ? 'bg-red-600/90 border-red-400/30'
+                          : item.provider === 'pixabay'
+                            ? 'bg-indigo-600/90 border-indigo-400/30'
+                            : item.provider === 'unsplash'
+                              ? 'bg-emerald-600/90 border-emerald-400/30'
+                              : item.provider === 'pexels'
+                                ? 'bg-teal-600/90 border-teal-400/30'
+                                : 'bg-amber-600/90 border-amber-400/30'
+                      )}
+                    >
+                      {item.provider === 'adobe'
+                        ? '🅰️ Adobe'
+                        : `${item.provider.toUpperCase()} • Free`}
+                    </span>
+                  </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="px-3 py-1 rounded-md bg-background/90 text-foreground text-xs font-bold flex items-center gap-1 shadow-md">
+                      {isVideo ? <Play className="h-3 w-3 fill-current" /> : <Maximize2 className="h-3 w-3" />}
+                      {isVideo ? 'Play Video' : 'Preview'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Metadata & Actions */}
+                <CardContent className="p-3 flex-1 flex flex-col justify-between space-y-2.5">
+                  <div className="space-y-1">
+                    <h3
+                      className="text-xs font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors cursor-pointer"
+                      onClick={() => setPreviewModalItem(item)}
+                      title={item.title}
+                    >
+                      {item.title}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {item.creator ? `By ${item.creator}` : 'High Resolution'}
+                    </p>
+                  </div>
+
+                  {/* Primary Action Button */}
+                  <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-1.5">
+                    {item.isFreeDownload ? (
+                      <Button
+                        size="xs"
+                        className={cn(
+                          'h-7 text-[11px] px-2.5 gap-1.5 rounded-md cursor-pointer font-bold flex-1',
+                          isAssigned
+                            ? 'bg-muted text-foreground hover:bg-muted/80'
+                            : item.provider === 'pixabay'
+                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                              : item.provider === 'pexels'
+                                ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                                : item.provider === 'wikimedia'
+                                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        )}
+                        disabled={downloadingId === item.assetId}
+                        onClick={(e) => handleDownloadFreeImage(item, e)}
+                      >
+                        {downloadingId === item.assetId ? (
+                          <>
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            <span>Downloading...</span>
+                          </>
+                        ) : isAssigned ? (
+                          <>
+                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            <span>In Use (Assigned)</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="h-3 w-3" />
+                            <span>{isVideo ? 'Download MP4 & Assign' : 'Download & Assign'}</span>
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="h-7 text-[11px] px-2.5 gap-1.5 rounded-md cursor-pointer flex-1 font-bold"
+                        onClick={(e) => {
+                          handleAssignAsset(item, e);
+                          handleCopyId(item.assetId, e);
+                        }}
+                      >
+                        {copiedId === item.assetId ? (
+                          <>
+                            <Check className="h-3 w-3 text-emerald-600" />
+                            <span>ID Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3 text-muted-foreground" />
+                            <span>Copy ID & Assign</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
+
+                    {/* Secondary Actions: Quick Link / Release */}
+                    {isAssigned ? (
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        className="h-7 px-2 text-[11px] text-destructive hover:text-destructive cursor-pointer"
+                        onClick={(e) => handleReleaseAsset(item.assetId, e)}
+                        title="Release back to gallery"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="h-7 px-2 text-[11px] cursor-pointer"
+                        onClick={(e) =>
+                          handleCopyLink(item.downloadUrl || item.stockUrl, item.assetId, e)
+                        }
+                        title="Copy direct URL"
+                      >
+                        {copiedLink === item.assetId ? (
+                          <Check className="h-3 w-3 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Show More Pagination Button */}
+      {hasMore && displayedResults.length > 0 && (
+        <div className="pt-2 text-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={loadingMore}
+            onClick={handleShowMore}
+            className="h-8 text-xs font-bold px-6 rounded-lg cursor-pointer"
+          >
+            {loadingMore ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                Loading More...
+              </>
+            ) : (
+              'Load More Media'
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* 7. Course Media Bin Drawer (Used Assets Sidebar) */}
+      <Sheet open={showMediaBinDrawer} onOpenChange={setShowMediaBinDrawer}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-4 sm:p-5 flex flex-col">
+          <SheetHeader className="pb-3 border-b border-border/60">
+            <div className="flex items-center justify-between">
+              <div>
+                <SheetTitle className="text-base font-bold flex items-center gap-2">
+                  <Archive className="h-4 w-4 text-primary" />
+                  Course Media Bin
+                </SheetTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {usedAssets.length} assets assigned to{' '}
+                  <span className="font-semibold text-foreground">
+                    {courseName || 'this course'}
+                  </span>
+                </p>
+              </div>
+
+              {usedAssets.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    onClick={handleBatchDownloadUsedAssets}
+                    className="h-7 text-[11px] gap-1 cursor-pointer font-bold"
+                    title="Download all assigned assets"
                   >
-                    {previewModalItem.relevanceScore}% Match •{' '}
-                    {previewModalItem.relevanceTier}
+                    <Download className="h-3 w-3" />
+                    Download All
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={handleClearAllUsedAssets}
+                    className="h-7 text-[11px] text-destructive hover:text-destructive cursor-pointer"
+                    title="Release all back to gallery"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </SheetHeader>
+
+          {/* Asset List */}
+          <div className="flex-1 overflow-y-auto py-3 space-y-2.5">
+            {usedAssets.length === 0 ? (
+              <div className="p-8 text-center space-y-2">
+                <div className="p-3 rounded-full bg-muted w-10 h-10 mx-auto flex items-center justify-center text-muted-foreground">
+                  <Archive className="h-5 w-5" />
+                </div>
+                <h4 className="text-xs font-bold text-foreground">No Media Assigned Yet</h4>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  When you download or assign an asset for a lesson slide, it will appear here and
+                  automatically disappear from the recommendation gallery to prevent repeating images.
+                </p>
+              </div>
+            ) : (
+              usedAssets.map((asset) => (
+                <div
+                  key={asset.assetId}
+                  className="p-2.5 rounded-lg border border-border/70 bg-card flex items-center gap-3 text-xs"
+                >
+                  <img
+                    src={asset.previewUrl || asset.thumbnailUrl}
+                    alt={asset.title}
+                    referrerPolicy="no-referrer"
+                    className="w-16 h-12 rounded-md object-cover shrink-0 bg-muted"
+                    onError={(e) => {
+                      if (!e.target.src.includes('/api/proxy-image')) {
+                        e.target.src = `/api/proxy-image?url=${encodeURIComponent(asset.previewUrl || asset.thumbnailUrl || '')}`;
+                      }
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-bold text-foreground truncate" title={asset.title}>
+                      {asset.title}
+                    </h5>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      📍 {asset.lesson ? `${asset.lesson} › ` : ''}
+                      {asset.topicTitle || 'Slide'}
+                    </div>
+                    <div className="text-[10px] font-semibold text-primary uppercase mt-0.5">
+                      {asset.provider} • {asset.mediaType === 'video' ? 'Video' : 'Photo'}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      className="h-7 px-2 cursor-pointer"
+                      onClick={() => handleDownloadFreeImage(asset)}
+                      title="Download"
+                    >
+                      <Download className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      className="h-7 px-2 text-destructive hover:text-destructive cursor-pointer"
+                      onClick={(e) => handleReleaseAsset(asset.assetId, e)}
+                      title="Release back to gallery"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* 8. All Topics Drawer (Course TOC) */}
+      <Sheet open={showTocDrawer} onOpenChange={setShowTocDrawer}>
+        <SheetContent side="left" className="w-full sm:max-w-md p-4 flex flex-col">
+          <SheetHeader className="pb-3 border-b border-border/60">
+            <SheetTitle className="text-base font-bold flex items-center gap-2">
+              <ListOrdered className="h-4 w-4 text-primary" />
+              Course Curriculum Topics
+            </SheetTitle>
+            <Input
+              type="text"
+              value={tocSearchQuery}
+              onChange={(e) => setTocSearchQuery(e.target.value)}
+              placeholder="Filter topics..."
+              className="h-8 text-xs mt-2"
+            />
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto py-2 space-y-1">
+            {filteredTopics.map((topic, idx) => {
+              const isSelected = activeTopicIndex === idx;
+              return (
+                <button
+                  key={topic.id || idx}
+                  type="button"
+                  onClick={() => {
+                    selectTopic(topic, idx);
+                    setShowTocDrawer(false);
+                  }}
+                  className={cn(
+                    'w-full text-left p-2.5 rounded-lg text-xs transition-all flex items-start gap-2 cursor-pointer',
+                    isSelected
+                      ? 'bg-primary/10 text-primary font-bold'
+                      : 'hover:bg-muted/60 text-foreground/90'
+                  )}
+                >
+                  <span className="font-mono text-[10px] text-muted-foreground shrink-0 mt-0.5">
+                    {idx + 1}.
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    {topic.parentSection && (
+                      <div className="text-[10px] text-muted-foreground/80 uppercase font-semibold">
+                        {topic.parentSection}
+                      </div>
+                    )}
+                    <span className="line-clamp-2 leading-tight">{topic.title}</span>
+                  </div>
+                  {isSelected && (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* 9. Lightbox Preview Modal */}
+      {previewModalItem && (
+        <Dialog open={Boolean(previewModalItem)} onOpenChange={() => setPreviewModalItem(null)}>
+          <DialogContent className="max-w-3xl p-5 overflow-hidden">
+            <DialogHeader className="space-y-1 pb-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px] font-bold uppercase">
+                  {previewModalItem.provider} •{' '}
+                  {previewModalItem.isFreeDownload ? 'Free Commercial' : 'Adobe Stock'}
+                </Badge>
+                {previewModalItem.relevanceScore && (
+                  <Badge variant="secondary" className="text-[10px] font-semibold">
+                    {previewModalItem.relevanceScore}% Match
                   </Badge>
                 )}
               </div>
-              <DialogTitle className="text-base sm:text-lg font-bold leading-snug">
+              <DialogTitle className="text-base font-bold leading-snug">
                 {previewModalItem.title}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="relative aspect-16/10 rounded-xl overflow-hidden bg-zinc-950 my-2">
-              <img
-                src={
-                  previewModalItem.largePreviewUrl ||
-                  previewModalItem.previewUrl
-                }
-                alt={previewModalItem.title}
-                className="w-full h-full object-contain"
-              />
+            <div
+              className={cn(
+                'relative rounded-xl overflow-hidden bg-zinc-950 my-2 flex items-center justify-center',
+                previewModalItem.orientation === 'portrait'
+                  ? 'aspect-9/16 max-h-[480px] mx-auto'
+                  : 'aspect-16/10'
+              )}
+            >
+              {previewModalItem.mediaType === 'video' || previewModalItem.videoUrl ? (
+                <video
+                  src={previewModalItem.videoUrl || previewModalItem.downloadUrl}
+                  poster={previewModalItem.previewUrl}
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <img
+                  src={previewModalItem.largePreviewUrl || previewModalItem.previewUrl}
+                  alt={previewModalItem.title}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    const currentSrc = e.target.src;
+                    if (previewModalItem.previewUrl && currentSrc !== previewModalItem.previewUrl) {
+                      e.target.src = previewModalItem.previewUrl;
+                    } else if (previewModalItem.downloadUrl && currentSrc !== previewModalItem.downloadUrl) {
+                      e.target.src = previewModalItem.downloadUrl;
+                    } else if (!currentSrc.includes('/api/proxy-image')) {
+                      e.target.src = `/api/proxy-image?url=${encodeURIComponent(previewModalItem.largePreviewUrl || previewModalItem.previewUrl || '')}`;
+                    }
+                  }}
+                />
+              )}
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
-                <span>
-                  Contributor:{' '}
-                  {previewModalItem.provider === 'unsplash' &&
-                  previewModalItem.creatorUrl ? (
-                    <a
-                      href={previewModalItem.creatorUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-foreground font-semibold underline hover:text-primary"
-                    >
-                      {previewModalItem.creator}
-                    </a>
-                  ) : (
-                    <strong className="text-foreground">
-                      {previewModalItem.creator}
-                    </strong>
-                  )}
-                </span>
-                <span>
-                  Category:{' '}
-                  <strong className="text-foreground">
-                    {previewModalItem.category}
-                  </strong>
-                </span>
-                <span>
-                  Dimensions:{' '}
-                  <strong className="text-foreground">
-                    {previewModalItem.width} × {previewModalItem.height} px
-                  </strong>
-                </span>
+            <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2">
+              <div className="text-xs text-muted-foreground">
+                {previewModalItem.creator && <span>By {previewModalItem.creator}</span>}
               </div>
 
-              {previewModalItem.provider === 'unsplash' && (
-                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-2 text-[11px] text-emerald-800 dark:text-emerald-300">
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>
-                      <strong>100% Free under Unsplash License</strong> • Zero
-                      copyright tension • Safe for commercial & educational
-                      slides
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground hidden sm:inline">
-                    No purchase required
-                  </span>
-                </div>
-              )}
-
-              {previewModalItem.keywords &&
-                previewModalItem.keywords.length > 0 && (
-                  <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pt-1">
-                    {previewModalItem.keywords.slice(0, 16).map((k, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 rounded-md bg-muted text-[10px] text-muted-foreground"
-                      >
-                        {k}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-              <div className="pt-3 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  {previewModalItem.provider === 'unsplash' ? (
-                    <Button
-                      size="sm"
-                      className="gap-1.5 h-8 text-xs cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                      disabled={downloadingId === previewModalItem.assetId}
-                      onClick={(e) =>
-                        handleDownloadUnsplash(previewModalItem, e)
-                      }
-                    >
-                      {downloadingId === previewModalItem.assetId ? (
-                        <>
-                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          Downloading...
-                        </>
-                      ) : (
-                        <>
-                          <Download className="h-3.5 w-3.5" />
-                          Download High-Res
-                        </>
-                      )}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5 h-8 text-xs cursor-pointer"
-                      onClick={() => handleCopyId(previewModalItem.assetId)}
-                    >
-                      {copiedId === previewModalItem.assetId ? (
-                        <>
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
-                          <span className="text-emerald-600 font-bold">
-                            ID Copied
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                          Copy Asset ID
-                        </>
-                      )}
-                    </Button>
-                  )}
-
+              <div className="flex items-center gap-2">
+                {previewModalItem.isFreeDownload ? (
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs font-bold gap-1.5 cursor-pointer"
+                    onClick={() => handleDownloadFreeImage(previewModalItem)}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download & Assign
+                  </Button>
+                ) : (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-1.5 h-8 text-xs cursor-pointer"
-                    onClick={() =>
-                      handleCopyLink(
-                        previewModalItem.stockUrl,
-                        previewModalItem.assetId
-                      )
-                    }
+                    className="h-8 text-xs font-bold gap-1.5 cursor-pointer"
+                    onClick={() => handleCopyId(previewModalItem.assetId)}
                   >
-                    {copiedLink === previewModalItem.assetId ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 text-emerald-600" />
-                        <span className="text-emerald-600 font-bold">
-                          Link Copied
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                        Copy Link
-                      </>
-                    )}
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy Asset ID
                   </Button>
-                </div>
+                )}
 
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="gap-1.5 h-8 text-xs cursor-pointer ml-auto"
-                  asChild
-                >
-                  <a
-                    href={previewModalItem.stockUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                <Button size="sm" variant="secondary" className="h-8 text-xs cursor-pointer" asChild>
+                  <a href={previewModalItem.stockUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-3.5 w-3.5" />
-                    {previewModalItem.provider === 'unsplash'
-                      ? 'Open on Unsplash'
-                      : 'Open on Adobe Stock'}
+                    View Source
                   </a>
                 </Button>
               </div>
@@ -1704,736 +1740,39 @@ export function AdobeStockImageFinder({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* 10. AI Prompt Dialog (Clean & Isolated) */}
+      <Dialog open={showAiPromptModal} onOpenChange={setShowAiPromptModal}>
+        <DialogContent className="max-w-xl p-5">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              AI Image Generator Prompt
+            </DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              Copy this prompt into ChatGPT (DALL-E 3), Midjourney, or Gemini for a custom vertical slide visual.
+            </p>
+          </DialogHeader>
+
+          <div className="my-2 p-3 rounded-lg bg-muted text-xs font-mono leading-relaxed select-all max-h-48 overflow-y-auto">
+            {generateAiPromptForTopic(title)}
+          </div>
+
+          <div className="pt-2 flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground italic">9:16 Portrait • Zero Text</span>
+            <Button
+              size="sm"
+              onClick={(e) => handleCopyAiPrompt(generateAiPromptForTopic(title), e)}
+              className="h-8 text-xs font-bold gap-1.5 cursor-pointer"
+            >
+              {copiedPrompt ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {copiedPrompt ? 'Copied to Clipboard!' : 'Copy Prompt'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-
-  // Helper renderer for image grid and states
-  function renderSharedContent() {
-    const isSummaryTopic =
-      /^(summary|lesson\s+summary|course\s+summary)$/i.test(
-        (title || '').trim()
-      );
-    const activeAiPrompt = generateAiPromptForTopic(title);
-    const shouldShowPrompt = isSummaryTopic || showTopicAiPrompt;
-
-    return (
-      <div className="space-y-5">
-        {/* Compact Loading Indicator */}
-        {loading && (
-          <Card className="border border-primary/20 bg-primary/5 shadow-xs animate-in fade-in-0 duration-200">
-            <CardContent className="p-4 flex items-center gap-3">
-              <RefreshCw className="h-5 w-5 text-primary animate-spin shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                  AI Search Pipeline Running
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {loadingStage}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <Card className="border-destructive/30 bg-destructive/5 shadow-xs">
-            <CardContent className="p-4 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
-              <p className="text-xs sm:text-sm text-destructive">{error}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Outsource AI Image Generation Prompt Card (Prominently on Summary, or toggled on normal slides) */}
-        {shouldShowPrompt && title.trim() && !loading && (
-          <Card className="border border-primary/25 bg-gradient-to-r from-card via-background to-primary/5 shadow-xs rounded-xl overflow-hidden">
-            <div className="p-3.5 sm:p-4 space-y-2.5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-border/60">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
-                  <span className="text-xs font-bold text-foreground">
-                    {isSummaryTopic
-                      ? 'Universal Course Summary Slide AI Prompt'
-                      : 'AI Image Generator Prompt'}
-                  </span>
-                  {isSummaryTopic && (
-                    <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold">
-                      ⭐ 1 Universal Image For All Lessons
-                    </Badge>
-                  )}
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] font-semibold text-muted-foreground"
-                  >
-                    9:16 Portrait • Zero Text
-                  </Badge>
-                </div>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={copiedPrompt ? 'default' : 'outline'}
-                  onClick={(e) => handleCopyAiPrompt(activeAiPrompt, e)}
-                  className="h-7 text-xs font-bold gap-1.5 cursor-pointer shrink-0"
-                >
-                  {copiedPrompt ? (
-                    <>
-                      <Check className="h-3 w-3 text-emerald-500" />
-                      <span>Prompt Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3 w-3" />
-                      <span>Copy Prompt for AI</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <div className="relative">
-                <pre className="p-3 rounded-lg bg-muted/50 border border-border/70 text-xs font-mono text-foreground/90 whitespace-pre-wrap leading-relaxed select-all max-h-36 overflow-y-auto">
-                  {activeAiPrompt}
-                </pre>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground pt-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-semibold text-foreground/80">
-                    Paste directly into:
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded bg-muted font-medium text-[10px]">
-                    ChatGPT (DALL-E 3)
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded bg-muted font-medium text-[10px]">
-                    Google Gemini
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded bg-muted font-medium text-[10px]">
-                    Kimi / Moonshot
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded bg-muted font-medium text-[10px]">
-                    Midjourney
-                  </span>
-                </div>
-                <span className="text-[10px] text-muted-foreground/80 italic">
-                  Generates 100% photorealistic vertical slide image with zero
-                  text
-                </span>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Free Unsplash Commercial License Assurance Banner (User Request) */}
-        {title.trim() && (
-          <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-3 sm:p-4 shadow-xs">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
-                      <span>
-                        ✨ 100% Free Downloads & Commercial License with
-                        Unsplash
-                      </span>
-                    </h4>
-                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
-                      Zero Copyright Tension • No Purchase Required
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed max-w-3xl">
-                    You{' '}
-                    <strong>do not need to purchase or license images</strong>{' '}
-                    when choosing Unsplash. Every Unsplash photo can be freely
-                    downloaded in original high resolution and safely used for
-                    commercial slides, training modules, and web publishing with{' '}
-                    <strong>zero copyright tension</strong> under the official
-                    Unsplash License.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                {selectedProvider !== 'unsplash' && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleSetProvider('unsplash')}
-                    className="h-8 text-xs font-semibold cursor-pointer border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  >
-                    ✨ Show Unsplash Only
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Two-Sided Filter Bar (Directly Above Recommended Images Gallery) */}
-        {/* LEFT: Image Style Filter | RIGHT: App / Provider Filter */}
-        <div className="p-2.5 sm:p-3 rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
-          {/* LEFT: Image Style Filter */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-bold text-foreground flex items-center gap-1.5 mr-1">
-              <Palette className="h-3.5 w-3.5 text-primary" />
-              Image Style:
-            </span>
-            <Button
-              type="button"
-              size="sm"
-              variant={
-                styleFilter.photo && styleFilter.illustration
-                  ? 'default'
-                  : 'outline'
-              }
-              onClick={() => handleSetStyle('all')}
-              className="h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg"
-            >
-              All Styles
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={
-                styleFilter.photo && !styleFilter.illustration
-                  ? 'default'
-                  : 'outline'
-              }
-              onClick={() => handleSetStyle('photo')}
-              className="h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg gap-1"
-            >
-              <Camera className="h-3 w-3" />
-              Photos (Real Life)
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={
-                !styleFilter.photo && styleFilter.illustration
-                  ? 'default'
-                  : 'outline'
-              }
-              onClick={() => handleSetStyle('illustration')}
-              className="h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg gap-1"
-            >
-              <Palette className="h-3 w-3" />
-              Illustrations / Vectors
-            </Button>
-          </div>
-
-          {/* RIGHT: App / Provider Filter */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-start md:justify-end">
-            <span className="text-xs font-bold text-foreground flex items-center gap-1.5 mr-1">
-              <Sliders className="h-3.5 w-3.5 text-primary" />
-              Provider:
-            </span>
-            <Button
-              type="button"
-              size="sm"
-              variant={selectedProvider === 'all' ? 'default' : 'outline'}
-              onClick={() => handleSetProvider('all')}
-              className="h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg"
-            >
-              🌐 All Providers
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={selectedProvider === 'unsplash' ? 'default' : 'outline'}
-              onClick={() => handleSetProvider('unsplash')}
-              className={cn(
-                'h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg gap-1',
-                selectedProvider === 'unsplash'
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
-              )}
-            >
-              <Sparkles className="h-3 w-3" />✨ Unsplash (Free)
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={selectedProvider === 'adobe' ? 'default' : 'outline'}
-              onClick={() => handleSetProvider('adobe')}
-              className={cn(
-                'h-7 text-xs font-semibold px-2.5 cursor-pointer rounded-lg gap-1',
-                selectedProvider === 'adobe'
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10'
-              )}
-            >
-              🅰️ Adobe Stock
-            </Button>
-          </div>
-        </div>
-
-        {/* Results Header (Count & Actions) */}
-        {results.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-2 border-b border-border/50 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-foreground">
-                {results.length} {results.length === 1 ? 'image' : 'images'}{' '}
-                displayed
-              </span>
-              {totalFound > results.length && (
-                <span className="text-xs text-muted-foreground">
-                  ({totalFound} qualifying matches found)
-                </span>
-              )}
-              {analysis?.domain && (
-                <Badge
-                  variant="secondary"
-                  className="text-[10px] font-semibold"
-                >
-                  {analysis.domain}
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {!isSummaryTopic && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={showTopicAiPrompt ? 'secondary' : 'outline'}
-                  onClick={() => setShowTopicAiPrompt(!showTopicAiPrompt)}
-                  className="h-7 text-xs font-semibold gap-1.5 cursor-pointer"
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                  {showTopicAiPrompt
-                    ? 'Hide AI Prompt'
-                    : '✨ AI Prompt for Outsource'}
-                </Button>
-              )}
-              <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                Ranked by AI semantic relevance • Genuine High-Res Assets
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Image Cards Grid with Razor-Sharp Dark Blurred Percentage Badge & Provider Badges */}
-        {results.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {results.map((item) => {
-              const isIdCopied = copiedId === item.assetId;
-              const isLinkCopied = copiedLink === item.assetId;
-              const isUnsplash = item.provider === 'unsplash';
-
-              return (
-                <Card
-                  key={`${item.provider || 'stock'}_${item.assetId}`}
-                  className="group overflow-hidden border border-border/70 hover:border-primary/40 transition-all duration-200 bg-card/70 flex flex-col shadow-xs hover:shadow-md"
-                >
-                  {/* Visual Preview Container */}
-                  <div
-                    className="relative aspect-16/10 bg-muted overflow-hidden cursor-pointer"
-                    onClick={() => setPreviewModalItem(item)}
-                  >
-                    <img
-                      src={item.previewUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
-                      onError={(e) => {
-                        if (
-                          e.target.src !== item.thumbnailUrl &&
-                          item.thumbnailUrl
-                        ) {
-                          e.target.src = item.thumbnailUrl;
-                        }
-                      }}
-                    />
-
-                    {/* High-Contrast Dark Blur Percentage Badge */}
-                    {item.relevanceScore && (
-                      <div className="absolute top-2.5 left-2.5 z-10">
-                        <span
-                          className={cn(
-                            'px-2.5 py-1 rounded-full text-xs font-black backdrop-blur-md shadow-lg flex items-center gap-1.5 border',
-                            'bg-black/85 text-white border-white/25'
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              'h-2 w-2 rounded-full shrink-0',
-                              item.relevanceScore >= 80
-                                ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]'
-                                : item.relevanceScore >= 65
-                                  ? 'bg-cyan-400 shadow-[0_0_8px_#38bdf8]'
-                                  : 'bg-amber-400 shadow-[0_0_8px_#fbbf24]'
-                            )}
-                          />
-                          <span className="font-extrabold tracking-wide text-white">
-                            {item.relevanceScore}%
-                          </span>
-                          <span className="text-[10px] text-zinc-300 font-semibold uppercase">
-                            Match
-                          </span>
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Provider Tag (Top Right) */}
-                    <div className="absolute top-2.5 right-2.5 z-10">
-                      {isUnsplash ? (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold backdrop-blur-md shadow-md bg-emerald-600/90 text-white border border-emerald-400/40 flex items-center gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          Unsplash • Free
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold backdrop-blur-md shadow-md bg-red-600/90 text-white border border-red-400/40 flex items-center gap-1">
-                          🅰️ Adobe Stock
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Click to Enlarge Hover Button */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="px-3 py-1.5 rounded-lg bg-background/90 text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-md">
-                        <Maximize2 className="h-3.5 w-3.5" />
-                        Preview
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Asset Metadata & Action Footer */}
-                  <CardContent className="p-3.5 flex-1 flex flex-col justify-between space-y-3">
-                    <div className="space-y-1">
-                      <h3
-                        className="text-xs sm:text-sm font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors cursor-pointer"
-                        onClick={() => setPreviewModalItem(item)}
-                        title={item.title}
-                      >
-                        {item.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
-                        {isUnsplash ? (
-                          <>
-                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                              Free Commercial Use
-                            </span>
-                            {item.creator && (
-                              <>
-                                <span>•</span>
-                                <span>
-                                  By{' '}
-                                  {item.creatorUrl ? (
-                                    <a
-                                      href={item.creatorUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="font-medium text-foreground/90 hover:underline"
-                                    >
-                                      {item.creator}
-                                    </a>
-                                  ) : (
-                                    item.creator
-                                  )}
-                                </span>
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <span className="font-mono font-medium text-foreground/80">
-                              ID: {item.assetId}
-                            </span>
-                            {item.creator && (
-                              <>
-                                <span>•</span>
-                                <span className="truncate max-w-[140px]">
-                                  {item.creator}
-                                </span>
-                              </>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="pt-2 border-t border-border/50 flex flex-wrap items-center gap-1.5">
-                      {isUnsplash ? (
-                        <>
-                          <Button
-                            size="xs"
-                            className="h-7 text-[11px] px-2.5 gap-1.5 rounded-md cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                            disabled={downloadingId === item.assetId}
-                            onClick={(e) => handleDownloadUnsplash(item, e)}
-                          >
-                            {downloadingId === item.assetId ? (
-                              <>
-                                <RefreshCw className="h-3 w-3 animate-spin" />
-                                <span>Downloading...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Download className="h-3 w-3" />
-                                <span>⬇️ Free Download</span>
-                              </>
-                            )}
-                          </Button>
-
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            className="h-7 text-[11px] px-2 gap-1 rounded-md cursor-pointer hover:bg-muted"
-                            onClick={(e) =>
-                              handleCopyLink(
-                                item.downloadUrl || item.stockUrl,
-                                item.assetId,
-                                e
-                              )
-                            }
-                          >
-                            {isLinkCopied ? (
-                              <>
-                                <Check className="h-3 w-3 text-emerald-600" />
-                                <span className="text-emerald-600 font-bold">
-                                  Copied
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3 w-3 text-muted-foreground" />
-                                <span>Copy URL</span>
-                              </>
-                            )}
-                          </Button>
-
-                          <Button
-                            size="xs"
-                            variant="secondary"
-                            className="h-7 text-[11px] px-2 gap-1 rounded-md ml-auto cursor-pointer"
-                            asChild
-                          >
-                            <a
-                              href={item.stockUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              <span>Unsplash</span>
-                            </a>
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            className="h-7 text-[11px] px-2 gap-1 rounded-md cursor-pointer hover:bg-muted"
-                            onClick={(e) => handleCopyId(item.assetId, e)}
-                          >
-                            {isIdCopied ? (
-                              <>
-                                <Check className="h-3 w-3 text-emerald-600" />
-                                <span className="text-emerald-600 font-bold">
-                                  Copied
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3 w-3 text-muted-foreground" />
-                                <span>Copy ID</span>
-                              </>
-                            )}
-                          </Button>
-
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            className="h-7 text-[11px] px-2 gap-1 rounded-md cursor-pointer hover:bg-muted"
-                            onClick={(e) =>
-                              handleCopyLink(item.stockUrl, item.assetId, e)
-                            }
-                          >
-                            {isLinkCopied ? (
-                              <>
-                                <Check className="h-3 w-3 text-emerald-600" />
-                                <span className="text-emerald-600 font-bold">
-                                  Copied
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3 w-3 text-muted-foreground" />
-                                <span>Copy Link</span>
-                              </>
-                            )}
-                          </Button>
-
-                          <Button
-                            size="xs"
-                            variant="secondary"
-                            className="h-7 text-[11px] px-2 gap-1 rounded-md ml-auto cursor-pointer"
-                            asChild
-                          >
-                            <a
-                              href={item.stockUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                              <span>Open Stock</span>
-                            </a>
-                          </Button>
-                        </>
-                      )}
-
-                      {onSelectImage && (
-                        <Button
-                          size="xs"
-                          className="w-full mt-1 h-7 text-[11px]"
-                          onClick={() => onSelectImage(item)}
-                        >
-                          Insert into Slide
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Show More Button */}
-        {hasMore && (
-          <div className="flex justify-center pt-4">
-            <Button
-              onClick={handleShowMore}
-              disabled={loadingMore}
-              variant="outline"
-              className="h-10 px-8 rounded-xl font-semibold gap-2 border-border/80 shadow-xs cursor-pointer hover:bg-accent"
-            >
-              {loadingMore ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Loading Next Batch...
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-4 w-4" />
-                  Show More Results ({totalFound - results.length} remaining)
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-
-        {/* Clean, Provider-Aware Empty State with Instant Action Suggestions */}
-        {!loading && title.trim() && results.length === 0 && !error && (
-          <div className="space-y-4">
-            <Card className="border border-border/60 bg-card/40 text-center p-6 space-y-3">
-              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                <Search className="h-6 w-6" />
-              </div>
-              <h3 className="text-base font-bold text-foreground">
-                {selectedProvider === 'unsplash'
-                  ? 'No Unsplash Photos Found for "' + title + '"'
-                  : selectedProvider === 'adobe'
-                    ? 'No Adobe Stock Assets Found for "' + title + '"'
-                    : 'No Matching Images Found for "' + title + '"'}
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
-                Try searching with broader safety terms or click one of the
-                quick suggestions below:
-              </p>
-
-              <div className="flex flex-wrap justify-center gap-1.5 pt-2">
-                {selectedProvider !== 'all' && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="default"
-                    onClick={() => handleSetProvider('all')}
-                    className="h-7 text-xs rounded-lg cursor-pointer font-bold shadow-xs"
-                  >
-                    ✨ Switch to All Providers (Unsplash + Adobe)
-                  </Button>
-                )}
-                {[
-                  'Personal Protective Equipment',
-                  'Electrical Safety & Switchgear',
-                  'Hazard Warning Signs',
-                  'Workplace Safety Inspection',
-                  'Fire Extinguisher',
-                ].map((sample) => (
-                  <Button
-                    key={sample}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setTitle(sample);
-                      executeSearch(sample, true);
-                    }}
-                    className="h-7 text-xs rounded-lg cursor-pointer hover:bg-primary/10 hover:text-primary"
-                  >
-                    {sample}
-                  </Button>
-                ))}
-              </div>
-            </Card>
-
-            {/* Optional Collapsible Adobe Enterprise Key Note (Collapsed by Default) */}
-            {selectedProvider === 'adobe' && (
-              <details className="p-3 rounded-xl border border-border/60 bg-muted/20 text-xs text-muted-foreground group">
-                <summary className="font-semibold text-foreground/80 cursor-pointer select-none list-none flex items-center justify-between">
-                  <span>
-                    Optional: How to connect paid Adobe Stock Enterprise API on
-                    Vercel
-                  </span>
-                  <span className="text-[10px] text-primary underline">
-                    Toggle setup guide
-                  </span>
-                </summary>
-                <div className="pt-3 space-y-2 text-[11px] border-t border-border/40 mt-2">
-                  <p>
-                    If your team has an Adobe Stock paid account, you can add{' '}
-                    <strong>ADOBE_STOCK_API_KEY</strong> in Vercel Environment
-                    Variables. Zero-key public Adobe catalog and 100% free
-                    Unsplash image search remain active automatically.
-                  </p>
-                </div>
-              </details>
-            )}
-
-            {/* AI Image Generation Prompt as Instant Alternative */}
-            <Card className="border border-primary/25 bg-gradient-to-r from-card via-background to-primary/5 p-4 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold flex items-center gap-1.5 text-foreground">
-                  <Sparkles className="h-4 w-4 text-amber-500" />
-                  Instant Alternative: Copy AI Prompt for DALL-E / Gemini /
-                  Midjourney:
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => handleCopyAiPrompt(activeAiPrompt, e)}
-                  className="h-6 text-[10px] font-bold gap-1 cursor-pointer"
-                >
-                  <Copy className="h-3 w-3" />
-                  Copy Prompt
-                </Button>
-              </div>
-              <pre className="p-2.5 rounded bg-muted/60 text-[11px] font-mono whitespace-pre-wrap select-all">
-                {activeAiPrompt}
-              </pre>
-            </Card>
-          </div>
-        )}
-      </div>
-    );
-  }
 }
 
 export default AdobeStockImageFinder;

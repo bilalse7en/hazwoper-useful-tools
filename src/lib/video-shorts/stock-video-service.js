@@ -203,8 +203,8 @@ export async function searchIslamicStockVideos({
           });
         results = [...wikiVideos, ...results];
       }
-    } catch (wikiErr) {
-      console.warn('Wikimedia Commons search notice:', wikiErr.message);
+    } catch {
+      // Graceful silent fallback without spamming console
     }
   }
 

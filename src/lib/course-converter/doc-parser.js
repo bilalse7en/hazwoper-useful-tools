@@ -150,8 +150,19 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
     }
   }
 
+  // Ensure any quiz or final exam headings (whether h2, h3, or p>strong) are promoted to h1 so they are cleanly segmented
+  let normalizedHtml = html.replace(
+    /<(h[2-6]|p)[^>]*>(?:\s*<[^>]+>)*\s*([^<]+?)\s*(?:<\/[^>]+>\s*)*<\/\1>/gi,
+    (match, tag, headingText) => {
+      const trimmed = cleanTitle(headingText);
+      if (isQuizHeading(trimmed) || isFinalExamHeading(trimmed)) {
+        return `<h1>${trimmed}</h1>`;
+      }
+      return match;
+    }
+  );
+
   // Fallback heading normalization if no <h1> tags are present in source Word doc
-  let normalizedHtml = html;
   if (!/<h1[^>]*>/i.test(normalizedHtml)) {
     if (/<h2[^>]*>/i.test(normalizedHtml)) {
       normalizedHtml = normalizedHtml
@@ -197,7 +208,7 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
       if (options.includeQuizzes !== false) {
         const parsedQuestions = parseQuizFromHtml(bodyContent || part, 'q');
         if (parsedQuestions.length > 0) {
-          knowledge_check = parsedQuestions;
+          knowledge_check.push(...parsedQuestions);
         }
       }
       continue;
@@ -216,9 +227,7 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
             questionCount: parsedQuestions.length,
             questions: parsedQuestions,
           };
-          if (knowledge_check.length === 0) {
-            knowledge_check = parsedQuestions;
-          }
+          // Do NOT duplicate final exam questions into knowledge_check (prevents doubling)
         }
       }
       continue;
@@ -289,6 +298,34 @@ export function segmentLessonWiseHtml(html, metadata = {}, options = {}) {
         mediaCurrentTime: 0,
       },
     });
+  }
+
+  // If no quiz heading was explicitly detected, but questions were included in the last topic, extract them cleanly
+  if (
+    knowledge_check.length === 0 &&
+    options.includeQuizzes !== false &&
+    topics.length > 0
+  ) {
+    const lastTopic = topics[topics.length - 1];
+    const candidateHtml = lastTopic.leftDiv?.editorHtml || '';
+    if (
+      /(?:Question\s*\d+|1[.:]\s+.*?[A-D][.:]\s+|Correct\s*Answer:)/i.test(
+        candidateHtml
+      )
+    ) {
+      const parsedQuestions = parseQuizFromHtml(candidateHtml, 'q');
+      if (parsedQuestions.length > 0) {
+        knowledge_check.push(...parsedQuestions);
+        // If the last topic was solely the quiz/question section, remove it from topics so it doesn't double
+        if (
+          isQuizHeading(lastTopic.name) ||
+          /^(?:Question|Quiz|Assessment)/i.test(lastTopic.name) ||
+          topics.length > 1
+        ) {
+          topics.pop();
+        }
+      }
+    }
   }
 
   // Fallbacks if titles are still missing

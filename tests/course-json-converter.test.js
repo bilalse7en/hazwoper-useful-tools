@@ -267,6 +267,87 @@ describe('CourseJsonConverter Core Engine', () => {
         'Subpart S specifically governs electrical safety'
       );
     });
+
+    it('parses Word ordered list <ol><li> options without letters and assigns A, B, C, D', () => {
+      const quizHtml = `
+        <p>Question 1: What is HAZWOPER?</p>
+        <ol>
+          <li>Hazardous Waste Operations and Emergency Response</li>
+          <li>Health and Safety Operations</li>
+          <li>Hazardous Water Protocol</li>
+          <li>None of the above</li>
+        </ol>
+        <p>Answer: A</p>
+      `;
+      const parsed = parseQuizFromHtml(quizHtml);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].question).toBe('What is HAZWOPER?');
+      expect(parsed[0].options).toHaveLength(4);
+      expect(parsed[0].options[0].value).toBe('A');
+      expect(parsed[0].options[0].label).toBe(
+        'Hazardous Waste Operations and Emergency Response'
+      );
+      expect(parsed[0].options[1].value).toBe('B');
+      expect(parsed[0].correct_answer).toBe('A');
+    });
+
+    it('parses bulleted list <ul><li> with leading bullet symbols and checkboxes', () => {
+      const quizHtml = `
+        <p>Question 1: Select the required personal protective equipment:</p>
+        <ul>
+          <li>• [x] A. Chemical protective suit (correct)</li>
+          <li>• [ ] B. Cotton t-shirt</li>
+          <li>• [ ] C. Sandals</li>
+        </ul>
+      `;
+      const parsed = parseQuizFromHtml(quizHtml);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].options).toHaveLength(3);
+      expect(parsed[0].options[0].value).toBe('A');
+      expect(parsed[0].options[0].label).toBe('Chemical protective suit');
+      expect(parsed[0].correct_answer).toBe('A');
+    });
+
+    it('parses table-based quiz options extracted from Word documents', () => {
+      const quizHtml = `
+        <table>
+          <tr><td>Question 1</td><td>What is the lower explosive limit?</td></tr>
+          <tr><td>A</td><td>The minimum concentration of vapor in air below which flame does not propagate</td></tr>
+          <tr><td>B</td><td>The maximum concentration of vapor</td></tr>
+          <tr><td>Answer</td><td>A</td></tr>
+        </table>
+      `;
+      const parsed = parseQuizFromHtml(quizHtml);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].question).toContain('What is the lower explosive limit?');
+      expect(parsed[0].options).toHaveLength(2);
+      expect(parsed[0].options[0].value).toBe('A');
+      expect(parsed[0].correct_answer).toBe('A');
+    });
+
+    it('detects "Lesson 1: Quiz" and "Quiz" headings in Word documents and segments options without doubling', () => {
+      const wordHtml = `
+        <h1>Introduction</h1>
+        <p>Welcome to this course.</p>
+        <h1>Lesson 1: Quiz</h1>
+        <p>Question 1: Gas testing must be repetitive.</p>
+        <ol>
+          <li>True (correct)</li>
+          <li>False</li>
+        </ol>
+      `;
+      const res = segmentLessonWiseHtml(wordHtml, {
+        fileName: 'Lesson 1.docx',
+      });
+      expect(res.knowledge_check).toHaveLength(1);
+      expect(res.knowledge_check[0].options).toHaveLength(2);
+      expect(res.knowledge_check[0].options[0].value).toBe('A');
+      expect(res.knowledge_check[0].options[0].label).toBe('True');
+      expect(res.knowledge_check[0].correct_answer).toBe('A');
+      // Ensure the quiz was not kept as a duplicate topic in topics
+      expect(res.topics).toHaveLength(1);
+      expect(res.topics[0].name).toBe('Introduction');
+    });
   });
 
   describe('Document Parser & Schema Builder (End-to-End)', () => {

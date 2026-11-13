@@ -160,12 +160,12 @@ export const TOOLS_DIRECTORY = [
     tools: [
       {
         id: 'adobe-stock-finder',
-        name: 'AI Adobe Stock Finder',
+        name: 'Global Stock Photo Finder',
         href: '/tools/adobe-stock-finder',
         description:
-          'Smart search for Adobe Stock assets + free Unsplash images',
+          'Search Adobe Stock + Unsplash, Pexels, Pixabay, Wikimedia Commons',
         icon: Search,
-        badge: 'SMART AI',
+        badge: 'GLOBAL AI',
       },
       {
         id: 'short-generator-2',

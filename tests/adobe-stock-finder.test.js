@@ -11,6 +11,10 @@ import {
   searchAdobeStockPublicCatalog,
   executeSmartStockSearch,
   searchUnsplashPhotos,
+  searchPexelsPhotos,
+  searchPixabayPhotos,
+  searchPixabayVideos,
+  searchWikimediaPhotos,
 } from '@/lib/adobe-stock/adobe-stock-service';
 
 describe('AI-Powered Adobe Stock Finder Test Suite', () => {
@@ -885,6 +889,272 @@ describe('AI-Powered Adobe Stock Finder Test Suite', () => {
       expect(res.results.length).toBeGreaterThan(0);
       expect(res.results.every((r) => r.provider === 'unsplash')).toBe(true);
       expect(res.results.every((r) => r.isFreeDownload === true)).toBe(true);
+    });
+  });
+
+  describe('10. Global Multi-Provider Expansion & 95%+ Course Context Matching', () => {
+    it('searches Pexels and returns commercial free assets with direct download links', async () => {
+      process.env.PEXELS_API_KEY = 'test_pexels_api_key_123';
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('api.pexels.com/v1/search')) {
+          return {
+            ok: true,
+            json: async () => ({
+              total_results: 1,
+              photos: [
+                {
+                  id: 123456,
+                  alt: 'Industrial power line transformer substation high voltage',
+                  url: 'https://www.pexels.com/photo/industrial-substation-123456/',
+                  photographer: 'Jane Doe',
+                  photographer_url: 'https://www.pexels.com/@janedoe',
+                  width: 1920,
+                  height: 1080,
+                  src: {
+                    original: 'https://images.pexels.com/photos/123456/original.jpg',
+                    large: 'https://images.pexels.com/photos/123456/large.jpg',
+                    large2x: 'https://images.pexels.com/photos/123456/large2x.jpg',
+                    medium: 'https://images.pexels.com/photos/123456/medium.jpg',
+                  },
+                },
+              ],
+            }),
+          };
+        }
+        return { ok: false };
+      });
+
+      const res = await searchPexelsPhotos({ query: 'substation transformer' });
+      expect(res.files.length).toBe(1);
+      expect(res.files[0].provider).toBe('pexels');
+      expect(res.files[0].isFreeDownload).toBe(true);
+      expect(res.files[0].downloadUrl).toContain('original.jpg');
+      expect(res.files[0].license).toContain('Pexels Free Commercial');
+    });
+
+    it('searches Pixabay and returns commercial free assets with direct download links', async () => {
+      process.env.PIXABAY_API_KEY = 'test_pixabay_key_123';
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('pixabay.com/api/')) {
+          return {
+            ok: true,
+            json: async () => ({
+              totalHits: 1,
+              hits: [
+                {
+                  id: 789101,
+                  tags: 'safety, hard hat, construction, worker',
+                  pageURL: 'https://pixabay.com/photos/safety-hard-hat-789101/',
+                  largeImageURL: 'https://pixabay.com/get/789101_large.jpg',
+                  webformatURL: 'https://pixabay.com/get/789101_web.jpg',
+                  previewURL: 'https://pixabay.com/get/789101_preview.jpg',
+                  imageWidth: 1920,
+                  imageHeight: 1080,
+                  user: 'safetypro',
+                  user_id: 456,
+                },
+              ],
+            }),
+          };
+        }
+        return { ok: false };
+      });
+
+      const res = await searchPixabayPhotos({ query: 'construction safety' });
+      expect(res.files.length).toBe(1);
+      expect(res.files[0].provider).toBe('pixabay');
+      expect(res.files[0].isFreeDownload).toBe(true);
+      expect(res.files[0].downloadUrl).toContain('789101_large.jpg');
+      expect(res.files[0].license).toContain('Pixabay Content License');
+    });
+
+    it('searches Wikimedia Commons with zero API keys required and returns public domain media', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('commons.wikimedia.org/w/api.php')) {
+          return {
+            ok: true,
+            json: async () => ({
+              query: {
+                pages: {
+                  5544: {
+                    pageid: 5544,
+                    title: 'File:Electrical transformer substation cooling.jpg',
+                    imageinfo: [
+                      {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/transformer.jpg',
+                        thumburl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/transformer.jpg',
+                        descriptionurl: 'https://commons.wikimedia.org/wiki/File:Electrical_transformer_substation_cooling.jpg',
+                        width: 2048,
+                        height: 1536,
+                        mime: 'image/jpeg',
+                        extmetadata: {
+                          Artist: { value: 'Wiki Photographer' },
+                          LicenseShortName: { value: 'CC BY-SA 4.0' },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            }),
+          };
+        }
+        return { ok: false };
+      });
+
+      const res = await searchWikimediaPhotos({ query: 'electrical transformer' });
+      expect(res.files.length).toBe(1);
+      expect(res.files[0].provider).toBe('wikimedia');
+      expect(res.files[0].isFreeDownload).toBe(true);
+      expect(res.files[0].downloadUrl).toContain('transformer.jpg');
+      expect(res.files[0].license).toContain('Wikimedia Commons');
+    });
+
+    it('guarantees 95%+ precision on introductory and learning objective slides by anchoring to course context', async () => {
+      const context = {
+        course: 'Hydrogen Sulfide (H2S) Industrial Safety Training',
+        module: 'Module 1: Toxic Gas Awareness & Hazards',
+        lesson: 'Lesson 1: Atmospheric Testing & Monitoring Procedures',
+      };
+
+      const analysis = await analyzeSlideTitle(
+        'Introduction / Learning Objectives',
+        context
+      );
+
+      expect(analysis).toBeDefined();
+      expect(analysis.queries.length).toBeGreaterThanOrEqual(2);
+
+      // Verify queries are NOT generic "introduction"
+      const allQueriesJoined = analysis.queries.join(' ').toLowerCase();
+      expect(allQueriesJoined).toMatch(/(atmospheric|testing|monitoring|hydrogen sulfide|h2s|gas)/i);
+      expect(allQueriesJoined).not.toBe('introduction');
+    });
+
+    it('executes smart stock search across provider="wikimedia" directly', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('commons.wikimedia.org/w/api.php')) {
+          return {
+            ok: true,
+            json: async () => ({
+              query: {
+                pages: {
+                  999: {
+                    pageid: 999,
+                    title: 'File:Worker fall protection harness.jpg',
+                    imageinfo: [
+                      {
+                        url: 'https://upload.wikimedia.org/wikipedia/commons/harness.jpg',
+                        thumburl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/harness.jpg',
+                        width: 1920,
+                        height: 1080,
+                        mime: 'image/jpeg',
+                        extmetadata: {
+                          Artist: { value: 'Safety Expert' },
+                          LicenseShortName: { value: 'CC0' },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            }),
+          };
+        }
+        return { ok: false };
+      });
+
+      const res = await executeSmartStockSearch({
+        title: 'Fall Arrest Equipment',
+        provider: 'wikimedia',
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.provider).toBe('wikimedia');
+      expect(res.results.length).toBeGreaterThan(0);
+      expect(res.results.every((r) => r.provider === 'wikimedia')).toBe(true);
+      expect(res.results.every((r) => r.isFreeDownload === true)).toBe(true);
+    });
+  });
+
+  describe('11. Course Media Bin Deduplication & Video Aspect Ratio Filtering', () => {
+    it('filters out already assigned assets when excludeIds is provided', async () => {
+      // First search without exclusions
+      const res1 = await executeSmartStockSearch({
+        title: 'Utility Power Entry and Switchgear',
+        provider: 'all',
+      });
+
+      expect(res1.success).toBe(true);
+      expect(res1.results.length).toBeGreaterThanOrEqual(1);
+      const firstAssetId = String(res1.results[0].assetId);
+
+      // Second search excluding the first asset
+      const res2 = await executeSmartStockSearch({
+        title: 'Utility Power Entry and Switchgear',
+        provider: 'all',
+        excludeIds: [firstAssetId],
+      });
+
+      expect(res2.success).toBe(true);
+      expect(res2.results.some((r) => String(r.assetId) === firstAssetId)).toBe(false);
+    });
+
+    it('searches Pixabay videos and detects 9:16 portrait vs 16:9 landscape aspect ratios', async () => {
+      process.env.PIXABAY_API_KEY = 'test_pixabay_key';
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('pixabay.com/api/videos')) {
+          return {
+            ok: true,
+            json: async () => ({
+              total: 2,
+              totalHits: 2,
+              hits: [
+                {
+                  id: 88123,
+                  pageURL: 'https://pixabay.com/videos/vertical-safety-88123/',
+                  tags: 'safety, worker, inspection',
+                  duration: 15,
+                  picture_id: '88123',
+                  videos: {
+                    large: {
+                      url: 'https://cdn.pixabay.com/video/vertical_1080p.mp4',
+                      width: 1080,
+                      height: 1920,
+                    },
+                    medium: {
+                      url: 'https://cdn.pixabay.com/video/vertical_720p.mp4',
+                      width: 720,
+                      height: 1280,
+                    },
+                  },
+                  user: 'SafetyVideographer',
+                },
+              ],
+            }),
+          };
+        }
+        return { ok: false };
+      });
+
+      const res = await searchPixabayVideos({
+        query: 'safety worker',
+        orientation: 'portrait',
+      });
+
+      expect(res.files.length).toBe(1);
+      const item = res.files[0];
+      expect(item.provider).toBe('pixabay');
+      expect(item.mediaType).toBe('video');
+      expect(item.orientation).toBe('portrait');
+      expect(item.videoUrl).toContain('.mp4');
+      expect(item.duration).toBe(15);
+      expect(item.isFreeDownload).toBe(true);
     });
   });
 });

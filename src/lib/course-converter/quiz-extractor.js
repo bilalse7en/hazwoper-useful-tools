@@ -10,7 +10,7 @@
  * Regex patterns to detect quiz or assessment sections
  */
 export const QUIZ_HEADER_REGEX =
-  /(?:lesson\s*quiz|knowledge\s*check|quiz\s*questions|self[- ]assessment|practice\s*quiz|module\s*quiz)/i;
+  /(?:(?:lesson|module|chapter|section|unit)?\s*\d*[:.\s-]*\s*(?:quiz|knowledge\s*check|self[- ]assessment|practice\s*quiz|assessment|review\s*questions|review\s*quiz|check\s*your\s*understanding|practice\s*questions)|^(?:quiz|assessment|knowledge\s*check)\b)/i;
 export const FINAL_EXAM_HEADER_REGEX =
   /(?:final\s*exam|comprehensive\s*(?:final\s*)?exam|course\s*(?:final\s*)?assessment|certification\s*exam)/i;
 
@@ -218,8 +218,54 @@ export function normalizeFinalExam(finalExam, idPrefix = 'fe_q') {
 export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
   if (!quizHtml || typeof quizHtml !== 'string') return [];
 
+  // Pre-process tables, ordered lists, and unordered lists so options are cleanly preserved with letters
+  let preprocessed = quizHtml;
+
+  // 1. Convert table rows where cell 1 is an option letter or Question header
+  preprocessed = preprocessed.replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, (m, row) => {
+    const cells = [];
+    row.replace(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi, (_, text) => {
+      cells.push(text.replace(/<[^>]*>/g, '').trim());
+    });
+    if (cells.length >= 2) {
+      const col1 = cells[0];
+      const col2 = cells.slice(1).join(' ').trim();
+      if (/^[A-H]$/i.test(col1)) {
+        return `<p>${col1.toUpperCase()}. ${col2}</p>`;
+      } else if (/^(?:Question|Q\.?)\s*\d+/i.test(col1)) {
+        return `<p>${col1}: ${col2}</p>`;
+      } else if (/^(?:Answer|Correct|Ans|Key)/i.test(col1)) {
+        return `<p>Answer: ${col2}</p>`;
+      } else if (/^(?:Explanation|Rationale|Feedback)/i.test(col1)) {
+        return `<p>Explanation: ${col2}</p>`;
+      }
+    }
+    return m;
+  });
+
+  // 2. Convert list items inside <ol> or <ul> into <p>A. ...</p>
+  preprocessed = preprocessed.replace(/<(ol|ul)[^>]*>([\s\S]*?)<\/\1>/gi, (match, tag, content) => {
+    let optIndex = 0;
+    return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (m, liText) => {
+      const cleanLi = liText.trim();
+      const strippedText = cleanLi.replace(/<[^>]*>/g, '').trim();
+      if (!strippedText) return '';
+      const textWithoutBullets = strippedText.replace(
+        /^(?:[\s\u00a0•\-\*o\u2022\u25cf\u25cb\u2013\u2014_]|\[\s*[x✓\s]?\s*\]|\(\s*[x✓\s]?\s*\))+[\s\u00a0]*/i,
+        ''
+      );
+      // Check if it already has a letter like A. or B)
+      const hasLetter = /^(?:\(?([A-Ha-h0-9])\)?[.:\-–—]|(?:Option\s*([A-Ha-h0-9]))[:.\-–—]?)/i.test(textWithoutBullets);
+      if (hasLetter) {
+        return `<p>${textWithoutBullets}</p>`;
+      }
+      const letter = OPTION_LETTERS[optIndex++] || String(optIndex);
+      return `<p>${letter}. ${textWithoutBullets}</p>`;
+    });
+  });
+
   // Break HTML into paragraphs/headings/table cells or clean blocks
-  const clean = quizHtml
+  const clean = preprocessed
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/h[1-6]>/gi, '\n')
@@ -240,11 +286,11 @@ export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
   const qStartRegex =
     /^(?:(?:Question|Quiz\s*Question|Q|Q\.)\s*(\d+)[:.\s-]*|(\d+)[.:)\-]\s+)(.*)/i;
   const optRegex =
-    /^(?:\(?([A-Ha-h0-9])\)?[.:\-–—]|\(?([A-Ha-h0-9])\)|(?:Option\s*([A-Ha-h0-9]))[:.\-–—]?)\s+(.*)/i;
+    /^(?:\(?([A-Ha-h0-9])\)?[.:\-–—]|\(?([A-Ha-h0-9])\)|(?:Option\s*([A-Ha-h0-9]))[:.\-–—]?)\s*(.*)/i;
   const correctMarkerRegex =
-    /\((?:correct|answer|✓|true)\)|\[(?:correct|answer|x|✓)\]|\*(?:correct)?/i;
+    /\((?:correct|answer|key|✓|true)\)|\[(?:correct|answer|key|x|✓)\]|\*(?:correct)?/i;
   const separateAnswerRegex =
-    /^(?:Correct\s*Answer|Answer|Correct\s*Option|Answer\s*Key|Key|Correct|Ans)[:\s=]+(?:Option\s*)?\(?([A-Ha-h0-9])\)?/i;
+    /^(?:Correct\s*Answer|Answer\s*Key|Answer|Correct\s*Option|Key|Correct|Ans)[:\s=]+(?:Option\s*)?\(?([A-Ha-h0-9]|True|False)\)?/i;
   const explanationRegex =
     /^(?:Explanation|Rationale|Feedback|Note)[:\s]+(.*)/i;
 
@@ -313,15 +359,32 @@ export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
       continue;
     }
 
+    // Strip leading bullets, checkboxes, symbols before matching options
+    const cleanOptLine = line.replace(
+      /^(?:[\s\u00a0•\-\*o\u2022\u25cf\u25cb\u2013\u2014_]|\[\s*[x✓\s]?\s*\]|\(\s*[x✓\s]?\s*\))+[\s\u00a0]*/i,
+      ''
+    );
+
     // Check if line is an Option: "A. Current...", "B) ...", "C. ... (correct)"
-    const optMatch = line.match(optRegex);
+    const optMatch = cleanOptLine.match(optRegex);
     if (optMatch) {
       const optLetter = (
         optMatch[1] ||
         optMatch[2] ||
         optMatch[3]
       ).toUpperCase();
-      let optText = optMatch[4].trim();
+      let optText = (optMatch[4] || '').trim();
+
+      // If option letter was on its own line and next line has option text
+      if (
+        !optText &&
+        i + 1 < rawLines.length &&
+        !rawLines[i + 1].match(qStartRegex) &&
+        !rawLines[i + 1].match(optRegex)
+      ) {
+        i++;
+        optText = rawLines[i].trim();
+      }
 
       // Check for inline correct marker
       if (correctMarkerRegex.test(optText)) {
@@ -342,7 +405,9 @@ export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
     // Check for separate "Correct Answer: B" line
     const ansMatch = line.match(separateAnswerRegex);
     if (ansMatch) {
-      currentQ.correct_answer = ansMatch[1].toUpperCase();
+      const rawAns = ansMatch[1].toUpperCase();
+      currentQ.correct_answer =
+        rawAns === 'TRUE' ? 'A' : rawAns === 'FALSE' ? 'B' : rawAns;
       continue;
     }
 

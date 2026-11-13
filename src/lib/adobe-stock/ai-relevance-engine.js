@@ -334,21 +334,33 @@ function extractContextAnchors(context = {}) {
 
   let domainTag = 'industrial';
   if (
-    /electrical|power|switchgear|voltage|current|transformer|substation|utility/i.test(
+    /electrical|power|switchgear|voltage|current|transformer|substation|utility|arc\s+flash/i.test(
       fullText
     )
   ) {
     domainTag = 'electrical';
   } else if (/glove|hand protection|ppe/i.test(fullText)) {
     domainTag = 'hand protection';
-  } else if (/fall protection|harness|height/i.test(fullText)) {
+  } else if (/fall protection|harness|height|scaffold|ladder/i.test(fullText)) {
     domainTag = 'fall protection';
-  } else if (/respirator|air monitoring|scba/i.test(fullText)) {
+  } else if (/respirator|air monitoring|scba|gas\s+mask|respiratory/i.test(fullText)) {
     domainTag = 'respiratory';
-  } else if (/chemical|hazmat|hazwoper|spill/i.test(fullText)) {
+  } else if (/chemical|hazmat|hazwoper|spill|decontamination|toxic|h2s|hydrogen\s+sulfide/i.test(fullText)) {
     domainTag = 'chemical';
-  } else if (/fire|extinguisher/i.test(fullText)) {
+  } else if (/confined\s+space|manhole|permit\s+required/i.test(fullText)) {
+    domainTag = 'confined space';
+  } else if (/lockout|tagout|loto|hazardous\s+energy/i.test(fullText)) {
+    domainTag = 'lockout tagout';
+  } else if (/forklift|pallet\s+jack|material\s+handling|crane/i.test(fullText)) {
+    domainTag = 'material handling';
+  } else if (/fire|extinguisher|egress|flammable/i.test(fullText)) {
     domainTag = 'fire safety';
+  } else if (/excavation|trenching|shoring/i.test(fullText)) {
+    domainTag = 'excavation safety';
+  } else if (/noise|hearing|audiometric/i.test(fullText)) {
+    domainTag = 'hearing protection';
+  } else if (/first\s+aid|cpr|bloodborne|emergency\s+response/i.test(fullText)) {
+    domainTag = 'emergency response';
   }
 
   return { domainTag, courseAnchor, moduleAnchor, lessonAnchor, parentAnchor };
@@ -395,41 +407,44 @@ export function synthesizeContextAwareQueries(
   const cartoonOnly =
     styleFilter.photo === false && styleFilter.illustration === true;
 
-  // Detect if topic is a summary slide
-  const isSummary = /^(summary|lesson\s+summary|course\s+summary)$/i.test(
-    lowerTitle
-  );
+  // Detect if topic is an intro, learning objective, summary, or structural course slide
+  const isIntroOrObjectives =
+    /^(introduction|learning\s+objectives|introduction\s*\/?\s*learning\s+objectives|objectives|overview|course\s+overview|lesson\s+overview|scope|key\s+concepts|definitions|responsibilities|regulations|standards|compliance|requirements|guidelines|review|conclusion|summary|lesson\s+summary|course\s+summary|wrap[\s-]?up)$/i.test(
+      lowerTitle
+    );
 
-  // Detect if topic is short or generic (e.g. "Key Components", "Safety and Maintenance", "Mitigation Strategies")
+  // Detect if topic is short or generic
   const isGeneric =
-    !isSummary &&
+    !isIntroOrObjectives &&
     (/^(key\s+components|components|safety\s+and\s+maintenance|maintenance|mitigation\s+strategies|practical\s+impact|safety\s+controls|controls|standards|inspection)$/i.test(
       lowerTitle
     ) ||
       (lowerTitle.split(/\s+/).length <= 2 &&
-        !/transformer|switchgear|meter|generator|voltage|harness|respirator|glove/i.test(
+        !/transformer|switchgear|meter|generator|voltage|harness|respirator|glove|chemical|hazmat|forklift|fire|scba/i.test(
           lowerTitle
         )));
 
   const queries = [];
 
-  if (isSummary) {
-    // For summary slides, search comprehensive course & lesson facility overview imagery
-    const mainSubject =
-      lessonAnchor || courseAnchor || domainTag || 'power facility';
-    queries.push(`${mainSubject} electrical overview`);
-    if (courseAnchor) {
-      queries.push(`${courseAnchor} power systems facility`);
-    }
-    if (moduleAnchor) {
-      queries.push(`${moduleAnchor} electrical equipment`);
+  if (isIntroOrObjectives) {
+    // For introductory, learning objectives, and summary slides, anchor directly to the parent technical topic
+    // This prevents generic handshake / empty office stock images on "Introduction" slides!
+    const technicalAnchor =
+      lessonAnchor || moduleAnchor || parentAnchor || courseAnchor || matchedTaxonomy.primarySubject;
+    const primaryEq = matchedTaxonomy.equipment?.[0] || 'worker safety';
+
+    queries.push(`${technicalAnchor} ${primaryEq}`);
+    queries.push(`${technicalAnchor} workplace safety inspection`);
+    if (courseAnchor && courseAnchor !== technicalAnchor) {
+      queries.push(`${courseAnchor} industrial facility`);
+    } else {
+      queries.push(`${technicalAnchor} training operations`);
     }
     queries.push(`${domainTag} industrial facility overview`);
   } else if (isGeneric) {
-    if (parentAnchor) {
-      queries.push(`${parentAnchor} ${lowerTitle}`);
-      queries.push(`${parentAnchor} ${domainTag}`);
-    }
+    const parentContext = parentAnchor || lessonAnchor || moduleAnchor || courseAnchor || domainTag;
+    queries.push(`${parentContext} ${lowerTitle}`);
+    queries.push(`${parentContext} ${matchedTaxonomy.equipment?.[0] || domainTag}`);
     if (lessonAnchor && lessonAnchor !== parentAnchor) {
       queries.push(`${lessonAnchor} ${lowerTitle}`);
     }
@@ -872,7 +887,11 @@ export function evaluateAssetRelevance(
   let tier = 'Relevant Match';
   let badgeColor = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
 
-  if (finalScore >= 80) {
+  if (finalScore >= 90) {
+    tier = 'High Match (95%+ Match)';
+    badgeColor =
+      'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+  } else if (finalScore >= 80) {
     tier = 'High Match';
     badgeColor =
       'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
@@ -891,7 +910,7 @@ export function evaluateAssetRelevance(
 }
 
 /**
- * Deduplicates results by asset ID, filters by relevance threshold, and sorts by score.
+ * Deduplicates results by asset ID and image URL, filters by relevance threshold, and sorts by score.
  */
 export function deduplicateAndRankAssets(
   assets,
@@ -901,13 +920,19 @@ export function deduplicateAndRankAssets(
   styleFilter = { photo: true, illustration: true }
 ) {
   const seenIds = new Set();
+  const seenUrls = new Set();
   const ranked = [];
 
   for (const asset of assets) {
     if (!asset || !asset.id) continue;
     const idKey = String(asset.id);
     if (seenIds.has(idKey)) continue;
+
+    const urlKey = asset.previewUrl || asset.downloadUrl || asset.thumbnailUrl;
+    if (urlKey && seenUrls.has(urlKey)) continue;
+
     seenIds.add(idKey);
+    if (urlKey) seenUrls.add(urlKey);
 
     const relevance = evaluateAssetRelevance(
       asset,
