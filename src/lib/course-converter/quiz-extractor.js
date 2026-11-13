@@ -30,6 +30,28 @@ export function isFinalExamHeading(title) {
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 /**
+ * Safely strips leading list bullets, dashes, checkboxes, and whitespace
+ * WITHOUT eating legitimate words starting with 'O' or other English letters (e.g. "On", "Only", "One", "Operating").
+ */
+export function stripLeadingBulletsAndSymbols(str) {
+  if (!str || typeof str !== 'string') return '';
+  let res = str.trim();
+  let prev = '';
+  while (res !== prev) {
+    prev = res;
+    res = res
+      .replace(
+        /^[\s\u00a0•\-\*\u2022\u25cf\u25cb\u25ef\u25e6\u29bf\u25aa\u25ab\u25a0\u00b7\u2013\u2014_]+/,
+        ''
+      )
+      .replace(/^(?:\[\s*[xX✓\s]?\s*\]|\(\s*[xX✓\s]?\s*\))\s*/, '')
+      .replace(/^[oO]\s+/, '')
+      .trim();
+  }
+  return res;
+}
+
+/**
  * Canonical quiz question normalizer:
  * Bridges LMS schema ({ question, options: [{ value, label }], correct_answer, explanation })
  * and Supabase / DB schema ({ question_text, options: [{ option_text, is_correct }], explanation }).
@@ -265,10 +287,8 @@ export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
       const cleanLi = liText.trim();
       const strippedText = cleanLi.replace(/<[^>]*>/g, '').trim();
       if (!strippedText) return '';
-      const textWithoutBullets = strippedText.replace(
-        /^(?:[\s\u00a0•\-\*o\u2022\u25cf\u25cb\u2013\u2014_]|\[\s*[x✓\s]?\s*\]|\(\s*[x✓\s]?\s*\))+[\s\u00a0]*/i,
-        ''
-      );
+      // Strip leading bullets, checkboxes, symbols WITHOUT eating words starting with 'O' or other letters
+      const textWithoutBullets = stripLeadingBulletsAndSymbols(strippedText);
       // Check if it already has a letter like A. or B)
       const hasLetter = /^(?:\(?([A-Ha-h0-9])\)?[.:\-–—]|(?:Option\s*([A-Ha-h0-9]))[:.\-–—]?)/i.test(textWithoutBullets);
       if (hasLetter) {
@@ -391,11 +411,8 @@ export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
       continue;
     }
 
-    // Strip leading bullets, checkboxes, symbols before matching options
-    const cleanOptLine = line.replace(
-      /^(?:[\s\u00a0•\-\*o\u2022\u25cf\u25cb\u2013\u2014_]|\[\s*[x✓\s]?\s*\]|\(\s*[x✓\s]?\s*\))+[\s\u00a0]*/i,
-      ''
-    );
+    // Strip leading bullets, checkboxes, symbols before matching options WITHOUT eating words starting with 'O'
+    const cleanOptLine = stripLeadingBulletsAndSymbols(line);
 
     // Check if line is an Option: "A. Current...", "B) ...", "C. ... (correct)"
     const optMatch = cleanOptLine.match(optRegex);

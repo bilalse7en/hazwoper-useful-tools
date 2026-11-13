@@ -206,4 +206,69 @@ describe('Quiz Schema Normalization & Key Guard Engine', () => {
     expect(normalized.options[2].is_correct).toBe(true);
     expect(normalized.options[3].is_correct).toBe(false);
   });
+
+  it('never eats letters or words starting with "O" in options and questions (e.g. On, Only, One, Operating, Inside)', async () => {
+    const { parseQuizFromHtml } = await import(
+      '../src/lib/course-converter/quiz-extractor.js'
+    );
+
+    const html = `
+      <p>Question 1</p>
+      <p>A facility is adding a surge protective device (SPD) to work with an existing UPS. According to the lesson, where should the SPD be installed? [A]</p>
+      <ol>
+        <li>On the utility side of the UPS, ideally on the bypass line</li>
+        <li>On the output side of the UPS, directly at each critical load</li>
+        <li>Inside the UPS cabinet, between the rectifier and the inverter</li>
+        <li>On the DC bus, between the battery bank and the inverter</li>
+      </ol>
+      <p>Question 2</p>
+      <p>Which statement best describes the role of a UPS in layered surge protection? (A)</p>
+      <ul>
+        <li>Operating under load with continuous double-conversion</li>
+        <li>Only protecting downstream non-critical panels</li>
+        <li>One primary fuse block for the entire substation</li>
+      </ul>
+    `;
+
+    const parsed = parseQuizFromHtml(html, 'q');
+    expect(parsed).toHaveLength(2);
+
+    // Question 1 assertions
+    const q1 = parsed[0];
+    expect(q1.question).toBe(
+      'A facility is adding a surge protective device (SPD) to work with an existing UPS. According to the lesson, where should the SPD be installed?'
+    );
+    expect(q1.correct_answer).toBe('A');
+    expect(q1.options[0].label).toBe(
+      'On the utility side of the UPS, ideally on the bypass line'
+    );
+    expect(q1.options[0].label).not.toMatch(/^n\s/); // Must NOT eat 'O'
+    expect(q1.options[1].label).toBe(
+      'On the output side of the UPS, directly at each critical load'
+    );
+    expect(q1.options[1].label).not.toMatch(/^n\s/); // Must NOT eat 'O'
+    expect(q1.options[2].label).toBe(
+      'Inside the UPS cabinet, between the rectifier and the inverter'
+    );
+    expect(q1.options[3].label).toBe(
+      'On the DC bus, between the battery bank and the inverter'
+    );
+    expect(q1.options[3].label).not.toMatch(/^n\s/); // Must NOT eat 'O'
+
+    // Question 2 assertions
+    const q2 = parsed[1];
+    expect(q2.question).toBe(
+      'Which statement best describes the role of a UPS in layered surge protection?'
+    );
+    expect(q2.correct_answer).toBe('A');
+    expect(q2.options[0].label).toBe(
+      'Operating under load with continuous double-conversion'
+    );
+    expect(q2.options[1].label).toBe(
+      'Only protecting downstream non-critical panels'
+    );
+    expect(q2.options[2].label).toBe(
+      'One primary fuse block for the entire substation'
+    );
+  });
 });
