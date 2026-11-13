@@ -87,13 +87,16 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(clean).not.toContain('<th></th>');
     });
 
-    it('applies class="mb-0" to paragraphs ending with a colon that precede bulleted lists', () => {
+    it('applies class="mb-0" strictly to paragraphs ending with a colon that precede lists and adds mt-0 to ol', () => {
       const raw = `
+        <p>Introduction to the hazardous materials module.</p>
+        <p>General site overview before entering decontamination zone.</p>
         <p>The core responsibilities include: </p>
         <ul>
           <li>Hazard assessment</li>
           <li>Continuous air monitoring</li>
         </ul>
+        <p>Site safety officer instructions.</p>
         <p><strong>Emergency Contact Protocol:</strong></p>
         <ol>
           <li>Notify site safety lead</li>
@@ -104,12 +107,39 @@ describe('CourseJsonConverter Core Engine', () => {
         </ul>
       `;
       const clean = normalizeHtmlContent(raw);
+
+      // Paragraphs WITHOUT colon MUST NOT receive mb-0
+      expect(clean).toContain(
+        '<p>Introduction to the hazardous materials module.</p>'
+      );
+      expect(clean).not.toContain(
+        '<p class="mb-0">Introduction to the hazardous materials module.</p>'
+      );
+      expect(clean).toContain(
+        '<p>General site overview before entering decontamination zone.</p>'
+      );
+      expect(clean).not.toContain(
+        '<p class="mb-0">General site overview before entering decontamination zone.</p>'
+      );
+      expect(clean).toContain(
+        '<p>Site safety officer instructions.</p>'
+      );
+      expect(clean).not.toContain(
+        '<p class="mb-0">Site safety officer instructions.</p>'
+      );
+
+      // Paragraphs WITH colon preceding lists MUST receive mb-0
       expect(clean).toContain(
         '<p class="mb-0">The core responsibilities include:</p>'
       );
       expect(clean).toContain(
         '<p class="mb-0"><strong>Emergency Contact Protocol:</strong></p>'
       );
+
+      // ol following colon paragraph receives class="mt-0"
+      expect(clean).toContain('<ol class="mt-0">');
+
+      // Paragraph without colon preceding list stays normal <p>
       expect(clean).toContain(
         '<p>Standard concluding sentence without a colon.</p>'
       );

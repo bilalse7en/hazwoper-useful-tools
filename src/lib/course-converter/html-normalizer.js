@@ -352,17 +352,21 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   // Remove any table that has no tr left
   html = html.replace(/<table[^>]*>\s*<\/table>/gi, '');
 
-  // 12. Paragraph preceding bullet points ending in ':' gets class="mb-0"
+  // 12. Paragraph preceding bullet points ending in ':' gets class="mb-0", and <ol> gets class="mt-0"
   html = html.replace(
-    /<p([^>]*)>([\s\S]*?)<\/p>(\s*<(?:ul|ol)[^>]*>)/gi,
-    (match, attrs, content, listTag) => {
+    /<p([^>]*)>((?:(?!<\/?p\b)[\s\S])*?)<\/p>(\s*<(ul|ol)[^>]*>)/gi,
+    (match, attrs, content, listWhitespaceAndTag, listTagName) => {
       const textOnly = content
         .replace(/<[^>]*>/g, '')
         .replace(/&nbsp;/gi, ' ')
         .replace(/&#160;/gi, ' ')
         .trim();
       if (textOnly.endsWith(':')) {
-        return `<p class="mb-0">${content.trim()}</p>${listTag}`;
+        const isOl = listTagName.toLowerCase() === 'ol';
+        const formattedListTag = isOl
+          ? listWhitespaceAndTag.replace(/<ol[^>]*>/i, '<ol class="mt-0">')
+          : listWhitespaceAndTag;
+        return `<p class="mb-0">${content.trim()}</p>${formattedListTag}`;
       }
       return match;
     }
