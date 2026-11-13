@@ -257,7 +257,8 @@ export function AdobeStockImageFinder({
         item.downloadUrl || item.videoUrl || item.largePreviewUrl || item.previewUrl;
       const ext = isVideo ? 'mp4' : 'jpg';
       const prov = item.provider || 'stock';
-      const filename = `${prov}-${item.assetId || Date.now()}.${ext}`;
+      const safeAssetId = String(item.assetId || item.id || 'media').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `${prov}-${safeAssetId}.${ext}`;
 
       const proxyUrl = `/api/adobe-stock/download?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(filename)}`;
       const a = document.createElement('a');
