@@ -11,6 +11,7 @@
 import { parseQuizFromHtml } from './quiz-extractor.js';
 import {
   ensureLessonNumberPrefix,
+  ensureModuleNumberPrefix,
   isIntroductoryModule,
   hasIntroLesson,
 } from './folder-converter.js';
@@ -175,16 +176,42 @@ export function mergeFinalExamIntoCourse(courseJson, finalExamObj) {
 export function renumberAllLessons(courseJson) {
   if (!courseJson || !Array.isArray(courseJson.modules)) return courseJson;
 
+  const courseTitle = (
+    courseJson.course_title ||
+    courseJson.courseTitle ||
+    ''
+  ).trim();
+
+  const hasModule0 =
+    courseJson.modules[0]?.module_id === 'mod_0' ||
+    courseJson.modules[0]?.moduleIndex === 0 ||
+    isIntroductoryModule(courseJson.modules[0]?.module_title, courseTitle) ||
+    hasIntroLesson(courseJson.modules[0]?.lessons);
+
   courseJson.modules.forEach((mod, mIdx) => {
-    const isMod0 =
-      mod.module_id === 'mod_0' || /^module\s*0\b/i.test(mod.module_title);
-    const modNum = isMod0
-      ? 0
-      : mIdx + (courseJson.modules[0]?.module_id === 'mod_0' ? 0 : 1);
+    const isMod0 = hasModule0 && mIdx === 0;
+    const modNum = isMod0 ? 0 : hasModule0 ? mIdx : mIdx + 1;
+    mod.module_id = `mod_${modNum}`;
+
+    if (isMod0) {
+      const rawTitle = (mod.module_title || '').trim();
+      const cleanTitle = rawTitle.replace(/^module\s*0\s*[:\s_-]*/i, '').trim();
+      mod.module_title =
+        courseTitle && cleanTitle.toLowerCase().includes(courseTitle.toLowerCase())
+          ? cleanTitle
+          : courseTitle || cleanTitle || mod.module_title;
+    } else {
+      mod.module_title = ensureModuleNumberPrefix(
+        mod.module_title,
+        modNum,
+        courseTitle
+      );
+    }
+
     const hasIntro = hasIntroLesson(mod.lessons);
 
     (mod.lessons || []).forEach((les, lIdx) => {
-      const isLes0 = (isMod0 && lIdx === 0) || (hasIntro && lIdx === 0);
+      const isLes0 = hasIntro && lIdx === 0;
       const currentLesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
 
       les.lesson_title = isLes0

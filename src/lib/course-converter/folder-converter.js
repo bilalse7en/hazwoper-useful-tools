@@ -78,22 +78,26 @@ export function hasIntroLesson(lessons = []) {
 
 /**
  * Ensures a module title starts with a valid prefix if missing.
- * Strictly preserves the user's existing title pattern and numbering.
- * When moduleNumber is 0, formats as "Module 0: {title}" or "Module 0: Introduction".
+ * When moduleNumber is 0, formats as the course name / clean title WITHOUT module numbering.
+ * When moduleNumber >= 1, formats as "Module {moduleNumber}: {title}".
  */
-export function ensureModuleNumberPrefix(title, moduleNumber) {
+export function ensureModuleNumberPrefix(title, moduleNumber, courseTitle = '') {
   if (moduleNumber === 0) {
-    if (!title) return 'Module 0: Introduction';
-    const clean = title.trim();
-    if (/^module\s*0\b/i.test(clean)) return clean;
-    const rest = clean
-      .replace(/^(?:Module|Unit|Section)\s*\d*[\s_:-]*/i, '')
-      .trim();
-    return `Module 0: ${rest || 'Introduction'}`;
+    const raw = (courseTitle || title || '').trim();
+    const clean = raw.replace(/^(?:module|unit|section)\s*\d*[:\s_-]*/i, '').trim();
+    return clean || courseTitle || 'Introduction';
   }
   if (!title) return `Module ${moduleNumber}`;
   const clean = title.trim();
-  return clean || `Module ${moduleNumber}`;
+  const match = clean.match(/^(?:Module|Unit|Section)\s*\d+[\s_:-]+(.*)$/i);
+  if (match) {
+    const rest = match[1].trim().replace(/^[-_:\s]+/, '');
+    return `Module ${moduleNumber}: ${rest}`;
+  }
+  if (/^(?:Module|Unit|Section)\s*\d+$/i.test(clean)) {
+    return `Module ${moduleNumber}`;
+  }
+  return `Module ${moduleNumber}: ${clean}`;
 }
 
 /**
@@ -345,10 +349,14 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
     if (hasModule0 && mIdx === 0) {
       mod.moduleIndex = 0;
       mod.moduleId = 'mod_0';
-      // User requirement: with course name module take it as module 0 and make it top but dont add module 0 with its name let it be
+      // User requirement: First module with course name starts without module numbering, just the name
+      const rawTitle = (mod.moduleTitle || '').trim();
+      const cleanTitle = rawTitle.replace(/^module\s*0\s*[:\s_-]*/i, '').trim();
       mod.moduleTitle =
-        (mod.moduleTitle || '').replace(/^module\s*0\s*[:\s_-]*/i, '').trim() ||
-        mod.moduleTitle;
+        (detectedCourseTitle && cleanTitle.toLowerCase().includes(detectedCourseTitle.toLowerCase()))
+          ? cleanTitle
+          : detectedCourseTitle || cleanTitle || mod.moduleTitle;
+
       mod.lessons.sort((a, b) => {
         if (a.lessonNumber !== b.lessonNumber) {
           return a.lessonNumber - b.lessonNumber;
@@ -358,20 +366,26 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
           sensitivity: 'base',
         });
       });
+
+      const hasIntro = hasIntroLesson(mod.lessons);
       mod.lessons.forEach((les, lIdx) => {
-        les.lessonIndex = lIdx;
-        les.lessonId = `les_0_${lIdx}`;
-        // Lesson 0 is strictly named "Introduction" if first, otherwise preserve original title
-        les.lessonTitle =
-          lIdx === 0
-            ? 'Introduction'
-            : (les.lessonTitle || `Lesson ${lIdx}`).trim();
+        const isLes0 = hasIntro && lIdx === 0;
+        const realLesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+        les.lessonIndex = realLesNum;
+        les.lessonId = `les_0_${realLesNum}`;
+        les.lessonTitle = isLes0
+          ? 'Introduction'
+          : ensureLessonNumberPrefix(les.lessonTitle, realLesNum);
       });
     } else {
       const realModNum = hasModule0 ? mIdx : mIdx + 1;
       mod.moduleIndex = realModNum;
       mod.moduleId = `mod_${realModNum}`;
-      mod.moduleTitle = mod.moduleTitle || `Module ${realModNum}`;
+      mod.moduleTitle = ensureModuleNumberPrefix(
+        mod.moduleTitle,
+        realModNum,
+        detectedCourseTitle
+      );
       mod.lessons.sort((a, b) => {
         if (a.lessonNumber !== b.lessonNumber) {
           return a.lessonNumber - b.lessonNumber;
@@ -499,19 +513,24 @@ export async function convertCourseFolderSequentially(
     const isMod0 = hasModule0 && mIdx === 0;
     const modNum = isMod0 ? 0 : hasModule0 ? mIdx : mIdx + 1;
     const moduleId = `mod_${modNum}`;
+    const rawTitle = (modConfig.moduleTitle || '').trim();
+    const cleanTitle = rawTitle.replace(/^module\s*0\s*[:\s_-]*/i, '').trim();
     const moduleTitle = isMod0
-      ? (modConfig.moduleTitle || '')
-          .replace(/^module\s*0\s*[:\s_-]*/i, '')
-          .trim() || modConfig.moduleTitle
-      : modConfig.moduleTitle ||
-        ensureModuleNumberPrefix(modConfig.moduleTitle, modNum);
+      ? ((hierarchy.courseTitle && cleanTitle.toLowerCase().includes(hierarchy.courseTitle.toLowerCase()))
+          ? cleanTitle
+          : hierarchy.courseTitle || cleanTitle || modConfig.moduleTitle)
+      : ensureModuleNumberPrefix(
+          modConfig.moduleTitle,
+          modNum,
+          hierarchy.courseTitle
+        );
 
     const moduleLessons = [];
     const hasIntro = hasIntroLesson(modConfig.lessons);
 
     for (let lIdx = 0; lIdx < modConfig.lessons.length; lIdx++) {
       const lesConfig = modConfig.lessons[lIdx];
-      const isLes0 = (isMod0 && lIdx === 0) || (hasIntro && lIdx === 0);
+      const isLes0 = hasIntro && lIdx === 0;
       const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
       const lessonId = `les_${modNum}_${lesNum}`;
       processedCount += 1;

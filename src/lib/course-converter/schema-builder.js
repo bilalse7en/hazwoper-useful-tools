@@ -91,32 +91,48 @@ export function normalizeCourseHierarchy(
 
   const normalized = [];
 
-  // If introductory / course name module found, place on top as Module 0
-  if (introIndex !== -1) {
+  // Check if there is an introductory / course name module
+  const hasModule0 =
+    introIndex !== -1 ||
+    rawModules[0].module_id === 'mod_0' ||
+    rawModules[0].moduleIndex === 0 ||
+    isIntroductoryModule(rawModules[0].module_title, cleanCourse) ||
+    hasIntroLesson(rawModules[0].lessons);
+
+  if (hasModule0) {
+    if (introIndex === -1) {
+      introIndex = 0;
+    }
     const introMod = rawModules[introIndex];
     const restModules = rawModules.filter((_, idx) => idx !== introIndex);
 
-    // Build Module 0: Keep its title as it is (do NOT add "Module 0:" prefix)
+    // Build Module 0: Strictly the course name / clean title without module numbering prefix
     const rawIntroTitle = (introMod.module_title || '').trim();
+    const cleanIntroTitle = rawIntroTitle
+      .replace(/^(?:module|unit|section)\s*\d*[:\s_-]*/i, '')
+      .trim();
     const mod0Title =
-      rawIntroTitle.replace(/^(?:module\s*0\s*[:\s_-]*)/i, '').trim() ||
-      rawIntroTitle ||
-      cleanCourse ||
-      'Introduction';
+      cleanCourse && cleanIntroTitle.toLowerCase().includes(lowerCourse)
+        ? cleanIntroTitle
+        : cleanCourse || cleanIntroTitle || 'Introduction';
+
+    const hasIntro = hasIntroLesson(introMod.lessons);
 
     const mod0Lessons = (introMod.lessons || [])
-      .filter((les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title))
+      .filter(
+        (les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
+      )
       .map((les, lIdx) => {
-        const lesId = `les_0_${lIdx}`;
-        // In Lesson 0: name MUST be strictly "Introduction" instead of "Lesson 0"
-        const lesTitle =
-          lIdx === 0
-            ? 'Introduction'
-            : ensureLessonNumberPrefix(les.lesson_title, lIdx);
+        const isLes0 = hasIntro && lIdx === 0;
+        const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+        const lesId = `les_0_${lesNum}`;
+        const lesTitle = isLes0
+          ? 'Introduction'
+          : ensureLessonNumberPrefix(les.lesson_title, lesNum);
 
         const formattedTopics = (les.topics || []).map((top, tIdx) => ({
           ...top,
-          id: `top_0_${lIdx}_${tIdx + 1}`,
+          id: `top_0_${lesNum}_${tIdx + 1}`,
           lessonId: lesId,
           moduleId: 'mod_0',
         }));
@@ -150,16 +166,20 @@ export function normalizeCourseHierarchy(
     restModules.forEach((mod, idx) => {
       const modNum = idx + 1;
       const modId = `mod_${modNum}`;
-      const modTitle = mod.module_title || `Module ${modNum}`;
+      const modTitle = ensureModuleNumberPrefix(
+        mod.module_title,
+        modNum,
+        cleanCourse
+      );
 
       const filteredLessons = (mod.lessons || []).filter(
         (les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
       );
-      const hasIntro = hasIntroLesson(filteredLessons);
+      const hasIntroMod = hasIntroLesson(filteredLessons);
 
       const modLessons = filteredLessons.map((les, lIdx) => {
-        const isLes0 = hasIntro && lIdx === 0;
-        const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+        const isLes0 = hasIntroMod && lIdx === 0;
+        const lesNum = isLes0 ? 0 : hasIntroMod ? lIdx : lIdx + 1;
         const lesId = `les_${modNum}_${lesNum}`;
         const lesTitle = isLes0
           ? 'Introduction'
@@ -189,20 +209,24 @@ export function normalizeCourseHierarchy(
       }
     });
   } else {
-    // No introductory module -> Modules start from Module 1, with per-module lesson numbering
+    // Normal modules starting from Module 1
     rawModules.forEach((mod, idx) => {
       const modNum = idx + 1;
       const modId = `mod_${modNum}`;
-      const modTitle = mod.module_title || `Module ${modNum}`;
+      const modTitle = ensureModuleNumberPrefix(
+        mod.module_title,
+        modNum,
+        cleanCourse
+      );
 
       const filteredLessons = (mod.lessons || []).filter(
         (les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
       );
-      const hasIntro = hasIntroLesson(filteredLessons);
+      const hasIntroMod = hasIntroLesson(filteredLessons);
 
       const modLessons = filteredLessons.map((les, lIdx) => {
-        const isLes0 = hasIntro && lIdx === 0;
-        const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+        const isLes0 = hasIntroMod && lIdx === 0;
+        const lesNum = isLes0 ? 0 : hasIntroMod ? lIdx : lIdx + 1;
         const lesId = `les_${modNum}_${lesNum}`;
         const lesTitle = isLes0
           ? 'Introduction'

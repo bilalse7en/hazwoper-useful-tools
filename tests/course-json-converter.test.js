@@ -1240,22 +1240,123 @@ describe('CourseJsonConverter Core Engine', () => {
       };
 
       const courseJson = buildCourseJson(mockCourse);
-      const mod1 = courseJson.modules[0];
-      expect(mod1.lessons).toHaveLength(3);
+      const mod0 = courseJson.modules[0];
+      expect(mod0.module_id).toBe('mod_0');
+      expect(mod0.module_title).toBe('Site Safety Protocols');
+      expect(mod0.module_title).not.toContain('Module 0:');
+      expect(mod0.module_title).not.toContain('Module 1:');
+      expect(mod0.lessons).toHaveLength(3);
 
       // Lesson 0: Strictly named "Introduction" (NOT "Lesson 1: Introduction", NOT "Lesson 0")
-      expect(mod1.lessons[0].lesson_id).toBe('les_1_0');
-      expect(mod1.lessons[0].lesson_title).toBe('Introduction');
-      expect(mod1.lessons[0].lesson_title).not.toContain('Lesson 1');
-      expect(mod1.lessons[0].lesson_title).not.toContain('Lesson 0');
+      expect(mod0.lessons[0].lesson_id).toBe('les_0_0');
+      expect(mod0.lessons[0].lesson_title).toBe('Introduction');
+      expect(mod0.lessons[0].lesson_title).not.toContain('Lesson 1');
+      expect(mod0.lessons[0].lesson_title).not.toContain('Lesson 0');
 
       // Lesson 1: Starts AFTER Introduction!
-      expect(mod1.lessons[1].lesson_id).toBe('les_1_1');
-      expect(mod1.lessons[1].lesson_title).toBe('Lesson 1: Hazard Communication & SDS');
+      expect(mod0.lessons[1].lesson_id).toBe('les_0_1');
+      expect(mod0.lessons[1].lesson_title).toBe('Lesson 1: Hazard Communication & SDS');
 
       // Lesson 2: Follows Lesson 1!
-      expect(mod1.lessons[2].lesson_id).toBe('les_1_2');
-      expect(mod1.lessons[2].lesson_title).toBe('Lesson 2: Personal Protective Equipment');
+      expect(mod0.lessons[2].lesson_id).toBe('les_0_2');
+      expect(mod0.lessons[2].lesson_title).toBe('Lesson 2: Personal Protective Equipment');
+    });
+
+    it('always formats the first module of the course as Module 0 with the course name without module numbering, Lesson 0 as Introduction, and subsequent modules starting from Module 1', () => {
+      const mockCourse = {
+        course_id: 'course_industrial_safety',
+        courseTitle: 'Industrial Safety Standards',
+        modules: [
+          {
+            module_id: 'mod_intro',
+            module_title: 'Module 0: Industrial Safety Standards Overview',
+            lessons: [
+              {
+                lesson_title: 'Course Introduction',
+                topics: [
+                  {
+                    id: 'top_1',
+                    name: 'Overview',
+                    leftDiv: { editorHtml: '<div><p>Intro text</p></div>' },
+                  },
+                ],
+              },
+              {
+                lesson_title: 'Safety Culture Principles',
+                topics: [
+                  {
+                    id: 'top_2',
+                    name: 'Culture',
+                    leftDiv: { editorHtml: '<div><p>Culture text</p></div>' },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            module_id: 'mod_machinery',
+            module_title: 'Machine Guarding & LOTO',
+            lessons: [
+              {
+                lesson_title: 'Lockout Tagout Procedures',
+                topics: [
+                  {
+                    id: 'top_3',
+                    name: 'LOTO',
+                    leftDiv: { editorHtml: '<div><p>LOTO text</p></div>' },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            module_id: 'mod_confined',
+            module_title: 'Module 5: Confined Space Entry',
+            lessons: [
+              {
+                lesson_title: 'Permit-Required Spaces',
+                topics: [
+                  {
+                    id: 'top_4',
+                    name: 'Spaces',
+                    leftDiv: { editorHtml: '<div><p>Spaces text</p></div>' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const courseJson = buildCourseJson(mockCourse);
+      expect(courseJson.modules).toHaveLength(3);
+
+      // Module 0: First module must be start with the course name without module numbering
+      const mod0 = courseJson.modules[0];
+      expect(mod0.module_id).toBe('mod_0');
+      expect(mod0.module_title).toBe('Industrial Safety Standards Overview');
+      expect(mod0.module_title).not.toContain('Module 0:');
+      expect(mod0.module_title).not.toContain('Module 1:');
+
+      // Inside Module 0: Lesson 0 is strictly "Introduction", Lesson 1 starts after it
+      expect(mod0.lessons[0].lesson_id).toBe('les_0_0');
+      expect(mod0.lessons[0].lesson_title).toBe('Introduction');
+      expect(mod0.lessons[1].lesson_id).toBe('les_0_1');
+      expect(mod0.lessons[1].lesson_title).toBe('Lesson 1: Safety Culture Principles');
+
+      // Subsequent modules MUST start from Module 1:
+      const mod1 = courseJson.modules[1];
+      expect(mod1.module_id).toBe('mod_1');
+      expect(mod1.module_title).toBe('Module 1: Machine Guarding & LOTO');
+      expect(mod1.lessons[0].lesson_id).toBe('les_1_1');
+      expect(mod1.lessons[0].lesson_title).toBe('Lesson 1: Lockout Tagout Procedures');
+
+      // Third module: Module 2:
+      const mod2 = courseJson.modules[2];
+      expect(mod2.module_id).toBe('mod_2');
+      expect(mod2.module_title).toBe('Module 2: Confined Space Entry');
+      expect(mod2.lessons[0].lesson_id).toBe('les_2_1');
+      expect(mod2.lessons[0].lesson_title).toBe('Lesson 1: Permit-Required Spaces');
     });
 
     it('removes images, file codes, and slide titles when images are OFF', () => {
