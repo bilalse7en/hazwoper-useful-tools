@@ -316,9 +316,8 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     (m, text) => `<em>${text.trim()}</em>`
   );
 
-  // 11. Standardize tables
-  html = html.replace(/<table[^>]*>/gi, '<table>');
-  html = html.replace(/<tr[^>]*>/gi, '<tr>');
+  // 11. Standardize tables: unwrap thead/tbody/tfoot, prune empty tr rows, and apply standard classes
+  html = html.replace(/<\/?(?:thead|tbody|tfoot)[^>]*>/gi, '');
   html = html.replace(
     /<th[^>]*>([\s\S]*?)<\/th>/gi,
     (m, text) => `<th>${text.trim()}</th>`
@@ -328,7 +327,48 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     (m, text) => `<td>${text.trim()}</td>`
   );
 
-  // 12. Clean links (preserve href and target)
+  // Prune any tr where all child cells (th/td) are empty
+  html = html.replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, (m, inner) => {
+    const cells = inner.match(/<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi);
+    if (!cells || cells.length === 0) return '';
+    const hasContent = cells.some((cell) => {
+      const text = cell
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&#160;/gi, ' ')
+        .trim();
+      const hasMedia = /<img[^>]*>/i.test(cell);
+      return text.length > 0 || hasMedia;
+    });
+    return hasContent ? `<tr>${inner.trim()}</tr>` : '';
+  });
+
+  // Assign standard LMS table classes
+  html = html.replace(
+    /<table[^>]*>/gi,
+    '<table class="table table-m table-bordered table-yellow">'
+  );
+
+  // Remove any table that has no tr left
+  html = html.replace(/<table[^>]*>\s*<\/table>/gi, '');
+
+  // 12. Paragraph preceding bullet points ending in ':' gets class="mb-0"
+  html = html.replace(
+    /<p([^>]*)>([\s\S]*?)<\/p>(\s*<(?:ul|ol)[^>]*>)/gi,
+    (match, attrs, content, listTag) => {
+      const textOnly = content
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&#160;/gi, ' ')
+        .trim();
+      if (textOnly.endsWith(':')) {
+        return `<p class="mb-0">${content.trim()}</p>${listTag}`;
+      }
+      return match;
+    }
+  );
+
+  // 13. Clean links (preserve href and target)
   html = html.replace(
     /<a\s+[^>]*href=(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi,
     '<a href="$2" target="_blank" rel="noopener noreferrer">$3</a>'

@@ -49,10 +49,73 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(clean).toContain('<em>italics</em>');
       expect(clean).toContain('<ul><li>Item 1</li><li>Item 2</li></ul>');
       expect(clean).toContain(
-        '<table><tr><th>Header</th><td>Data</td></tr></table>'
+        '<table class="table table-m table-bordered table-yellow"><tr><th>Header</th><td>Data</td></tr></table>'
       );
-      expect(clean).not.toContain('class=');
       expect(clean).not.toContain('style=');
+    });
+
+    it('formats tables with table-yellow classes, removes thead/tbody, and prunes empty rows', () => {
+      const raw = `
+        <table>
+          <thead>
+            <tr><th>Role</th><th>Responsibility</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Incident Commander</td><td>Overall command</td></tr>
+            <tr><td>Safety Officer</td><td>Site hazard monitor</td></tr>
+            <tr><td></td><td>&nbsp;</td></tr>
+            <tr><th></th></tr>
+          </tbody>
+        </table>
+      `;
+      const clean = normalizeHtmlContent(raw);
+      expect(clean).toContain(
+        '<table class="table table-m table-bordered table-yellow">'
+      );
+      expect(clean).not.toContain('<thead>');
+      expect(clean).not.toContain('<tbody>');
+      expect(clean).toContain('<tr><th>Role</th><th>Responsibility</th></tr>');
+      expect(clean).toContain(
+        '<tr><td>Incident Commander</td><td>Overall command</td></tr>'
+      );
+      expect(clean).toContain(
+        '<tr><td>Safety Officer</td><td>Site hazard monitor</td></tr>'
+      );
+      // Empty rows must be pruned
+      expect(clean).not.toContain('<td></td>');
+      expect(clean).not.toContain('<td>&nbsp;</td>');
+      expect(clean).not.toContain('<th></th>');
+    });
+
+    it('applies class="mb-0" to paragraphs ending with a colon that precede bulleted lists', () => {
+      const raw = `
+        <p>The core responsibilities include: </p>
+        <ul>
+          <li>Hazard assessment</li>
+          <li>Continuous air monitoring</li>
+        </ul>
+        <p><strong>Emergency Contact Protocol:</strong></p>
+        <ol>
+          <li>Notify site safety lead</li>
+        </ol>
+        <p>Standard concluding sentence without a colon.</p>
+        <ul>
+          <li>Another list item</li>
+        </ul>
+      `;
+      const clean = normalizeHtmlContent(raw);
+      expect(clean).toContain(
+        '<p class="mb-0">The core responsibilities include:</p>'
+      );
+      expect(clean).toContain(
+        '<p class="mb-0"><strong>Emergency Contact Protocol:</strong></p>'
+      );
+      expect(clean).toContain(
+        '<p>Standard concluding sentence without a colon.</p>'
+      );
+      expect(clean).not.toContain(
+        '<p class="mb-0">Standard concluding sentence without a colon.</p>'
+      );
     });
 
     it('wraps content in strictly 1 parent div with all classes and styles stripped', () => {
