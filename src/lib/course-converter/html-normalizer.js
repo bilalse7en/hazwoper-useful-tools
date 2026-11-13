@@ -122,7 +122,8 @@ export function extractImageMetadata(rawHtml) {
 export function purgeInitialStageArtifacts(rawHtml, options = {}) {
   if (!rawHtml || typeof rawHtml !== 'string') return '';
   const stripImages = options.stripImages !== false;
-  let html = rawHtml;
+  // Replace &nbsp;, &#160;, and \u00a0 with standard space ' ' immediately
+  let html = rawHtml.replace(/(&nbsp;|&#160;|\u00a0)/gi, ' ');
 
   // If stripImages is true (default), rigorously strip file codes, asset numbers, and images
   if (stripImages) {
@@ -191,6 +192,9 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   // 3. Remove non-semantic wrappers: <font>, <span>
   html = html.replace(/<\/?font[^>]*>/gi, '');
   html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+
+  // Replace &nbsp;, &#160;, and unicode non-breaking spaces with standard space ' '
+  html = html.replace(/(&nbsp;|&#160;|\u00a0)/gi, ' ');
 
   // 4. Strip pure slide markers and Slide Titles (e.g. <p><strong>Slide 3 </strong></p>, <p>Slide Title</p>, <h3>Slide 6</h3>, <div>Slide 7</div>)
   // Standalone slide markers are PowerPoint/Word layout artifacts, not educational reading content
@@ -389,6 +393,10 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   // 14. Clean up multiple empty lines or trailing breaks
   html = html.replace(/<p>\s*<\/p>/gi, '');
   html = html.replace(/(\r?\n\s*){3,}/g, '\n\n');
+
+  // 15. Guarantee zero leftover &nbsp;, &#160;, or \u00a0 entities and collapse horizontal runs of spaces
+  html = html.replace(/(&nbsp;|&#160;|\u00a0)/gi, ' ');
+  html = html.replace(/[^\S\r\n]{2,}/g, ' ');
 
   return html.trim();
 }

@@ -36,6 +36,16 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(clean).toContain('This is a test sentence.');
     });
 
+    it('replaces &nbsp;, &#160;, and unicode non-breaking spaces with standard spaces', () => {
+      const raw = '<p>Word1&nbsp;&nbsp;Word2&#160;Word3\u00a0Word4.</p><table><tr><td>Cell&nbsp;A</td></tr></table>';
+      const clean = normalizeHtmlContent(raw);
+      expect(clean).not.toContain('&nbsp;');
+      expect(clean).not.toContain('&#160;');
+      expect(clean).not.toContain('\u00a0');
+      expect(clean).toContain('<p>Word1 Word2 Word3 Word4.</p>');
+      expect(clean).toContain('<td>Cell A</td>');
+    });
+
     it('preserves semantic elements: headings, lists, bold, tables', () => {
       const raw = `
         <h2 class="some-heading" style="color:red">Subheading Level 2</h2>

@@ -349,6 +349,16 @@ export default function CourseJsonConverter() {
 
       setSelectedTopicIndex(0);
       setProcessStep('Whole course conversion completed!');
+
+      // Detect separate Introduction and Learning Objectives slides across all numbered lessons
+      const separateCandidates = detectSeparateIntroAndObjectives(
+        res.courseJson
+      );
+      if (separateCandidates.length > 0) {
+        setPendingMergeCandidates(separateCandidates);
+        setPendingMergeCourse(res.courseJson);
+        setShowMergeIntroModal(true);
+      }
     } catch (err) {
       console.error('Folder conversion error:', err);
       setError(err.message || 'Failed to convert course folder.');
@@ -478,6 +488,16 @@ export default function CourseJsonConverter() {
 
       setSelectedTopicIndex(0);
       setProcessStep('Conversion completed!');
+
+      // Detect separate Introduction and Learning Objectives slides in numbered lessons
+      const separateCandidates = detectSeparateIntroAndObjectives(
+        res.courseJson
+      );
+      if (separateCandidates.length > 0) {
+        setPendingMergeCandidates(separateCandidates);
+        setPendingMergeCourse(res.courseJson);
+        setShowMergeIntroModal(true);
+      }
     } catch (err) {
       console.error('Course JSON conversion error:', err);
       setError(
@@ -1248,6 +1268,16 @@ export default function CourseJsonConverter() {
       showToast(
         `Added "${cleanTitle}" to course! All lessons sequentially renumbered.`
       );
+
+      // Detect separate Introduction and Learning Objectives slides in numbered lessons
+      const separateCandidates = detectSeparateIntroAndObjectives(
+        res.courseJson
+      );
+      if (separateCandidates.length > 0) {
+        setPendingMergeCandidates(separateCandidates);
+        setPendingMergeCourse(res.courseJson);
+        setShowMergeIntroModal(true);
+      }
     } catch (err) {
       console.error('Failed to combine lesson:', err);
       setError('Failed to combine lesson: ' + err.message);
