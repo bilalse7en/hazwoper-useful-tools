@@ -14,13 +14,12 @@
 import { parseDocxDocument, parsePdfDocument } from './doc-parser.js';
 import { buildCourseJson } from './schema-builder.js';
 import { validateCourseJson } from './validator.js';
+import { isFinalExamHeading } from './quiz-extractor.js';
 
 /**
- * Ensures a lesson title starts with the exact, properly formatted "Lesson {number}: " prefix
- * e.g. "Utility Power Entry" -> "Lesson 1: Utility Power Entry"
- * e.g. "Lesson 1_Utility Power Entry" -> "Lesson 1: Utility Power Entry"
- * e.g. "Lesson 2: Transformers" -> "Lesson 2: Transformers"
- * When lessonNumber is 0, strictly returns "Introduction" (never "Lesson 0")
+ * Ensures a lesson title starts with a valid prefix if missing.
+ * Strictly preserves the user's existing title pattern and numbering.
+ * When lessonNumber is 0, strictly returns "Introduction".
  */
 export function ensureLessonNumberPrefix(title, lessonNumber) {
   if (lessonNumber === 0) {
@@ -37,9 +36,9 @@ export function ensureLessonNumberPrefix(title, lessonNumber) {
 }
 
 /**
- * Ensures a module title starts with the exact, properly formatted "Module {number}: " prefix
- * e.g. "Utility Interconnection" -> "Module 1: Utility Interconnection"
- * When moduleNumber is 0, formats as "Module 0: {title}" or "Module 0: Introduction"
+ * Ensures a module title starts with a valid prefix if missing.
+ * Strictly preserves the user's existing title pattern and numbering.
+ * When moduleNumber is 0, formats as "Module 0: {title}" or "Module 0: Introduction".
  */
 export function ensureModuleNumberPrefix(title, moduleNumber) {
   if (moduleNumber === 0) {
@@ -53,12 +52,7 @@ export function ensureModuleNumberPrefix(title, moduleNumber) {
   }
   if (!title) return `Module ${moduleNumber}`;
   const clean = title.trim();
-  const match = clean.match(/^(?:Module|Unit|Section)\s*\d+[\s_:-]+(.*)$/i);
-  if (match) {
-    const rest = match[1].trim().replace(/^[-_:\s]+/, '');
-    return `Module ${moduleNumber}: ${rest}`;
-  }
-  return `Module ${moduleNumber}: ${clean}`;
+  return clean || `Module ${moduleNumber}`;
 }
 
 /**
@@ -187,6 +181,7 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
 
   let detectedCourseTitle = '';
   const modulesMap = new Map();
+  let finalExamItem = null;
 
   for (const item of validFiles) {
     const rawPath = (
@@ -198,6 +193,32 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
     ).replace(/\\/g, '/');
 
     const pathSegments = rawPath.split('/').filter(Boolean);
+
+    const lessonRawName =
+      pathSegments[pathSegments.length - 1] ||
+      item.name ||
+      item.file?.name ||
+      '';
+    const lessonDisplayTitle = formatHierarchyTitle(lessonRawName, 'lesson');
+
+    // Isolate Course Final Exam so it never enters the module lessons TOC
+    if (
+      isFinalExamHeading(lessonRawName) ||
+      isFinalExamHeading(lessonDisplayTitle) ||
+      /(?:^|[_\s-])(?:comprehensive\s*)?final\s*(?:exam|examination|assessment)/i.test(
+        lessonRawName
+      )
+    ) {
+      if (!finalExamItem) {
+        finalExamItem = {
+          fileName: lessonRawName,
+          lessonTitle: lessonDisplayTitle,
+          file: item.file || item,
+          relativePath: rawPath,
+        };
+      }
+      continue;
+    }
 
     let moduleKey = '';
     let moduleDisplayTitle = '';
@@ -228,12 +249,6 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
       }
     }
 
-    const lessonRawName =
-      pathSegments[pathSegments.length - 1] ||
-      item.name ||
-      item.file?.name ||
-      '';
-    const lessonDisplayTitle = formatHierarchyTitle(lessonRawName, 'lesson');
     const lessonNumber = extractSortNumber(lessonRawName, 999);
     const moduleNumber = extractSortNumber(moduleKey, 999);
 
@@ -284,9 +299,7 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
     (sortedModules[0].moduleNumber === 0 ||
       isIntroductoryModule(sortedModules[0].moduleTitle, detectedCourseTitle));
 
-  let globalLessonCounter = 1;
-
-  // Sort lessons inside each module numerically by lessonNumber and sequence IDs
+  // Sort lessons inside each module numerically by lessonNumber and sequence IDs per module
   sortedModules.forEach((mod, mIdx) => {
     if (hasModule0 && mIdx === 0) {
       mod.moduleIndex = 0;
@@ -307,17 +320,17 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
       mod.lessons.forEach((les, lIdx) => {
         les.lessonIndex = lIdx;
         les.lessonId = `les_0_${lIdx}`;
-        // Lesson 0 is strictly named "Introduction" instead of "Lesson 0"
+        // Lesson 0 is strictly named "Introduction" if first, otherwise preserve original title
         les.lessonTitle =
           lIdx === 0
             ? 'Introduction'
-            : ensureLessonNumberPrefix(les.lessonTitle, lIdx);
+            : (les.lessonTitle || `Lesson ${lIdx}`).trim();
       });
     } else {
       const realModNum = hasModule0 ? mIdx : mIdx + 1;
       mod.moduleIndex = realModNum;
       mod.moduleId = `mod_${realModNum}`;
-      mod.moduleTitle = ensureModuleNumberPrefix(mod.moduleTitle, realModNum);
+      mod.moduleTitle = mod.moduleTitle || `Module ${realModNum}`;
       mod.lessons.sort((a, b) => {
         if (a.lessonNumber !== b.lessonNumber) {
           return a.lessonNumber - b.lessonNumber;
@@ -327,14 +340,12 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
           sensitivity: 'base',
         });
       });
-      mod.lessons.forEach((les) => {
-        const currentLesNum = globalLessonCounter++;
-        les.lessonIndex = currentLesNum;
-        les.lessonId = `les_${realModNum}_${currentLesNum}`;
-        les.lessonTitle = ensureLessonNumberPrefix(
-          les.lessonTitle,
-          currentLesNum
-        );
+      mod.lessons.forEach((les, lIdx) => {
+        const realLesNum = lIdx + 1;
+        les.lessonIndex = realLesNum;
+        les.lessonId = `les_${realModNum}_${realLesNum}`;
+        // Preserve user's original lesson title without forced re-prefixing
+        les.lessonTitle = (les.lessonTitle || `Lesson ${realLesNum}`).trim();
       });
     }
   });
@@ -343,6 +354,7 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
     courseTitle: detectedCourseTitle || 'Untitled Course',
     totalFiles: validFiles.length,
     modules: sortedModules,
+    finalExamFile: finalExamItem,
   };
 }
 
@@ -364,6 +376,9 @@ export async function convertCourseFolderSequentially(
   modules.forEach((m) => {
     totalLessonsCount += (m.lessons || []).length;
   });
+  if (hierarchy.finalExamFile) {
+    totalLessonsCount += 1;
+  }
 
   if (totalLessonsCount === 0) {
     throw new Error(
@@ -376,13 +391,64 @@ export async function convertCourseFolderSequentially(
   let detectedFinalExam = null;
   const constructedModules = [];
 
+  // Parse isolated Final Exam file if present in hierarchy
+  if (hierarchy.finalExamFile && options.includeQuizzes !== false) {
+    try {
+      processedCount += 1;
+      onProgress({
+        current: processedCount,
+        total: totalLessonsCount,
+        percent: Math.round((processedCount / totalLessonsCount) * 100),
+        currentModule: 'Course Assessment',
+        currentLesson:
+          hierarchy.finalExamFile.lessonTitle || 'Comprehensive Final Exam',
+        status: 'Parsing Course Final Exam questions...',
+      });
+
+      const examFileObj =
+        hierarchy.finalExamFile.file || hierarchy.finalExamFile;
+      let examBuffer;
+      if (typeof examFileObj?.arrayBuffer === 'function') {
+        examBuffer = await examFileObj.arrayBuffer();
+      } else if (examFileObj?.buffer) {
+        examBuffer = examFileObj.buffer;
+      } else {
+        examBuffer = examFileObj;
+      }
+
+      const isPdf = /\.pdf$/i.test(
+        hierarchy.finalExamFile.fileName || hierarchy.finalExamFile.name || ''
+      );
+      let parsedExam;
+      if (isPdf) {
+        parsedExam = await parsePdfDocument(examBuffer, {
+          mode: 'A',
+          fileName: hierarchy.finalExamFile.fileName,
+          pdfjsLib: options.pdfjsLib,
+          stripImages: options.stripImages,
+          includeQuizzes: true,
+        });
+      } else {
+        parsedExam = await parseDocxDocument(examBuffer, {
+          mode: 'A',
+          fileName: hierarchy.finalExamFile.fileName,
+          stripImages: options.stripImages,
+          includeQuizzes: true,
+        });
+      }
+      if (parsedExam && parsedExam.final_exam) {
+        detectedFinalExam = parsedExam.final_exam;
+      }
+    } catch (examErr) {
+      console.warn('Failed to parse final exam file from hierarchy:', examErr);
+    }
+  }
+
   const hasModule0 =
     modules.length > 0 &&
     (modules[0].moduleId === 'mod_0' ||
       modules[0].moduleIndex === 0 ||
       isIntroductoryModule(modules[0].moduleTitle, hierarchy.courseTitle));
-
-  let globalLessonCounter = 1;
 
   for (let mIdx = 0; mIdx < modules.length; mIdx++) {
     const modConfig = modules[mIdx];
@@ -401,7 +467,7 @@ export async function convertCourseFolderSequentially(
     for (let lIdx = 0; lIdx < modConfig.lessons.length; lIdx++) {
       const lesConfig = modConfig.lessons[lIdx];
       const isLes0 = isMod0 && lIdx === 0;
-      const lesNum = isLes0 ? 0 : globalLessonCounter++;
+      const lesNum = isLes0 ? 0 : lIdx + 1;
       const lessonId = `les_${modNum}_${lesNum}`;
       processedCount += 1;
 
@@ -453,6 +519,24 @@ export async function convertCourseFolderSequentially(
         detectedFinalExam = parsedData.final_exam;
       }
 
+      // Check if this document is actually a dedicated final exam
+      const isDedicatedExamDoc =
+        isFinalExamHeading(lesConfig.fileName) ||
+        isFinalExamHeading(lesConfig.lessonTitle) ||
+        isFinalExamHeading(parsedData.lessonTitle) ||
+        Boolean(
+          parsedData.final_exam &&
+            (!parsedData.topics ||
+              parsedData.topics.length === 0 ||
+              (parsedData.topics.length === 1 &&
+                /instructions/i.test(parsedData.topics[0]?.name || '')))
+        );
+
+      if (isDedicatedExamDoc) {
+        // Skip pushing to moduleLessons - it belongs exclusively to courseJson.final_exam
+        continue;
+      }
+
       // Check if docx headers identify an explicit course title (not just fallback lesson title)
       if (
         !detectedHeaderCourseTitle &&
@@ -470,10 +554,10 @@ export async function convertCourseFolderSequentially(
           ? parsedData.lessonTitle
           : lesConfig.lessonTitle;
 
-      // Strictly ensure every lesson title: if Lesson 0 -> "Introduction", else "Lesson {number}: ..."
+      // Preserve user's original lesson title without altering numbering
       const effectiveLessonTitle = isLes0
         ? 'Introduction'
-        : ensureLessonNumberPrefix(rawLessonTitle, lesNum);
+        : (rawLessonTitle || `Lesson ${lesNum}`).trim();
 
       // Format topics with exact module and lesson bindings
       const formattedTopics = (parsedData.topics || []).map((top, tIdx) => {
@@ -506,11 +590,13 @@ export async function convertCourseFolderSequentially(
       });
     }
 
-    constructedModules.push({
-      module_id: moduleId,
-      module_title: moduleTitle,
-      lessons: moduleLessons,
-    });
+    if (moduleLessons.length > 0) {
+      constructedModules.push({
+        module_id: moduleId,
+        module_title: moduleTitle,
+        lessons: moduleLessons,
+      });
+    }
   }
 
   // Determine final Course Title (Priority: manual override > non-generic folder title > explicit header title > fallback)

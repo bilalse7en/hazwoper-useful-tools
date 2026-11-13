@@ -172,4 +172,38 @@ describe('Quiz Schema Normalization & Key Guard Engine', () => {
       res.courseJson.modules[1].lessons[0].knowledge_check[0].question
     ).toBe('Which party owns the authorized user list?');
   });
+
+  it('detects correct answer letter attached at the end of question like (A), (B), (C), (D), marks it as correct answer, and strips it from question text', () => {
+    const rawQuestion = {
+      question:
+        'Which equipment protects the electrical utility distribution system from transient overvoltage surges? (C)',
+      options: [
+        { label: 'Step-down transformer' },
+        { label: 'Lockout hasp' },
+        { label: 'Surge arrester' },
+        { label: 'Grounding rod' },
+      ],
+      explanation: 'Surge arresters divert transient overvoltage safely to ground.',
+    };
+
+    const normalized = normalizeQuizQuestion(rawQuestion, 'q_test_1');
+
+    // 1. Must remove (C) from the question text
+    expect(normalized.question).toBe(
+      'Which equipment protects the electrical utility distribution system from transient overvoltage surges?'
+    );
+    expect(normalized.question_text).toBe(
+      'Which equipment protects the electrical utility distribution system from transient overvoltage surges?'
+    );
+    expect(normalized.question).not.toContain('(C)');
+
+    // 2. Must select 'C' as correct answer
+    expect(normalized.correct_answer).toBe('C');
+
+    // 3. Option C must have is_correct = true, others false
+    expect(normalized.options[0].is_correct).toBe(false);
+    expect(normalized.options[1].is_correct).toBe(false);
+    expect(normalized.options[2].is_correct).toBe(true);
+    expect(normalized.options[3].is_correct).toBe(false);
+  });
 });

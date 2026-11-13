@@ -174,8 +174,6 @@ export function mergeFinalExamIntoCourse(courseJson, finalExamObj) {
 export function renumberAllLessons(courseJson) {
   if (!courseJson || !Array.isArray(courseJson.modules)) return courseJson;
 
-  let globalLessonCounter = 1;
-
   courseJson.modules.forEach((mod, mIdx) => {
     const isMod0 =
       mod.module_id === 'mod_0' || /^module\s*0\b/i.test(mod.module_title);
@@ -185,7 +183,7 @@ export function renumberAllLessons(courseJson) {
 
     (mod.lessons || []).forEach((les, lIdx) => {
       const isLes0 = isMod0 && lIdx === 0;
-      const currentLesNum = isLes0 ? 0 : globalLessonCounter++;
+      const currentLesNum = isLes0 ? 0 : lIdx + 1;
 
       les.lesson_title = isLes0
         ? 'Introduction'

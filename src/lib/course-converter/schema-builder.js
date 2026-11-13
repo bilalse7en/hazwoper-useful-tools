@@ -15,7 +15,11 @@ import {
   ensureModuleNumberPrefix,
   isIntroductoryModule,
 } from './folder-converter.js';
-import { normalizeQuizQuestion, normalizeFinalExam } from './quiz-extractor.js';
+import {
+  normalizeQuizQuestion,
+  normalizeFinalExam,
+  isFinalExamHeading,
+} from './quiz-extractor.js';
 import { validateCourseJson } from './validator.js';
 
 /**
@@ -78,6 +82,12 @@ export function normalizeCourseHierarchy(
     }
   }
 
+  const totalLessonsInAllModules = rawModules.reduce(
+    (sum, m) => sum + (m.lessons || []).length,
+    0
+  );
+  const shouldFilterExamLessons = totalLessonsInAllModules > 1;
+
   const normalized = [];
 
   // If introductory / course name module found, place on top as Module 0
@@ -93,28 +103,30 @@ export function normalizeCourseHierarchy(
       cleanCourse ||
       'Introduction';
 
-    const mod0Lessons = (introMod.lessons || []).map((les, lIdx) => {
-      const lesId = `les_0_${lIdx}`;
-      // In Lesson 0: name MUST be strictly "Introduction" instead of "Lesson 0"
-      const lesTitle =
-        lIdx === 0
-          ? 'Introduction'
-          : ensureLessonNumberPrefix(les.lesson_title, lIdx);
+    const mod0Lessons = (introMod.lessons || [])
+      .filter((les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title))
+      .map((les, lIdx) => {
+        const lesId = `les_0_${lIdx}`;
+        // In Lesson 0: name MUST be strictly "Introduction" instead of "Lesson 0"
+        const lesTitle =
+          lIdx === 0
+            ? 'Introduction'
+            : ensureLessonNumberPrefix(les.lesson_title, lIdx);
 
-      const formattedTopics = (les.topics || []).map((top, tIdx) => ({
-        ...top,
-        id: `top_0_${lIdx}_${tIdx + 1}`,
-        lessonId: lesId,
-        moduleId: 'mod_0',
-      }));
+        const formattedTopics = (les.topics || []).map((top, tIdx) => ({
+          ...top,
+          id: `top_0_${lIdx}_${tIdx + 1}`,
+          lessonId: lesId,
+          moduleId: 'mod_0',
+        }));
 
-      return {
-        ...les,
-        lesson_id: lesId,
-        lesson_title: lesTitle,
-        topics: formattedTopics,
-      };
-    });
+        return {
+          ...les,
+          lesson_id: lesId,
+          lesson_title: lesTitle,
+          topics: formattedTopics,
+        };
+      });
 
     if (mod0Lessons.length === 0) {
       mod0Lessons.push({
@@ -133,80 +145,78 @@ export function normalizeCourseHierarchy(
       lessons: mod0Lessons,
     });
 
-    // Number remaining modules starting from Module 1, with sequential global lesson numbering across all modules
-    let globalLessonNumber = 1;
-
+    // Number remaining modules starting from Module 1, with per-module lesson numbering
     restModules.forEach((mod, idx) => {
       const modNum = idx + 1;
       const modId = `mod_${modNum}`;
-      const modTitle = ensureModuleNumberPrefix(mod.module_title, modNum);
+      const modTitle = mod.module_title || `Module ${modNum}`;
 
-      const modLessons = (mod.lessons || []).map((les) => {
-        const currentLesNum = globalLessonNumber++;
-        const lesId = `les_${modNum}_${currentLesNum}`;
-        const lesTitle = ensureLessonNumberPrefix(
-          les.lesson_title,
-          currentLesNum
-        );
-        const formattedTopics = (les.topics || []).map((top, tIdx) => ({
-          ...top,
-          id: `top_${modNum}_${currentLesNum}_${tIdx + 1}`,
-          lessonId: lesId,
-          moduleId: modId,
-        }));
+      const modLessons = (mod.lessons || [])
+        .filter((les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title))
+        .map((les, lIdx) => {
+          const lesNum = lIdx + 1;
+          const lesId = `les_${modNum}_${lesNum}`;
+          const lesTitle = ensureLessonNumberPrefix(les.lesson_title, lesNum);
+          const formattedTopics = (les.topics || []).map((top, tIdx) => ({
+            ...top,
+            id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
+            lessonId: lesId,
+            moduleId: modId,
+          }));
 
-        return {
-          ...les,
-          lesson_id: lesId,
-          lesson_title: lesTitle,
-          topics: formattedTopics,
-        };
-      });
+          return {
+            ...les,
+            lesson_id: lesId,
+            lesson_title: lesTitle,
+            topics: formattedTopics,
+          };
+        });
 
-      normalized.push({
-        ...mod,
-        module_id: modId,
-        module_title: modTitle,
-        lessons: modLessons,
-      });
+      if (modLessons.length > 0) {
+        normalized.push({
+          ...mod,
+          module_id: modId,
+          module_title: modTitle,
+          lessons: modLessons,
+        });
+      }
     });
   } else {
-    // No introductory module -> Modules start from Module 1, with sequential global lesson numbering across all modules
-    let globalLessonNumber = 1;
-
+    // No introductory module -> Modules start from Module 1, with per-module lesson numbering
     rawModules.forEach((mod, idx) => {
       const modNum = idx + 1;
       const modId = `mod_${modNum}`;
-      const modTitle = ensureModuleNumberPrefix(mod.module_title, modNum);
+      const modTitle = mod.module_title || `Module ${modNum}`;
 
-      const modLessons = (mod.lessons || []).map((les) => {
-        const currentLesNum = globalLessonNumber++;
-        const lesId = `les_${modNum}_${currentLesNum}`;
-        const lesTitle = ensureLessonNumberPrefix(
-          les.lesson_title,
-          currentLesNum
-        );
-        const formattedTopics = (les.topics || []).map((top, tIdx) => ({
-          ...top,
-          id: `top_${modNum}_${currentLesNum}_${tIdx + 1}`,
-          lessonId: lesId,
-          moduleId: modId,
-        }));
+      const modLessons = (mod.lessons || [])
+        .filter((les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title))
+        .map((les, lIdx) => {
+          const lesNum = lIdx + 1;
+          const lesId = `les_${modNum}_${lesNum}`;
+          const lesTitle = ensureLessonNumberPrefix(les.lesson_title, lesNum);
+          const formattedTopics = (les.topics || []).map((top, tIdx) => ({
+            ...top,
+            id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
+            lessonId: lesId,
+            moduleId: modId,
+          }));
 
-        return {
-          ...les,
-          lesson_id: lesId,
-          lesson_title: lesTitle,
-          topics: formattedTopics,
-        };
-      });
+          return {
+            ...les,
+            lesson_id: lesId,
+            lesson_title: lesTitle,
+            topics: formattedTopics,
+          };
+        });
 
-      normalized.push({
-        ...mod,
-        module_id: modId,
-        module_title: modTitle,
-        lessons: modLessons,
-      });
+      if (modLessons.length > 0) {
+        normalized.push({
+          ...mod,
+          module_id: modId,
+          module_title: modTitle,
+          lessons: modLessons,
+        });
+      }
     });
   }
 

@@ -451,6 +451,39 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(res.topics).toHaveLength(1);
       expect(res.topics[0].name).toBe('Introduction');
     });
+
+    it('parses questions with attached correct answer letter at the end like (A) (B) (C) (D), selects it as correct answer, and strips it from question text', () => {
+      const wordHtml = `
+        <h1>Topic 1: Power Topologies</h1>
+        <p>Main distribution overview.</p>
+        <h1>Lesson Quiz</h1>
+        <p>Question 1: What is the primary purpose of a dual-feed utility connection? (B)</p>
+        <p>A. Reduce electrical voltage for residential use</p>
+        <p>B. Provide redundant power supply in case of primary feed failure</p>
+        <p>C. Eliminate all circuit breakers</p>
+        <p>D. Increase utility billing rates</p>
+        <p>Explanation: Dual-feed topology ensures continuity of power during outages.</p>
+      `;
+      const res = segmentLessonWiseHtml(wordHtml, {
+        fileName: 'Lesson 2.docx',
+      });
+
+      expect(res.knowledge_check).toHaveLength(1);
+      const q = res.knowledge_check[0];
+
+      // Question text must not contain (B)
+      expect(q.question).toBe(
+        'What is the primary purpose of a dual-feed utility connection?'
+      );
+      expect(q.question).not.toContain('(B)');
+
+      // Correct answer must be B
+      expect(q.correct_answer).toBe('B');
+      expect(q.options[1].is_correct).toBe(true);
+      expect(q.options[0].is_correct).toBe(false);
+      expect(q.options[2].is_correct).toBe(false);
+      expect(q.options[3].is_correct).toBe(false);
+    });
   });
 
   describe('Document Parser & Schema Builder (End-to-End)', () => {
@@ -907,9 +940,9 @@ describe('CourseJsonConverter Core Engine', () => {
       // Verify Module 2
       expect(courseJson.modules[1].module_id).toBe('mod_2');
       expect(courseJson.modules[1].lessons).toHaveLength(1);
-      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_2_3');
+      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_2_1');
       expect(courseJson.modules[1].lessons[0].lesson_title).toContain(
-        'Lesson 3:'
+        'Lesson 1:'
       );
 
       // Verify Durations
@@ -932,6 +965,111 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(validation.isValid).toBe(true);
       expect(validation.score).toBe(100);
       expect(validation.summary.errors).toBe(0);
+    });
+
+    it('isolates Final Exam from folder hierarchy to root final_exam and never creates an extra lesson', async () => {
+      const { Document, Paragraph, HeadingLevel, Packer } = await import('docx');
+      const { convertCourseFolderSequentially } = await import(
+        '../src/lib/course-converter/folder-converter.js'
+      );
+
+      async function createExamTestDocx(lessonTitle, topicTitle, questionText, quizHeading = 'Lesson Quiz') {
+        const doc = new Document({
+          sections: [
+            {
+              children: [
+                new Paragraph({
+                  text: lessonTitle,
+                  heading: HeadingLevel.TITLE,
+                }),
+                new Paragraph({
+                  text: topicTitle,
+                  heading: HeadingLevel.HEADING_1,
+                }),
+                new Paragraph({
+                  text: 'This is the instructional content for ' + topicTitle,
+                }),
+                new Paragraph({
+                  text: quizHeading,
+                  heading: HeadingLevel.HEADING_1,
+                }),
+                new Paragraph({
+                  text: questionText,
+                  heading: HeadingLevel.HEADING_3,
+                }),
+                new Paragraph({ text: 'A. Correct Option (correct)' }),
+                new Paragraph({ text: 'B. Distractor Option' }),
+                new Paragraph({ text: 'Explanation: Test explanation.' }),
+              ],
+            },
+          ],
+        });
+        return await Packer.toBuffer(doc);
+      }
+
+      const bufLesson1 = await createExamTestDocx(
+        'Lesson 1: Safety Operations',
+        'Safety Operations Topic',
+        'Question 1: What is safety?',
+        'Lesson Quiz'
+      );
+      const bufExam = await createExamTestDocx(
+        'Comprehensive Final Exam',
+        'Final Exam Instructions',
+        'Question 1: What is the primary procedure during an emergency?',
+        'Final Exam'
+      );
+
+      const mockHierarchy = {
+        courseTitle: 'Safety Certification Course',
+        finalExamFile: {
+          fileName: 'Final Exam.docx',
+          lessonTitle: 'Comprehensive Final Exam',
+          file: { name: 'Final Exam.docx', buffer: bufExam },
+        },
+        modules: [
+          {
+            moduleNumber: 1,
+            moduleTitle: 'Module 1: Safety Fundamentals',
+            lessons: [
+              {
+                fileName: 'Lesson 1_Safety Operations.docx',
+                lessonNumber: 1,
+                lessonTitle: 'Lesson 1: Safety Operations',
+                file: { name: 'Lesson 1.docx', buffer: bufLesson1 },
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = await convertCourseFolderSequentially(
+        mockHierarchy,
+        { course_id: 'safety_cert' }
+      );
+
+      const { courseJson, validation } = result;
+
+      // Root final_exam MUST be populated
+      expect(courseJson.final_exam).toBeDefined();
+      expect(courseJson.final_exam.questions.length).toBeGreaterThan(0);
+
+      // TOC MUST have strictly 1 module and 1 lesson (NO extra final exam lesson!)
+      expect(courseJson.modules).toHaveLength(1);
+      expect(courseJson.modules[0].lessons).toHaveLength(1);
+      expect(courseJson.modules[0].lessons[0].lesson_title).toBe(
+        'Lesson 1: Safety Operations'
+      );
+
+      // Verify that no lesson is titled 'Comprehensive Final Exam' or 'Final Exam'
+      const allLessonTitles = courseJson.modules.flatMap((m) =>
+        m.lessons.map((l) => l.lesson_title)
+      );
+      expect(
+        allLessonTitles.some((t) => /final\s*exam/i.test(t))
+      ).toBe(false);
+
+      expect(validation.isValid).toBe(true);
     });
 
     it('enforces Module 0 & Lesson 0 Introduction rules when a module matches the course title', () => {
@@ -1046,14 +1184,14 @@ describe('CourseJsonConverter Core Engine', () => {
         'Lesson 2: Exposure Routes'
       );
 
-      // Module 2: Continues sequentially from Lesson 3
+      // Module 2: Sequenced per module starting from Lesson 1
       expect(courseJson.modules[2].module_id).toBe('mod_2');
       expect(courseJson.modules[2].module_title).toBe(
         'Module 2: Emergency Response'
       );
-      expect(courseJson.modules[2].lessons[0].lesson_id).toBe('les_2_3');
+      expect(courseJson.modules[2].lessons[0].lesson_id).toBe('les_2_1');
       expect(courseJson.modules[2].lessons[0].lesson_title).toBe(
-        'Lesson 3: Incident Command'
+        'Lesson 1: Incident Command'
       );
     });
 

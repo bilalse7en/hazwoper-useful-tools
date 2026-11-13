@@ -52,7 +52,7 @@ export function normalizeQuizQuestion(q, fallbackId = 'q1') {
   }
 
   // Question stem extraction
-  const questionStem = (
+  let questionStem = (
     q.question ||
     q.question_text ||
     q.stem ||
@@ -60,6 +60,21 @@ export function normalizeQuizQuestion(q, fallbackId = 'q1') {
     q.title ||
     ''
   ).trim();
+
+  // Detect and extract trailing correct answer marker attached to question stem, e.g. "(A)", "(B)", "(C)", "(D)"
+  let attachedQuestionAnswer = '';
+  const qAnsMatch = questionStem.match(
+    /(?:[\s\-_:–—]*[\(\[]\s*(?:(?:correct\s*)?ans(?:wer)?[:\s]*)?([A-Ha-h])\s*[\)\]][\s.:;?!]*)$/i
+  );
+  if (qAnsMatch) {
+    attachedQuestionAnswer = qAnsMatch[1].toUpperCase();
+    const strippedStem = questionStem.slice(0, qAnsMatch.index).trim();
+    if (/\?[\s.:;?!]*$/.test(questionStem) && !strippedStem.endsWith('?')) {
+      questionStem = strippedStem + '?';
+    } else {
+      questionStem = strippedStem;
+    }
+  }
 
   let rawOptions = Array.isArray(q.options) ? q.options : [];
   let detectedCorrect = '';
@@ -86,6 +101,7 @@ export function normalizeQuizQuestion(q, fallbackId = 'q1') {
       isCorrect = Boolean(
         opt.is_correct === true ||
         opt.isCorrect === true ||
+        (attachedQuestionAnswer && attachedQuestionAnswer === letter) ||
         (q.correct_answer &&
           q.correct_answer.toString().trim().toUpperCase() === letter) ||
         (q.correctAnswer &&
@@ -108,6 +124,7 @@ export function normalizeQuizQuestion(q, fallbackId = 'q1') {
 
   // Determine correct answer
   let correctAnswer = (
+    attachedQuestionAnswer ||
     q.correct_answer ||
     q.correctAnswer ||
     q.answer ||
@@ -118,11 +135,9 @@ export function normalizeQuizQuestion(q, fallbackId = 'q1') {
     .trim()
     .toUpperCase();
 
-  // Keep is_correct flags in options in sync with correctAnswer
+  // Keep is_correct flags in options strictly in sync with correctAnswer (only the correct option is true)
   normalizedOptions.forEach((opt) => {
-    if (opt.value === correctAnswer) {
-      opt.is_correct = true;
-    }
+    opt.is_correct = opt.value === correctAnswer;
   });
 
   const explanation = (
@@ -296,6 +311,23 @@ export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
 
   function finalizeQuestion(q) {
     if (!q || (!q.question && q.options.length === 0)) return;
+
+    // Check if question stem has attached correct answer (e.g. (A), (B), (C), (D))
+    if (q.question) {
+      const qAnsMatch = q.question.match(
+        /(?:[\s\-_:–—]*[\(\[]\s*(?:(?:correct\s*)?ans(?:wer)?[:\s]*)?([A-Ha-h])\s*[\)\]][\s.:;?!]*)$/i
+      );
+      if (qAnsMatch) {
+        const attachedLetter = qAnsMatch[1].toUpperCase();
+        q.correct_answer = attachedLetter;
+        q.detectedCorrect = attachedLetter;
+        const stripped = q.question.slice(0, qAnsMatch.index).trim();
+        q.question =
+          /\?[\s.:;?!]*$/.test(q.question) && !stripped.endsWith('?')
+            ? stripped + '?'
+            : stripped;
+      }
+    }
 
     // Normalize option letters if options were numbered 1, 2, 3, 4
     if (q.options.length > 0 && /^\d+$/.test(q.options[0].value)) {
