@@ -20,6 +20,7 @@ import { isFinalExamHeading } from './quiz-extractor.js';
  * Ensures a lesson title starts with a valid prefix if missing.
  * Strictly preserves the user's existing title pattern and numbering.
  * When lessonNumber is 0, strictly returns "Introduction".
+ * Always introduction as intro, not a lesson 1. Lesson 1 starts after introduction.
  */
 export function ensureLessonNumberPrefix(title, lessonNumber) {
   if (lessonNumber === 0) {
@@ -27,12 +28,52 @@ export function ensureLessonNumberPrefix(title, lessonNumber) {
   }
   if (!title) return `Lesson ${lessonNumber}`;
   const clean = title.trim();
+  if (
+    /^(?:lesson\s*0\b|intro(?:duction)?\s*$|course\s*intro(?:duction)?\s*$)/i.test(
+      clean
+    )
+  ) {
+    return 'Introduction';
+  }
   const match = clean.match(/^(?:Lesson|Chapter)\s*\d+[\s_:-]+(.*)$/i);
   if (match) {
     const rest = match[1].trim().replace(/^[-_:\s]+/, '');
     return `Lesson ${lessonNumber}: ${rest}`;
   }
   return `Lesson ${lessonNumber}: ${clean}`;
+}
+
+/**
+ * Checks if a module's lessons begin with an Introduction lesson (Lesson 0).
+ * Introduction is always named "Introduction" (never Lesson 0, never Lesson 1).
+ * Lesson 1 starts after Introduction.
+ */
+export function hasIntroLesson(lessons = []) {
+  if (!Array.isArray(lessons) || lessons.length === 0) return false;
+  const first = lessons[0];
+  if (!first) return false;
+  const title = (
+    first.lesson_title ||
+    first.lessonTitle ||
+    first.title ||
+    ''
+  ).trim().toLowerCase();
+  const file = (
+    first.fileName ||
+    first.file?.name ||
+    first.name ||
+    ''
+  ).trim().toLowerCase();
+  return (
+    first.lessonNumber === 0 ||
+    first.lessonIndex === 0 ||
+    first.lesson_id === 'les_0_0' ||
+    first.lesson_id === 'les_1_0' ||
+    /^(?:lesson\s*0\b|intro(?:duction)?\s*$|course\s*intro(?:duction)?\s*$|welcome\s*$|overview\s*$|course\s*overview\s*$|syllabus\s*$)/i.test(
+      title
+    ) ||
+    /^(?:00?[-_.\s]|lesson\s*0\b|intro(?:duction)?\.(?:docx?|pdf)$)/i.test(file)
+  );
 }
 
 /**
@@ -340,12 +381,15 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
           sensitivity: 'base',
         });
       });
+      const hasIntro = hasIntroLesson(mod.lessons);
       mod.lessons.forEach((les, lIdx) => {
-        const realLesNum = lIdx + 1;
+        const isLes0 = hasIntro && lIdx === 0;
+        const realLesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
         les.lessonIndex = realLesNum;
         les.lessonId = `les_${realModNum}_${realLesNum}`;
-        // Preserve user's original lesson title without forced re-prefixing
-        les.lessonTitle = (les.lessonTitle || `Lesson ${realLesNum}`).trim();
+        les.lessonTitle = isLes0
+          ? 'Introduction'
+          : ensureLessonNumberPrefix(les.lessonTitle, realLesNum);
       });
     }
   });
@@ -463,11 +507,12 @@ export async function convertCourseFolderSequentially(
         ensureModuleNumberPrefix(modConfig.moduleTitle, modNum);
 
     const moduleLessons = [];
+    const hasIntro = hasIntroLesson(modConfig.lessons);
 
     for (let lIdx = 0; lIdx < modConfig.lessons.length; lIdx++) {
       const lesConfig = modConfig.lessons[lIdx];
-      const isLes0 = isMod0 && lIdx === 0;
-      const lesNum = isLes0 ? 0 : lIdx + 1;
+      const isLes0 = (isMod0 && lIdx === 0) || (hasIntro && lIdx === 0);
+      const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
       const lessonId = `les_${modNum}_${lesNum}`;
       processedCount += 1;
 
@@ -554,10 +599,11 @@ export async function convertCourseFolderSequentially(
           ? parsedData.lessonTitle
           : lesConfig.lessonTitle;
 
-      // Preserve user's original lesson title without altering numbering
+      // Always introduction as intro not a lesson 1:
+      // Lesson 1 starts after introduction. Introduction is Lesson 0 (internally), named strictly "Introduction"
       const effectiveLessonTitle = isLes0
         ? 'Introduction'
-        : (rawLessonTitle || `Lesson ${lesNum}`).trim();
+        : ensureLessonNumberPrefix(rawLessonTitle, lesNum);
 
       // Format topics with exact module and lesson bindings
       const formattedTopics = (parsedData.topics || []).map((top, tIdx) => {

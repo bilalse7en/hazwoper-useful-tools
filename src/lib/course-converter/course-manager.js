@@ -12,6 +12,7 @@ import { parseQuizFromHtml } from './quiz-extractor.js';
 import {
   ensureLessonNumberPrefix,
   isIntroductoryModule,
+  hasIntroLesson,
 } from './folder-converter.js';
 import { validateCourseJson } from './validator.js';
 import {
@@ -180,10 +181,11 @@ export function renumberAllLessons(courseJson) {
     const modNum = isMod0
       ? 0
       : mIdx + (courseJson.modules[0]?.module_id === 'mod_0' ? 0 : 1);
+    const hasIntro = hasIntroLesson(mod.lessons);
 
     (mod.lessons || []).forEach((les, lIdx) => {
-      const isLes0 = isMod0 && lIdx === 0;
-      const currentLesNum = isLes0 ? 0 : lIdx + 1;
+      const isLes0 = (isMod0 && lIdx === 0) || (hasIntro && lIdx === 0);
+      const currentLesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
 
       les.lesson_title = isLes0
         ? 'Introduction'

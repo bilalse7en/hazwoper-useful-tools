@@ -1195,6 +1195,69 @@ describe('CourseJsonConverter Core Engine', () => {
       );
     });
 
+    it('always numbers Introduction as intro (Lesson 0) and starts Lesson 1 strictly after Introduction', () => {
+      const mockCourse = {
+        course_id: 'course_site_safety',
+        courseTitle: 'Site Safety Protocols',
+        modules: [
+          {
+            module_id: 'mod_1',
+            module_title: 'Module 1: General Safety Operations',
+            lessons: [
+              {
+                lesson_title: 'Introduction',
+                topics: [
+                  {
+                    id: 'top_intro_1',
+                    name: 'Course Intro',
+                    leftDiv: { editorHtml: '<div><p>Welcome</p></div>' },
+                  },
+                ],
+              },
+              {
+                lesson_title: 'Hazard Communication & SDS',
+                topics: [
+                  {
+                    id: 'top_hazcom_1',
+                    name: 'SDS Sheets',
+                    leftDiv: { editorHtml: '<div><p>Safety Data Sheets</p></div>' },
+                  },
+                ],
+              },
+              {
+                lesson_title: 'Personal Protective Equipment',
+                topics: [
+                  {
+                    id: 'top_ppe_1',
+                    name: 'PPE Selection',
+                    leftDiv: { editorHtml: '<div><p>Respirators & Gloves</p></div>' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const courseJson = buildCourseJson(mockCourse);
+      const mod1 = courseJson.modules[0];
+      expect(mod1.lessons).toHaveLength(3);
+
+      // Lesson 0: Strictly named "Introduction" (NOT "Lesson 1: Introduction", NOT "Lesson 0")
+      expect(mod1.lessons[0].lesson_id).toBe('les_1_0');
+      expect(mod1.lessons[0].lesson_title).toBe('Introduction');
+      expect(mod1.lessons[0].lesson_title).not.toContain('Lesson 1');
+      expect(mod1.lessons[0].lesson_title).not.toContain('Lesson 0');
+
+      // Lesson 1: Starts AFTER Introduction!
+      expect(mod1.lessons[1].lesson_id).toBe('les_1_1');
+      expect(mod1.lessons[1].lesson_title).toBe('Lesson 1: Hazard Communication & SDS');
+
+      // Lesson 2: Follows Lesson 1!
+      expect(mod1.lessons[2].lesson_id).toBe('les_1_2');
+      expect(mod1.lessons[2].lesson_title).toBe('Lesson 2: Personal Protective Equipment');
+    });
+
     it('removes images, file codes, and slide titles when images are OFF', () => {
       const rawHtml = `
         <h1>Topic 1: Electrical Service</h1>

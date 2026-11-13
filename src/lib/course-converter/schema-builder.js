@@ -14,6 +14,7 @@ import {
   ensureLessonNumberPrefix,
   ensureModuleNumberPrefix,
   isIntroductoryModule,
+  hasIntroLesson,
 } from './folder-converter.js';
 import {
   normalizeQuizQuestion,
@@ -151,26 +152,32 @@ export function normalizeCourseHierarchy(
       const modId = `mod_${modNum}`;
       const modTitle = mod.module_title || `Module ${modNum}`;
 
-      const modLessons = (mod.lessons || [])
-        .filter((les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title))
-        .map((les, lIdx) => {
-          const lesNum = lIdx + 1;
-          const lesId = `les_${modNum}_${lesNum}`;
-          const lesTitle = ensureLessonNumberPrefix(les.lesson_title, lesNum);
-          const formattedTopics = (les.topics || []).map((top, tIdx) => ({
-            ...top,
-            id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
-            lessonId: lesId,
-            moduleId: modId,
-          }));
+      const filteredLessons = (mod.lessons || []).filter(
+        (les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
+      );
+      const hasIntro = hasIntroLesson(filteredLessons);
 
-          return {
-            ...les,
-            lesson_id: lesId,
-            lesson_title: lesTitle,
-            topics: formattedTopics,
-          };
-        });
+      const modLessons = filteredLessons.map((les, lIdx) => {
+        const isLes0 = hasIntro && lIdx === 0;
+        const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+        const lesId = `les_${modNum}_${lesNum}`;
+        const lesTitle = isLes0
+          ? 'Introduction'
+          : ensureLessonNumberPrefix(les.lesson_title, lesNum);
+        const formattedTopics = (les.topics || []).map((top, tIdx) => ({
+          ...top,
+          id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
+          lessonId: lesId,
+          moduleId: modId,
+        }));
+
+        return {
+          ...les,
+          lesson_id: lesId,
+          lesson_title: lesTitle,
+          topics: formattedTopics,
+        };
+      });
 
       if (modLessons.length > 0) {
         normalized.push({
@@ -188,26 +195,32 @@ export function normalizeCourseHierarchy(
       const modId = `mod_${modNum}`;
       const modTitle = mod.module_title || `Module ${modNum}`;
 
-      const modLessons = (mod.lessons || [])
-        .filter((les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title))
-        .map((les, lIdx) => {
-          const lesNum = lIdx + 1;
-          const lesId = `les_${modNum}_${lesNum}`;
-          const lesTitle = ensureLessonNumberPrefix(les.lesson_title, lesNum);
-          const formattedTopics = (les.topics || []).map((top, tIdx) => ({
-            ...top,
-            id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
-            lessonId: lesId,
-            moduleId: modId,
-          }));
+      const filteredLessons = (mod.lessons || []).filter(
+        (les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
+      );
+      const hasIntro = hasIntroLesson(filteredLessons);
 
-          return {
-            ...les,
-            lesson_id: lesId,
-            lesson_title: lesTitle,
-            topics: formattedTopics,
-          };
-        });
+      const modLessons = filteredLessons.map((les, lIdx) => {
+        const isLes0 = hasIntro && lIdx === 0;
+        const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+        const lesId = `les_${modNum}_${lesNum}`;
+        const lesTitle = isLes0
+          ? 'Introduction'
+          : ensureLessonNumberPrefix(les.lesson_title, lesNum);
+        const formattedTopics = (les.topics || []).map((top, tIdx) => ({
+          ...top,
+          id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
+          lessonId: lesId,
+          moduleId: modId,
+        }));
+
+        return {
+          ...les,
+          lesson_id: lesId,
+          lesson_title: lesTitle,
+          topics: formattedTopics,
+        };
+      });
 
       if (modLessons.length > 0) {
         normalized.push({
