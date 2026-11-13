@@ -188,6 +188,8 @@ export function renumberAllLessons(courseJson) {
     isIntroductoryModule(courseJson.modules[0]?.module_title, courseTitle) ||
     hasIntroLesson(courseJson.modules[0]?.lessons);
 
+  let globalLessonNumber = 1;
+
   courseJson.modules.forEach((mod, mIdx) => {
     const isMod0 = hasModule0 && mIdx === 0;
     const modNum = isMod0 ? 0 : hasModule0 ? mIdx : mIdx + 1;
@@ -197,7 +199,8 @@ export function renumberAllLessons(courseJson) {
       const rawTitle = (mod.module_title || '').trim();
       const cleanTitle = rawTitle.replace(/^module\s*0\s*[:\s_-]*/i, '').trim();
       mod.module_title =
-        courseTitle && cleanTitle.toLowerCase().includes(courseTitle.toLowerCase())
+        courseTitle &&
+        cleanTitle.toLowerCase().includes(courseTitle.toLowerCase())
           ? cleanTitle
           : courseTitle || cleanTitle || mod.module_title;
     } else {
@@ -212,7 +215,7 @@ export function renumberAllLessons(courseJson) {
 
     (mod.lessons || []).forEach((les, lIdx) => {
       const isLes0 = hasIntro && lIdx === 0;
-      const currentLesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+      const currentLesNum = isLes0 ? 0 : globalLessonNumber++;
 
       les.lesson_title = isLes0
         ? 'Introduction'

@@ -183,7 +183,8 @@ describe('Quiz Schema Normalization & Key Guard Engine', () => {
         { label: 'Surge arrester' },
         { label: 'Grounding rod' },
       ],
-      explanation: 'Surge arresters divert transient overvoltage safely to ground.',
+      explanation:
+        'Surge arresters divert transient overvoltage safely to ground.',
     };
 
     const normalized = normalizeQuizQuestion(rawQuestion, 'q_test_1');
@@ -208,9 +209,8 @@ describe('Quiz Schema Normalization & Key Guard Engine', () => {
   });
 
   it('never eats letters or words starting with "O" in options and questions (e.g. On, Only, One, Operating, Inside)', async () => {
-    const { parseQuizFromHtml } = await import(
-      '../src/lib/course-converter/quiz-extractor.js'
-    );
+    const { parseQuizFromHtml } =
+      await import('../src/lib/course-converter/quiz-extractor.js');
 
     const html = `
       <p>Question 1</p>
@@ -270,5 +270,42 @@ describe('Quiz Schema Normalization & Key Guard Engine', () => {
     expect(q2.options[2].label).toBe(
       'One primary fuse block for the entire substation'
     );
+  });
+
+  it('strips attached question markers (A)-(D) and [A]-[D] and Answer: A from UPS knowledge check questions', async () => {
+    const { parseQuizFromHtml } =
+      await import('../src/lib/course-converter/quiz-extractor.js');
+
+    const questions = [
+      'A facility is adding a surge protective device (SPD) to work with an existing UPS. According to the lesson, where should the SPD be installed? [A]',
+      'Which statement best describes the role of a UPS in layered surge protection? (A)',
+      'A technician opens the input breaker of a UPS and sees that the central panel is dark. Why does this NOT prove the cabinet is safe to work on? (A)',
+      'When sizing a backup generator to work with a UPS, what must the generator be able to supply? (A)',
+      'During generator operation, the UPS cannot synchronize with its bypass source, which blocks a safe transfer to bypass. Which coordination factor is the most likely cause? (A)',
+      'How does a vented lead-acid (VLA) battery differ from a valve-regulated lead-acid (VRLA) battery? (A)',
+    ];
+
+    const html = questions
+      .map(
+        (q, idx) => `
+        <p>Question ${idx + 1}</p>
+        <p>${q}</p>
+        <p>A. Option Alpha</p>
+        <p>B. Option Beta</p>
+        <p>C. Option Gamma</p>
+        <p>D. Option Delta</p>
+      `
+      )
+      .join('\n');
+
+    const parsed = parseQuizFromHtml(html, 'q');
+    expect(parsed).toHaveLength(6);
+
+    parsed.forEach((item) => {
+      expect(item.question).not.toMatch(/\([A-D]\)$/);
+      expect(item.question).not.toMatch(/\[[A-D]\]$/);
+      expect(item.question.endsWith('?')).toBe(true);
+      expect(item.correct_answer).toBe('A');
+    });
   });
 });

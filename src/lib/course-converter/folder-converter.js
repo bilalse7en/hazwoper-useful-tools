@@ -52,18 +52,12 @@ export function hasIntroLesson(lessons = []) {
   if (!Array.isArray(lessons) || lessons.length === 0) return false;
   const first = lessons[0];
   if (!first) return false;
-  const title = (
-    first.lesson_title ||
-    first.lessonTitle ||
-    first.title ||
-    ''
-  ).trim().toLowerCase();
-  const file = (
-    first.fileName ||
-    first.file?.name ||
-    first.name ||
-    ''
-  ).trim().toLowerCase();
+  const title = (first.lesson_title || first.lessonTitle || first.title || '')
+    .trim()
+    .toLowerCase();
+  const file = (first.fileName || first.file?.name || first.name || '')
+    .trim()
+    .toLowerCase();
   return (
     first.lessonNumber === 0 ||
     first.lessonIndex === 0 ||
@@ -81,10 +75,16 @@ export function hasIntroLesson(lessons = []) {
  * When moduleNumber is 0, formats as the course name / clean title WITHOUT module numbering.
  * When moduleNumber >= 1, formats as "Module {moduleNumber}: {title}".
  */
-export function ensureModuleNumberPrefix(title, moduleNumber, courseTitle = '') {
+export function ensureModuleNumberPrefix(
+  title,
+  moduleNumber,
+  courseTitle = ''
+) {
   if (moduleNumber === 0) {
     const raw = (courseTitle || title || '').trim();
-    const clean = raw.replace(/^(?:module|unit|section)\s*\d*[:\s_-]*/i, '').trim();
+    const clean = raw
+      .replace(/^(?:module|unit|section)\s*\d*[:\s_-]*/i, '')
+      .trim();
     return clean || courseTitle || 'Introduction';
   }
   if (!title) return `Module ${moduleNumber}`;
@@ -345,6 +345,7 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
       isIntroductoryModule(sortedModules[0].moduleTitle, detectedCourseTitle));
 
   // Sort lessons inside each module numerically by lessonNumber and sequence IDs per module
+  let globalLessonIndex = 1;
   sortedModules.forEach((mod, mIdx) => {
     if (hasModule0 && mIdx === 0) {
       mod.moduleIndex = 0;
@@ -353,7 +354,8 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
       const rawTitle = (mod.moduleTitle || '').trim();
       const cleanTitle = rawTitle.replace(/^module\s*0\s*[:\s_-]*/i, '').trim();
       mod.moduleTitle =
-        (detectedCourseTitle && cleanTitle.toLowerCase().includes(detectedCourseTitle.toLowerCase()))
+        detectedCourseTitle &&
+        cleanTitle.toLowerCase().includes(detectedCourseTitle.toLowerCase())
           ? cleanTitle
           : detectedCourseTitle || cleanTitle || mod.moduleTitle;
 
@@ -370,7 +372,7 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
       const hasIntro = hasIntroLesson(mod.lessons);
       mod.lessons.forEach((les, lIdx) => {
         const isLes0 = hasIntro && lIdx === 0;
-        const realLesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+        const realLesNum = isLes0 ? 0 : globalLessonIndex++;
         les.lessonIndex = realLesNum;
         les.lessonId = `les_0_${realLesNum}`;
         les.lessonTitle = isLes0
@@ -398,7 +400,7 @@ export function groupFilesByCourseHierarchy(fileItems = []) {
       const hasIntro = hasIntroLesson(mod.lessons);
       mod.lessons.forEach((les, lIdx) => {
         const isLes0 = hasIntro && lIdx === 0;
-        const realLesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+        const realLesNum = isLes0 ? 0 : globalLessonIndex++;
         les.lessonIndex = realLesNum;
         les.lessonId = `les_${realModNum}_${realLesNum}`;
         les.lessonTitle = isLes0
@@ -508,6 +510,8 @@ export async function convertCourseFolderSequentially(
       modules[0].moduleIndex === 0 ||
       isIntroductoryModule(modules[0].moduleTitle, hierarchy.courseTitle));
 
+  let globalLessonIndex = 1;
+
   for (let mIdx = 0; mIdx < modules.length; mIdx++) {
     const modConfig = modules[mIdx];
     const isMod0 = hasModule0 && mIdx === 0;
@@ -516,9 +520,10 @@ export async function convertCourseFolderSequentially(
     const rawTitle = (modConfig.moduleTitle || '').trim();
     const cleanTitle = rawTitle.replace(/^module\s*0\s*[:\s_-]*/i, '').trim();
     const moduleTitle = isMod0
-      ? ((hierarchy.courseTitle && cleanTitle.toLowerCase().includes(hierarchy.courseTitle.toLowerCase()))
-          ? cleanTitle
-          : hierarchy.courseTitle || cleanTitle || modConfig.moduleTitle)
+      ? hierarchy.courseTitle &&
+        cleanTitle.toLowerCase().includes(hierarchy.courseTitle.toLowerCase())
+        ? cleanTitle
+        : hierarchy.courseTitle || cleanTitle || modConfig.moduleTitle
       : ensureModuleNumberPrefix(
           modConfig.moduleTitle,
           modNum,
@@ -531,7 +536,7 @@ export async function convertCourseFolderSequentially(
     for (let lIdx = 0; lIdx < modConfig.lessons.length; lIdx++) {
       const lesConfig = modConfig.lessons[lIdx];
       const isLes0 = hasIntro && lIdx === 0;
-      const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
+      const lesNum = isLes0 ? 0 : globalLessonIndex++;
       const lessonId = `les_${modNum}_${lesNum}`;
       processedCount += 1;
 
@@ -590,10 +595,10 @@ export async function convertCourseFolderSequentially(
         isFinalExamHeading(parsedData.lessonTitle) ||
         Boolean(
           parsedData.final_exam &&
-            (!parsedData.topics ||
-              parsedData.topics.length === 0 ||
-              (parsedData.topics.length === 1 &&
-                /instructions/i.test(parsedData.topics[0]?.name || '')))
+          (!parsedData.topics ||
+            parsedData.topics.length === 0 ||
+            (parsedData.topics.length === 1 &&
+              /instructions/i.test(parsedData.topics[0]?.name || '')))
         );
 
       if (isDedicatedExamDoc) {

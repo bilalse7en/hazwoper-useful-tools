@@ -37,7 +37,8 @@ describe('CourseJsonConverter Core Engine', () => {
     });
 
     it('replaces &nbsp;, &#160;, and unicode non-breaking spaces with standard spaces', () => {
-      const raw = '<p>Word1&nbsp;&nbsp;Word2&#160;Word3\u00a0Word4.</p><table><tr><td>Cell&nbsp;A</td></tr></table>';
+      const raw =
+        '<p>Word1&nbsp;&nbsp;Word2&#160;Word3\u00a0Word4.</p><table><tr><td>Cell&nbsp;A</td></tr></table>';
       const clean = normalizeHtmlContent(raw);
       expect(clean).not.toContain('&nbsp;');
       expect(clean).not.toContain('&#160;');
@@ -131,9 +132,7 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(clean).not.toContain(
         '<p class="mb-0">General site overview before entering decontamination zone.</p>'
       );
-      expect(clean).toContain(
-        '<p>Site safety officer instructions.</p>'
-      );
+      expect(clean).toContain('<p>Site safety officer instructions.</p>');
       expect(clean).not.toContain(
         '<p class="mb-0">Site safety officer instructions.</p>'
       );
@@ -422,7 +421,9 @@ describe('CourseJsonConverter Core Engine', () => {
       `;
       const parsed = parseQuizFromHtml(quizHtml);
       expect(parsed).toHaveLength(1);
-      expect(parsed[0].question).toContain('What is the lower explosive limit?');
+      expect(parsed[0].question).toContain(
+        'What is the lower explosive limit?'
+      );
       expect(parsed[0].options).toHaveLength(2);
       expect(parsed[0].options[0].value).toBe('A');
       expect(parsed[0].correct_answer).toBe('A');
@@ -937,12 +938,12 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(courseJson.modules[0].lessons[0].knowledge_check).toHaveLength(1);
       expect(courseJson.modules[0].lessons[1].lesson_id).toBe('les_1_2');
 
-      // Verify Module 2
+      // Verify Module 2: Continuous sequential numbering across modules
       expect(courseJson.modules[1].module_id).toBe('mod_2');
       expect(courseJson.modules[1].lessons).toHaveLength(1);
-      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_2_1');
+      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_2_3');
       expect(courseJson.modules[1].lessons[0].lesson_title).toContain(
-        'Lesson 1:'
+        'Lesson 3:'
       );
 
       // Verify Durations
@@ -968,12 +969,17 @@ describe('CourseJsonConverter Core Engine', () => {
     });
 
     it('isolates Final Exam from folder hierarchy to root final_exam and never creates an extra lesson', async () => {
-      const { Document, Paragraph, HeadingLevel, Packer } = await import('docx');
-      const { convertCourseFolderSequentially } = await import(
-        '../src/lib/course-converter/folder-converter.js'
-      );
+      const { Document, Paragraph, HeadingLevel, Packer } =
+        await import('docx');
+      const { convertCourseFolderSequentially } =
+        await import('../src/lib/course-converter/folder-converter.js');
 
-      async function createExamTestDocx(lessonTitle, topicTitle, questionText, quizHeading = 'Lesson Quiz') {
+      async function createExamTestDocx(
+        lessonTitle,
+        topicTitle,
+        questionText,
+        quizHeading = 'Lesson Quiz'
+      ) {
         const doc = new Document({
           sections: [
             {
@@ -1043,10 +1049,9 @@ describe('CourseJsonConverter Core Engine', () => {
         ],
       };
 
-      const result = await convertCourseFolderSequentially(
-        mockHierarchy,
-        { course_id: 'safety_cert' }
-      );
+      const result = await convertCourseFolderSequentially(mockHierarchy, {
+        course_id: 'safety_cert',
+      });
 
       const { courseJson, validation } = result;
 
@@ -1065,9 +1070,7 @@ describe('CourseJsonConverter Core Engine', () => {
       const allLessonTitles = courseJson.modules.flatMap((m) =>
         m.lessons.map((l) => l.lesson_title)
       );
-      expect(
-        allLessonTitles.some((t) => /final\s*exam/i.test(t))
-      ).toBe(false);
+      expect(allLessonTitles.some((t) => /final\s*exam/i.test(t))).toBe(false);
 
       expect(validation.isValid).toBe(true);
     });
@@ -1184,14 +1187,14 @@ describe('CourseJsonConverter Core Engine', () => {
         'Lesson 2: Exposure Routes'
       );
 
-      // Module 2: Sequenced per module starting from Lesson 1
+      // Module 2: Sequenced continuously across modules: Lesson 3
       expect(courseJson.modules[2].module_id).toBe('mod_2');
       expect(courseJson.modules[2].module_title).toBe(
         'Module 2: Emergency Response'
       );
-      expect(courseJson.modules[2].lessons[0].lesson_id).toBe('les_2_1');
+      expect(courseJson.modules[2].lessons[0].lesson_id).toBe('les_2_3');
       expect(courseJson.modules[2].lessons[0].lesson_title).toBe(
-        'Lesson 1: Incident Command'
+        'Lesson 3: Incident Command'
       );
     });
 
@@ -1220,7 +1223,9 @@ describe('CourseJsonConverter Core Engine', () => {
                   {
                     id: 'top_hazcom_1',
                     name: 'SDS Sheets',
-                    leftDiv: { editorHtml: '<div><p>Safety Data Sheets</p></div>' },
+                    leftDiv: {
+                      editorHtml: '<div><p>Safety Data Sheets</p></div>',
+                    },
                   },
                 ],
               },
@@ -1230,7 +1235,9 @@ describe('CourseJsonConverter Core Engine', () => {
                   {
                     id: 'top_ppe_1',
                     name: 'PPE Selection',
-                    leftDiv: { editorHtml: '<div><p>Respirators & Gloves</p></div>' },
+                    leftDiv: {
+                      editorHtml: '<div><p>Respirators & Gloves</p></div>',
+                    },
                   },
                 ],
               },
@@ -1255,11 +1262,15 @@ describe('CourseJsonConverter Core Engine', () => {
 
       // Lesson 1: Starts AFTER Introduction!
       expect(mod0.lessons[1].lesson_id).toBe('les_0_1');
-      expect(mod0.lessons[1].lesson_title).toBe('Lesson 1: Hazard Communication & SDS');
+      expect(mod0.lessons[1].lesson_title).toBe(
+        'Lesson 1: Hazard Communication & SDS'
+      );
 
       // Lesson 2: Follows Lesson 1!
       expect(mod0.lessons[2].lesson_id).toBe('les_0_2');
-      expect(mod0.lessons[2].lesson_title).toBe('Lesson 2: Personal Protective Equipment');
+      expect(mod0.lessons[2].lesson_title).toBe(
+        'Lesson 2: Personal Protective Equipment'
+      );
     });
 
     it('always formats the first module of the course as Module 0 with the course name without module numbering, Lesson 0 as Introduction, and subsequent modules starting from Module 1', () => {
@@ -1342,21 +1353,139 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(mod0.lessons[0].lesson_id).toBe('les_0_0');
       expect(mod0.lessons[0].lesson_title).toBe('Introduction');
       expect(mod0.lessons[1].lesson_id).toBe('les_0_1');
-      expect(mod0.lessons[1].lesson_title).toBe('Lesson 1: Safety Culture Principles');
+      expect(mod0.lessons[1].lesson_title).toBe(
+        'Lesson 1: Safety Culture Principles'
+      );
 
-      // Subsequent modules MUST start from Module 1:
+      // Subsequent modules MUST start from Module 1 with continuous lesson numbering across modules:
       const mod1 = courseJson.modules[1];
       expect(mod1.module_id).toBe('mod_1');
       expect(mod1.module_title).toBe('Module 1: Machine Guarding & LOTO');
-      expect(mod1.lessons[0].lesson_id).toBe('les_1_1');
-      expect(mod1.lessons[0].lesson_title).toBe('Lesson 1: Lockout Tagout Procedures');
+      expect(mod1.lessons[0].lesson_id).toBe('les_1_2');
+      expect(mod1.lessons[0].lesson_title).toBe(
+        'Lesson 2: Lockout Tagout Procedures'
+      );
 
       // Third module: Module 2:
       const mod2 = courseJson.modules[2];
       expect(mod2.module_id).toBe('mod_2');
       expect(mod2.module_title).toBe('Module 2: Confined Space Entry');
-      expect(mod2.lessons[0].lesson_id).toBe('les_2_1');
-      expect(mod2.lessons[0].lesson_title).toBe('Lesson 1: Permit-Required Spaces');
+      expect(mod2.lessons[0].lesson_id).toBe('les_2_3');
+      expect(mod2.lessons[0].lesson_title).toBe(
+        'Lesson 3: Permit-Required Spaces'
+      );
+    });
+
+    it('enforces continuous sequential lesson numbering across multiple modules (Module 1: Lessons 1-3, Module 2: Lessons 4-6)', () => {
+      const mockCourse = {
+        course_id: 'course_multi_mod',
+        courseTitle: 'Hazardous Waste Operations',
+        modules: [
+          {
+            module_id: 'mod_intro',
+            module_title: 'Hazardous Waste Operations Overview',
+            lessons: [
+              {
+                lesson_title: 'Course Introduction',
+                topics: [
+                  {
+                    id: 't0',
+                    name: 'Intro Slide',
+                    leftDiv: { editorHtml: '<p>Intro</p>' },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            module_id: 'mod_1',
+            module_title: 'Core Chemistry',
+            lessons: [
+              {
+                lesson_title: 'Chemical Properties',
+                topics: [{ id: 't1', name: 'T1' }],
+              },
+              {
+                lesson_title: 'Toxicity Profiles',
+                topics: [{ id: 't2', name: 'T2' }],
+              },
+              {
+                lesson_title: 'Exposure Limits',
+                topics: [{ id: 't3', name: 'T3' }],
+              },
+            ],
+          },
+          {
+            module_id: 'mod_2',
+            module_title: 'Site Operations',
+            lessons: [
+              {
+                lesson_title: 'Perimeter Control',
+                topics: [{ id: 't4', name: 'T4' }],
+              },
+              {
+                lesson_title: 'Air Monitoring',
+                topics: [{ id: 't5', name: 'T5' }],
+              },
+              {
+                lesson_title: 'Decontamination Lines',
+                topics: [{ id: 't6', name: 'T6' }],
+              },
+            ],
+          },
+        ],
+      };
+
+      const courseJson = buildCourseJson(mockCourse);
+      expect(courseJson.modules).toHaveLength(3);
+
+      // Module 0: strictly Course Name, Lesson 0 is strictly Introduction
+      expect(courseJson.modules[0].module_id).toBe('mod_0');
+      expect(courseJson.modules[0].module_title).toBe(
+        'Hazardous Waste Operations Overview'
+      );
+      expect(courseJson.modules[0].lessons[0].lesson_id).toBe('les_0_0');
+      expect(courseJson.modules[0].lessons[0].lesson_title).toBe(
+        'Introduction'
+      );
+
+      // Module 1: Lessons 1, 2, 3
+      expect(courseJson.modules[1].module_id).toBe('mod_1');
+      expect(courseJson.modules[1].module_title).toBe(
+        'Module 1: Core Chemistry'
+      );
+      expect(courseJson.modules[1].lessons).toHaveLength(3);
+      expect(courseJson.modules[1].lessons[0].lesson_id).toBe('les_1_1');
+      expect(courseJson.modules[1].lessons[0].lesson_title).toBe(
+        'Lesson 1: Chemical Properties'
+      );
+      expect(courseJson.modules[1].lessons[1].lesson_id).toBe('les_1_2');
+      expect(courseJson.modules[1].lessons[1].lesson_title).toBe(
+        'Lesson 2: Toxicity Profiles'
+      );
+      expect(courseJson.modules[1].lessons[2].lesson_id).toBe('les_1_3');
+      expect(courseJson.modules[1].lessons[2].lesson_title).toBe(
+        'Lesson 3: Exposure Limits'
+      );
+
+      // Module 2: Lessons 4, 5, 6 (continuous across modules, never resetting to 1!)
+      expect(courseJson.modules[2].module_id).toBe('mod_2');
+      expect(courseJson.modules[2].module_title).toBe(
+        'Module 2: Site Operations'
+      );
+      expect(courseJson.modules[2].lessons).toHaveLength(3);
+      expect(courseJson.modules[2].lessons[0].lesson_id).toBe('les_2_4');
+      expect(courseJson.modules[2].lessons[0].lesson_title).toBe(
+        'Lesson 4: Perimeter Control'
+      );
+      expect(courseJson.modules[2].lessons[1].lesson_id).toBe('les_2_5');
+      expect(courseJson.modules[2].lessons[1].lesson_title).toBe(
+        'Lesson 5: Air Monitoring'
+      );
+      expect(courseJson.modules[2].lessons[2].lesson_id).toBe('les_2_6');
+      expect(courseJson.modules[2].lessons[2].lesson_title).toBe(
+        'Lesson 6: Decontamination Lines'
+      );
     });
 
     it('removes images, file codes, and slide titles when images are OFF', () => {

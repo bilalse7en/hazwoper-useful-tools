@@ -118,23 +118,30 @@ export function normalizeCourseHierarchy(
 
     const hasIntro = hasIntroLesson(introMod.lessons);
 
+    let globalLessonNumber = 1;
+
+    // Module 0 is mod_0, lessons are les_0_0 (Introduction), etc.
+    const mod0Id = 'mod_0';
+    const mod0Num = 0;
+
     const mod0Lessons = (introMod.lessons || [])
       .filter(
-        (les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
+        (les) =>
+          !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
       )
       .map((les, lIdx) => {
         const isLes0 = hasIntro && lIdx === 0;
-        const lesNum = isLes0 ? 0 : hasIntro ? lIdx : lIdx + 1;
-        const lesId = `les_0_${lesNum}`;
+        const lesNum = isLes0 ? 0 : globalLessonNumber++;
+        const lesId = `les_${mod0Num}_${lesNum}`;
         const lesTitle = isLes0
           ? 'Introduction'
           : ensureLessonNumberPrefix(les.lesson_title, lesNum);
 
         const formattedTopics = (les.topics || []).map((top, tIdx) => ({
           ...top,
-          id: `top_0_${lesNum}_${tIdx + 1}`,
+          id: `top_${mod0Num}_${lesNum}_${tIdx + 1}`,
           lessonId: lesId,
-          moduleId: 'mod_0',
+          moduleId: mod0Id,
         }));
 
         return {
@@ -147,7 +154,7 @@ export function normalizeCourseHierarchy(
 
     if (mod0Lessons.length === 0) {
       mod0Lessons.push({
-        lesson_id: 'les_0_0',
+        lesson_id: `les_${mod0Num}_0`,
         lesson_title: 'Introduction',
         has_assessment_after: false,
         knowledge_check: [],
@@ -157,12 +164,12 @@ export function normalizeCourseHierarchy(
 
     normalized.push({
       ...introMod,
-      module_id: 'mod_0',
+      module_id: mod0Id,
       module_title: mod0Title,
       lessons: mod0Lessons,
     });
 
-    // Number remaining modules starting from Module 1, with per-module lesson numbering
+    // Number remaining modules starting from Module 1, with CONTINUOUS lesson numbering across modules
     restModules.forEach((mod, idx) => {
       const modNum = idx + 1;
       const modId = `mod_${modNum}`;
@@ -173,13 +180,14 @@ export function normalizeCourseHierarchy(
       );
 
       const filteredLessons = (mod.lessons || []).filter(
-        (les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
+        (les) =>
+          !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
       );
       const hasIntroMod = hasIntroLesson(filteredLessons);
 
       const modLessons = filteredLessons.map((les, lIdx) => {
         const isLes0 = hasIntroMod && lIdx === 0;
-        const lesNum = isLes0 ? 0 : hasIntroMod ? lIdx : lIdx + 1;
+        const lesNum = isLes0 ? 0 : globalLessonNumber++;
         const lesId = `les_${modNum}_${lesNum}`;
         const lesTitle = isLes0
           ? 'Introduction'
@@ -209,24 +217,39 @@ export function normalizeCourseHierarchy(
       }
     });
   } else {
-    // Normal modules starting from Module 1
+    // Normal modules starting from Module 1 with continuous lesson numbering across modules
+    let globalLessonNumber = 1;
+
     rawModules.forEach((mod, idx) => {
+      const isOnlyOneModule = rawModules.length === 1;
       const modNum = idx + 1;
       const modId = `mod_${modNum}`;
-      const modTitle = ensureModuleNumberPrefix(
-        mod.module_title,
-        modNum,
-        cleanCourse
-      );
+
+      let modTitle;
+      if (isOnlyOneModule) {
+        // Single module represents entire course -> title is strictly course name without "Module 1:" prefix
+        const rawModTitle = (mod.module_title || '').trim();
+        const cleanModTitle = rawModTitle
+          .replace(/^(?:module|unit|section)\s*\d*[:\s_-]*/i, '')
+          .trim();
+        modTitle = cleanCourse || cleanModTitle || 'Untitled Course';
+      } else {
+        modTitle = ensureModuleNumberPrefix(
+          mod.module_title,
+          modNum,
+          cleanCourse
+        );
+      }
 
       const filteredLessons = (mod.lessons || []).filter(
-        (les) => !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
+        (les) =>
+          !shouldFilterExamLessons || !isFinalExamHeading(les.lesson_title)
       );
       const hasIntroMod = hasIntroLesson(filteredLessons);
 
       const modLessons = filteredLessons.map((les, lIdx) => {
         const isLes0 = hasIntroMod && lIdx === 0;
-        const lesNum = isLes0 ? 0 : hasIntroMod ? lIdx : lIdx + 1;
+        const lesNum = isLes0 ? 0 : globalLessonNumber++;
         const lesId = `les_${modNum}_${lesNum}`;
         const lesTitle = isLes0
           ? 'Introduction'
@@ -296,6 +319,27 @@ export function cleanTopicSlideContent(topic, options = {}) {
     };
   }
 
+  const rawHtml =
+    topic.leftDiv?.editorHtml ||
+    topic.leftDiv?.editor ||
+    topic.leftDiv?.editorSaved ||
+    '';
+
+  const cleanInner = normalizeHtmlContent(rawHtml, {
+    stripImages,
+    topicTitle: topic.name || topic.headingContent,
+  });
+  const wrapped = wrapInLmsContainer(cleanInner, { stripImages });
+  const duration = calculateTopicDuration(cleanInner);
+
+  topic.allocated_duration_seconds = duration;
+  topic.topicDuration = duration;
+  if (!topic.leftDiv) topic.leftDiv = {};
+  topic.leftDiv.editor = wrapped;
+  topic.leftDiv.editorHtml = wrapped;
+  topic.leftDiv.editorSaved = wrapped;
+  topic.leftDiv.editorHtmlSaved = wrapped;
+
   if (stripImages) {
     topic.slide_type = 'content';
     topic.image_source = '';
@@ -316,26 +360,6 @@ export function cleanTopicSlideContent(topic, options = {}) {
       topic.leftDiv.image.imageFile = '';
       topic.leftDiv.image.imageName = '';
     }
-
-    const rawHtml =
-      topic.leftDiv.editorHtml ||
-      topic.leftDiv.editor ||
-      topic.leftDiv.editorSaved ||
-      '';
-
-    const cleanInner = normalizeHtmlContent(rawHtml, {
-      stripImages: true,
-      topicTitle: topic.name || topic.headingContent,
-    });
-    const wrapped = wrapInLmsContainer(cleanInner, { stripImages: true });
-    const duration = calculateTopicDuration(cleanInner);
-
-    topic.allocated_duration_seconds = duration;
-    topic.topicDuration = duration;
-    topic.leftDiv.editor = wrapped;
-    topic.leftDiv.editorHtml = wrapped;
-    topic.leftDiv.editorSaved = wrapped;
-    topic.leftDiv.editorHtmlSaved = wrapped;
   } else {
     if (!topic.slide_type) topic.slide_type = 'image';
   }

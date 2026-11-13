@@ -45,7 +45,6 @@ export function stripLeadingBulletsAndSymbols(str) {
         ''
       )
       .replace(/^(?:\[\s*[xX✓\s]?\s*\]|\(\s*[xX✓\s]?\s*\))\s*/, '')
-      .replace(/^[oO]\s+/, '')
       .trim();
   }
   return res;
@@ -83,13 +82,13 @@ export function normalizeQuizQuestion(q, fallbackId = 'q1') {
     ''
   ).trim();
 
-  // Detect and extract trailing correct answer marker attached to question stem, e.g. "(A)", "(B)", "(C)", "(D)"
+  // Detect and extract trailing correct answer marker attached to question stem, e.g. "(A)", "[A]", "Answer: A"
   let attachedQuestionAnswer = '';
   const qAnsMatch = questionStem.match(
-    /(?:[\s\-_:–—]*[\(\[]\s*(?:(?:correct\s*)?ans(?:wer)?[:\s]*)?([A-Ha-h])\s*[\)\]][\s.:;?!]*)$/i
+    /(?:[\s\-_:–—]*(?:[\(\[]\s*(?:(?:correct\s*)?ans(?:wer)?[:\s]*)?([A-Ha-h])\s*[\)\]]|(?:(?:correct\s*)?ans(?:wer)?|key)[:\s]+([A-Ha-h]))[\s.:;?!]*)$/i
   );
   if (qAnsMatch) {
-    attachedQuestionAnswer = qAnsMatch[1].toUpperCase();
+    attachedQuestionAnswer = (qAnsMatch[1] || qAnsMatch[2]).toUpperCase();
     const strippedStem = questionStem.slice(0, qAnsMatch.index).trim();
     if (/\?[\s.:;?!]*$/.test(questionStem) && !strippedStem.endsWith('?')) {
       questionStem = strippedStem + '?';
@@ -259,45 +258,54 @@ export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
   let preprocessed = quizHtml;
 
   // 1. Convert table rows where cell 1 is an option letter or Question header
-  preprocessed = preprocessed.replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, (m, row) => {
-    const cells = [];
-    row.replace(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi, (_, text) => {
-      cells.push(text.replace(/<[^>]*>/g, '').trim());
-    });
-    if (cells.length >= 2) {
-      const col1 = cells[0];
-      const col2 = cells.slice(1).join(' ').trim();
-      if (/^[A-H]$/i.test(col1)) {
-        return `<p>${col1.toUpperCase()}. ${col2}</p>`;
-      } else if (/^(?:Question|Q\.?)\s*\d+/i.test(col1)) {
-        return `<p>${col1}: ${col2}</p>`;
-      } else if (/^(?:Answer|Correct|Ans|Key)/i.test(col1)) {
-        return `<p>Answer: ${col2}</p>`;
-      } else if (/^(?:Explanation|Rationale|Feedback)/i.test(col1)) {
-        return `<p>Explanation: ${col2}</p>`;
+  preprocessed = preprocessed.replace(
+    /<tr[^>]*>([\s\S]*?)<\/tr>/gi,
+    (m, row) => {
+      const cells = [];
+      row.replace(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi, (_, text) => {
+        cells.push(text.replace(/<[^>]*>/g, '').trim());
+      });
+      if (cells.length >= 2) {
+        const col1 = cells[0];
+        const col2 = cells.slice(1).join(' ').trim();
+        if (/^[A-H]$/i.test(col1)) {
+          return `<p>${col1.toUpperCase()}. ${col2}</p>`;
+        } else if (/^(?:Question|Q\.?)\s*\d+/i.test(col1)) {
+          return `<p>${col1}: ${col2}</p>`;
+        } else if (/^(?:Answer|Correct|Ans|Key)/i.test(col1)) {
+          return `<p>Answer: ${col2}</p>`;
+        } else if (/^(?:Explanation|Rationale|Feedback)/i.test(col1)) {
+          return `<p>Explanation: ${col2}</p>`;
+        }
       }
+      return m;
     }
-    return m;
-  });
+  );
 
   // 2. Convert list items inside <ol> or <ul> into <p>A. ...</p>
-  preprocessed = preprocessed.replace(/<(ol|ul)[^>]*>([\s\S]*?)<\/\1>/gi, (match, tag, content) => {
-    let optIndex = 0;
-    return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (m, liText) => {
-      const cleanLi = liText.trim();
-      const strippedText = cleanLi.replace(/<[^>]*>/g, '').trim();
-      if (!strippedText) return '';
-      // Strip leading bullets, checkboxes, symbols WITHOUT eating words starting with 'O' or other letters
-      const textWithoutBullets = stripLeadingBulletsAndSymbols(strippedText);
-      // Check if it already has a letter like A. or B)
-      const hasLetter = /^(?:\(?([A-Ha-h0-9])\)?[.:\-–—]|(?:Option\s*([A-Ha-h0-9]))[:.\-–—]?)/i.test(textWithoutBullets);
-      if (hasLetter) {
-        return `<p>${textWithoutBullets}</p>`;
-      }
-      const letter = OPTION_LETTERS[optIndex++] || String(optIndex);
-      return `<p>${letter}. ${textWithoutBullets}</p>`;
-    });
-  });
+  preprocessed = preprocessed.replace(
+    /<(ol|ul)[^>]*>([\s\S]*?)<\/\1>/gi,
+    (match, tag, content) => {
+      let optIndex = 0;
+      return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (m, liText) => {
+        const cleanLi = liText.trim();
+        const strippedText = cleanLi.replace(/<[^>]*>/g, '').trim();
+        if (!strippedText) return '';
+        // Strip leading bullets, checkboxes, symbols WITHOUT eating words starting with 'O' or other letters
+        const textWithoutBullets = stripLeadingBulletsAndSymbols(strippedText);
+        // Check if it already has a letter like A. or B)
+        const hasLetter =
+          /^(?:\(?([A-Ha-h0-9])\)?[.:\-–—]|(?:Option\s*([A-Ha-h0-9]))[:.\-–—]?)/i.test(
+            textWithoutBullets
+          );
+        if (hasLetter) {
+          return `<p>${textWithoutBullets}</p>`;
+        }
+        const letter = OPTION_LETTERS[optIndex++] || String(optIndex);
+        return `<p>${letter}. ${textWithoutBullets}</p>`;
+      });
+    }
+  );
 
   // Break HTML into paragraphs/headings/table cells or clean blocks
   const clean = preprocessed
@@ -332,13 +340,13 @@ export function parseQuizFromHtml(quizHtml, idPrefix = 'q') {
   function finalizeQuestion(q) {
     if (!q || (!q.question && q.options.length === 0)) return;
 
-    // Check if question stem has attached correct answer (e.g. (A), (B), (C), (D))
+    // Check if question stem has attached correct answer (e.g. (A), (B), [C], Answer: D)
     if (q.question) {
       const qAnsMatch = q.question.match(
-        /(?:[\s\-_:–—]*[\(\[]\s*(?:(?:correct\s*)?ans(?:wer)?[:\s]*)?([A-Ha-h])\s*[\)\]][\s.:;?!]*)$/i
+        /(?:[\s\-_:–—]*(?:[\(\[]\s*(?:(?:correct\s*)?ans(?:wer)?[:\s]*)?([A-Ha-h])\s*[\)\]]|(?:(?:correct\s*)?ans(?:wer)?|key)[:\s]+([A-Ha-h]))[\s.:;?!]*)$/i
       );
       if (qAnsMatch) {
-        const attachedLetter = qAnsMatch[1].toUpperCase();
+        const attachedLetter = (qAnsMatch[1] || qAnsMatch[2]).toUpperCase();
         q.correct_answer = attachedLetter;
         q.detectedCorrect = attachedLetter;
         const stripped = q.question.slice(0, qAnsMatch.index).trim();
