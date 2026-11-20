@@ -11,8 +11,10 @@ export * from './schema-builder.js';
 export * from './validator.js';
 export * from './folder-converter.js';
 export * from './course-manager.js';
+export * from './pptx-parser.js';
 
 import { parseDocxDocument, parsePdfDocument } from './doc-parser.js';
+import { convertPptxToCourseJson } from './pptx-parser.js';
 import { buildCourseJson } from './schema-builder.js';
 import { validateCourseJson } from './validator.js';
 
@@ -25,8 +27,13 @@ import { validateCourseJson } from './validator.js';
  */
 export async function convertDocumentToCourseJson(buffer, options = {}) {
   const fileName = options.fileName || 'document.docx';
+  const isPpt = /\.(pptx|ppt)$/i.test(fileName);
   const isPdf = /\.pdf$/i.test(fileName);
   const mode = options.mode || 'A';
+
+  if (isPpt) {
+    return await convertPptxToCourseJson(buffer, options);
+  }
 
   let parsedData;
   if (isPdf) {

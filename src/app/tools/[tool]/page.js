@@ -9,7 +9,7 @@ import {
 } from '@/lib/seo';
 import { ToolSEOContentServer } from '@/components/tool-seo-content-server';
 import { ToolPageClient } from '@/components/tool-page-client';
-import { AdPlacement } from '@/components/ad-placement';
+import { PageContainer, AdContainer } from '@/components/layout';
 
 export async function generateMetadata({ params }) {
   const { tool } = await params;
@@ -56,15 +56,15 @@ export default async function ToolPage({ params }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
         />
       )}
-      <div className="w-full min-w-0 px-2 sm:px-3 md:px-4 py-4 sm:py-6 transition-all duration-300">
-        <AdPlacement type="top-banner" className="mb-6" />
+      <PageContainer variant="wide" className="py-4 sm:py-6">
+        <AdContainer position="top-banner" className="mb-6" />
         <ToolPageClient toolSlug={toolSlug} />
-        <AdPlacement type="in-content" className="my-8" />
+        <AdContainer position="in-content" className="my-8" />
         <div id="documentation">
           <ToolSEOContentServer slug={toolSlug} />
         </div>
-        <AdPlacement type="footer" className="mt-12" />
-      </div>
+        <AdContainer position="footer" className="mt-12" />
+      </PageContainer>
     </>
   );
 }

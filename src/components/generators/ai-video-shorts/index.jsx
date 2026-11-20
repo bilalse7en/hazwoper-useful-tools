@@ -12,6 +12,7 @@ import { VideoInputSection } from './video-input-section';
 import { ClipsGallery } from './clips-gallery';
 import { StudioEditor } from './studio-editor';
 import { ExportModal } from './export-modal';
+import { ShortsDownloadQueueDock } from './shorts-download-queue-dock';
 import { inspectLocalVideoFile } from '@/lib/video-shorts/source-parser';
 import {
   decodeAudioFromFile,
@@ -59,6 +60,7 @@ export function AIVideoShorts() {
   // Real-time Queue & Task Status
   const [queueStatus, setQueueStatus] = useState('idle'); // 'idle' | 'ingesting' | 'asset-saved' | 'generating'
   const [uploadProgress, setUploadProgress] = useState(0); // 0 to 100 percentage
+  const [downloadQueue, setDownloadQueue] = useState([]); // 4K Short Download Queue (Bottom-Right)
 
   // Live Stopwatch, Elapsed & Estimated Remaining Time
   const [generationStartTime, setGenerationStartTime] = useState(null);
@@ -122,8 +124,65 @@ export function AIVideoShorts() {
 
   const restoreSession = () => {
     if (!savedSession) return;
-    setVideoSource(savedSession.videoSource);
-    setClips(savedSession.clips);
+    const rawSource = savedSession.videoSource;
+    const isDeadBlob = (u) => typeof u === 'string' && u.startsWith('blob:');
+    const allCandidateUrls = [
+      rawSource?.downloadUrl,
+      rawSource?.videoUrl,
+      rawSource?.url,
+      ...(savedSession.clips || []).flatMap((c) => [c.videoUrl, c.downloadUrl]),
+    ];
+    const validUrl = allCandidateUrls.find((u) => u && !isDeadBlob(u));
+
+    const mediaId =
+      rawSource?.id ||
+      rawSource?.mediaId ||
+      (savedSession.clips || []).find((c) => c.mediaId || c.sourceMediaId)
+        ?.mediaId ||
+      (savedSession.clips || []).find((c) => c.mediaId || c.sourceMediaId)
+        ?.sourceMediaId ||
+      (validUrl && /yt_[a-zA-Z0-9_-]+/.test(validUrl)
+        ? validUrl.match(/yt_[a-zA-Z0-9_-]+/)[0]
+        : null);
+
+    const resolvedStream =
+      validUrl ||
+      (mediaId
+        ? `/media-hub/${mediaId}/${rawSource?.fileName || 'video.mp4'}`
+        : '');
+
+    const restoredSource = rawSource
+      ? {
+          ...rawSource,
+          id: mediaId || rawSource.id || rawSource.mediaId,
+          mediaId: mediaId || rawSource.mediaId || rawSource.id,
+          videoUrl: resolvedStream,
+          downloadUrl: resolvedStream,
+          url: resolvedStream,
+        }
+      : {
+          id: mediaId || 'restored_source',
+          mediaId: mediaId || 'restored_source',
+          title: 'Restored Video Project',
+          videoUrl: resolvedStream,
+          downloadUrl: resolvedStream,
+          url: resolvedStream,
+        };
+
+    setVideoSource(restoredSource);
+    const normalizedClips = (savedSession.clips || []).map((c) => ({
+      ...c,
+      mediaId: c.mediaId || mediaId || restoredSource?.id,
+      sourceMediaId:
+        c.sourceMediaId || c.mediaId || mediaId || restoredSource?.id,
+      videoUrl:
+        c.videoUrl && !isDeadBlob(c.videoUrl) ? c.videoUrl : resolvedStream,
+      downloadUrl:
+        c.downloadUrl && !isDeadBlob(c.downloadUrl)
+          ? c.downloadUrl
+          : resolvedStream,
+    }));
+    setClips(normalizedClips);
     if (savedSession.thumbnailCandidates) {
       setThumbnailCandidates(savedSession.thumbnailCandidates);
     }
@@ -138,6 +197,40 @@ export function AIVideoShorts() {
 
   const updateSettings = (partial) => {
     setSettings((prev) => ({ ...prev, ...partial }));
+  };
+
+  // Handle explicit genre selection with complete cache & previous clips purge
+  const handleSelectGenre = (genre, genreDefaults = {}) => {
+    // 1. Completely purge previous clips, state, and cache
+    setClips([]);
+    setActiveClip(null);
+    setThumbnailCandidates([]);
+    setDownloadQueue([]);
+    setSavedSession(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('active_shorts_job_id');
+      try {
+        localStorage.removeItem('video_shorts_current_project');
+        localStorage.removeItem('video_shorts_saved_session');
+      } catch (_) {}
+    }
+    // 2. Set isolated settings for selected genre
+    setSettings((prev) => ({
+      ...prev,
+      ...genreDefaults,
+      contentType: genre,
+      referenceLyrics: '',
+    }));
+    showToast(
+      `Switched profile to ${
+        genre === 'gaming-gta'
+          ? '🎮 GTA 6 & Gaming Action'
+          : genre === 'music-songs'
+            ? '🎵 Songs & Vocal Hooks'
+            : '🕌 Islamic Naat & Tilawat'
+      }. Previous cache cleared!`,
+      'info'
+    );
   };
 
   // Poll background queue job until completion
@@ -167,6 +260,25 @@ export function AIVideoShorts() {
           setUploadProgress(job.progress || 0);
           setProcessingStatus(job.message || `Processing: ${job.stage}...`);
 
+          // Progressive Display: update clips as they are rendered 1-by-1
+          if (
+            job.output?.clips &&
+            Array.isArray(job.output.clips) &&
+            job.output.clips.length > 0
+          ) {
+            setClips(job.output.clips);
+            if (
+              job.output.thumbnailCandidates &&
+              job.output.thumbnailCandidates.length > 0
+            ) {
+              setThumbnailCandidates(job.output.thumbnailCandidates);
+            }
+            // CRITICAL: Immediately transition to gallery so user watches them generate 1 by 1 on the cards!
+            setViewState((current) =>
+              current === 'editor' ? 'editor' : 'gallery'
+            );
+          }
+
           if (job.status === 'completed') {
             clearInterval(interval);
             if (typeof window !== 'undefined') {
@@ -190,19 +302,52 @@ export function AIVideoShorts() {
             setThumbnailCandidates(thumbCandidates);
             setViewState('gallery');
 
-            // Persist to 24-hour database history
+            // Persist to 24-hour database history (sanitized, zero DOM/Window references)
             try {
               const src = currentSource || videoSource;
+              const cleanUrl = (u) =>
+                typeof u === 'string' && !u.startsWith('blob:') ? u : '';
+              const persistentUrl =
+                cleanUrl(src.videoUrl) ||
+                cleanUrl(src.downloadUrl) ||
+                cleanUrl(src.url) ||
+                (src.id || src.mediaId
+                  ? `/media-hub/${src.id || src.mediaId}/${src.fileName || 'video.mp4'}`
+                  : '');
+
+              const safeVideoSource = src
+                ? {
+                    id: src.id || src.mediaId,
+                    mediaId: src.id || src.mediaId,
+                    title: src.fileName || src.title || 'Video Shorts Project',
+                    fileName: src.fileName || src.title || '',
+                    author: src.author || '',
+                    sourceType: src.sourceType || 'media_hub',
+                    url: persistentUrl,
+                    videoUrl: persistentUrl,
+                    downloadUrl: persistentUrl,
+                    localPath: src.localPath || src.local_path || null,
+                    thumbnailUrl: src.thumbnailUrl || src.thumbnailMaxRes || '',
+                    thumbnailMaxRes:
+                      src.thumbnailMaxRes || src.thumbnailUrl || '',
+                    duration: src.duration || 60,
+                    width: src.width || 1080,
+                    height: src.height || 1920,
+                  }
+                : null;
+
               saveGeneratorState(
                 'ai-video-shorts',
                 {
-                  videoSource: src,
+                  videoSource: safeVideoSource,
                   clips: discovered,
                   thumbnailCandidates: thumbCandidates,
                   settings,
                   createdAt: new Date().toISOString(),
                 },
-                src?.fileName || src?.title || 'AI Video Shorts Project'
+                safeVideoSource?.fileName ||
+                  safeVideoSource?.title ||
+                  'AI Video Shorts Project'
               );
             } catch (e) {
               console.warn('Failed to save to history:', e);
@@ -231,14 +376,143 @@ export function AIVideoShorts() {
     [videoSource, settings]
   );
 
-  // Resume active job if page reloaded during generation
+  // Poll background ingestion job until video is verified in Media Hub
+  const pollIngestionJob = useCallback(async (jobId, fallbackUrl = '') => {
+    setIsProcessing(true);
+    setQueueStatus('ingesting');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('active_ingest_job_id', jobId);
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(
+          `/api/video-shorts/ingest?jobId=${encodeURIComponent(jobId)}`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success) return;
+
+        const job = data.job || data;
+        setUploadProgress(job.progress || 10);
+        setProcessingStatus(
+          job.stage || `Processing YouTube stream (${job.progress || 10}%)...`
+        );
+
+        if (job.status === 'completed' && job.mediaItem) {
+          clearInterval(interval);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('active_ingest_job_id');
+          }
+          setIsProcessing(false);
+          setQueueStatus('asset-saved');
+          setUploadProgress(100);
+
+          const item = job.mediaItem;
+          const metadata = job.metadata || {};
+          const downloadUrl =
+            item.videoUrl || item.downloadUrl || item.download_url;
+          const resParts = (
+            item.resolution ||
+            metadata.resolution ||
+            '3840x2160'
+          ).split('x');
+          const resolvedWidth = parseInt(resParts[0], 10) || 3840;
+          const resolvedHeight = parseInt(resParts[1], 10) || 2160;
+
+          const sourceInfo = {
+            id: item.id,
+            mediaId: item.id,
+            sourceType: 'media_hub',
+            title:
+              item.fileName ||
+              item.file_name ||
+              metadata.title ||
+              'YouTube Video',
+            fileName: item.fileName || item.file_name,
+            url: downloadUrl,
+            videoUrl: downloadUrl,
+            downloadUrl: downloadUrl,
+            localPath: item.localPath || item.local_path || null,
+            blobUrl: downloadUrl,
+            thumbnailUrl:
+              item.previewUrl || item.preview_url || metadata.thumbnailUrl,
+            thumbnailMaxRes:
+              item.previewUrl || item.preview_url || metadata.thumbnailMaxRes,
+            duration: item.duration || metadata.duration || 60,
+            resolution: item.resolution || metadata.resolution || '3840x2160',
+            qualityTier:
+              metadata.qualityTier ||
+              (resolvedHeight >= 2160
+                ? '4K Ultra HD (2160p)'
+                : resolvedHeight >= 1440
+                  ? '2K Quad HD (1440p)'
+                  : 'Full HD (1080p)'),
+            width: resolvedWidth,
+            height: resolvedHeight,
+            fps: item.fps || 60,
+            transcript: item.transcript || null,
+            captions: item.captions || null,
+          };
+
+          setVideoSource(sourceInfo);
+          showSuccess(
+            `Video Ingested: ${sourceInfo.qualityTier} (${sourceInfo.resolution})`,
+            `Verified master video downloaded and preserved in Media Hub.`
+          );
+        } else if (job.status === 'failed') {
+          clearInterval(interval);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('active_ingest_job_id');
+          }
+          setIsProcessing(false);
+          setQueueStatus('idle');
+          setUploadProgress(0);
+
+          const errorText = job.error || 'Failed to ingest YouTube video.';
+          const isBotCheck =
+            job.errorType === 'BOT_DETECTION' ||
+            job.errorType === 'RATE_LIMITED' ||
+            errorText.toLowerCase().includes('bot') ||
+            errorText.toLowerCase().includes('sign in') ||
+            errorText.toLowerCase().includes('cookie') ||
+            errorText.toLowerCase().includes('403');
+
+          setYoutubeIssue({
+            url: job.url || fallbackUrl,
+            videoId: job.videoId || null,
+            title: job.metadata?.title || 'YouTube Video',
+            author: job.metadata?.author || '',
+            error: errorText,
+            errorType:
+              job.errorType ||
+              (isBotCheck ? 'BOT_DETECTION' : 'DOWNLOAD_FAILED'),
+            isBotCheck,
+            suggestedAction: 'upload_direct',
+          });
+
+          showToast(errorText, isBotCheck ? 'warning' : 'error');
+        }
+      } catch (pollErr) {
+        console.warn('[IngestionPolling] Notice:', pollErr.message);
+      }
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Resume active job if page reloaded during generation or ingestion
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const activeJobId = localStorage.getItem('active_shorts_job_id');
     if (activeJobId && !isProcessing) {
       pollJob(activeJobId, videoSource);
     }
-  }, [pollJob, videoSource, isProcessing]);
+    const activeIngestId = localStorage.getItem('active_ingest_job_id');
+    if (activeIngestId && !isProcessing) {
+      pollIngestionJob(activeIngestId, '');
+    }
+  }, [pollJob, pollIngestionJob, videoSource, isProcessing]);
 
   /**
    * Run the end-to-end intelligent analysis pipeline on a loaded video
@@ -296,20 +570,27 @@ export function AIVideoShorts() {
           }
         }
 
-        // Step 3: Transcribe Urdu speech directly from source audio (only if explicitly enabled by user)
+        // Step 3: Transcribe speech directly from source audio (only if explicitly enabled by user)
         let realTranscriptCaptions = source.captions || null;
         if (!realTranscriptCaptions && settings.autoSubtitles) {
           try {
+            const reqLang =
+              settings.captionLanguage === 'en' ||
+              settings.contentType === 'gaming-gta'
+                ? 'en'
+                : 'ur';
             setUploadProgress(60);
             setProcessingStatus(
-              'Transcribing Urdu recitation directly from audio (60%)...'
+              reqLang === 'en'
+                ? 'Transcribing English commentary & dialogue directly from audio (60%)...'
+                : 'Transcribing Urdu recitation directly from audio (60%)...'
             );
             let tRes = null;
 
             if (source.file) {
               const tfData = new FormData();
               tfData.append('video', source.file);
-              tfData.append('language', 'ur');
+              tfData.append('language', reqLang);
               if (settings.referenceLyrics) {
                 tfData.append('referenceLyrics', settings.referenceLyrics);
               }
@@ -330,7 +611,7 @@ export function AIVideoShorts() {
                   mediaId: source.id || source.mediaId,
                   videoUrl: source.videoUrl || source.downloadUrl || source.url,
                   localPath: source.localPath || null,
-                  language: 'ur',
+                  language: reqLang,
                   referenceLyrics: settings.referenceLyrics,
                 }),
               });
@@ -403,11 +684,18 @@ export function AIVideoShorts() {
             {
               videoSource: {
                 id: source.id,
+                mediaId: source.id || source.mediaId,
                 title:
                   source.fileName || source.title || 'Video Shorts Project',
+                fileName: source.fileName || source.title || '',
                 author: source.author || '',
                 sourceType: source.sourceType,
-                url: source.url || '',
+                url: source.videoUrl || source.downloadUrl || source.url || '',
+                videoUrl:
+                  source.videoUrl || source.downloadUrl || source.url || '',
+                downloadUrl:
+                  source.downloadUrl || source.videoUrl || source.url || '',
+                localPath: source.localPath || source.local_path || null,
                 thumbnailUrl: source.thumbnailUrl || '',
                 thumbnailMaxRes: source.thumbnailMaxRes || '',
                 duration: source.duration || 60,
@@ -553,12 +841,9 @@ export function AIVideoShorts() {
       setVideoSource(sourceInfo);
       setQueueStatus('asset-saved');
       showSuccess(
-        'Video integrated into Media Assets (100%)!',
-        'Automatically analyzing video and generating shorts...'
+        'Video Ingested at Highest Quality (100%)!',
+        'Select whether this is GTA 5 / Gaming or Naat / Recitation, then click Generate Shorts.'
       );
-      setTimeout(() => {
-        handleStartGeneration(sourceInfo);
-      }, 350);
     } catch (err) {
       setUploadProgress(0);
       console.error('File ingestion error:', err);
@@ -570,110 +855,121 @@ export function AIVideoShorts() {
     }
   };
 
-  // Handle YouTube URL submission (Step 1 -> Step 2) with clean error recovery
-  const handleYouTubeUrl = async (url) => {
+  // Handle YouTube URL submission (Step 1 -> Step 2) with asynchronous queue architecture
+  const handleYouTubeUrl = async (
+    url,
+    preferredQuality = '4k',
+    forceRefresh = false
+  ) => {
     setYoutubeIssue(null);
     setSavedSession(null);
     setSettings((prev) => ({ ...prev, referenceLyrics: '' }));
     if (typeof window !== 'undefined') {
       localStorage.removeItem('active_shorts_job_id');
+      localStorage.removeItem('active_ingest_job_id');
     }
     setIsProcessing(true);
     setQueueStatus('ingesting');
     setUploadProgress(10);
-    setProcessingStatus('Connecting to YouTube and extracting stream (10%)...');
-
-    const progressTimer = setInterval(() => {
-      setUploadProgress((prev) => (prev >= 85 ? 85 : prev + 5));
-    }, 350);
+    setProcessingStatus(
+      `Connecting to YouTube and enqueuing ${preferredQuality.toUpperCase()} master stream...`
+    );
 
     try {
       const res = await fetch('/api/video-shorts/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, preferredQuality, forceRefresh }),
       });
 
-      clearInterval(progressTimer);
       const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        clearInterval(progressTimer);
-        setUploadProgress(0);
+      if (!res.ok && res.status !== 202) {
+        throw new Error(data.error || 'Failed to ingest YouTube video.');
+      }
+
+      // Case A: Cache hit - already completed in Media Hub
+      if (data.status === 'completed' && data.mediaItem) {
+        const item = data.mediaItem;
+        const downloadUrl =
+          item.videoUrl || item.downloadUrl || item.download_url;
+        const resParts = (
+          item.resolution ||
+          data.metadata?.resolution ||
+          '3840x2160'
+        ).split('x');
+        const resolvedWidth = parseInt(resParts[0], 10) || 3840;
+        const resolvedHeight = parseInt(resParts[1], 10) || 2160;
+
+        const sourceInfo = {
+          id: item.id,
+          mediaId: item.id,
+          sourceType: 'media_hub',
+          title:
+            item.fileName ||
+            item.file_name ||
+            data.metadata?.title ||
+            'YouTube Video',
+          fileName: item.fileName || item.file_name,
+          url: downloadUrl,
+          videoUrl: downloadUrl,
+          downloadUrl: downloadUrl,
+          localPath: item.localPath || item.local_path || null,
+          blobUrl: downloadUrl,
+          thumbnailUrl:
+            item.previewUrl || item.preview_url || data.metadata?.thumbnailUrl,
+          thumbnailMaxRes:
+            item.previewUrl ||
+            item.preview_url ||
+            data.metadata?.thumbnailMaxRes,
+          duration: item.duration || data.metadata?.duration || 60,
+          resolution:
+            item.resolution || data.metadata?.resolution || '3840x2160',
+          qualityTier:
+            data.metadata?.qualityTier ||
+            (resolvedHeight >= 2160
+              ? '4K Ultra HD (2160p)'
+              : resolvedHeight >= 1440
+                ? '2K Quad HD (1440p)'
+                : 'Full HD (1080p)'),
+          width: resolvedWidth,
+          height: resolvedHeight,
+          fps: item.fps || 60,
+          transcript: item.transcript || null,
+          captions: item.captions || null,
+        };
+
+        setUploadProgress(100);
+        setVideoSource(sourceInfo);
+        setQueueStatus('asset-saved');
         setIsProcessing(false);
         setProcessingStatus('');
-        setQueueStatus('idle');
-
-        const errorText = data.error || 'Failed to ingest YouTube video.';
-        const isBotCheck =
-          data.errorType === 'BOT_DETECTION' ||
-          data.errorType === 'RATE_LIMITED' ||
-          errorText.toLowerCase().includes('bot') ||
-          errorText.toLowerCase().includes('sign in') ||
-          errorText.toLowerCase().includes('cookie') ||
-          errorText.toLowerCase().includes('403');
-
-        setYoutubeIssue({
-          url: data.url || url,
-          videoId: data.videoId || null,
-          title: data.metadata?.title || 'YouTube Video',
-          author: data.metadata?.author || '',
-          error: errorText,
-          errorType:
-            data.errorType ||
-            (isBotCheck ? 'BOT_DETECTION' : 'DOWNLOAD_FAILED'),
-          isBotCheck,
-          suggestedAction: data.suggestedAction || 'upload_direct',
-        });
-
-        showToast(errorText, isBotCheck ? 'warning' : 'error');
+        showSuccess(
+          `Video Loaded from Media Hub (${sourceInfo.qualityTier})`,
+          `Verified master video loaded instantly.`
+        );
         return;
       }
 
-      const item = data.mediaItem;
-      const downloadUrl =
-        item.videoUrl || item.downloadUrl || item.download_url;
-      const sourceInfo = {
-        id: item.id,
-        mediaId: item.id,
-        sourceType: 'media_hub',
-        title: item.fileName || item.file_name,
-        fileName: item.fileName || item.file_name,
-        url: downloadUrl,
-        videoUrl: downloadUrl,
-        downloadUrl: downloadUrl,
-        localPath: item.localPath || item.local_path || null,
-        blobUrl: downloadUrl,
-        thumbnailUrl: item.previewUrl || item.preview_url,
-        thumbnailMaxRes: item.previewUrl || item.preview_url,
-        duration: item.duration || 60,
-        width: item.width || 1280,
-        height: item.height || 720,
-        fps: item.fps || 30,
-        transcript: item.transcript || null,
-        captions: item.captions || null,
-      };
+      // Case B: Asynchronous Job Enqueued (HTTP 202 Accepted)
+      if (data.jobId) {
+        setUploadProgress(15);
+        setProcessingStatus(
+          data.stage ||
+            'Download job enqueued. Initializing background stream...'
+        );
+        pollIngestionJob(data.jobId, url);
+        return;
+      }
 
-      setUploadProgress(100);
-      setVideoSource(sourceInfo);
-      setQueueStatus('asset-saved');
-      showSuccess(
-        'YouTube video saved to Media Hub!',
-        'Automatically analyzing video and generating shorts...'
-      );
-      setTimeout(() => {
-        handleStartGeneration(sourceInfo);
-      }, 350);
+      throw new Error(data.error || 'Invalid response from ingestion service.');
     } catch (err) {
-      clearInterval(progressTimer);
       setUploadProgress(0);
+      setIsProcessing(false);
+      setProcessingStatus('');
       setQueueStatus('idle');
       console.warn('YouTube ingestion notice:', err.message);
       showToast(err.message || 'Failed to ingest YouTube video.', 'error');
-    } finally {
-      clearInterval(progressTimer);
-      setIsProcessing(false);
-      setProcessingStatus('');
     }
   };
 
@@ -851,33 +1147,315 @@ export function AIVideoShorts() {
     setViewState('editor');
   };
 
-  // Quick download individual clip
-  const handleDownloadClip = (clip) => {
-    setActiveClip(clip);
-    setExportConfig({
-      clipId: clip.id,
-      title: clip.title,
-      clipIndex: clip.index,
-      segments: [
+  // Dedicated 4K Short Direct Download Queue Pipeline
+  // Enqueues the exact cut short (NOT the full master video), renders at 4K (2160x3840), tracks bottom-right progress, and auto-downloads
+  const handleDownloadClip = async (clip, isRetry = false) => {
+    if (!clip) return;
+    const explicitGenre =
+      clip?.contentType || settings?.contentType || videoSource?.contentType;
+
+    let resolvedGenre = 'naat-recitation';
+    if (explicitGenre === 'gaming-gta') {
+      resolvedGenre = 'gaming-gta';
+    } else if (explicitGenre === 'music-songs') {
+      resolvedGenre = 'music-songs';
+    } else if (explicitGenre === 'naat-recitation') {
+      resolvedGenre = 'naat-recitation';
+    } else {
+      const t = (
+        videoSource?.title ||
+        videoSource?.fileName ||
+        clip?.title ||
+        ''
+      ).toLowerCase();
+      if (
+        /song|music|sing|singer|audio|remix|track|melody|album|acoustic|chorus|darshan|raval|lyrics|dj|dance|pop|hiphop|rap|bollywood|soundtrack/i.test(
+          t
+        )
+      ) {
+        resolvedGenre = 'music-songs';
+      } else if (
+        /gta|game|gaming|gameplay|fps|speedrun|trailer|walkthrough|playthrough/i.test(
+          t
+        )
+      ) {
+        resolvedGenre = 'gaming-gta';
+      } else {
+        resolvedGenre = 'naat-recitation';
+      }
+    }
+
+    const isGaming = resolvedGenre === 'gaming-gta';
+    const isMusic = resolvedGenre === 'music-songs';
+    const isNaat = resolvedGenre === 'naat-recitation';
+
+    const taskId = `task-${clip.id || clip.clipId || '1'}`;
+    const cleanName = (clip.title || `Short_${clip.index || 1}`)
+      .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+
+    // If pre-rendered short blob or exact cut URL already exists (and is NOT the master video), trigger immediate download
+    if (
+      clip.isRendered &&
+      clip.renderedUrl &&
+      clip.renderedUrl !== videoSource?.downloadUrl &&
+      clip.renderedUrl !== videoSource?.videoUrl &&
+      clip.renderedUrl !== videoSource?.url
+    ) {
+      try {
+        const response = await fetch(clip.renderedUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = `${cleanName}_4K_Short.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 2500);
+          showSuccess(
+            'Download Ready',
+            `Short #${clip.index || 1} downloaded in 4K!`
+          );
+          return;
+        }
+      } catch (err) {
+        console.warn(
+          'Direct blob fetch failed, falling through to 4K render queue:',
+          err
+        );
+      }
+    }
+
+    // Upsert into bottom-right download queue
+    setDownloadQueue((prev) => {
+      const existing = prev.find((item) => item.id === taskId);
+      if (existing) {
+        return prev.map((item) =>
+          item.id === taskId
+            ? {
+                ...item,
+                status: 'rendering',
+                progress: 10,
+                stageMessage: 'Initializing 4K render pipeline...',
+                error: null,
+              }
+            : item
+        );
+      }
+      return [
+        ...prev,
         {
-          start: clip.start,
-          end: clip.end,
-          duration: clip.duration,
-          isStock: clip.isStock,
-          stockVideoUrl: clip.stockVideoUrl,
+          id: taskId,
+          clipId: clip.id,
+          clipIndex: clip.index || 1,
+          title: clip.title || `Short #${clip.index || 1}`,
+          status: 'rendering',
+          progress: 10,
+          stageMessage: 'Extracting 4K frames & audio boundaries (10%)...',
+          blobUrl: null,
+          fileSizeMb: null,
+          error: null,
+          createdAt: Date.now(),
         },
-      ],
-      aspectRatio: settings.aspectRatio || '9:16',
-      framingMode: settings.framingMode || 'smart-face',
-      manualCropX: 50,
-      captions: clip.captions || [],
-      captionMode:
-        clip.captionMode || settings.captionMode || 'dual-urdu-roman',
-      captionStyle: settings.captionStyle,
-      captionPosition: settings.captionPosition,
-      captionFontSize: settings.captionFontSize || 46,
+      ];
     });
-    setIsExportOpen(true);
+
+    showToast(
+      `Rendering Short #${clip.index || 1} in 4K (Track progress in bottom-right queue)...`,
+      'info'
+    );
+
+    // Smooth continuous progress ticker while backend FFmpeg encodes 4K MP4
+    let currentProg = 10;
+    const progressTimer = setInterval(() => {
+      if (currentProg < 75) {
+        currentProg += Math.floor(Math.random() * 6) + 4;
+      } else if (currentProg < 92) {
+        currentProg += 1.5;
+      } else if (currentProg < 99) {
+        currentProg += 0.4;
+      }
+      const rounded = Math.min(99, Math.round(currentProg));
+      setDownloadQueue((prev) =>
+        prev.map((item) =>
+          item.id === taskId
+            ? {
+                ...item,
+                progress: rounded,
+                stageMessage:
+                  rounded < 30
+                    ? `Extracting 4K high-bitrate stream (${rounded}%)...`
+                    : rounded < 65
+                      ? `Applying vertical reframing & audio filters (${rounded}%)...`
+                      : rounded < 92
+                        ? `Encoding 2160x3840 60fps MP4 (${rounded}%)...`
+                        : `Finalizing 4K container & fast-start metadata (${rounded}%)...`,
+              }
+            : item
+        )
+      );
+    }, 1000);
+
+    try {
+      const resolvedVideoUrl =
+        videoSource?.downloadUrl ||
+        videoSource?.videoUrl ||
+        videoSource?.url ||
+        null;
+
+      const payload = {
+        videoUrl: resolvedVideoUrl,
+        startTime: clip.start,
+        sourceStartSeconds: clip.start,
+        duration: clip.duration || clip.end - clip.start,
+        clipDurationSeconds: clip.duration || clip.end - clip.start,
+        aspectRatio: clip.aspectRatio || '9:16',
+        framingMode:
+          clip.framingMode ||
+          (isGaming
+            ? 'action-tracking'
+            : isMusic
+              ? 'rhythm-framing'
+              : 'smart-face'),
+        cropX: clip.cropX !== undefined ? clip.cropX : 50,
+        quality: '4k',
+        captions: clip.captions || [],
+        burnSubtitles: clip.captionMode !== 'off',
+        captionMode:
+          clip.captionMode ||
+          (isGaming ? 'english' : isMusic ? 'karaoke-glow' : 'dual-urdu-roman'),
+        normalizeAudio: true,
+        audioVolume: 1.0,
+        fadeIn: 0.5,
+        fadeOut: 0.5,
+        contentType: isGaming
+          ? 'gaming-gta'
+          : isMusic
+            ? 'music-songs'
+            : 'recitation-naat',
+        isGaming,
+        isMusic,
+      };
+
+      const res = await fetch('/api/video-shorts/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      clearInterval(progressTimer);
+
+      if (!res.ok) {
+        let errMsg = `Server render returned HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          errMsg = errJson.error || errMsg;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const sizeMb = (blob.size / (1024 * 1024)).toFixed(1);
+
+      // Update queue item to 100% SUCCESS
+      setDownloadQueue((prev) =>
+        prev.map((item) =>
+          item.id === taskId
+            ? {
+                ...item,
+                status: 'ready',
+                progress: 100,
+                stageMessage: `4K Render Complete (${sizeMb} MB)`,
+                blobUrl,
+                fileSizeMb: sizeMb,
+                error: null,
+              }
+            : item
+        )
+      );
+
+      // Cache rendered 4K URL on the clip itself
+      setClips((prev) =>
+        prev.map((c) =>
+          c.id === clip.id
+            ? {
+                ...c,
+                isRendered: true,
+                renderedUrl: blobUrl,
+                renderStatus: 'ready',
+              }
+            : c
+        )
+      );
+
+      // Auto-trigger direct short download
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${cleanName}_4K_Short.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      showSuccess(
+        '4K Short Downloaded!',
+        `Short #${clip.index || 1} (${sizeMb} MB) ready.`
+      );
+    } catch (err) {
+      clearInterval(progressTimer);
+      console.error('Short download render error:', err);
+      setDownloadQueue((prev) =>
+        prev.map((item) =>
+          item.id === taskId
+            ? {
+                ...item,
+                status: 'failed',
+                progress: 0,
+                stageMessage: 'Render failed',
+                error: err.message || 'Failed to render 4K short.',
+              }
+            : item
+        )
+      );
+      showToast(err.message || 'Failed to render 4K short.', 'error');
+    }
+  };
+
+  const handleDownloadQueueItem = (item, isRetry = false) => {
+    if (isRetry) {
+      const targetClip = clips.find((c) => c.id === item.clipId);
+      if (targetClip) {
+        handleDownloadClip(targetClip, true);
+      }
+      return;
+    }
+    if (item.blobUrl) {
+      const cleanName = (item.title || `Short_${item.clipIndex || 1}`)
+        .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+        .trim()
+        .replace(/\s+/g, '_');
+      const a = document.createElement('a');
+      a.href = item.blobUrl;
+      a.download = `${cleanName}_4K_Short.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showSuccess(
+        'Download Started',
+        `Downloading Short #${item.clipIndex || 1} (4K)...`
+      );
+    }
+  };
+
+  const handleDismissQueueItem = (itemId) => {
+    setDownloadQueue((prev) => prev.filter((i) => i.id !== itemId));
+  };
+
+  const handleClearCompletedQueue = () => {
+    setDownloadQueue((prev) => prev.filter((i) => i.status === 'rendering'));
   };
 
   // Download All as ZIP
@@ -947,7 +1525,14 @@ export function AIVideoShorts() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
+    <div
+      className={cn(
+        'w-full mx-auto space-y-6 transition-all duration-300',
+        viewState === 'editor'
+          ? 'max-w-full px-2 sm:px-4 lg:px-6 3xl:px-8'
+          : 'max-w-7xl 2xl:max-w-[1800px] 3xl:max-w-[2160px] 4xl:max-w-full'
+      )}
+    >
       {/* Top Header with Stepper Wizard and Top-Right Queue Badge */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-card/80 border border-border/70 backdrop-blur-sm shadow-xs">
         {/* Stepper Wizard Indicator */}
@@ -1108,6 +1693,7 @@ export function AIVideoShorts() {
           onResetVideo={handleResetVideo}
           settings={settings}
           onUpdateSettings={updateSettings}
+          onSelectGenre={handleSelectGenre}
           isProcessing={isProcessing}
           processingStatus={processingStatus}
           queueStatus={queueStatus}
@@ -1124,6 +1710,10 @@ export function AIVideoShorts() {
           clips={clips}
           thumbnailCandidates={thumbnailCandidates}
           generationDuration={totalCompletedTime}
+          downloadQueue={downloadQueue}
+          isGenerating={isProcessing && queueStatus === 'generating'}
+          currentStage={processingStatus}
+          currentProgress={uploadProgress}
           onOpenEditor={handleOpenEditor}
           onOpenFullVideo={handleOpenFullVideo}
           onDownloadClip={handleDownloadClip}
@@ -1139,8 +1729,12 @@ export function AIVideoShorts() {
         <StudioEditor
           videoSource={videoSource}
           clip={activeClip}
+          settings={settings}
+          contentType={settings.contentType || activeClip.contentType}
+          downloadQueue={downloadQueue}
           onBackToGallery={() => setViewState('gallery')}
           onRenderExport={handleEditorExport}
+          onDownloadClip={handleDownloadClip}
           onUpdateClip={(updatedClip) => {
             setClips((prev) =>
               prev.map((c) => (c.id === updatedClip.id ? updatedClip : c))
@@ -1161,6 +1755,14 @@ export function AIVideoShorts() {
         onClose={() => setIsExportOpen(false)}
         exportConfig={exportConfig}
         videoSource={videoSource}
+      />
+
+      {/* 4K Shorts Direct Download Queue Dock (Fixed Bottom-Right) */}
+      <ShortsDownloadQueueDock
+        queue={downloadQueue}
+        onDownloadItem={handleDownloadQueueItem}
+        onDismissItem={handleDismissQueueItem}
+        onClearCompleted={handleClearCompletedQueue}
       />
 
       {/* Frozen Bottom-Center Floating Queue Dock (Animatedly slides down and freezes at bottom center, fully mobile responsive) */}

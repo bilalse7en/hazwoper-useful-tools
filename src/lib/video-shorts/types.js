@@ -40,7 +40,7 @@ export const DURATION_PRESETS = [
     min: 30,
     max: 40,
     target: 35,
-    description: 'OpusClip Standard (Recommended)',
+    description: 'ALL USEFUL TOOLS High-Retention Standard (Recommended)',
   },
   {
     id: 'extended',
@@ -74,6 +74,20 @@ export const FRAMING_MODES = {
     description:
       'Auto-detects face & vocal lip movement, keeping active speaker centered with dynamic punchy framing.',
   },
+  ACTION_TRACKING: {
+    id: 'action-tracking',
+    name: 'Gameplay Action & Vehicle Tracking',
+    badge: 'GTA AI',
+    description:
+      'Tracks moving vehicles, stunt trajectories, explosions, and gameplay subjects without requiring facecam.',
+  },
+  RHYTHM_FRAMING: {
+    id: 'rhythm-framing',
+    name: 'Dynamic Rhythm & Beat Framing',
+    badge: 'MUSIC AI',
+    description:
+      'Dynamically scales and subtle-punches on beat drops and vocal climaxes for maximum music video vibe.',
+  },
   SMART_FACE: {
     id: 'smart-face',
     name: 'Smooth Face Tracking',
@@ -90,6 +104,13 @@ export const FRAMING_MODES = {
     name: 'Blurred Background Fill',
     description:
       'Full original video centered with an ambient blurred copy behind.',
+  },
+  GAMEPLAY_BLUR_BG: {
+    id: 'gameplay-blur-bg',
+    name: 'Gameplay Landscape with Blurred Ambient Fill',
+    badge: 'NO CROP',
+    description:
+      'Full 16:9 gameplay field-of-view preserved with HUD visible, bordered by ambient blurred background.',
   },
   SPLIT_SCREEN: {
     id: 'split-screen',
@@ -175,6 +196,88 @@ export const CAPTION_MODES = [
     badge: 'LATIN',
     description: 'Clean Roman Urdu phonetic subtitles',
   },
+  {
+    id: 'english',
+    label: 'English Viral Pop',
+    badge: 'GTA AI',
+    description: 'Dynamic word-by-word viral typography in Montserrat',
+  },
+  {
+    id: 'english-clean',
+    label: 'English Clean Minimal',
+    badge: 'MINIMAL',
+    description: 'Crisp minimal white captions with drop shadow',
+  },
+];
+
+export const GAMING_CAPTION_MODES = [
+  {
+    id: 'english',
+    label: 'English Viral Pop',
+    badge: 'RECOMMENDED',
+    description: 'Dynamic word-by-word viral typography in Montserrat',
+  },
+  {
+    id: 'english-clean',
+    label: 'English Clean Minimal',
+    badge: 'MINIMAL',
+    description: 'Crisp minimal captions with subtle drop shadow',
+  },
+  {
+    id: 'off',
+    label: 'Subtitles Off',
+    badge: 'OFF',
+    description: 'Clean gameplay export without any subtitles burned in',
+  },
+];
+
+export const MUSIC_CAPTION_MODES = [
+  {
+    id: 'karaoke-glow',
+    label: 'Karaoke Neon Glow (Active Word Glow)',
+    badge: 'RECOMMENDED',
+    description:
+      'Word-by-word active glow with cyan-to-pink gradient for songs',
+  },
+  {
+    id: 'kinetic-lyrics',
+    label: 'Kinetic Pop Lyrics',
+    badge: 'VIRAL',
+    description:
+      'Bouncing rhythm-synced typography synchronized to vocal hooks',
+  },
+  {
+    id: 'minimal-lyrics',
+    label: 'Minimalist Clean Lyrics',
+    badge: 'CLEAN',
+    description:
+      'Elegant centered song subtitle with subtle ambient drop shadow',
+  },
+  {
+    id: 'off',
+    label: 'Subtitles Off (Pure Music)',
+    badge: 'OFF',
+    description: 'No text overlays — pure cinematic music short',
+  },
+];
+
+export const QUALITY_PRESETS = [
+  {
+    id: '4k',
+    label: '4K Ultra HD (2160x3840)',
+    badge: '4K MASTER',
+    description: 'Pristine 4K 60fps master rendering with 65Mbps bitrate',
+    width: 2160,
+    height: 3840,
+  },
+  {
+    id: '1080p',
+    label: 'Full HD 1080p (1080x1920)',
+    badge: 'FHD',
+    description: 'High-definition 1080x1920 vertical format for fast export',
+    width: 1080,
+    height: 1920,
+  },
 ];
 
 export const TRANSLITERATION_STYLES = [
@@ -197,36 +300,40 @@ export const TRANSLITERATION_STYLES = [
 
 export const CONTENT_TYPES = [
   {
+    id: 'gaming-gta',
+    name: 'GTA & Gaming Action',
+    badge: '4K ACTION',
+    icon: 'Gamepad2',
+    color: 'purple',
+    description:
+      'Multimodal AI gameplay event detection (car chases, stunts, explosions, combat), vehicle tracking & bold English typography.',
+  },
+  {
     id: 'naat-recitation',
     name: 'Islamic Naat & Recitation',
-    badge: 'POPULAR',
+    badge: 'SACRED VERSE',
     icon: 'Moon',
+    color: 'emerald',
     description:
-      'Preserves complete recitation stanzas, zero verse truncation, Roman Urdu & Islamic viral hooks.',
+      'Preserves complete recitation stanzas, zero verse truncation, authentic Urdu Nastaliq & Islamic scenic B-Roll.',
+  },
+  {
+    id: 'music-songs',
+    name: 'Songs, Music & Viral Hooks',
+    badge: 'VIRAL CHORUS',
+    icon: 'Music',
+    color: 'pink',
+    description:
+      'Beat-drop alignment, catchy chorus & hook detection, word-by-word karaoke glow subtitles & rhythm cuts.',
   },
   {
     id: 'podcast-interview',
     name: 'Podcast & Interview',
-    badge: 'TRENDING',
+    badge: 'TALK',
     icon: 'Mic',
+    color: 'blue',
     description:
       'Active speaker tracking, punchy questions & answers, conversational hook retention.',
-  },
-  {
-    id: 'educational-lecture',
-    name: 'Educational & Tutorial',
-    badge: 'KNOWLEDGE',
-    icon: 'GraduationCap',
-    description:
-      'Clear concept breakdown, structured explanations, high visual and speech clarity.',
-  },
-  {
-    id: 'speech-motivational',
-    name: 'Motivational & Speech',
-    badge: 'VIRAL',
-    icon: 'Flame',
-    description:
-      'High vocal energy peaks, impactful emotional delivery, inspiring soundbites.',
   },
 ];
 
@@ -316,5 +423,5 @@ export const DEFAULT_STUDIO_SETTINGS = {
   normalizeAudio: true,
   audioVolume: 1.0,
   bgmVolume: 0.15,
-  exportQuality: 'high', // 'high' (1080p), 'medium' (720p)
+  exportQuality: '4k', // '4k' (2160x3840 Ultra HD), 'high' (1080p FHD), 'medium' (720p)
 };

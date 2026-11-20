@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase';
 import { blogPosts as staticBlogs } from '@/lib/blog-data';
 import { cn } from '@/lib/utils';
 import { MagneticCapsuleDock } from '@/components/ui/magnetic-capsule-dock';
+import { AdContainer } from '@/components/layout/ad-container';
 
 const POSTS_PER_PAGE = 9;
 
@@ -126,12 +127,12 @@ export default function BlogListPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <main className="flex-1 pb-24">
+      <div className="flex-1 pb-24">
         {/* Hero Section */}
         <section className="relative pt-10 sm:pt-14 md:pt-16 pb-10 sm:pb-12 overflow-hidden border-b border-border bg-card/10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.08),transparent_50%)] pointer-events-none" />
 
-          <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+          <div className="site-container relative">
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
               {/* Left Column: Heading & Description */}
               <div className="lg:col-span-7 space-y-4 sm:space-y-5">
@@ -214,7 +215,7 @@ export default function BlogListPage() {
         </section>
 
         {/* Blog Category Filter Dock */}
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl pt-8 pb-1">
+        <div className="site-container pt-8 pb-1">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/40">
             <MagneticCapsuleDock
               items={blogCategories}
@@ -238,10 +239,15 @@ export default function BlogListPage() {
           </div>
         </div>
 
+        {/* Centered Advertisement Below Filter */}
+        <div className="site-container">
+          <AdContainer position="top-banner" margin="tight" />
+        </div>
+
         {/* Blog Grid */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-10 sm:py-14">
+        <section className="site-container py-10 sm:py-14">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6">
               {Array(9)
                 .fill(0)
                 .map((_, i) => (
@@ -270,7 +276,7 @@ export default function BlogListPage() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 4xl:grid-cols-5 gap-5 sm:gap-6">
               {displayedBlogs.map((post, index) => (
                 <motion.div
                   key={post.slug}
@@ -389,7 +395,7 @@ export default function BlogListPage() {
         </section>
 
         {/* Newsletter / CTA */}
-        <section className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-10 sm:py-14">
+        <section className="site-container py-10 sm:py-14">
           <div className="relative rounded-2xl sm:rounded-3xl bg-slate-950 p-6 sm:p-8 md:p-10 overflow-hidden border border-white/10 shadow-2xl">
             <div className="absolute top-0 right-0 p-12 opacity-5 scale-125 rotate-12 pointer-events-none">
               <Sparkles className="w-48 h-48 text-white" />
@@ -424,7 +430,7 @@ export default function BlogListPage() {
             </div>
           </div>
         </section>
-      </main>
+      </div>
     </div>
   );
 }

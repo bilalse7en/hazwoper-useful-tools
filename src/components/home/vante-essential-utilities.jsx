@@ -1314,7 +1314,7 @@ export function VanteEssentialUtilities({ user, isGuest }) {
       `}</style>
 
       {/* Pinned Viewport Stage: Background freezes while page scroll drives animation */}
-      <main
+      <section
         ref={stageRef}
         className="sticky top-0 h-screen w-full overflow-hidden select-none"
         style={{
@@ -1405,7 +1405,7 @@ export function VanteEssentialUtilities({ user, isGuest }) {
             </Badge>
           </div>
         </header>
-      </main>
+      </section>
     </div>
   );
 }

@@ -12,7 +12,10 @@
  */
 
 import { parseDocxDocument, parsePdfDocument } from './doc-parser.js';
-import { buildCourseJson } from './schema-builder.js';
+import {
+  buildCourseJson,
+  ensureEmptyCourseTitleTopic,
+} from './schema-builder.js';
 import { validateCourseJson } from './validator.js';
 import { isFinalExamHeading } from './quiz-extractor.js';
 
@@ -630,7 +633,7 @@ export async function convertCourseFolderSequentially(
         : ensureLessonNumberPrefix(rawLessonTitle, lesNum);
 
       // Format topics with exact module and lesson bindings
-      const formattedTopics = (parsedData.topics || []).map((top, tIdx) => {
+      let formattedTopics = (parsedData.topics || []).map((top, tIdx) => {
         const topId = `top_${modNum}_${lesNum}_${tIdx + 1}`;
         return {
           ...top,
@@ -639,6 +642,15 @@ export async function convertCourseFolderSequentially(
           moduleId,
         };
       });
+
+      if (isLes0) {
+        formattedTopics = ensureEmptyCourseTitleTopic(
+          formattedTopics,
+          hierarchy.courseTitle || detectedHeaderCourseTitle || moduleTitle,
+          moduleId,
+          lessonId
+        );
+      }
 
       // Format knowledge check with unique sequential question IDs scoped to module and lesson
       const includeQuizzes = options.includeQuizzes !== false;

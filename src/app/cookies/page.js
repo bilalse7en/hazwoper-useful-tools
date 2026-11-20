@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { createPageMetadata } from '@/lib/seo';
+import { ContentContainer } from '@/components/layout/content-container';
+import { AdContainer } from '@/components/layout/ad-container';
 
 export const metadata = createPageMetadata({
   title: 'Cookie Policy | All Useful Tools',
@@ -10,24 +12,28 @@ export const metadata = createPageMetadata({
 
 export default function CookiePolicy() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
+    <div className="min-h-screen bg-background py-8 sm:py-12">
+      <ContentContainer size="default">
         {/* Header */}
         <div className="mb-8">
           <Link
             href="/"
-            className="text-primary hover:text-primary/80 transition-colors mb-4 inline-block"
+            className="text-primary hover:text-primary/80 transition-colors mb-4 inline-block font-bold text-xs"
           >
             ← Back to Home
           </Link>
-          <h1 className="text-4xl font-bold mb-4">Cookie Policy</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl sm:text-4xl font-black mb-2">
+            Cookie Policy
+          </h1>
+          <p className="text-muted-foreground text-xs font-semibold">
             Last Updated: February 3, 2026
           </p>
         </div>
 
+        <AdContainer position="top-banner" margin="tight" />
+
         {/* Content */}
-        <div className="prose prose-slate dark:prose-invert max-w-none space-y-6">
+        <div className="prose prose-slate dark:prose-invert max-w-none space-y-6 pt-4">
           <section>
             <h2 className="text-2xl font-semibold mb-3">What Are Cookies?</h2>
             <p>
@@ -395,7 +401,8 @@ export default function CookiePolicy() {
             </div>
           </section>
         </div>
-      </div>
+        <AdContainer position="footer" margin="spacious" />
+      </ContentContainer>
     </div>
   );
 }

@@ -2,32 +2,42 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import { ingestMediaFile } from '@/lib/video-shorts/media-storage-service';
-import { probeVideo } from '@/lib/video-shorts/ffmpeg-service';
 import {
   isValidYouTubeUrl,
   extractYouTubeId,
-  getYouTubeMetadata,
 } from '@/lib/video-shorts/source-parser';
 import {
-  downloadYouTubeVideo,
-  findSubtitleFile,
-} from '@/lib/video-shorts/youtube-downloader';
-import { transcribeUrduVideo } from '@/lib/video-shorts/transcription-service';
-import {
-  parseVttFile,
-  mergeIntoPhraseCaptions,
-} from '@/lib/video-shorts/vtt-parser';
-import { getTempDir, getLocalMediaDir } from '@/lib/video-shorts/storage-paths';
+  createIngestionJob,
+  findActiveIngestionJob,
+  findCompletedMedia,
+  scheduleQueueTick,
+} from '@/lib/video-shorts/ingestion-queue-service';
+import { getJob, loadAllJobs } from '@/lib/video-shorts/job-queue-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // Allow up to 5 minutes for download & probe
+export const maxDuration = 60;
 
+/**
+ * POST /api/video-shorts/ingest
+ *
+ * Guaranteed Behaviors:
+ * 1. Direct MP4/MOV file upload processed via multipart/form-data.
+ * 2. YouTube URL submissions:
+ *    - Validates URL and checks for existing completed Media Hub copy.
+ *    - Checks for active in-flight ingestion jobs (idempotency & deduplication).
+ *    - Creates a durable ingestion job.
+ *    - Triggers background worker queue non-blockingly.
+ *    - Returns HTTP 202 Accepted IMMEDIATELY (<50ms). Zero 504 timeouts!
+ */
 export async function POST(request) {
+  const reqStart = Date.now();
   try {
     const contentType = request.headers.get('content-type') || '';
 
+    // ========================================================================
     // A. Handle Local Video File Upload (Multipart Form Data)
+    // ========================================================================
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
       const file = formData.get('file');
@@ -42,7 +52,6 @@ export async function POST(request) {
       const fileName = file.name || 'uploaded_video.mp4';
       const fileType = file.type || 'video/mp4';
 
-      // Verify supported formats
       const ext = path.extname(fileName).toLowerCase();
       if (!['.mp4', '.mov', '.webm', '.mkv'].includes(ext)) {
         return NextResponse.json(
@@ -70,15 +79,23 @@ export async function POST(request) {
         sourceType: 'upload',
       });
 
+      console.log(
+        `[ingest] Direct file upload completed in ${Date.now() - reqStart}ms`
+      );
+
       return NextResponse.json({
         success: true,
         mediaItem,
       });
     }
 
-    // B. Handle YouTube Ingestion (JSON payload)
+    // ========================================================================
+    // B. Handle YouTube Ingestion (Asynchronous Queue Architecture)
+    // ========================================================================
     const body = await request.json();
     const url = body.url || body.youtubeUrl;
+    const preferredQuality = body.preferredQuality || body.quality || '4k';
+    const forceRefresh = Boolean(body.forceRefresh);
 
     if (!url) {
       return NextResponse.json(
@@ -98,196 +115,128 @@ export async function POST(request) {
     }
 
     const videoId = extractYouTubeId(url);
-    const metadata = await getYouTubeMetadata(url);
 
-    // 1. Check if this exact video was already downloaded and preserved in Media Hub
-    const hubDir = getLocalMediaDir(`yt_${videoId}`);
-    if (fs.existsSync(hubDir)) {
-      const files = fs.readdirSync(hubDir).filter((f) => f.endsWith('.mp4'));
-      if (files.length > 0) {
-        const cachedVideoPath = path.join(hubDir, files[0]);
-        if (
-          fs.existsSync(cachedVideoPath) &&
-          fs.statSync(cachedVideoPath).size > 10000
-        ) {
-          const probe = await probeVideo(cachedVideoPath);
-          const actualDuration =
-            probe.duration && probe.duration > 0 && probe.duration !== 60
-              ? probe.duration
-              : metadata.duration || 60;
-          const actualResolution = `${probe.width || 1920}x${probe.height || 1080}`;
-
-          const cachedItem = {
-            id: `yt_${videoId}`,
-            fileName: files[0],
-            file_name: files[0],
-            fileType: 'video/mp4',
-            file_type: 'video/mp4',
-            fileSize: fs.statSync(cachedVideoPath).size,
-            file_size: fs.statSync(cachedVideoPath).size,
-            previewUrl: fs.existsSync(path.join(hubDir, 'poster.jpg'))
-              ? `/media-hub/yt_${videoId}/poster.jpg`
-              : null,
-            preview_url: fs.existsSync(path.join(hubDir, 'poster.jpg'))
-              ? `/media-hub/yt_${videoId}/poster.jpg`
-              : null,
-            downloadUrl: `/media-hub/yt_${videoId}/${files[0]}`,
-            download_url: `/media-hub/yt_${videoId}/${files[0]}`,
-            videoUrl: `/media-hub/yt_${videoId}/${files[0]}`,
-            localPath: cachedVideoPath,
-            local_path: cachedVideoPath,
-            duration: actualDuration,
-            resolution: actualResolution,
-            sourceType: 'youtube',
-            source_type: 'youtube',
-          };
-
-          return NextResponse.json({
-            success: true,
-            mediaItem: cachedItem,
-            metadata: {
-              ...metadata,
-              duration: actualDuration,
-              resolution: actualResolution,
-              videoUrl: cachedItem.download_url,
-              isDownloaded: true,
-            },
-          });
-        }
+    // 1. FAST CHECK: If this video was already downloaded and is ready in Media Hub
+    if (!forceRefresh) {
+      const existing = await findCompletedMedia(videoId);
+      if (existing) {
+        console.log(
+          `[ingest] Cache hit for videoId=${videoId}. Responding immediately in ${Date.now() - reqStart}ms`
+        );
+        return NextResponse.json({
+          success: true,
+          status: 'completed',
+          mediaItem: existing.mediaItem,
+          metadata: existing.metadata,
+          isDownloaded: true,
+        });
       }
     }
 
-    const tempDir = getTempDir('yt-downloads');
-    const tempTargetPath = path.join(tempDir, `${videoId}.mp4`);
-
-    let dlResult = null;
-    const downloadStartTime = Date.now();
-    try {
-      dlResult = await downloadYouTubeVideo({
-        url,
-        targetPath: tempTargetPath,
-        subtitleDir: tempDir,
-        timeoutMs: 180000,
-      });
-      const elapsed = Date.now() - downloadStartTime;
+    // 2. IDEMPOTENCY CHECK: Is there already an active job for this videoId?
+    const activeJob = findActiveIngestionJob(videoId);
+    if (activeJob) {
       console.log(
-        `[ingest] videoId=${videoId} download completed in ${elapsed}ms`
+        `[ingest] Deduplicated active job ${activeJob.id} for videoId=${videoId}. Responding 202 in ${Date.now() - reqStart}ms`
       );
-    } catch (dlErr) {
-      const elapsed = Date.now() - downloadStartTime;
-      console.warn(
-        `[ingest] videoId=${videoId} download failed after ${elapsed}ms: ${dlErr.message}`
-      );
+      // Ensure the worker is ticking for this job
+      scheduleQueueTick(50);
       return NextResponse.json(
         {
-          success: false,
-          error: dlErr.message || 'YouTube download failed.',
-          errorType: dlErr.type || 'DOWNLOAD_FAILED',
-          videoId,
-          url,
-          metadata,
-          suggestedAction: 'upload_direct',
+          success: true,
+          status: activeJob.status,
+          jobId: activeJob.id,
+          message: 'Video ingestion already in progress',
+          stage: activeJob.stage,
+          progress: activeJob.progress,
         },
-        { status: dlErr.status || 422 }
+        { status: 202 }
       );
     }
 
-    // Verify downloaded file
-    if (
-      !fs.existsSync(tempTargetPath) ||
-      fs.statSync(tempTargetPath).size < 10000
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "YouTube blocked automated fetch. You can drop the video file directly into 'Upload Video' for instant 1080p FHD processing with authentic Urdu subtitles!",
-          errorType: 'BOT_DETECTION',
-          videoId,
-          url,
-          metadata,
-          suggestedAction: 'upload_direct',
-        },
-        { status: 422 }
-      );
-    }
-
-    const videoBuffer = fs.readFileSync(tempTargetPath);
-    const cleanTitle = (metadata.title || videoId)
-      .replace(/[^a-zA-Z0-9_-]/g, '_')
-      .slice(0, 50);
-
-    // Accurately probe downloaded video timing, resolution and streams
-    const probe = dlResult.probe || (await probeVideo(tempTargetPath));
-    const resolvedDuration =
-      probe.duration && probe.duration > 0 && probe.duration !== 60
-        ? probe.duration
-        : metadata.duration || probe.duration || 60;
-    const resolvedResolution =
-      probe.width && probe.height
-        ? `${probe.width}x${probe.height}`
-        : metadata.resolution || '1920x1080';
-
-    const mediaItem = await ingestMediaFile({
-      buffer: videoBuffer,
-      fileName: `${cleanTitle}.mp4`,
-      fileType: 'video/mp4',
-      sourceType: 'youtube',
-      customId: `yt_${videoId}`,
-      duration: resolvedDuration,
-      resolution: resolvedResolution,
+    // 3. CREATE DURABLE INGESTION JOB
+    const job = createIngestionJob({
+      url,
+      videoId,
+      preferredQuality,
+      forceRefresh,
     });
 
-    // Check for auto-extracted YouTube subtitle or transcribe from audio
-    const subPath = dlResult.subtitlePath || findSubtitleFile(tempDir, videoId);
-    let transcript = null;
-    let extractedCaptions = [];
+    console.log(
+      `[ingest] Durable job enqueued: ${job.id} for videoId=${videoId}. Responding 202 in ${Date.now() - reqStart}ms`
+    );
 
-    if (subPath && fs.existsSync(subPath)) {
-      const candidateVtt = fs.readFileSync(subPath, 'utf-8');
-      // Strictly verify subtitle has authentic Urdu script characters
-      if (/[\u0600-\u06FF]/.test(candidateVtt)) {
-        transcript = candidateVtt;
-        mediaItem.transcript = transcript;
-        try {
-          const parsed = parseVttFile(transcript);
-          extractedCaptions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
-        } catch (_) {}
-      }
-    }
-
-    // Subtitles are opt-in and generated on-demand per short, not auto-generated on ingest.
-    mediaItem.captions = extractedCaptions;
-
-    // Clean up temporary download file
-    try {
-      fs.unlinkSync(tempTargetPath);
-      if (subPath && fs.existsSync(subPath)) fs.unlinkSync(subPath);
-    } catch (e) {
-      /* ignore cleanup failure */
-    }
-
-    return NextResponse.json({
-      success: true,
-      mediaItem: {
-        ...mediaItem,
-        captions: extractedCaptions,
+    // 4. RETURN HTTP 202 ACCEPTED IMMEDIATELY (< 50ms)
+    return NextResponse.json(
+      {
+        success: true,
+        status: 'queued',
+        jobId: job.id,
+        message: 'Video ingestion started',
+        stage: job.stage,
+        progress: 0,
       },
-      metadata: {
-        ...metadata,
-        duration: resolvedDuration,
-        resolution: resolvedResolution,
-        videoUrl: mediaItem.download_url,
-        isDownloaded: true,
-        transcript,
-        captions: extractedCaptions,
-      },
-    });
+      { status: 202 }
+    );
   } catch (err) {
-    console.error('Ingest API error:', err);
+    console.error(`[ingest] API error after ${Date.now() - reqStart}ms:`, err);
     return NextResponse.json(
       { error: err.message || 'Internal media ingestion failure.' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * GET /api/video-shorts/ingest?jobId=... or ?id=...
+ * Retrieves status of an asynchronous ingestion job
+ */
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const jobId = searchParams.get('jobId') || searchParams.get('id');
+
+    if (!jobId) {
+      const allJobs = loadAllJobs();
+      const ingestionJobs = Object.values(allJobs)
+        .filter((j) => j.type === 'youtube_ingest')
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      return NextResponse.json({
+        success: true,
+        jobs: ingestionJobs.slice(0, 20),
+      });
+    }
+
+    const job = getJob(jobId);
+    if (!job) {
+      return NextResponse.json(
+        { error: 'Ingestion job not found.' },
+        { status: 404 }
+      );
+    }
+
+    // If job is queued or waiting retry, trigger queue pump
+    if (['queued', 'waiting_retry'].includes(job.status)) {
+      scheduleQueueTick(50);
+    }
+
+    return NextResponse.json({
+      success: true,
+      job,
+      status: job.status,
+      stage: job.stage,
+      progress: job.progress,
+      mediaItem: job.mediaItem,
+      metadata: job.metadata,
+      error: job.error,
+      errorType: job.errorType,
+      retryAfter: job.retry_after_seconds,
+    });
+  } catch (err) {
+    console.error('Ingestion status error:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

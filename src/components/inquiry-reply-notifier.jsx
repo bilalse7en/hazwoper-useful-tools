@@ -92,7 +92,13 @@ export function InquiryReplyNotifier() {
         setVisible(false);
       }
     } catch (err) {
-      console.warn('[InquiryReplyNotifier] Check notice:', err);
+      // Graceful fail-safe for transient network hiccups (e.g. dev reload, offline, or server restarting)
+      if (process.env.NODE_ENV === 'development' && err?.name !== 'TypeError') {
+        console.debug(
+          '[InquiryReplyNotifier] Background sync status:',
+          err?.message || err
+        );
+      }
     }
   }, []);
 

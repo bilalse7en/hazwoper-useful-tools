@@ -45,6 +45,7 @@ import {
   FilePlus,
   CheckSquare,
   BookOpen,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,7 @@ import { cn } from '@/lib/utils';
 import { loadPdfJs } from '@/lib/pdf-js-loader';
 import {
   convertDocumentToCourseJson,
+  convertPptxToCourseJson,
   validateCourseJson,
   buildCourseJson,
   enhanceAndCleanCourseJson,
@@ -93,7 +95,7 @@ export default function CourseJsonConverter() {
   const [mode, setMode] = useState('folder');
   const [includeImages, setIncludeImages] = useState(false);
   const [includeQuizzes, setIncludeQuizzes] = useState(true);
-  const [showSourceColumn, setShowSourceColumn] = useState(true);
+  const [showSourceColumn, setShowSourceColumn] = useState(false);
   const [showSourceSection, setShowSourceSection] = useState(true);
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -138,6 +140,15 @@ export default function CourseJsonConverter() {
   const [courseTitleOverride, setCourseTitleOverride] = useState('');
   const [moduleTitleOverride, setModuleTitleOverride] = useState('');
   const [lessonTitleOverride, setLessonTitleOverride] = useState('');
+
+  // Course, Module, Lesson Rename States
+  const [isEditingCourseTitle, setIsEditingCourseTitle] = useState(false);
+  const [editedCourseTitle, setEditedCourseTitle] = useState('');
+  const [editingModuleId, setEditingModuleId] = useState(null);
+  const [editedModuleTitle, setEditedModuleTitle] = useState('');
+  const [editingLessonId, setEditingLessonId] = useState(null);
+  const [editedLessonTitle, setEditedLessonTitle] = useState('');
+  const [showStructureModal, setShowStructureModal] = useState(false);
 
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -347,7 +358,23 @@ export default function CourseJsonConverter() {
         setCourseTitleOverride(res.courseJson.course_title);
       }
 
-      setSelectedTopicIndex(0);
+      if (res.validation?.duplicateSlideAlerts?.length > 0) {
+        setActiveTab('hierarchy');
+        const firstDup = res.validation.duplicateSlideAlerts[0];
+        const flatTops = (res.courseJson.modules || []).flatMap((m) =>
+          (m.lessons || []).flatMap((l) => l.topics || [])
+        );
+        const dupIdx = flatTops.findIndex(
+          (t) =>
+            t.id === firstDup.topicId ||
+            (t.name?.trim().toLowerCase() ===
+              firstDup.topicName?.trim().toLowerCase() &&
+              t.lessonId === firstDup.lessonId)
+        );
+        setSelectedTopicIndex(dupIdx >= 0 ? dupIdx : 0);
+      } else {
+        setSelectedTopicIndex(0);
+      }
       setProcessStep('Whole course conversion completed!');
 
       // Detect separate Introduction and Learning Objectives slides across all numbered lessons
@@ -420,7 +447,23 @@ export default function CourseJsonConverter() {
             );
           }
 
-          setSelectedTopicIndex(0);
+          if (res.validation?.duplicateSlideAlerts?.length > 0) {
+            setActiveTab('hierarchy');
+            const firstDup = res.validation.duplicateSlideAlerts[0];
+            const flatTops = (res.courseJson.modules || []).flatMap((m) =>
+              (m.lessons || []).flatMap((l) => l.topics || [])
+            );
+            const dupIdx = flatTops.findIndex(
+              (t) =>
+                t.id === firstDup.topicId ||
+                (t.name?.trim().toLowerCase() ===
+                  firstDup.topicName?.trim().toLowerCase() &&
+                  t.lessonId === firstDup.lessonId)
+            );
+            setSelectedTopicIndex(dupIdx >= 0 ? dupIdx : 0);
+          } else {
+            setSelectedTopicIndex(0);
+          }
           setProcessStep('Course JSON imported successfully!');
           showToast(
             'Course JSON file successfully imported and normalized with 100% Schema Health!'
@@ -486,7 +529,23 @@ export default function CourseJsonConverter() {
         );
       }
 
-      setSelectedTopicIndex(0);
+      if (res.validation?.duplicateSlideAlerts?.length > 0) {
+        setActiveTab('hierarchy');
+        const firstDup = res.validation.duplicateSlideAlerts[0];
+        const flatTops = (res.courseJson.modules || []).flatMap((m) =>
+          (m.lessons || []).flatMap((l) => l.topics || [])
+        );
+        const dupIdx = flatTops.findIndex(
+          (t) =>
+            t.id === firstDup.topicId ||
+            (t.name?.trim().toLowerCase() ===
+              firstDup.topicName?.trim().toLowerCase() &&
+              t.lessonId === firstDup.lessonId)
+        );
+        setSelectedTopicIndex(dupIdx >= 0 ? dupIdx : 0);
+      } else {
+        setSelectedTopicIndex(0);
+      }
       setProcessStep('Conversion completed!');
 
       // Detect separate Introduction and Learning Objectives slides in numbered lessons
@@ -505,6 +564,439 @@ export default function CourseJsonConverter() {
       );
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Rename Course Title
+  const handleUpdateCourseTitle = (newTitle) => {
+    if (!courseJson) return;
+    const clean = (newTitle || '').trim();
+    if (!clean) return;
+
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    const oldTitle = updated.course_title;
+    updated.course_title = clean;
+
+    if (updated.modules && updated.modules.length > 0) {
+      const firstMod = updated.modules[0];
+      if (
+        firstMod.module_id === 'mod_0' ||
+        firstMod.module_title === oldTitle ||
+        updated.modules.length === 1
+      ) {
+        firstMod.module_title = clean;
+      }
+      const firstLesson = firstMod.lessons?.[0];
+      if (firstLesson && firstLesson.topics?.length > 0) {
+        const firstTopic = firstLesson.topics[0];
+        if (
+          firstTopic.name === oldTitle ||
+          !firstTopic.leftDiv?.editorHtml?.replace(/<[^>]*>/g, '').trim()
+        ) {
+          firstTopic.name = clean;
+          firstTopic.headingContent = clean;
+        }
+      }
+    }
+
+    setCourseTitleOverride(clean);
+    setCourseJson(updated);
+    setIsEditingCourseTitle(false);
+    showToast(`Course renamed to "${clean}"`);
+  };
+
+  // Rename Module Title
+  const handleUpdateModuleTitle = (moduleId, newTitle) => {
+    if (!courseJson) return;
+    const clean = (newTitle || '').trim();
+    if (!clean) return;
+
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    const mod = (updated.modules || []).find((m) => m.module_id === moduleId);
+    if (!mod) return;
+
+    mod.module_title = clean;
+    setCourseJson(updated);
+    setEditingModuleId(null);
+    setEditedModuleTitle('');
+    showToast(`Module updated to "${clean}"`);
+  };
+
+  // Rename Lesson Title
+  const handleUpdateLessonTitle = (lessonId, newTitle) => {
+    if (!courseJson) return;
+    const clean = (newTitle || '').trim();
+    if (!clean) return;
+
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    let found = false;
+    for (const mod of updated.modules || []) {
+      for (const les of mod.lessons || []) {
+        if (les.lesson_id === lessonId) {
+          les.lesson_title = clean;
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    if (found) {
+      setCourseJson(updated);
+      setEditingLessonId(null);
+      setEditedLessonTitle('');
+      showToast(`Lesson renamed to "${clean}"`);
+    }
+  };
+
+  // State & handlers for comprehensive Structure & Titles Modal
+  const [structureModalData, setStructureModalData] = useState(null);
+
+  const handleOpenStructureModal = () => {
+    if (!courseJson) return;
+    setStructureModalData({
+      courseTitle: courseJson.course_title || '',
+      modules: (courseJson.modules || []).map((m) => ({
+        module_id: m.module_id,
+        module_title: m.module_title,
+        lessons: (m.lessons || []).map((l) => ({
+          lesson_id: l.lesson_id,
+          lesson_title: l.lesson_title,
+        })),
+      })),
+    });
+    setShowStructureModal(true);
+  };
+
+  const handleSaveAllStructure = (newCourseTitle, updatedModules) => {
+    if (!courseJson) return;
+    const cleanCourse =
+      (newCourseTitle || '').trim() || courseJson.course_title;
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    const oldTitle = updated.course_title;
+    updated.course_title = cleanCourse;
+
+    if (Array.isArray(updatedModules)) {
+      updatedModules.forEach((modEdit) => {
+        const targetMod = (updated.modules || []).find(
+          (m) => m.module_id === modEdit.module_id
+        );
+        if (targetMod) {
+          if (modEdit.module_title) {
+            targetMod.module_title = modEdit.module_title.trim();
+          }
+          if (Array.isArray(modEdit.lessons)) {
+            modEdit.lessons.forEach((lesEdit) => {
+              const targetLes = (targetMod.lessons || []).find(
+                (l) => l.lesson_id === lesEdit.lesson_id
+              );
+              if (targetLes && lesEdit.lesson_title) {
+                targetLes.lesson_title = lesEdit.lesson_title.trim();
+              }
+            });
+          }
+        }
+      });
+    }
+
+    // Synchronize Module 0 and Lesson 0 title slide
+    if (updated.modules && updated.modules.length > 0) {
+      const firstMod = updated.modules[0];
+      if (
+        firstMod.module_id === 'mod_0' ||
+        firstMod.module_title === oldTitle ||
+        updated.modules.length === 1
+      ) {
+        firstMod.module_title = cleanCourse;
+      }
+      const firstLesson = firstMod.lessons?.[0];
+      if (firstLesson && firstLesson.topics?.length > 0) {
+        const firstTopic = firstLesson.topics[0];
+        if (
+          firstTopic.name === oldTitle ||
+          !firstTopic.leftDiv?.editorHtml?.replace(/<[^>]*>/g, '').trim()
+        ) {
+          firstTopic.name = cleanCourse;
+          firstTopic.headingContent = cleanCourse;
+        }
+      }
+    }
+
+    const val = validateCourseJson(updated);
+    setCourseJson(updated);
+    setValidation(val);
+    setCourseTitleOverride(cleanCourse);
+    setShowStructureModal(false);
+    showToast('Course structure & titles successfully updated!');
+  };
+
+  // State & Handlers for Manual Add Slide & Delete Slide
+  const [showAddSlideModal, setShowAddSlideModal] = useState(false);
+  const [addSlideTargetTopicIndex, setAddSlideTargetTopicIndex] = useState(0);
+  const [newSlideTitle, setNewSlideTitle] = useState('');
+  const [newSlidePosition, setNewSlidePosition] = useState('after'); // 'after' | 'before' | 'end'
+  const [newSlideContent, setNewSlideContent] = useState('');
+
+  const handleOpenAddSlideModal = (targetIndex) => {
+    setAddSlideTargetTopicIndex(targetIndex ?? selectedTopicIndex);
+    setNewSlideTitle('');
+    setNewSlidePosition('after');
+    setNewSlideContent('');
+    setShowAddSlideModal(true);
+  };
+
+  const handleDeleteTopic = (targetTopicIndex) => {
+    if (!courseJson) return;
+    const topicToDelete = allTopics[targetTopicIndex];
+    if (!topicToDelete) return;
+
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        `Are you sure you want to delete slide "${topicToDelete.name}"? This will renumber subsequent slides and update course duration.`
+      )
+    ) {
+      return;
+    }
+
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    let found = false;
+
+    for (const mod of updated.modules || []) {
+      for (const les of mod.lessons || []) {
+        const tIdx = (les.topics || []).findIndex(
+          (t) => t.id === topicToDelete.id
+        );
+        if (tIdx >= 0) {
+          les.topics.splice(tIdx, 1);
+          // Re-sequence topic IDs in this lesson
+          les.topics.forEach((top, idx) => {
+            top.id = `${les.lesson_id}_${idx + 1}`.replace(/^les_/, 'top_');
+            top.lessonId = les.lesson_id;
+            top.moduleId = mod.module_id;
+          });
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    if (found) {
+      // Recalculate duration
+      let totalSlidesSeconds = 0;
+      let totalKcSeconds = 0;
+      const lessonsDurationArray = [];
+      (updated.modules || []).forEach((mod) => {
+        (mod.lessons || []).forEach((les) => {
+          let lesSlideSec = 0;
+          (les.topics || []).forEach((top) => {
+            lesSlideSec += Number(top.allocated_duration_seconds) || 30;
+          });
+          const kcSec = (les.knowledge_check || []).length * 60;
+          totalSlidesSeconds += lesSlideSec;
+          totalKcSeconds += kcSec;
+          lessonsDurationArray.push({
+            lesson_id: les.lesson_id,
+            slides_seconds: lesSlideSec,
+            knowledge_check_seconds: kcSec,
+            total_seconds: lesSlideSec + kcSec,
+          });
+        });
+      });
+      const finalExamSeconds =
+        (updated.final_exam?.questions?.length || 0) * 60;
+      const grandTotal = totalSlidesSeconds + totalKcSeconds + finalExamSeconds;
+      updated.total_duration_seconds = grandTotal;
+      updated.planned_duration_seconds = grandTotal;
+      if (updated.duration) {
+        updated.duration.total_seconds = grandTotal;
+        updated.duration.slides_seconds = totalSlidesSeconds;
+        updated.duration.knowledge_check_seconds = totalKcSeconds;
+        updated.duration.final_exam_seconds = finalExamSeconds;
+        updated.duration.lessons = lessonsDurationArray;
+      }
+
+      const val = validateCourseJson(updated);
+      setCourseJson(updated);
+      setValidation(val);
+      setSelectedTopicIndex((prev) =>
+        Math.max(0, Math.min(prev, allTopics.length - 2))
+      );
+      showToast(`Deleted slide "${topicToDelete.name}" successfully.`);
+    }
+  };
+
+  const handleExecuteAddSlide = () => {
+    if (!courseJson) return;
+    const cleanTitle = (newSlideTitle || '').trim() || 'New Topic';
+    const referenceTopic = allTopics[addSlideTargetTopicIndex] || allTopics[0];
+    if (!referenceTopic) return;
+
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    let foundLesson = null;
+    let foundMod = null;
+    let foundTIdx = -1;
+
+    for (const mod of updated.modules || []) {
+      for (const les of mod.lessons || []) {
+        const idx = (les.topics || []).findIndex(
+          (t) => t.id === referenceTopic.id
+        );
+        if (idx >= 0) {
+          foundLesson = les;
+          foundMod = mod;
+          foundTIdx = idx;
+          break;
+        }
+      }
+      if (foundLesson) break;
+    }
+
+    if (!foundLesson) return;
+
+    const formattedContent = newSlideContent.trim()
+      ? wrapInLmsContainer(newSlideContent.trim())
+      : '<div class="lms-content"><p>' + cleanTitle + ' content...</p></div>';
+
+    const newTopic = {
+      id: `${foundLesson.lesson_id}_new`,
+      name: cleanTitle,
+      headingContent: cleanTitle,
+      selectedTemplate: 1,
+      lessonId: foundLesson.lesson_id,
+      moduleId: foundMod.module_id,
+      slide_type: 'content',
+      allocated_duration_seconds: 30,
+      topicDuration: 30,
+      image_source: '',
+      image_code: '',
+      image_prompt: '',
+      has_embedded_image: false,
+      datatime: '0',
+      captions: [],
+      narration_script: '',
+      leftDiv: {
+        audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
+        image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+        video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
+        width: 'col-12',
+        editor: formattedContent,
+        editorHtml: formattedContent,
+        editorSaved: formattedContent,
+        editorHtmlSaved: formattedContent,
+        captureTime: [],
+        mediaDuration: 0,
+        isEditorSelected: false,
+        mediaCurrentTime: 0,
+      },
+      rightDiv: {
+        audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
+        image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+        video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
+        width: 'col-12',
+        editor: '',
+        editorHtml: '',
+        editorSaved: '',
+        editorHtmlSaved: '',
+        captureTime: [],
+        mediaDuration: 0,
+        isEditorSelected: false,
+        mediaCurrentTime: 0,
+      },
+    };
+
+    if (newSlidePosition === 'before') {
+      foundLesson.topics.splice(foundTIdx, 0, newTopic);
+    } else if (newSlidePosition === 'end') {
+      foundLesson.topics.push(newTopic);
+    } else {
+      // 'after'
+      foundLesson.topics.splice(foundTIdx + 1, 0, newTopic);
+    }
+
+    // Re-sequence topic IDs in lesson
+    foundLesson.topics.forEach((top, idx) => {
+      top.id = `${foundLesson.lesson_id}_${idx + 1}`.replace(/^les_/, 'top_');
+      top.lessonId = foundLesson.lesson_id;
+      top.moduleId = foundMod.module_id;
+    });
+
+    // Recalculate duration
+    let totalSlidesSeconds = 0;
+    let totalKcSeconds = 0;
+    const lessonsDurationArray = [];
+    (updated.modules || []).forEach((mod) => {
+      (mod.lessons || []).forEach((les) => {
+        let lesSlideSec = 0;
+        (les.topics || []).forEach((top) => {
+          lesSlideSec += Number(top.allocated_duration_seconds) || 30;
+        });
+        const kcSec = (les.knowledge_check || []).length * 60;
+        totalSlidesSeconds += lesSlideSec;
+        totalKcSeconds += kcSec;
+        lessonsDurationArray.push({
+          lesson_id: les.lesson_id,
+          slides_seconds: lesSlideSec,
+          knowledge_check_seconds: kcSec,
+          total_seconds: lesSlideSec + kcSec,
+        });
+      });
+    });
+    const finalExamSeconds = (updated.final_exam?.questions?.length || 0) * 60;
+    const grandTotal = totalSlidesSeconds + totalKcSeconds + finalExamSeconds;
+    updated.total_duration_seconds = grandTotal;
+    updated.planned_duration_seconds = grandTotal;
+    if (updated.duration) {
+      updated.duration.total_seconds = grandTotal;
+      updated.duration.slides_seconds = totalSlidesSeconds;
+      updated.duration.knowledge_check_seconds = totalKcSeconds;
+      updated.duration.final_exam_seconds = finalExamSeconds;
+      updated.duration.lessons = lessonsDurationArray;
+    }
+
+    const val = validateCourseJson(updated);
+    setCourseJson(updated);
+    setValidation(val);
+    setShowAddSlideModal(false);
+
+    // Find the new global index of the inserted topic
+    const newAllTopics = (updated.modules || []).flatMap((m) =>
+      (m.lessons || []).flatMap((l) => l.topics || [])
+    );
+    const newIdx = newAllTopics.findIndex((t) => t.name === cleanTitle);
+    if (newIdx >= 0) setSelectedTopicIndex(newIdx);
+
+    showToast(`Added new slide "${cleanTitle}" successfully!`);
+  };
+
+  const handleRenameSlide = (targetTopicIndex, newName) => {
+    if (!courseJson) return;
+    const clean = (newName || '').trim();
+    if (!clean) return;
+    const targetTopic = allTopics[targetTopicIndex];
+    if (!targetTopic) return;
+
+    const updated = JSON.parse(JSON.stringify(courseJson));
+    let found = false;
+    for (const mod of updated.modules || []) {
+      for (const les of mod.lessons || []) {
+        const top = (les.topics || []).find((t) => t.id === targetTopic.id);
+        if (top) {
+          top.name = clean;
+          top.headingContent = clean;
+          found = true;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    if (found) {
+      const val = validateCourseJson(updated);
+      setCourseJson(updated);
+      setValidation(val);
+      showToast(`Slide renamed to "${clean}"`);
     }
   };
 
@@ -807,6 +1299,16 @@ export default function CourseJsonConverter() {
     allTopics[0] ||
     null;
 
+  const isCurrentTopicDuplicate = useMemo(() => {
+    if (!validation?.duplicateSlideAlerts || !activeTopic) return false;
+    return validation.duplicateSlideAlerts.some(
+      (d) =>
+        d.topicId === activeTopic.id ||
+        (d.topicName?.toLowerCase() === activeTopic.name?.toLowerCase() &&
+          d.lessonId === activeTopic.lessonId)
+    );
+  }, [validation?.duplicateSlideAlerts, activeTopic]);
+
   // Compute quiz question count for active lesson in topic inspector
   const currentLessonQuizCount = useMemo(() => {
     if (!activeTopic || !courseJson?.modules) return 0;
@@ -824,8 +1326,23 @@ export default function CourseJsonConverter() {
   const displayedTopicHtml = useMemo(() => {
     if (!activeTopic) return '<p>No content</p>';
     const baseHtml = activeTopic.leftDiv?.editorHtml || '<p>No content</p>';
+    const hasTailwind =
+      baseHtml.includes('bg-[') ||
+      baseHtml.includes('text-[') ||
+      baseHtml.includes('grid') ||
+      baseHtml.includes('flex') ||
+      baseHtml.includes('rounded-') ||
+      baseHtml.includes('bg-') ||
+      baseHtml.includes('#EEF1F4') ||
+      baseHtml.includes('#E8761C') ||
+      baseHtml.includes('pptx-') ||
+      baseHtml.includes('style=');
+
     if (!includeImages) {
-      return wrapInLmsContainer(baseHtml, { stripImages: true });
+      return wrapInLmsContainer(baseHtml, {
+        stripImages: true,
+        preserveTailwind: hasTailwind,
+      });
     }
     return baseHtml;
   }, [activeTopic, includeImages]);
@@ -844,8 +1361,17 @@ export default function CourseJsonConverter() {
   const handleSaveTopicChanges = () => {
     if (!courseJson || !activeTopic) return;
 
+    const hasTailwind =
+      editedTopicHtml.includes('bg-[') ||
+      editedTopicHtml.includes('text-[') ||
+      editedTopicHtml.includes('grid') ||
+      editedTopicHtml.includes('flex') ||
+      editedTopicHtml.includes('rounded-') ||
+      editedTopicHtml.includes('bg-');
+
     const sanitizedHtml = wrapInLmsContainer(editedTopicHtml, {
       stripImages: !includeImages,
+      preserveTailwind: hasTailwind,
     });
     const newDuration = calculateTopicDuration(sanitizedHtml);
     const newName = (editedTopicName || '').trim() || activeTopic.name;
@@ -1053,6 +1579,23 @@ export default function CourseJsonConverter() {
       if (res.success && res.courseJson) {
         setCourseJson(res.courseJson);
         setValidation(res.validation);
+        if (res.validation?.duplicateSlideAlerts?.length > 0) {
+          setActiveTab('hierarchy');
+          const firstDup = res.validation.duplicateSlideAlerts[0];
+          const flatTops = (res.courseJson.modules || []).flatMap((m) =>
+            (m.lessons || []).flatMap((l) => l.topics || [])
+          );
+          const dupIdx = flatTops.findIndex(
+            (t) =>
+              t.id === firstDup.topicId ||
+              (t.name?.trim().toLowerCase() ===
+                firstDup.topicName?.trim().toLowerCase() &&
+                t.lessonId === firstDup.lessonId)
+          );
+          setSelectedTopicIndex(dupIdx >= 0 ? dupIdx : 0);
+        } else {
+          setSelectedTopicIndex(0);
+        }
         setEnhanceSuccessMessage(
           'JSON enhanced & cleaned! Module 0: Introduction rules applied, lessons formatted, slide titles & file codes purged, clean HTML verified.'
         );
@@ -1133,8 +1676,8 @@ export default function CourseJsonConverter() {
   const handleSmartFileUpload = async (selectedFile) => {
     if (!selectedFile) return;
 
-    // Direct JSON upload always loads/enhances via handleSingleFileUpload
-    if (/\.json$/i.test(selectedFile.name)) {
+    // Direct JSON and PPT upload always loads via handleSingleFileUpload
+    if (/\.(json|pptx|ppt)$/i.test(selectedFile.name)) {
       return handleSingleFileUpload(selectedFile);
     }
 
@@ -1538,62 +2081,192 @@ export default function CourseJsonConverter() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 py-6 px-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
+    <div className="w-full max-w-[1600px] mx-auto space-y-6 py-6 px-4 sm:px-6 lg:px-8">
+      {/* Hidden file inputs available globally across full-width studio */}
+      <input
+        ref={folderInputRef}
+        type="file"
+        webkitdirectory="true"
+        directory="true"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFolderUpload(e.target.files)}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".docx,.doc,.pdf,.json,.pptx,.ppt"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files;
+          if (!files || files.length === 0) return;
+          if (files.length > 1) {
+            handleFolderUpload(files);
+          } else {
+            handleSmartFileUpload(files[0]);
+          }
+        }}
+      />
+      <input
+        ref={jsonFileInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files[0]) {
+            handleSingleFileUpload(files[0]);
+          }
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={lessonAddInputRef}
+        type="file"
+        accept=".docx,.doc,.pdf,.pptx,.ppt"
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files[0]) handleSmartFileUpload(files[0]);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={finalExamUploadInputRef}
+        type="file"
+        accept=".docx,.doc,.pdf,.pptx,.ppt"
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files[0]) handleSmartFileUpload(files[0]);
+          e.target.value = '';
+        }}
+      />
+
+      {/* Header & Command Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <FileCode className="h-6 w-6" />
-            </span>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              LMS Course JSON Converter
-            </h1>
-            <Badge
-              variant="outline"
-              className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300"
-            >
-              Multi-Module & Folder Ready
-            </Badge>
-          </div>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Convert an entire course folder with multiple modules & lessons (or
-            single files) into the exact LMS schema. Automatic sequencing, clean
-            HTML sanitization, assessment isolation, and 14-point validation.
-          </p>
+          {courseJson ? (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <FileCode className="h-6 w-6" />
+                </span>
+
+                {isEditingCourseTitle ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editedCourseTitle}
+                      onChange={(e) => setEditedCourseTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.isComposing || e.keyCode === 229) return;
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleUpdateCourseTitle(editedCourseTitle);
+                        } else if (e.key === 'Escape') {
+                          setIsEditingCourseTitle(false);
+                        }
+                      }}
+                      className="h-9 text-lg sm:text-xl font-bold w-64 sm:w-96"
+                      placeholder="Enter course name..."
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      className="h-9 px-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                      onClick={() => handleUpdateCourseTitle(editedCourseTitle)}
+                      title="Save Course Name"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 px-2 text-slate-500"
+                      onClick={() => setIsEditingCourseTitle(false)}
+                      title="Cancel"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="group flex items-center gap-2 cursor-pointer"
+                    onClick={() => {
+                      setEditedCourseTitle(courseJson.course_title || '');
+                      setIsEditingCourseTitle(true);
+                    }}
+                    title="Click to rename course"
+                  >
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                      {courseJson.course_title || 'Untitled Course'}
+                    </h1>
+                    <span className="p-1 rounded-md text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 dark:group-hover:bg-blue-950/50 transition-colors">
+                      <Edit3 className="h-4 w-4" />
+                    </span>
+                  </div>
+                )}
+
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 font-mono"
+                >
+                  {courseJson.course_id || 'course_1'}
+                </Badge>
+              </div>
+
+              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 flex-wrap">
+                <span>{courseJson.modules?.length || 0} Modules</span>
+                <span>•</span>
+                <span>{allLessons.length} Total Lessons</span>
+                <span>•</span>
+                <span>{allTopics.length} Slides</span>
+                <span>•</span>
+                <span className="text-emerald-600 font-semibold">
+                  100% Valid LMS Schema
+                </span>
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <FileCode className="h-6 w-6" />
+                </span>
+                <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  LMS Course Studio &amp; Normalizer
+                </h1>
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300"
+                >
+                  Production Ready
+                </Badge>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Batch convert full course folders, standalone lessons (.docx /
+                .pdf), or sanitize raw JSON into verified LMS schemas with
+                14-point audit validation.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Toggle Conversion Source Column */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSourceColumn((prev) => !prev)}
-            className={cn(
-              'gap-1.5 text-xs font-semibold',
-              !showSourceColumn
-                ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 shadow-2xs'
-                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-            )}
-            title={
-              showSourceColumn
-                ? 'Hide Conversion Source Column'
-                : 'Show Conversion Source Column'
-            }
-          >
-            {showSourceColumn ? (
-              <>
-                <PanelLeftClose className="h-3.5 w-3.5" />
-                Hide Source Column
-              </>
-            ) : (
-              <>
-                <PanelLeftOpen className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                Show Source Column
-              </>
-            )}
-          </Button>
+          {courseJson && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleOpenStructureModal}
+              className="gap-1.5 text-xs font-semibold border-blue-300 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 shadow-2xs"
+              title="Edit Course Name, Module Names, and Lesson Names in one place"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              Edit Structure &amp; Titles
+            </Button>
+          )}
 
           <Button
             variant="outline"
@@ -1630,17 +2303,8 @@ export default function CourseJsonConverter() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleReset}
-                className="gap-1.5 text-xs"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Convert Another
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={handleCopy}
-                className="gap-1.5"
+                className="gap-1.5 text-xs font-semibold"
               >
                 {copied ? (
                   <Check className="h-4 w-4 text-emerald-600" />
@@ -1652,10 +2316,20 @@ export default function CourseJsonConverter() {
               <Button
                 size="sm"
                 onClick={handleDownload}
-                className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs"
               >
                 <Download className="h-4 w-4" />
                 Download Complete JSON
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                className="gap-1.5 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                title="Reset workspace and convert another course"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                New Course
               </Button>
             </>
           )}
@@ -1679,936 +2353,607 @@ export default function CourseJsonConverter() {
         </div>
       )}
 
-      {/* Mode Selection & File Dropzone */}
-      <div
-        className={cn(
-          'grid gap-6',
-          showSourceColumn ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1'
-        )}
-      >
-        {/* Left Column: Mode & File Uploader */}
-        {showSourceColumn && (
-          <div className="lg:col-span-1 space-y-4">
-            <Card className="border-slate-200 dark:border-slate-800 shadow-2xs">
-              <CardContent className="p-5 space-y-4">
-                {/* Column Top Header with Hide Action */}
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Sliders className="h-3.5 w-3.5 text-blue-600" />
-                    Conversion Source &amp; Setup
+      {/* Launchpad: When no course is loaded yet */}
+      {!courseJson && (
+        <div className="w-full space-y-6">
+          {/* Pre-flight Configuration & Hero Strip */}
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-50/80 via-slate-50 to-indigo-50/50 dark:from-slate-900/90 dark:via-slate-900 dark:to-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-xs font-semibold mb-2">
+                  <Sparkles className="h-3.5 w-3.5 text-blue-600" />{' '}
+                  Professional Course Studio &amp; LMS Normalizer
+                </div>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  Import or Generate Full Course JSON
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">
+                  Select a multi-module folder, Word / PDF syllabus documents,
+                  or paste existing course JSON. Everything is sanitized into
+                  single parent &lt;div&gt; containers, auto-sequenced, and
+                  validated with 100% schema compliance.
+                </p>
+              </div>
+
+              {/* Pre-flight Switch Controls (Images & Quizzes) */}
+              <div className="flex flex-wrap items-center gap-3 bg-white/80 dark:bg-slate-950/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                {/* Images Toggle */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Images &amp; Media
                   </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowSourceColumn(false)}
-                    className="h-6 px-2 text-[11px] text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 gap-1 rounded-md"
-                    title="Hide this column"
-                  >
-                    <PanelLeftClose className="h-3 w-3" />
-                    Hide Column
-                  </Button>
-                </div>
-
-                {/* Conversion Source: Single Column Stacked Rows */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                      Conversion Source
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowSourceSection((prev) => !prev)}
-                      className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium"
-                    >
-                      {showSourceSection ? (
-                        <>
-                          Hide <ChevronUp className="h-3 w-3" />
-                        </>
-                      ) : (
-                        <>
-                          Show <ChevronDown className="h-3 w-3" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {showSourceSection && (
-                    <div className="flex flex-col gap-2 mt-2 animate-in fade-in">
-                      <button
-                        type="button"
-                        onClick={() => setMode('folder')}
-                        className={cn(
-                          'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                          mode === 'folder'
-                            ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-                            <Folder className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900 dark:text-white">
-                              Course Folder
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              Automated sequential modules &amp; lessons
-                            </div>
-                          </div>
-                        </div>
-                        {mode === 'folder' && (
-                          <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setMode('A')}
-                        className={cn(
-                          'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                          mode === 'A'
-                            ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
-                            <FileText className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900 dark:text-white">
-                              Single Lesson Document
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              Mode A: 1 Document with topics &amp; quiz
-                            </div>
-                          </div>
-                        </div>
-                        {mode === 'A' && (
-                          <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setMode('B')}
-                        className={cn(
-                          'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
-                          mode === 'B'
-                            ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                            : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
-                            <Layers className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-slate-900 dark:text-white">
-                              Full Course Document
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              Mode B: Full syllabus with modules &amp; exam
-                            </div>
-                          </div>
-                        </div>
-                        {mode === 'B' && (
-                          <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Image & Asset Content Toggle: Single Column Stacked */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                      Images &amp; Media Content
-                    </label>
-                    <Badge variant="outline" className="text-[10px]">
-                      {includeImages ? 'Images ON' : 'Images OFF (Clean)'}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-0.5 text-xs">
                     <button
                       type="button"
                       onClick={() => handleToggleImages(false)}
                       className={cn(
-                        'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                        'px-2.5 py-1 rounded-md transition-all font-semibold',
                         !includeImages
-                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                          ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-700'
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">🚫</span>
-                        <div>
-                          <div className="font-semibold text-slate-800 dark:text-slate-200">
-                            Skip Images (OFF)
-                          </div>
-                          <div className="text-[10px] text-slate-500">
-                            Remove images, file codes &amp; slide titles from
-                            content
-                          </div>
-                        </div>
-                      </div>
-                      {!includeImages && (
-                        <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                      )}
+                      🚫 Images OFF
                     </button>
-
                     <button
                       type="button"
                       onClick={() => handleToggleImages(true)}
                       className={cn(
-                        'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                        'px-2.5 py-1 rounded-md transition-all font-semibold',
                         includeImages
-                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                          ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-700'
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">🖼️</span>
-                        <div>
-                          <div className="font-semibold text-slate-800 dark:text-slate-200">
-                            Include Images (ON)
-                          </div>
-                          <div className="text-[10px] text-slate-500">
-                            Preserve &lt;img&gt; &amp; image callouts
-                          </div>
-                        </div>
-                      </div>
-                      {includeImages && (
-                        <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                      )}
+                      🖼️ Images ON
                     </button>
                   </div>
                 </div>
 
-                {/* Quizzes & Assessments Toggle: Single Column Stacked */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
-                      Quizzes &amp; Assessments
-                    </label>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        'text-[10px]',
-                        includeQuizzes
-                          ? 'border-emerald-300 text-emerald-700 dark:text-emerald-400'
-                          : 'border-slate-300 text-slate-500'
-                      )}
-                    >
-                      {includeQuizzes ? 'Quizzes ON' : 'Quizzes OFF (Excluded)'}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
+                <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+
+                {/* Quizzes Toggle */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Assessments
+                  </span>
+                  <div className="flex items-center bg-slate-100 dark:bg-slate-900 rounded-lg p-0.5 text-xs">
                     <button
                       type="button"
                       onClick={() => handleToggleQuizzes(true)}
                       className={cn(
-                        'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                        'px-2.5 py-1 rounded-md transition-all font-semibold',
                         includeQuizzes
-                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                          ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-700'
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">📝</span>
-                        <div>
-                          <div className="font-semibold text-slate-800 dark:text-slate-200">
-                            Include Quizzes (ON)
-                          </div>
-                          <div className="text-[10px] text-slate-500">
-                            Parse question stems, options, and answer keys
-                          </div>
-                        </div>
-                      </div>
-                      {includeQuizzes && (
-                        <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                      )}
+                      📝 Quizzes ON
                     </button>
-
                     <button
                       type="button"
                       onClick={() => handleToggleQuizzes(false)}
                       className={cn(
-                        'w-full p-2.5 rounded-xl border text-left transition-all text-xs flex items-center justify-between',
+                        'px-2.5 py-1 rounded-md transition-all font-semibold',
                         !includeQuizzes
-                          ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-medium ring-1 ring-blue-500/20'
-                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400'
+                          ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-700'
                       )}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">🚫</span>
-                        <div>
-                          <div className="font-semibold text-slate-800 dark:text-slate-200">
-                            Exclude Quizzes (OFF)
-                          </div>
-                          <div className="text-[10px] text-slate-500">
-                            Pure instructional topics only, 0 quizzes in JSON
-                          </div>
-                        </div>
-                      </div>
-                      {!includeQuizzes && (
-                        <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                      )}
+                      🚫 Quizzes OFF
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                {/* Upload Dropzone */}
-                <div>
-                  <label className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                    <span>
-                      {mode === 'folder'
-                        ? 'Upload Course Directory'
-                        : 'Source Document'}
-                    </span>
-                    {mode === 'folder' && (
-                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-normal">
-                        Drag folder or click below
-                      </span>
-                    )}
-                  </label>
-
-                  {/* Drop Area */}
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(true);
-                    }}
-                    onDragEnter={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(false);
-                    }}
-                    onDrop={async (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(false);
-
-                      const scanned = await scanDataTransferItems(
-                        e.dataTransfer
-                      );
-                      if (
-                        scanned.length > 1 ||
-                        (scanned.length === 1 &&
-                          scanned[0].relativePath.includes('/'))
-                      ) {
-                        // Multi-file or folder detected
-                        await handleFolderUpload(scanned);
-                      } else if (scanned.length === 1) {
-                        // Single file dropped
-                        if (mode === 'folder' && !courseJson) {
-                          setMode('A');
-                        }
-                        await handleSmartFileUpload(scanned[0].file);
-                      }
-                    }}
-                    className={cn(
-                      'mt-2 border-2 border-dashed rounded-xl p-5 text-center transition-all flex flex-col items-center justify-center gap-2 select-none',
-                      isDragging
-                        ? 'border-blue-500 bg-blue-100/40 dark:bg-blue-950/40 ring-4 ring-blue-500/20 scale-[1.01]'
-                        : file
-                          ? 'border-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20'
-                          : 'border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900'
-                    )}
-                  >
-                    {/* Hidden inputs */}
-                    <input
-                      ref={folderInputRef}
-                      type="file"
-                      webkitdirectory="true"
-                      directory="true"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => handleFolderUpload(e.target.files)}
-                    />
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".docx,.doc,.pdf,.json"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => {
-                        const files = e.target.files;
-                        if (!files || files.length === 0) return;
-                        if (files.length > 1) {
-                          handleFolderUpload(files);
-                        } else {
-                          handleSmartFileUpload(files[0]);
-                        }
-                      }}
-                    />
-                    <input
-                      ref={jsonFileInputRef}
-                      type="file"
-                      accept=".json,application/json"
-                      className="hidden"
-                      onChange={(e) => {
-                        const files = e.target.files;
-                        if (files && files[0]) {
-                          handleSingleFileUpload(files[0]);
-                        }
-                        e.target.value = '';
-                      }}
-                    />
-                    <input
-                      ref={lessonAddInputRef}
-                      type="file"
-                      accept=".docx,.doc,.pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const files = e.target.files;
-                        if (files && files[0]) handleSmartFileUpload(files[0]);
-                        e.target.value = '';
-                      }}
-                    />
-                    <input
-                      ref={finalExamUploadInputRef}
-                      type="file"
-                      accept=".docx,.doc,.pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const files = e.target.files;
-                        if (files && files[0]) handleSmartFileUpload(files[0]);
-                        e.target.value = '';
-                      }}
-                    />
-
-                    <div
-                      className={cn(
-                        'p-3 rounded-full transition-colors',
-                        isDragging
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400'
-                      )}
-                    >
-                      {mode === 'folder' ? (
-                        <FolderOpen className="h-6 w-6" />
-                      ) : (
-                        <Upload className="h-6 w-6" />
-                      )}
-                    </div>
-
-                    <div>
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {isDragging
-                          ? 'Drop folder or files here'
-                          : file
-                            ? file.name
-                            : mode === 'folder'
-                              ? 'Drop Course Folder Here'
-                              : 'Upload Word or PDF'}
-                      </span>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {isDragging
-                          ? 'Release to begin sequential processing'
-                          : mode === 'folder'
-                            ? 'Contains Module folders with Lesson .docx files'
-                            : 'Single .docx or .pdf lesson document'}
-                      </p>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 pt-2 flex-wrap justify-center">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => folderInputRef.current?.click()}
-                        className="text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-                      >
-                        <Folder className="h-3.5 w-3.5" />
-                        Upload Course Folder
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-xs h-8 gap-1.5"
-                      >
-                        <Files className="h-3.5 w-3.5" />
-                        Select File(s)
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => jsonFileInputRef.current?.click()}
-                        className="text-xs h-8 gap-1.5 border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40"
-                      >
-                        <FileCode className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                        Upload JSON File
-                      </Button>
-                    </div>
+          {/* 3 Modern Action Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Card 1: Course Folder */}
+            <Card
+              onClick={() => folderInputRef.current?.click()}
+              className="border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:ring-2 hover:ring-blue-500/20 cursor-pointer transition-all shadow-2xs group relative overflow-hidden"
+            >
+              <CardContent className="p-6 flex flex-col justify-between h-full space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Folder className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                      Upload Course Folder
+                      <ChevronRight className="h-4 w-4 text-blue-500 group-hover:translate-x-1 transition-transform" />
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Select a root course directory containing Module folders
+                      and Lesson files (.docx, .pdf). Maintains sequential
+                      lesson numbering across modules.
+                    </p>
                   </div>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs font-semibold border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 group-hover:bg-blue-600 group-hover:text-white transition-colors"
+                >
+                  <FolderOpen className="h-4 w-4 mr-1.5" />
+                  Select Folder
+                </Button>
+              </CardContent>
+            </Card>
 
-                {/* Progress State */}
-                {isProcessing && (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold text-blue-900 dark:text-blue-100">
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="h-3.5 w-3.5 text-blue-600 animate-spin" />
-                        {progressInfo.status || processStep}
-                      </span>
-                      {progressInfo.total > 0 && (
-                        <span className="text-[11px] font-mono text-blue-700 dark:text-blue-300">
-                          {progressInfo.percent}% ({progressInfo.current}/
-                          {progressInfo.total})
-                        </span>
-                      )}
-                    </div>
-                    {progressInfo.total > 0 && (
-                      <div className="w-full bg-blue-200 dark:bg-blue-900/60 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${progressInfo.percent}%` }}
-                        />
-                      </div>
-                    )}
-                    {progressInfo.currentLesson && (
-                      <div className="text-[11px] text-blue-800/80 dark:text-blue-200/80 truncate">
-                        <strong>Current:</strong> {progressInfo.currentLesson}
-                      </div>
-                    )}
+            {/* Card 2: Single / Full Document */}
+            <Card
+              onClick={() => fileInputRef.current?.click()}
+              className="border-slate-200 dark:border-slate-800 hover:border-blue-500 hover:ring-2 hover:ring-blue-500/20 cursor-pointer transition-all shadow-2xs group relative overflow-hidden"
+            >
+              <CardContent className="p-6 flex flex-col justify-between h-full space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <FileText className="h-6 w-6" />
                   </div>
-                )}
-
-                {/* Error Message */}
-                {error && (
-                  <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2 text-xs text-red-700 dark:text-red-300">
-                    <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-red-600" />
-                    <span>{error}</span>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                      PowerPoint / Word / PDF
+                      <ChevronRight className="h-4 w-4 text-emerald-500 group-hover:translate-x-1 transition-transform" />
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Upload a PowerPoint presentation (.pptx), Word lesson
+                      (.docx), or PDF. Generates responsive Tailwind layouts,
+                      organizes modules & lessons, and extracts assessments.
+                    </p>
                   </div>
-                )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs font-semibold border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 group-hover:bg-emerald-600 group-hover:text-white transition-colors"
+                >
+                  <Upload className="h-4 w-4 mr-1.5" />
+                  Select Document
+                </Button>
+              </CardContent>
+            </Card>
 
-                {/* Detected Course Folder Structure (Pre-Flight Hierarchy Card) */}
-                {folderHierarchy && (
-                  <div className="space-y-3 pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Folder className="h-3.5 w-3.5 text-blue-600" />
-                        Detected Course Hierarchy
-                      </span>
-                      <Badge variant="outline" className="text-[10px]">
-                        {folderHierarchy.modules.length} Modules •{' '}
-                        {folderHierarchy.totalFiles} Lessons
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                      {folderHierarchy.modules.map((mod) => (
-                        <div
-                          key={mod.moduleId || mod.moduleFolder}
-                          className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs space-y-1.5"
-                        >
-                          <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                            <span className="truncate">{mod.moduleTitle}</span>
-                            <span className="text-[10px] text-slate-500 shrink-0 ml-2">
-                              {mod.lessons.length} lessons
-                            </span>
-                          </div>
-                          <div className="space-y-1 pl-2 border-l-2 border-blue-400/50">
-                            {mod.lessons.map((les) => (
-                              <div
-                                key={les.fileName}
-                                className="text-[11px] text-slate-600 dark:text-slate-400 truncate flex items-center gap-1.5"
-                              >
-                                <FileText className="h-3 w-3 text-slate-400 shrink-0" />
-                                <span className="truncate">
-                                  {les.lessonTitle}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {!courseJson && !isProcessing && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => startSequentialFolderConversion()}
-                        className="w-full text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-                      >
-                        <Play className="h-3.5 w-3.5 fill-current" />
-                        Convert Whole Course Sequentially
-                      </Button>
-                    )}
+            {/* Card 3: Enhance & Clean Course JSON */}
+            <Card
+              onClick={() => setShowEnhanceModal(true)}
+              className="border-slate-200 dark:border-slate-800 hover:border-purple-500 hover:ring-2 hover:ring-purple-500/20 cursor-pointer transition-all shadow-2xs group relative overflow-hidden"
+            >
+              <CardContent className="p-6 flex flex-col justify-between h-full space-y-4">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Sparkles className="h-6 w-6" />
                   </div>
-                )}
-
-                {/* Metadata Overrides */}
-                {courseJson && (
-                  <div className="space-y-3 pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Sliders className="h-3.5 w-3.5 text-slate-500" />
-                        Metadata Review
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleApplyOverrides}
-                        className="text-[11px] text-blue-600 hover:underline font-medium"
-                      >
-                        Update
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-[11px] text-slate-500">
-                          Course Title
-                        </span>
-                        <Input
-                          value={courseTitleOverride}
-                          onChange={(e) =>
-                            setCourseTitleOverride(e.target.value)
-                          }
-                          className="h-8 text-xs mt-0.5"
-                        />
-                      </div>
-                    </div>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                      Paste or Upload JSON
+                      <ChevronRight className="h-4 w-4 text-purple-500 group-hover:translate-x-1 transition-transform" />
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Paste raw LMS course JSON or upload a .json file. Formats
+                      Module 0, enforces continuous lesson sequences, validates
+                      duplicate titles, and checks HTML cleanliness.
+                    </p>
                   </div>
-                )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs font-semibold border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 group-hover:bg-purple-600 group-hover:text-white transition-colors"
+                >
+                  <Code className="h-4 w-4 mr-1.5" />
+                  Paste / Upload JSON
+                </Button>
               </CardContent>
             </Card>
           </div>
-        )}
 
-        {/* Right Column: Key Metrics & Inspectors */}
-        <div
-          className={cn(
-            'space-y-6',
-            showSourceColumn ? 'lg:col-span-2' : 'col-span-1 w-full'
-          )}
-        >
-          {/* Quick Banner when Source Column is Hidden */}
-          {!showSourceColumn && (
-            <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs shadow-2xs">
-              <div className="flex items-center gap-2">
-                <Folder className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                <span className="font-semibold text-blue-950 dark:text-blue-100">
-                  Full-Width Workspace Active
-                </span>
-                <span className="text-[11px] text-blue-700 dark:text-blue-300 hidden sm:inline">
-                  (Conversion Source column is hidden for maximum reading &amp;
-                  editing space)
-                </span>
+          {/* Full-Width Universal Drag-and-Drop Dropzone */}
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(true);
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+            }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+
+              const scanned = await scanDataTransferItems(e.dataTransfer);
+              if (
+                scanned.length > 1 ||
+                (scanned.length === 1 && scanned[0].relativePath.includes('/'))
+              ) {
+                await handleFolderUpload(scanned);
+              } else if (scanned.length === 1) {
+                if (mode === 'folder' && !courseJson) {
+                  setMode('A');
+                }
+                await handleSmartFileUpload(scanned[0].file);
+              }
+            }}
+            className={cn(
+              'border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer bg-slate-50/50 dark:bg-slate-900/30 select-none',
+              isDragging
+                ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 ring-4 ring-blue-500/20 scale-[1.005]'
+                : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-slate-50/80 dark:hover:bg-slate-900/60'
+            )}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <div className="max-w-md mx-auto space-y-3">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
+                <Upload className="h-7 w-7" />
               </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setShowSourceColumn(true)}
-                className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-xs"
-              >
-                <PanelLeftOpen className="h-3.5 w-3.5" />
-                Show Source Column
-              </Button>
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  Drag and drop your Course Folder, PowerPoint (.pptx), Word
+                  (.docx), PDF, or JSON here
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Supports PowerPoint presentations with responsive Tailwind
+                  layouts, folder drops for batch conversion, Word docs, and LMS
+                  JSON files.
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    folderInputRef.current?.click();
+                  }}
+                  className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-1.5 shadow-xs"
+                >
+                  <Folder className="h-3.5 w-3.5" />
+                  Upload Course Folder
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="h-8 text-xs font-semibold gap-1.5"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Upload Document
+                </Button>
+              </div>
             </div>
-          )}
-          {/* Dashboard Metrics (When Converted) */}
-          {courseJson ? (
-            <div className="space-y-2.5">
-              {/* Course Intro / Module 0 Calculation Option Bar */}
-              {introModuleInfo && (
-                <div className="p-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 flex items-center justify-between flex-wrap gap-2 text-xs shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
-                    <div>
-                      <span className="font-semibold text-slate-900 dark:text-white">
-                        Course Intro / M0 Detected:
-                      </span>{' '}
-                      <span className="text-slate-600 dark:text-slate-400">
-                        &ldquo;{introModuleInfo.moduleTitle}&rdquo; &bull;{' '}
-                        {introModuleInfo.lessonTitle} (
-                        {introModuleInfo.introTopicsCount} T)
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white dark:bg-slate-950 p-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => setIncludeIntroInTotals(true)}
-                      className={cn(
-                        'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap',
-                        includeIntroInTotals
-                          ? 'bg-blue-600 text-white shadow-xs font-semibold'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      )}
-                    >
-                      With Intro ({hierarchyCounts.totalModulesWithIntro} M /{' '}
-                      {hierarchyCounts.totalLessonsWithIntro} L)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIncludeIntroInTotals(false)}
-                      className={cn(
-                        'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap',
-                        !includeIntroInTotals
-                          ? 'bg-blue-600 text-white shadow-xs font-semibold'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      )}
-                    >
-                      Skip Intro ({hierarchyCounts.coreModulesCount} M /{' '}
-                      {hierarchyCounts.coreLessonsCount} L Core)
-                    </button>
-                  </div>
+          </div>
+
+          {/* Progress State when processing from launchpad */}
+          {isProcessing && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-blue-900 dark:text-blue-100">
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="h-3.5 w-3.5 text-blue-600 animate-spin" />
+                  {progressInfo.status || processStep}
+                </span>
+                {progressInfo.total > 0 && (
+                  <span className="text-[11px] font-mono text-blue-700 dark:text-blue-300">
+                    {progressInfo.percent}% ({progressInfo.current}/
+                    {progressInfo.total})
+                  </span>
+                )}
+              </div>
+              {progressInfo.total > 0 && (
+                <div className="w-full bg-blue-200 dark:bg-blue-900/60 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${progressInfo.percent}%` }}
+                  />
                 </div>
               )}
+              {progressInfo.currentLesson && (
+                <div className="text-[11px] text-blue-800/80 dark:text-blue-200/80 truncate">
+                  <strong>Current:</strong> {progressInfo.currentLesson}
+                </div>
+              )}
+            </div>
+          )}
 
-              {/* 7 Publication-Grade Top Statistics Cards with M, L, T, Quiz, Q/A, F/E Notation */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2.5">
-                {/* 1. Total Modules (M) */}
-                <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-blue-300 dark:hover:border-blue-800 transition-colors">
-                  <CardContent className="p-3 flex flex-col justify-between h-full">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Modules
-                      </span>
-                      <span className="p-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
-                        <Layers className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                    <div className="my-1">
-                      <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
-                        {hierarchyCounts.modulesCount}{' '}
-                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                          M
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {introModuleInfo
-                        ? includeIntroInTotals
-                          ? 'Includes Mod 0'
-                          : 'Core (Mod 0 skipped)'
-                        : 'Total Modules'}
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Error Message when on launchpad */}
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl flex items-start gap-2 text-xs text-red-700 dark:text-red-300">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5 text-red-600" />
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+      )}
 
-                {/* 2. Total Lessons (L) */}
-                <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-sky-300 dark:hover:border-sky-800 transition-colors">
-                  <CardContent className="p-3 flex flex-col justify-between h-full">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Lessons
-                      </span>
-                      <span className="p-1 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 shrink-0">
-                        <BookOpen className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                    <div className="my-1">
-                      <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
-                        {hierarchyCounts.lessonsCount}{' '}
-                        <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
-                          L
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {introModuleInfo
-                        ? includeIntroInTotals
-                          ? 'Includes Lesson 0'
-                          : 'Core (Les 0 skipped)'
-                        : 'Total Lessons'}
-                    </div>
-                  </CardContent>
-                </Card>
+      {/* Full-Width Course Studio: Active when a course is loaded */}
+      {courseJson && (
+        <div className="w-full space-y-6">
+          {/* Dashboard Metrics */}
+          <div className="space-y-2.5">
+            {/* Course Intro / Module 0 Calculation Option Bar */}
+            {introModuleInfo && (
+              <div className="p-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 flex items-center justify-between flex-wrap gap-2 text-xs shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+                  <div>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      Course Intro / M0 Detected:
+                    </span>{' '}
+                    <span className="text-slate-600 dark:text-slate-400">
+                      &ldquo;{introModuleInfo.moduleTitle}&rdquo; &bull;{' '}
+                      {introModuleInfo.lessonTitle} (
+                      {introModuleInfo.introTopicsCount} T)
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-950 p-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setIncludeIntroInTotals(true)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap',
+                      includeIntroInTotals
+                        ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    With Intro ({hierarchyCounts.totalModulesWithIntro} M /{' '}
+                    {hierarchyCounts.totalLessonsWithIntro} L)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIncludeIntroInTotals(false)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap',
+                      !includeIntroInTotals
+                        ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    )}
+                  >
+                    Skip Intro ({hierarchyCounts.coreModulesCount} M /{' '}
+                    {hierarchyCounts.coreLessonsCount} L Core)
+                  </button>
+                </div>
+              </div>
+            )}
 
-                {/* 3. Total Topics (T) */}
-                <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-purple-300 dark:hover:border-purple-800 transition-colors">
-                  <CardContent className="p-3 flex flex-col justify-between h-full">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Topics
+            {/* 7 Publication-Grade Top Statistics Cards with M, L, T, Quiz, Q/A, F/E Notation */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2.5">
+              {/* 1. Total Modules (M) */}
+              <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-blue-300 dark:hover:border-blue-800 transition-colors">
+                <CardContent className="p-3 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Modules
+                    </span>
+                    <span className="p-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+                      <Layers className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                  <div className="my-1">
+                    <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {hierarchyCounts.modulesCount}{' '}
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                        M
                       </span>
-                      <span className="p-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
-                        <FileText className="h-3.5 w-3.5" />
-                      </span>
                     </div>
-                    <div className="my-1">
-                      <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
-                        {hierarchyCounts.topicsCount}{' '}
-                        <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
-                          T
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {introModuleInfo && !includeIntroInTotals
-                        ? '162 Core Slides'
-                        : 'Instructional Slides'}
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    {introModuleInfo
+                      ? includeIntroInTotals
+                        ? 'Includes Mod 0'
+                        : 'Core (Mod 0 skipped)'
+                      : 'Total Modules'}
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* 4. Total Quizzes (Quiz & F/E) */}
-                <Card
-                  onClick={() => setActiveTab('quiz')}
-                  className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-amber-400 dark:hover:border-amber-600 hover:ring-2 hover:ring-amber-500/20 cursor-pointer transition-all"
-                  title="Click to view & manage Quizzes"
-                >
-                  <CardContent className="p-3 flex flex-col justify-between h-full">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Quizzes
+              {/* 2. Total Lessons (L) */}
+              <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-sky-300 dark:hover:border-sky-800 transition-colors">
+                <CardContent className="p-3 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Lessons
+                    </span>
+                    <span className="p-1 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 shrink-0">
+                      <BookOpen className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                  <div className="my-1">
+                    <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {hierarchyCounts.lessonsCount}{' '}
+                      <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
+                        L
                       </span>
-                      <span className="p-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
-                        <HelpCircle className="h-3.5 w-3.5" />
-                      </span>
                     </div>
-                    <div className="my-1">
-                      <div className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white leading-none">
-                        {includeQuizzes ? (
-                          finalExamQuestions.length > 0 ? (
-                            <>
-                              {Math.max(0, hierarchyCounts.quizzesCount - 1)}{' '}
-                              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                                Quiz + 1 F/E
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              {hierarchyCounts.quizzesCount}{' '}
-                              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                                Quiz
-                              </span>
-                            </>
-                          )
-                        ) : (
-                          '0 Quiz'
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {includeQuizzes
-                        ? finalExamQuestions.length > 0
-                          ? '16 KC + 1 Final Exam'
-                          : 'Lesson Quizzes'
-                        : 'Quizzes Excluded'}
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    {introModuleInfo
+                      ? includeIntroInTotals
+                        ? 'Includes Lesson 0'
+                        : 'Core (Les 0 skipped)'
+                      : 'Total Lessons'}
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* 5. Total Questions (Q/A & F/E) */}
-                <Card
-                  onClick={() => setActiveTab('quiz')}
-                  className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-emerald-400 dark:hover:border-emerald-600 hover:ring-2 hover:ring-emerald-500/20 cursor-pointer transition-all"
-                  title="Click to view & manage Questions"
-                >
-                  <CardContent className="p-3 flex flex-col justify-between h-full">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Questions
-                      </span>
-                      <span className="p-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
-                        <CheckSquare className="h-3.5 w-3.5" />
+              {/* 3. Total Topics (T) */}
+              <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-purple-300 dark:hover:border-purple-800 transition-colors">
+                <CardContent className="p-3 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Topics
+                    </span>
+                    <span className="p-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                      <FileText className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                  <div className="my-1">
+                    <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {hierarchyCounts.topicsCount}{' '}
+                      <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
+                        T
                       </span>
                     </div>
-                    <div className="my-1">
-                      <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
-                        {includeQuizzes ? (
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    {introModuleInfo && !includeIntroInTotals
+                      ? '162 Core Slides'
+                      : 'Instructional Slides'}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 4. Total Quizzes (Quiz & F/E) */}
+              <Card
+                onClick={() => setActiveTab('quiz')}
+                className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-amber-400 dark:hover:border-amber-600 hover:ring-2 hover:ring-amber-500/20 cursor-pointer transition-all"
+                title="Click to view & manage Quizzes"
+              >
+                <CardContent className="p-3 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Quizzes
+                    </span>
+                    <span className="p-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                      <HelpCircle className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                  <div className="my-1">
+                    <div className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {includeQuizzes ? (
+                        finalExamQuestions.length > 0 ? (
                           <>
-                            {hierarchyCounts.questionsCount}{' '}
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                              Q/A
+                            {Math.max(0, hierarchyCounts.quizzesCount - 1)}{' '}
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                              Quiz + 1 F/E
                             </span>
                           </>
                         ) : (
-                          '0 Q/A'
-                        )}
-                      </div>
+                          <>
+                            {hierarchyCounts.quizzesCount}{' '}
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                              Quiz
+                            </span>
+                          </>
+                        )
+                      ) : (
+                        '0 Quiz'
+                      )}
                     </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      {includeQuizzes
-                        ? finalExamQuestions.length > 0
-                          ? `${allQuizzes.length} Quiz + ${finalExamQuestions.length} F/E`
-                          : 'Lesson Questions'
-                        : 'Excluded from JSON'}
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    {includeQuizzes
+                      ? finalExamQuestions.length > 0
+                        ? '16 KC + 1 Final Exam'
+                        : 'Lesson Quizzes'
+                      : 'Quizzes Excluded'}
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* 6. Total Time */}
-                <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-orange-300 dark:hover:border-orange-800 transition-colors">
-                  <CardContent className="p-3 flex flex-col justify-between h-full">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Duration
-                      </span>
-                      <span className="p-1 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 shrink-0">
-                        <Clock className="h-3.5 w-3.5" />
-                      </span>
+              {/* 5. Total Questions (Q/A & F/E) */}
+              <Card
+                onClick={() => setActiveTab('quiz')}
+                className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-emerald-400 dark:hover:border-emerald-600 hover:ring-2 hover:ring-emerald-500/20 cursor-pointer transition-all"
+                title="Click to view & manage Questions"
+              >
+                <CardContent className="p-3 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Questions
+                    </span>
+                    <span className="p-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                      <CheckSquare className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                  <div className="my-1">
+                    <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {includeQuizzes ? (
+                        <>
+                          {hierarchyCounts.questionsCount}{' '}
+                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            Q/A
+                          </span>
+                        </>
+                      ) : (
+                        '0 Q/A'
+                      )}
                     </div>
-                    <div className="my-1">
-                      <div className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white leading-none">
-                        {formatTime(hierarchyCounts.durationSeconds)}
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                      Total Course Time
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    {includeQuizzes
+                      ? finalExamQuestions.length > 0
+                        ? `${allQuizzes.length} Quiz + ${finalExamQuestions.length} F/E`
+                        : 'Lesson Questions'
+                      : 'Excluded from JSON'}
+                  </div>
+                </CardContent>
+              </Card>
 
-                {/* 7. Schema Health */}
-                <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors">
-                  <CardContent className="p-3 flex flex-col justify-between h-full">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Health
-                      </span>
-                      <span className="p-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                      </span>
+              {/* 6. Total Time */}
+              <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-orange-300 dark:hover:border-orange-800 transition-colors">
+                <CardContent className="p-3 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Duration
+                    </span>
+                    <span className="p-1 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 shrink-0">
+                      <Clock className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                  <div className="my-1">
+                    <div className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white leading-none">
+                      {formatTime(hierarchyCounts.durationSeconds)}
                     </div>
-                    <div className="my-1">
-                      <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
-                        {validation?.score || 100}%
-                      </div>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                    Total Course Time
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 7. Schema Health */}
+              <Card className="border-slate-200 dark:border-slate-800 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors">
+                <CardContent className="p-3 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Health
+                    </span>
+                    <span className="p-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                  <div className="my-1">
+                    <div className="text-xl font-extrabold text-slate-900 dark:text-white leading-none">
+                      {validation?.score || 100}%
                     </div>
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
-                      14/14 Checks Pass
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
+                    {validation?.summary?.passed ?? 15}/
+                    {validation?.summary?.total ?? 15} Checks Pass
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          ) : (
-            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-              <CardContent className="p-8 text-center space-y-3">
-                <div className="inline-flex p-3 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
-                  <FolderOpen className="h-6 w-6" />
-                </div>
-                <div className="max-w-md mx-auto">
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">
-                    Upload Course Directory or Lessons
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    Upload your course folder with Module 1, Module 2, Module 3
-                    subfolders to automatically sequence every lesson, sanitize
-                    HTML into clean parent divs, isolate quizzes, and output
-                    valid LMS JSON.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          </div>
 
           {/* Action Feedback Banner / Toast */}
           {actionMessage && (
@@ -2628,699 +2973,1189 @@ export default function CourseJsonConverter() {
           )}
 
           {/* Multi-Tab Workspace */}
-          {courseJson && (
-            <div className="space-y-4">
-              {/* Tab Navigation & Module Filter */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-                <div className="flex items-center gap-1 overflow-x-auto text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('lessons')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                      activeTab === 'lessons'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    )}
-                  >
-                    <ListOrdered className="h-3.5 w-3.5" />
-                    Lessons ({allLessons.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('hierarchy')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                      activeTab === 'hierarchy'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    )}
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    Topics ({allTopics.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('quiz')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                      activeTab === 'quiz'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    )}
-                  >
-                    <HelpCircle className="h-3.5 w-3.5" />
-                    Quizzes ({allQuizzes.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('final_exam')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                      activeTab === 'final_exam'
-                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200 font-bold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    )}
-                  >
-                    <Award className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                    Final Exam ({finalExamQuestions.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('html')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                      activeTab === 'html'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    )}
-                  >
-                    <FileCode className="h-3.5 w-3.5" />
-                    Clean HTML
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('validation')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                      activeTab === 'validation'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    )}
-                  >
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Validation ({validation?.summary?.passed || 14}/14)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('json')}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
-                      activeTab === 'json'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    )}
-                  >
-                    <Code className="h-3.5 w-3.5" />
-                    JSON Code
-                  </button>
-                </div>
-
-                {/* Module Selector Filter */}
-                {courseJson.modules?.length > 1 && (
-                  <select
-                    value={selectedModuleFilter}
-                    onChange={(e) => {
-                      setSelectedModuleFilter(e.target.value);
-                      setSelectedTopicIndex(0);
-                    }}
-                    className="h-7 text-xs border rounded-md px-2 bg-background text-foreground"
-                  >
-                    <option value="all">
-                      All Modules ({courseJson.modules.length})
-                    </option>
-                    {courseJson.modules.map((m) => (
-                      <option key={m.module_id} value={m.module_id}>
-                        {m.module_title}
-                      </option>
-                    ))}
-                  </select>
-                )}
+          <div className="space-y-4">
+            {/* Tab Navigation & Module Filter */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+              <div className="flex items-center gap-1 overflow-x-auto text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('lessons')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                    activeTab === 'lessons'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  )}
+                >
+                  <ListOrdered className="h-3.5 w-3.5" />
+                  Lessons ({allLessons.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('hierarchy')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 relative',
+                    activeTab === 'hierarchy'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  )}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Topics ({allTopics.length})
+                  {validation?.duplicateSlideAlerts?.length > 0 && (
+                    <span
+                      className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white animate-pulse shadow-xs"
+                      title={`${validation.duplicateSlideAlerts.length} duplicate slide title(s) detected`}
+                    >
+                      {validation.duplicateSlideAlerts.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('quiz')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                    activeTab === 'quiz'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  )}
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                  Quizzes ({allQuizzes.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('final_exam')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                    activeTab === 'final_exam'
+                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200 font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  )}
+                >
+                  <Award className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  Final Exam ({finalExamQuestions.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('html')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                    activeTab === 'html'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  )}
+                >
+                  <FileCode className="h-3.5 w-3.5" />
+                  Clean HTML
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('validation')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                    activeTab === 'validation'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  )}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Validation ({validation?.summary?.passed ?? 15}/
+                  {validation?.summary?.total ?? 15})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('json')}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                    activeTab === 'json'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  )}
+                >
+                  <Code className="h-3.5 w-3.5" />
+                  JSON Code
+                </button>
               </div>
 
-              {/* Tab 0: Lessons & Reorder Manager (Draggable + Auto-Renumbering) */}
-              {activeTab === 'lessons' && (
-                <div className="space-y-4 max-h-[550px] overflow-y-auto">
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                    <div className="flex items-center gap-2.5">
-                      <span className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                        <ListOrdered className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                          <span>Course Lessons &amp; Sequential Ordering</span>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-blue-50 text-blue-700 border-blue-200"
-                          >
-                            {allLessons.length} Total Lessons
-                          </Badge>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          Drag and drop lessons or use arrows to change
-                          position. Moving <strong>Lesson 1</strong> to{' '}
-                          <strong>Lesson 6</strong> position dynamically updates
-                          its title to <strong>Lesson 6: ...</strong> and
-                          re-sequences all lessons.
-                        </p>
-                      </div>
-                    </div>
+              {/* Module Selector Filter */}
+              {courseJson.modules?.length > 1 && (
+                <select
+                  value={selectedModuleFilter}
+                  onChange={(e) => {
+                    setSelectedModuleFilter(e.target.value);
+                    setSelectedTopicIndex(0);
+                  }}
+                  className="h-7 text-xs border rounded-md px-2 bg-background text-foreground"
+                >
+                  <option value="all">
+                    All Modules ({courseJson.modules.length})
+                  </option>
+                  {courseJson.modules.map((m) => (
+                    <option key={m.module_id} value={m.module_id}>
+                      {m.module_title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => lessonAddInputRef.current?.click()}
-                        className="h-7 text-xs font-semibold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
-                      >
-                        <FilePlus className="h-3.5 w-3.5" />
-                        Add Another Lesson
-                      </Button>
+            {/* Tab 0: Modules & Lessons Hierarchy Manager */}
+            {activeTab === 'lessons' && (
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <span className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                      <ListOrdered className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Course Modules &amp; Sequential Lessons</span>
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300"
+                        >
+                          {allLessons.length} Total Lessons
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300"
+                        >
+                          {courseJson.modules?.length || 0} Modules
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Edit Course Name, Module Names, and Lesson Names
+                        directly below or use the Structure Manager. Drag and
+                        drop lessons to re-sequence.
+                      </p>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    {allLessons.map((les, idx) => (
-                      <div
-                        key={les.lesson_id || idx}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData('text/plain', String(idx));
-                          setDraggedLessonIndex(idx);
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setDragOverLessonIndex(idx);
-                        }}
-                        onDragLeave={() => {
-                          if (dragOverLessonIndex === idx)
-                            setDragOverLessonIndex(null);
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (
-                            draggedLessonIndex !== null &&
-                            draggedLessonIndex !== idx
-                          ) {
-                            handleReorderLesson(draggedLessonIndex, idx);
-                          }
-                          setDraggedLessonIndex(null);
-                          setDragOverLessonIndex(null);
-                        }}
-                        className={cn(
-                          'p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 bg-white dark:bg-slate-900 shadow-2xs',
-                          dragOverLessonIndex === idx
-                            ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 ring-2 ring-blue-500/30 scale-[1.01]'
-                            : 'border-slate-200 dark:border-slate-800'
-                        )}
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {/* Drag Handle */}
-                          <div
-                            className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 p-1"
-                            title="Drag to reorder"
-                          >
-                            <GripVertical className="h-4 w-4" />
-                          </div>
-
-                          {/* Position Number Pill */}
-                          <span className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-xs font-bold flex items-center justify-center shrink-0">
-                            {idx + 1}
-                          </span>
-
-                          {/* Lesson Title & Details */}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                              {les.lesson_title}
-                            </div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-3 mt-0.5">
-                              <span>{les.topics?.length || 0} Topics</span>
-                              <span>•</span>
-                              <span>
-                                {les.knowledge_check?.length || 0} Quiz
-                                Questions
-                              </span>
-                              <span>•</span>
-                              <span className="font-mono">
-                                ID: {les.lesson_id}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Action buttons (Move Up, Move Down, Delete) */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            disabled={idx === 0}
-                            onClick={() => handleMoveLessonUp(idx)}
-                            className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30"
-                            title="Move Up"
-                          >
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            disabled={idx === allLessons.length - 1}
-                            onClick={() => handleMoveLessonDown(idx)}
-                            className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30"
-                            title="Move Down"
-                          >
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteLesson(les.lesson_id)}
-                            className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
-                            title="Remove Lesson"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleOpenStructureModal}
+                      variant="outline"
+                      className="h-8 text-xs font-semibold gap-1.5 border-blue-300 text-blue-700 dark:text-blue-300 bg-blue-50/50 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      Edit Structure &amp; Titles
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => lessonAddInputRef.current?.click()}
+                      className="h-8 text-xs font-semibold gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                    >
+                      <FilePlus className="h-3.5 w-3.5" />
+                      Add Another Lesson
+                    </Button>
                   </div>
                 </div>
-              )}
 
-              {/* Tab 1: Hierarchy & Topic Inspector - Single Column Full-Width View */}
-              {activeTab === 'hierarchy' && (
+                {/* Modules Grouped Deck */}
                 <div className="space-y-4">
-                  {/* Topic Navigation & Stepper Toolbar */}
-                  <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                    {/* Topic Selector Dropdown */}
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-xs font-semibold text-slate-500 shrink-0">
-                        Topic:
-                      </span>
-                      <select
-                        value={selectedTopicIndex}
-                        onChange={(e) =>
-                          setSelectedTopicIndex(Number(e.target.value))
-                        }
-                        className="h-8 text-xs font-semibold border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 bg-white dark:bg-slate-950 text-foreground w-full max-w-lg truncate shadow-2xs"
+                  {(courseJson.modules || []).map((mod, mIdx) => {
+                    const isEditingThisMod = editingModuleId === mod.module_id;
+                    return (
+                      <div
+                        key={mod.module_id || mIdx}
+                        className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 overflow-hidden shadow-2xs"
                       >
-                        {groupedTopicSections.map((group) => (
-                          <optgroup key={group.key} label={group.label}>
-                            {group.topics.map((t) => (
+                        {/* Module Header Bar */}
+                        <div className="p-3.5 bg-slate-100/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <Badge
+                              variant="outline"
+                              className="text-xs font-bold font-mono bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 shrink-0"
+                            >
+                              {mod.module_id}
+                            </Badge>
+
+                            {isEditingThisMod ? (
+                              <div className="flex items-center gap-1.5 flex-1 max-w-md">
+                                <Input
+                                  value={editedModuleTitle}
+                                  onChange={(e) =>
+                                    setEditedModuleTitle(e.target.value)
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.isComposing || e.keyCode === 229)
+                                      return;
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleUpdateModuleTitle(
+                                        mod.module_id,
+                                        editedModuleTitle
+                                      );
+                                    } else if (e.key === 'Escape') {
+                                      setEditingModuleId(null);
+                                    }
+                                  }}
+                                  className="h-8 text-xs font-bold"
+                                  placeholder="Enter module name..."
+                                  autoFocus
+                                />
+                                <Button
+                                  size="sm"
+                                  className="h-8 px-2 bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                                  onClick={() =>
+                                    handleUpdateModuleTitle(
+                                      mod.module_id,
+                                      editedModuleTitle
+                                    )
+                                  }
+                                  title="Save Module Name"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 px-2 text-slate-500 shrink-0"
+                                  onClick={() => setEditingModuleId(null)}
+                                  title="Cancel"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                                  {mod.module_title}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingModuleId(mod.module_id);
+                                    setEditedModuleTitle(mod.module_title);
+                                  }}
+                                  className="h-6 px-1.5 text-xs text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 gap-1 rounded"
+                                  title="Rename this module"
+                                >
+                                  <Edit3 className="h-3 w-3" />
+                                  <span className="text-[11px]">Rename</span>
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
+                            <span>{(mod.lessons || []).length} Lessons</span>
+                            <span>•</span>
+                            <span>
+                              {mod.lessons?.reduce(
+                                (acc, l) => acc + (l.topics?.length || 0),
+                                0
+                              )}{' '}
+                              Topics
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Lessons in this Module */}
+                        <div className="p-3 space-y-2">
+                          {(mod.lessons || []).map((les) => {
+                            const globalIdx = allLessons.findIndex(
+                              (l) => l.lesson_id === les.lesson_id
+                            );
+                            const isEditingThisLesson =
+                              editingLessonId === les.lesson_id;
+                            return (
+                              <div
+                                key={les.lesson_id || globalIdx}
+                                draggable
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData(
+                                    'text/plain',
+                                    String(globalIdx)
+                                  );
+                                  setDraggedLessonIndex(globalIdx);
+                                }}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  setDragOverLessonIndex(globalIdx);
+                                }}
+                                onDragLeave={() => {
+                                  if (dragOverLessonIndex === globalIdx)
+                                    setDragOverLessonIndex(null);
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  if (
+                                    draggedLessonIndex !== null &&
+                                    draggedLessonIndex !== globalIdx
+                                  ) {
+                                    handleReorderLesson(
+                                      draggedLessonIndex,
+                                      globalIdx
+                                    );
+                                  }
+                                  setDraggedLessonIndex(null);
+                                  setDragOverLessonIndex(null);
+                                }}
+                                className={cn(
+                                  'p-3 rounded-xl border transition-all flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/40 shadow-2xs',
+                                  dragOverLessonIndex === globalIdx
+                                    ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 ring-2 ring-blue-500/30 scale-[1.01]'
+                                    : 'border-slate-200 dark:border-slate-800'
+                                )}
+                              >
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div
+                                    className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 p-1"
+                                    title="Drag to reorder"
+                                  >
+                                    <GripVertical className="h-4 w-4" />
+                                  </div>
+
+                                  <span className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-xs font-bold flex items-center justify-center shrink-0">
+                                    {les.lesson_title
+                                      .toLowerCase()
+                                      .includes('introduction')
+                                      ? '0'
+                                      : globalIdx >= 0
+                                        ? globalIdx + 1
+                                        : '•'}
+                                  </span>
+
+                                  {isEditingThisLesson ? (
+                                    <div className="flex items-center gap-1.5 flex-1 max-w-md">
+                                      <Input
+                                        value={editedLessonTitle}
+                                        onChange={(e) =>
+                                          setEditedLessonTitle(e.target.value)
+                                        }
+                                        onKeyDown={(e) => {
+                                          if (
+                                            e.isComposing ||
+                                            e.keyCode === 229
+                                          )
+                                            return;
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleUpdateLessonTitle(
+                                              les.lesson_id,
+                                              editedLessonTitle
+                                            );
+                                          } else if (e.key === 'Escape') {
+                                            setEditingLessonId(null);
+                                          }
+                                        }}
+                                        className="h-7 text-xs font-medium"
+                                        placeholder="Enter lesson title..."
+                                        autoFocus
+                                      />
+                                      <Button
+                                        size="sm"
+                                        className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                                        onClick={() =>
+                                          handleUpdateLessonTitle(
+                                            les.lesson_id,
+                                            editedLessonTitle
+                                          )
+                                        }
+                                        title="Save Lesson Title"
+                                      >
+                                        <Check className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 px-2 text-slate-500 shrink-0"
+                                        onClick={() => setEditingLessonId(null)}
+                                        title="Cancel"
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                                          {les.lesson_title}
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setEditingLessonId(les.lesson_id);
+                                            setEditedLessonTitle(
+                                              les.lesson_title
+                                            );
+                                          }}
+                                          className="h-5 w-5 p-0 text-slate-400 hover:text-blue-600 rounded opacity-60 hover:opacity-100"
+                                          title="Rename lesson"
+                                        >
+                                          <Edit3 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="text-[11px] text-slate-500 flex items-center gap-3 mt-0.5">
+                                        <span>
+                                          {les.topics?.length || 0} Topics
+                                        </span>
+                                        <span>•</span>
+                                        <span>
+                                          {les.knowledge_check?.length || 0}{' '}
+                                          Quiz Questions
+                                        </span>
+                                        <span>•</span>
+                                        <span className="font-mono">
+                                          ID: {les.lesson_id}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      const firstTopicId = les.topics?.[0]?.id;
+                                      if (firstTopicId) {
+                                        const foundIndex = allTopics.findIndex(
+                                          (t) => t.id === firstTopicId
+                                        );
+                                        if (foundIndex >= 0)
+                                          setSelectedTopicIndex(foundIndex);
+                                      }
+                                      setActiveTab('hierarchy');
+                                    }}
+                                    className="h-7 px-2 text-[11px] font-medium text-slate-600 hover:text-blue-600 border-slate-200 dark:border-slate-800 gap-1 rounded-md"
+                                    title="Inspect Topics & Slides for this Lesson"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                    <span className="hidden sm:inline">
+                                      Slides
+                                    </span>
+                                  </Button>
+
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={globalIdx <= 0}
+                                    onClick={() =>
+                                      handleMoveLessonUp(globalIdx)
+                                    }
+                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30"
+                                    title="Move Up"
+                                  >
+                                    <ChevronUp className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={
+                                      globalIdx >= allLessons.length - 1
+                                    }
+                                    onClick={() =>
+                                      handleMoveLessonDown(globalIdx)
+                                    }
+                                    className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30"
+                                    title="Move Down"
+                                  >
+                                    <ChevronDown className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      handleDeleteLesson(les.lesson_id)
+                                    }
+                                    className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
+                                    title="Remove Lesson"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 1: Hierarchy & Topic Inspector - Single Column Full-Width View */}
+            {activeTab === 'hierarchy' && (
+              <div className="space-y-4">
+                {/* Topic Navigation & Stepper Toolbar */}
+                <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  {/* Topic Selector Dropdown */}
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-xs font-semibold text-slate-500 shrink-0">
+                      Topic:
+                    </span>
+                    <select
+                      value={selectedTopicIndex}
+                      onChange={(e) =>
+                        setSelectedTopicIndex(Number(e.target.value))
+                      }
+                      className="h-8 text-xs font-semibold border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 bg-white dark:bg-slate-950 text-foreground w-full max-w-lg truncate shadow-2xs"
+                    >
+                      {groupedTopicSections.map((group) => (
+                        <optgroup key={group.key} label={group.label}>
+                          {group.topics.map((t) => {
+                            const isDup =
+                              validation?.duplicateSlideAlerts?.some(
+                                (d) =>
+                                  d.topicId === t.id ||
+                                  (d.lessonId === t.lessonId &&
+                                    d.topicIndex === t.topicIndex)
+                              );
+                            return (
                               <option
                                 key={t.id || t.globalIndex}
                                 value={t.globalIndex}
+                                className={
+                                  isDup ? 'text-red-600 font-bold' : ''
+                                }
                               >
-                                Topic {t.globalIndex + 1}: {t.name}
+                                {isDup ? '⚠️ ' : ''}Topic {t.globalIndex + 1}:{' '}
+                                {t.name}
+                                {isDup ? ' [Duplicate Title]' : ''}
                               </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Step Navigation & Action Buttons */}
-                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={selectedTopicIndex <= 0}
-                        onClick={() =>
-                          setSelectedTopicIndex((prev) => Math.max(0, prev - 1))
-                        }
-                        className="h-7 text-xs px-2.5 gap-1"
-                        title="Previous Topic"
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" /> Prev
-                      </Button>
-                      <span className="text-xs text-slate-500 font-mono px-1">
-                        {selectedTopicIndex + 1} / {filteredTopics.length}
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={
-                          selectedTopicIndex >= filteredTopics.length - 1
-                        }
-                        onClick={() =>
-                          setSelectedTopicIndex((prev) =>
-                            Math.min(filteredTopics.length - 1, prev + 1)
-                          )
-                        }
-                        className="h-7 text-xs px-2.5 gap-1"
-                        title="Next Topic"
-                      >
-                        Next <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-
-                      <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block" />
-
-                      {/* Toggle Topic Editor */}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const next = !isEditingTopic;
-                          setIsEditingTopic(next);
-                          if (next && activeTopic) {
-                            setEditedTopicName(activeTopic.name || '');
-                            setEditedTopicHtml(
-                              activeTopic.leftDiv?.editorHtml || ''
                             );
-                          }
-                        }}
-                        className={cn(
-                          'h-7 text-xs font-semibold gap-1.5',
-                          isEditingTopic
-                            ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600 shadow-sm'
-                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        )}
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                        {isEditingTopic ? 'View Preview' : 'Edit Topic'}
-                      </Button>
-                    </div>
+                          })}
+                        </optgroup>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Topic Content Card (Full Width 1 Column) */}
-                  <div className="w-full border rounded-xl p-5 bg-white dark:bg-slate-950 min-h-[450px] space-y-4 shadow-2xs">
-                    {activeTopic ? (
-                      <div>
-                        <div className="border-b pb-3 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                              {activeTopic.moduleTitle} →{' '}
-                              {activeTopic.lessonTitle}
-                            </span>
-                            <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
-                              {activeTopic.name}
-                            </h3>
+                  {/* Step Navigation & Action Buttons */}
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={selectedTopicIndex <= 0}
+                      onClick={() =>
+                        setSelectedTopicIndex((prev) => Math.max(0, prev - 1))
+                      }
+                      className="h-7 text-xs px-2.5 gap-1"
+                      title="Previous Topic"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" /> Prev
+                    </Button>
+                    <span className="text-xs text-slate-500 font-mono px-1">
+                      {selectedTopicIndex + 1} / {filteredTopics.length}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={selectedTopicIndex >= filteredTopics.length - 1}
+                      onClick={() =>
+                        setSelectedTopicIndex((prev) =>
+                          Math.min(filteredTopics.length - 1, prev + 1)
+                        )
+                      }
+                      className="h-7 text-xs px-2.5 gap-1"
+                      title="Next Topic"
+                    >
+                      Next <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+
+                    <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block" />
+
+                    {/* Add Slide Button */}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleOpenAddSlideModal(selectedTopicIndex)
+                      }
+                      className="h-7 text-xs font-semibold gap-1 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                      title="Add a new slide anywhere in this lesson"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-blue-600" />
+                      Add Slide
+                    </Button>
+
+                    {/* Delete Slide Button */}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDeleteTopic(selectedTopicIndex)}
+                      className="h-7 text-xs font-semibold gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 border-red-200 dark:border-red-800"
+                      title="Delete this slide from the course"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete Slide
+                    </Button>
+
+                    <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block" />
+
+                    {/* Toggle Topic Editor */}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const next = !isEditingTopic;
+                        setIsEditingTopic(next);
+                        if (next && activeTopic) {
+                          setEditedTopicName(activeTopic.name || '');
+                          setEditedTopicHtml(
+                            activeTopic.leftDiv?.editorHtml || ''
+                          );
+                        }
+                      }}
+                      className={cn(
+                        'h-7 text-xs font-semibold gap-1.5',
+                        isEditingTopic
+                          ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600 shadow-sm'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      )}
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      {isEditingTopic ? 'View Preview' : 'Edit Topic'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Topic Content Card (Full Width 1 Column) */}
+                <div className="w-full border rounded-xl p-5 bg-white dark:bg-slate-950 min-h-[450px] space-y-4 shadow-2xs">
+                  {activeTopic ? (
+                    <div>
+                      <div className="border-b pb-3 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                            {activeTopic.moduleTitle} →{' '}
+                            {activeTopic.lessonTitle}
+                          </span>
+                          <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                            {activeTopic.name}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Add Slide Button */}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleOpenAddSlideModal(selectedTopicIndex)
+                            }
+                            className="h-7 text-xs font-semibold gap-1 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                            title="Add a new slide anywhere in this lesson"
+                          >
+                            <Plus className="h-3.5 w-3.5 text-blue-600" />
+                            Add Slide
+                          </Button>
+
+                          {/* Delete Slide Button */}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleDeleteTopic(selectedTopicIndex)
+                            }
+                            className="h-7 text-xs font-semibold gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 border-red-200 dark:border-red-800"
+                            title="Delete this slide from the course"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete Slide
+                          </Button>
+
+                          {/* Live Inspection Image Toggle */}
+                          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() => setIncludeImages(false)}
+                              className={cn(
+                                'px-2 py-0.5 rounded-md transition-all font-medium',
+                                !includeImages
+                                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                                  : 'text-slate-500 hover:text-slate-700'
+                              )}
+                              title="Hide images and image codes, showing pure clean instructional text"
+                            >
+                              🚫 Images OFF
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIncludeImages(true)}
+                              className={cn(
+                                'px-2 py-0.5 rounded-md transition-all font-medium',
+                                includeImages
+                                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                                  : 'text-slate-500 hover:text-slate-700'
+                              )}
+                              title="Show images and media callouts"
+                            >
+                              🖼️ Images ON
+                            </button>
                           </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {/* Toggle Topic Editor */}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setActiveTab('quiz')}
+                            className="h-7 text-xs font-semibold gap-1.5 border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 shadow-2xs"
+                            title="Inspect & manage quizzes for this lesson"
+                          >
+                            <HelpCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                            Quiz ({currentLessonQuizCount} Q)
+                          </Button>
+                          <Badge variant="outline" className="text-xs">
+                            ⏱️ {activeTopic.allocated_duration_seconds}s
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Duplicate Slide Warning Banner */}
+                      {isCurrentTopicDuplicate && (
+                        <div className="p-3.5 bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-red-900 dark:text-red-200 mb-3 animate-in fade-in">
+                          <div className="flex items-center gap-2.5">
+                            <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                            <div>
+                              <div className="font-bold">
+                                Duplicate Slide Title Detected: &ldquo;
+                                {activeTopic.name}&rdquo;
+                              </div>
+                              <div className="text-[11px] text-red-700 dark:text-red-300 mt-0.5">
+                                This slide shares the exact same name with
+                                another slide in this lesson. You can rename it
+                                or delete this duplicate.
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
                               onClick={() => {
-                                const next = !isEditingTopic;
-                                setIsEditingTopic(next);
-                                if (next && activeTopic) {
-                                  setEditedTopicName(activeTopic.name || '');
-                                  setEditedTopicHtml(
-                                    activeTopic.leftDiv?.editorHtml || ''
-                                  );
-                                }
+                                setIsEditingTopic(true);
+                                setEditedTopicName(activeTopic.name || '');
+                                setEditedTopicHtml(
+                                  activeTopic.leftDiv?.editorHtml || ''
+                                );
                               }}
-                              className={cn(
-                                'h-7 text-xs font-semibold gap-1.5',
-                                isEditingTopic
-                                  ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600 shadow-sm'
-                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                              )}
+                              className="h-7 text-xs border-red-300 text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50"
                             >
-                              <Edit3 className="h-3.5 w-3.5" />
-                              {isEditingTopic ? 'View Preview' : 'Edit Topic'}
+                              <Edit3 className="h-3 w-3 mr-1" />
+                              Rename Slide
                             </Button>
-
-                            {/* Live Inspection Image Toggle */}
-                            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 text-[11px]">
-                              <button
-                                type="button"
-                                onClick={() => setIncludeImages(false)}
-                                className={cn(
-                                  'px-2 py-0.5 rounded-md transition-all font-medium',
-                                  !includeImages
-                                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700'
-                                )}
-                                title="Hide images and image codes, showing pure clean instructional text"
-                              >
-                                🚫 Images OFF
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setIncludeImages(true)}
-                                className={cn(
-                                  'px-2 py-0.5 rounded-md transition-all font-medium',
-                                  includeImages
-                                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700'
-                                )}
-                                title="Show images and media callouts"
-                              >
-                                🖼️ Images ON
-                              </button>
-                            </div>
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
-                              onClick={() => setActiveTab('quiz')}
-                              className="h-7 text-xs font-semibold gap-1.5 border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 shadow-2xs"
-                              title="Inspect & manage quizzes for this lesson"
+                              onClick={() =>
+                                handleDeleteTopic(selectedTopicIndex)
+                              }
+                              className="h-7 text-xs bg-red-600 hover:bg-red-700 text-white font-semibold"
                             >
-                              <HelpCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                              Quiz ({currentLessonQuizCount} Q)
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete Duplicate Slide
                             </Button>
-                            <Badge variant="outline" className="text-xs">
-                              ⏱️ {activeTopic.allocated_duration_seconds}s
-                            </Badge>
                           </div>
                         </div>
+                      )}
 
-                        {/* Topic Save Success Notification */}
-                        {topicSaveSuccess && (
-                          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-lg flex items-center gap-2 text-xs text-emerald-900 dark:text-emerald-100 font-medium mb-3 animate-in fade-in">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                            Topic saved successfully! Course JSON and duration
-                            calculations have been updated.
+                      {/* Topic Save Success Notification */}
+                      {topicSaveSuccess && (
+                        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-lg flex items-center gap-2 text-xs text-emerald-900 dark:text-emerald-100 font-medium mb-3 animate-in fade-in">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                          Topic saved successfully! Course JSON and duration
+                          calculations have been updated.
+                        </div>
+                      )}
+
+                      {isEditingTopic ? (
+                        <div className="space-y-4 pt-1 animate-in fade-in">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                              <span>Topic Heading / Title</span>
+                              <span className="text-[10px] font-normal text-slate-500">
+                                Updates name &amp; headingContent in Course JSON
+                              </span>
+                            </label>
+                            <Input
+                              value={editedTopicName}
+                              onChange={(e) =>
+                                setEditedTopicName(e.target.value)
+                              }
+                              className="text-xs h-9 font-medium bg-slate-50 dark:bg-slate-900"
+                              placeholder="Topic title..."
+                            />
                           </div>
-                        )}
 
-                        {isEditingTopic ? (
-                          <div className="space-y-4 pt-1 animate-in fade-in">
-                            <div className="space-y-1.5">
-                              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                                <span>Topic Heading / Title</span>
-                                <span className="text-[10px] font-normal text-slate-500">
-                                  Updates name &amp; headingContent in Course
-                                  JSON
-                                </span>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                Instructional Topic HTML (editorHtml)
                               </label>
-                              <Input
-                                value={editedTopicName}
-                                onChange={(e) =>
-                                  setEditedTopicName(e.target.value)
-                                }
-                                className="text-xs h-9 font-medium bg-slate-50 dark:bg-slate-900"
-                                placeholder="Topic title..."
-                              />
+                              <span className="text-[10px] text-slate-500">
+                                Wrapped in 1 parent &lt;div&gt; with zero
+                                classes
+                              </span>
                             </div>
+                            <textarea
+                              value={editedTopicHtml}
+                              onChange={(e) =>
+                                setEditedTopicHtml(e.target.value)
+                              }
+                              rows={14}
+                              className="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3 font-mono text-xs leading-relaxed text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="<div><p>Instructional reading content...</p></div>"
+                            />
+                          </div>
 
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                  Instructional Topic HTML (editorHtml)
-                                </label>
-                                <span className="text-[10px] text-slate-500">
-                                  Wrapped in 1 parent &lt;div&gt; with zero
-                                  classes
+                          <div className="flex items-center justify-between pt-3 border-t">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleSaveTopicChanges}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-semibold px-4 shadow-sm"
+                            >
+                              <Save className="h-3.5 w-3.5" />
+                              Save Changes &amp; Update JSON
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setIsEditingTopic(false)}
+                              className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          {/* Image Asset Code Banner (Shown strictly when Images are ON) */}
+                          {includeImages && activeTopic.image_code && (
+                            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs mb-3">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                                  🖼️ Image Asset Code:
+                                </span>
+                                <code className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/60 rounded text-amber-900 dark:text-amber-100 font-mono font-bold text-xs">
+                                  {activeTopic.image_code}
+                                </code>
+                                <span className="text-[11px] text-amber-700 dark:text-amber-300">
+                                  (Visible in HTML)
                                 </span>
                               </div>
-                              <textarea
-                                value={editedTopicHtml}
-                                onChange={(e) =>
-                                  setEditedTopicHtml(e.target.value)
-                                }
-                                rows={14}
-                                className="w-full rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-3 font-mono text-xs leading-relaxed text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="<div><p>Instructional reading content...</p></div>"
-                              />
-                            </div>
-
-                            <div className="flex items-center justify-between pt-3 border-t">
                               <Button
-                                type="button"
                                 size="sm"
-                                onClick={handleSaveTopicChanges}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 font-semibold px-4 shadow-sm"
+                                variant="outline"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    activeTopic.image_code.replace(/^#/, '')
+                                  );
+                                  setCopied(true);
+                                  setTimeout(() => setCopied(false), 2000);
+                                }}
+                                className="h-6 text-[10px] border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-100 shrink-0 ml-2"
                               >
-                                <Save className="h-3.5 w-3.5" />
-                                Save Changes &amp; Update JSON
-                              </Button>
-
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setIsEditingTopic(false)}
-                                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                              >
-                                Cancel
+                                Copy Code
                               </Button>
                             </div>
-                          </div>
-                        ) : (
-                          <div>
-                            {/* Image Asset Code Banner (Shown strictly when Images are ON) */}
-                            {includeImages && activeTopic.image_code && (
-                              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs mb-3">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1">
-                                    🖼️ Image Asset Code:
-                                  </span>
-                                  <code className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/60 rounded text-amber-900 dark:text-amber-100 font-mono font-bold text-xs">
-                                    {activeTopic.image_code}
-                                  </code>
-                                  <span className="text-[11px] text-amber-700 dark:text-amber-300">
-                                    (Visible in HTML)
-                                  </span>
-                                </div>
+                          )}
+
+                          {/* AI Image Generation Prompt Banner (Shown strictly when Images are ON) */}
+                          {includeImages && activeTopic.image_prompt && (
+                            <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg space-y-1 text-xs mb-3">
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-1">
+                                  ✨ AI Visual Generation Prompt
+                                </span>
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() => {
                                     navigator.clipboard.writeText(
-                                      activeTopic.image_code.replace(/^#/, '')
+                                      activeTopic.image_prompt
                                     );
                                     setCopied(true);
                                     setTimeout(() => setCopied(false), 2000);
                                   }}
-                                  className="h-6 text-[10px] border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-100 shrink-0 ml-2"
+                                  className="h-6 text-[10px] border-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-900 dark:text-purple-100"
                                 >
-                                  Copy Code
+                                  Copy Prompt
                                 </Button>
                               </div>
-                            )}
+                              <p className="text-[11px] text-purple-800 dark:text-purple-300 italic">
+                                &ldquo;{activeTopic.image_prompt}&rdquo;
+                              </p>
+                            </div>
+                          )}
 
-                            {/* AI Image Generation Prompt Banner (Shown strictly when Images are ON) */}
-                            {includeImages && activeTopic.image_prompt && (
-                              <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg space-y-1 text-xs mb-3">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-1">
-                                    ✨ AI Visual Generation Prompt
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(
-                                        activeTopic.image_prompt
-                                      );
-                                      setCopied(true);
-                                      setTimeout(() => setCopied(false), 2000);
-                                    }}
-                                    className="h-6 text-[10px] border-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-900 dark:text-purple-100"
-                                  >
-                                    Copy Prompt
-                                  </Button>
-                                </div>
-                                <p className="text-[11px] text-purple-800 dark:text-purple-300 italic">
-                                  &ldquo;{activeTopic.image_prompt}&rdquo;
-                                </p>
+                          {/* Rendered HTML Preview */}
+                          {includeImages &&
+                          !displayedTopicHtml.includes('<img') &&
+                          activeTopic?.selectedTemplate === 1 &&
+                          activeTopic?.rightDiv?.image?.isImage ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                              <div
+                                className={cn(
+                                  'max-w-none text-slate-700 dark:text-slate-300',
+                                  !displayedTopicHtml.includes('bg-[') &&
+                                    !displayedTopicHtml.includes('grid') &&
+                                    !displayedTopicHtml.includes('#EEF1F4') &&
+                                    !displayedTopicHtml.includes('pptx-') &&
+                                    !displayedTopicHtml.includes('style=') &&
+                                    'prose prose-sm dark:prose-invert'
+                                )}
+                                dangerouslySetInnerHTML={{
+                                  __html: displayedTopicHtml,
+                                }}
+                              />
+                              <div
+                                className="rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-700/80 bg-[#EEF1F4] dark:bg-slate-800 shadow-xs flex items-center justify-center p-2"
+                                style={{ backgroundColor: '#EEF1F4' }}
+                              >
+                                <img
+                                  src={activeTopic.rightDiv.image.imageURL}
+                                  alt={
+                                    activeTopic.rightDiv.image.imageName ||
+                                    'Slide Illustration'
+                                  }
+                                  className="w-full h-auto object-cover max-h-80 rounded-xl"
+                                  loading="lazy"
+                                />
                               </div>
-                            )}
-
-                            {/* Rendered HTML Preview */}
+                            </div>
+                          ) : (
                             <div
-                              className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300"
+                              className={cn(
+                                'max-w-none text-slate-700 dark:text-slate-300',
+                                !displayedTopicHtml.includes('bg-[') &&
+                                  !displayedTopicHtml.includes('grid') &&
+                                  !displayedTopicHtml.includes('#EEF1F4') &&
+                                  !displayedTopicHtml.includes('pptx-') &&
+                                  !displayedTopicHtml.includes('style=') &&
+                                  'prose prose-sm dark:prose-invert'
+                              )}
                               dangerouslySetInnerHTML={{
                                 __html: displayedTopicHtml,
                               }}
                             />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500">
-                        Select a topic to preview its content.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Tab 2: Quiz & Assessment Inspector - Single Column Spacious View */}
-              {activeTab === 'quiz' && (
-                <div className="space-y-4 max-h-[550px] overflow-y-auto">
-                  {/* Top Quiz Header / Toggle Toolbar */}
-                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                    <div className="flex items-center gap-2.5">
-                      <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                        <HelpCircle className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                          <span>Quizzes &amp; Knowledge Checks</span>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-[10px]',
-                              includeQuizzes && allQuizzes.length > 0
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                : 'bg-slate-100 text-slate-500 border-slate-300'
-                            )}
-                          >
-                            {includeQuizzes
-                              ? `${allQuizzes.length} Questions`
-                              : 'Excluded from JSON'}
-                          </Badge>
+                          )}
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          {includeQuizzes
-                            ? 'Every question is verified with stem, options, and answer keys.'
-                            : 'Quizzes are toggled OFF and excluded from the exported course JSON.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {includeQuizzes && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleAddNewQuestion(false)}
-                          className="h-7 text-xs font-semibold gap-1 text-slate-700 dark:text-slate-300"
-                        >
-                          <Plus className="h-3 w-3" /> Add Question
-                        </Button>
                       )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Select a topic to preview its content.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2: Quiz & Assessment Inspector - Single Column Spacious View */}
+            {activeTab === 'quiz' && (
+              <div className="space-y-4 max-h-[550px] overflow-y-auto">
+                {/* Top Quiz Header / Toggle Toolbar */}
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <HelpCircle className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Quizzes &amp; Knowledge Checks</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-[10px]',
+                            includeQuizzes && allQuizzes.length > 0
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300'
+                              : 'bg-slate-100 text-slate-500 border-slate-300'
+                          )}
+                        >
+                          {includeQuizzes
+                            ? `${allQuizzes.length} Questions`
+                            : 'Excluded from JSON'}
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {includeQuizzes
+                          ? 'Every question is verified with stem, options, and answer keys.'
+                          : 'Quizzes are toggled OFF and excluded from the exported course JSON.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {includeQuizzes && (
                       <Button
                         type="button"
                         size="sm"
-                        variant={includeQuizzes ? 'outline' : 'default'}
-                        onClick={() => handleToggleQuizzes(!includeQuizzes)}
-                        className={cn(
-                          'h-7 text-xs font-semibold gap-1.5',
-                          !includeQuizzes
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
-                            : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        )}
+                        variant="outline"
+                        onClick={() => handleAddNewQuestion(false)}
+                        className="h-7 text-xs font-semibold gap-1 text-slate-700 dark:text-slate-300"
                       >
-                        {includeQuizzes
-                          ? '🚫 Exclude Quizzes'
-                          : '📝 Enable Quizzes'}
+                        <Plus className="h-3 w-3" /> Add Question
                       </Button>
-                    </div>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={includeQuizzes ? 'outline' : 'default'}
+                      onClick={() => handleToggleQuizzes(!includeQuizzes)}
+                      className={cn(
+                        'h-7 text-xs font-semibold gap-1.5',
+                        !includeQuizzes
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
+                          : 'border-slate-300 text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      )}
+                    >
+                      {includeQuizzes
+                        ? '🚫 Exclude Quizzes'
+                        : '📝 Enable Quizzes'}
+                    </Button>
                   </div>
+                </div>
 
-                  {includeQuizzes && allQuizzes.length > 0 ? (
-                    allQuizzes.map((q, idx) => (
-                      <Card
-                        key={q.question_id || idx}
-                        className="border-slate-200 dark:border-slate-800"
-                      >
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-start justify-between gap-2 flex-wrap">
-                            <div>
-                              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
-                                Question {idx + 1} ({q.question_id})
+                {includeQuizzes && allQuizzes.length > 0 ? (
+                  allQuizzes.map((q, idx) => (
+                    <Card
+                      key={q.question_id || idx}
+                      className="border-slate-200 dark:border-slate-800"
+                    >
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                          <div>
+                            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded">
+                              Question {idx + 1} ({q.question_id})
+                            </span>
+                            <span className="text-[11px] text-slate-500 ml-2">
+                              {q.moduleTitle} → {q.lessonTitle}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[11px]">
+                              Answer: Option {q.correct_answer}
+                            </Badge>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleOpenEditQuestion(
+                                  q,
+                                  false,
+                                  q.moduleId,
+                                  q.lessonId
+                                )
+                              }
+                              className="h-6 text-[11px] px-2 gap-1 text-slate-700 dark:text-slate-300"
+                            >
+                              <Edit3 className="h-3 w-3" /> Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                handleDeleteQuestion(q.question_id, false)
+                              }
+                              className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
+                              title="Delete Question"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          {q.question ||
+                            q.question_text ||
+                            'No question text provided'}
+                        </p>
+
+                        {/* Options with Clickable Correct Answer Selection */}
+                        <div className="space-y-2 pt-1">
+                          {q.options && q.options.length > 0 ? (
+                            q.options.map((opt, optIdx) => {
+                              const optLetter = (
+                                opt.value ||
+                                ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][
+                                  optIdx
+                                ] ||
+                                `${optIdx + 1}`
+                              ).toUpperCase();
+                              const optLabel =
+                                opt.label || opt.option_text || '';
+                              const isCorrect =
+                                optLetter === q.correct_answer ||
+                                opt.is_correct === true ||
+                                opt.value === q.correct_answer;
+                              return (
+                                <button
+                                  type="button"
+                                  key={`${q.question_id || 'kc'}_opt_${optLetter}_${optIdx}`}
+                                  onClick={() =>
+                                    handleSelectCorrectAnswer(
+                                      q.question_id,
+                                      optLetter,
+                                      false
+                                    )
+                                  }
+                                  className={cn(
+                                    'w-full p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all cursor-pointer text-left',
+                                    isCorrect
+                                      ? 'border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 font-medium ring-1 ring-emerald-500/20'
+                                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:border-emerald-300 hover:bg-emerald-50/20'
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                    <span
+                                      className={cn(
+                                        'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-transform',
+                                        isCorrect
+                                          ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                      )}
+                                    >
+                                      {optLetter}
+                                    </span>
+                                    <span className="text-xs leading-normal">
+                                      {optLabel}
+                                    </span>
+                                  </div>
+                                  {isCorrect ? (
+                                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 shrink-0 ml-2">
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                      Correct
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400 hover:text-emerald-600 font-medium shrink-0 ml-2 opacity-0 hover:opacity-100 transition-opacity">
+                                      Click to select
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="p-3 rounded-xl border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs flex items-center justify-between gap-2">
+                              <span className="text-amber-800 dark:text-amber-300">
+                                No options currently defined for this question.
                               </span>
-                              <span className="text-[11px] text-slate-500 ml-2">
-                                {q.moduleTitle} → {q.lessonTitle}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[11px]">
-                                Answer: Option {q.correct_answer}
-                              </Badge>
                               <Button
                                 type="button"
                                 size="sm"
@@ -3333,6 +4168,173 @@ export default function CourseJsonConverter() {
                                     q.lessonId
                                   )
                                 }
+                                className="h-6 text-[10px] gap-1 border-amber-300 text-amber-800 dark:text-amber-200"
+                              >
+                                <Plus className="h-3 w-3" /> Add Options
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        {q.explanation && (
+                          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
+                            <strong className="text-slate-800 dark:text-slate-200">
+                              Explanation:{' '}
+                            </strong>
+                            {q.explanation}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <Card className="border-slate-200 dark:border-slate-800">
+                    <CardContent className="p-10 text-center space-y-3">
+                      <div className="inline-flex p-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                        <HelpCircle className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                          {!includeQuizzes
+                            ? 'Quizzes Are Excluded'
+                            : 'No Quiz Questions Detected'}
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                          {!includeQuizzes
+                            ? 'Quizzes are currently turned OFF. Your exported LMS JSON contains zero quiz questions and zero quiz duration.'
+                            : 'No assessment questions were found in the uploaded document or folder.'}
+                        </p>
+                      </div>
+                      {!includeQuizzes ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleToggleQuizzes(true)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5"
+                        >
+                          <HelpCircle className="h-3.5 w-3.5" />
+                          Enable Quizzes in JSON
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleAddNewQuestion(false)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add First Quiz Question
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2.5: Course Final Exam Inspector & Editor */}
+            {activeTab === 'final_exam' && (
+              <div className="space-y-4 max-h-[550px] overflow-y-auto">
+                {courseJson.final_exam &&
+                courseJson.final_exam.questions?.length > 0 ? (
+                  <>
+                    {/* Final Exam Toolbar */}
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-center gap-2.5">
+                        <span className="p-2 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                          <Award className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                            <span>
+                              {courseJson.final_exam.title ||
+                                'Comprehensive Final Exam'}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300"
+                            >
+                              {courseJson.final_exam.questions.length} Questions
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                            >
+                              Passing Score:{' '}
+                              {courseJson.final_exam.passingScore || 80}%
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                            >
+                              Time Limit:{' '}
+                              {formatTime(
+                                courseJson.final_exam.timeLimit || 1800
+                              )}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Click any option to set the correct answer. Click
+                            Edit to modify questions, options, or explanations.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddNewQuestion(true)}
+                          className="h-7 text-xs font-semibold gap-1 text-slate-700 dark:text-slate-300"
+                        >
+                          <Plus className="h-3 w-3" /> Add Question
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            finalExamUploadInputRef.current?.click()
+                          }
+                          className="h-7 text-xs font-semibold gap-1 text-slate-700 dark:text-slate-300"
+                        >
+                          <Upload className="h-3 w-3" /> Re-upload Exam
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowPasteExamModal(true)}
+                          className="h-7 text-xs font-semibold gap-1 text-slate-700 dark:text-slate-300"
+                        >
+                          <FileEdit className="h-3 w-3" /> Paste Exam Text
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Final Exam Questions List */}
+                    {courseJson.final_exam.questions.map((q, idx) => (
+                      <Card
+                        key={q.question_id || idx}
+                        className="border-slate-200 dark:border-slate-800"
+                      >
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-2 flex-wrap">
+                            <div>
+                              <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded">
+                                Exam Question {idx + 1} ({q.question_id})
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[11px]">
+                                Answer: Option {q.correct_answer}
+                              </Badge>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenEditQuestion(q, true)}
                                 className="h-6 text-[11px] px-2 gap-1 text-slate-700 dark:text-slate-300"
                               >
                                 <Edit3 className="h-3 w-3" /> Edit
@@ -3342,10 +4344,10 @@ export default function CourseJsonConverter() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() =>
-                                  handleDeleteQuestion(q.question_id, false)
+                                  handleDeleteQuestion(q.question_id, true)
                                 }
                                 className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
-                                title="Delete Question"
+                                title="Delete Exam Question"
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -3360,90 +4362,66 @@ export default function CourseJsonConverter() {
 
                           {/* Options with Clickable Correct Answer Selection */}
                           <div className="space-y-2 pt-1">
-                            {q.options && q.options.length > 0 ? (
-                              q.options.map((opt, optIdx) => {
-                                const optLetter = (
-                                  opt.value ||
-                                  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][
-                                    optIdx
-                                  ] ||
-                                  `${optIdx + 1}`
-                                ).toUpperCase();
-                                const optLabel =
-                                  opt.label || opt.option_text || '';
-                                const isCorrect =
-                                  optLetter === q.correct_answer ||
-                                  opt.is_correct === true ||
-                                  opt.value === q.correct_answer;
-                                return (
-                                  <button
-                                    type="button"
-                                    key={`${q.question_id || 'kc'}_opt_${optLetter}_${optIdx}`}
-                                    onClick={() =>
-                                      handleSelectCorrectAnswer(
-                                        q.question_id,
-                                        optLetter,
-                                        false
-                                      )
-                                    }
-                                    className={cn(
-                                      'w-full p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all cursor-pointer text-left',
-                                      isCorrect
-                                        ? 'border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 font-medium ring-1 ring-emerald-500/20'
-                                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:border-emerald-300 hover:bg-emerald-50/20'
-                                    )}
-                                  >
-                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                      <span
-                                        className={cn(
-                                          'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-transform',
-                                          isCorrect
-                                            ? 'bg-emerald-600 text-white shadow-xs scale-105'
-                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                        )}
-                                      >
-                                        {optLetter}
-                                      </span>
-                                      <span className="text-xs leading-normal">
-                                        {optLabel}
-                                      </span>
-                                    </div>
-                                    {isCorrect ? (
-                                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 shrink-0 ml-2">
-                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                        Correct
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400 hover:text-emerald-600 font-medium shrink-0 ml-2 opacity-0 hover:opacity-100 transition-opacity">
-                                        Click to select
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })
-                            ) : (
-                              <div className="p-3 rounded-xl border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-xs flex items-center justify-between gap-2">
-                                <span className="text-amber-800 dark:text-amber-300">
-                                  No options currently defined for this question.
-                                </span>
-                                <Button
+                            {q.options?.map((opt, optIdx) => {
+                              const optLetter = (
+                                opt.value ||
+                                ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][
+                                  optIdx
+                                ] ||
+                                `${optIdx + 1}`
+                              ).toUpperCase();
+                              const optLabel =
+                                opt.label || opt.option_text || '';
+                              const isCorrect =
+                                optLetter === q.correct_answer ||
+                                opt.is_correct === true ||
+                                opt.value === q.correct_answer;
+                              return (
+                                <button
                                   type="button"
-                                  size="sm"
-                                  variant="outline"
+                                  key={`${q.question_id || 'fe'}_opt_${optLetter}_${optIdx}`}
                                   onClick={() =>
-                                    handleOpenEditQuestion(
-                                      q,
-                                      false,
-                                      q.moduleId,
-                                      q.lessonId
+                                    handleSelectCorrectAnswer(
+                                      q.question_id,
+                                      optLetter,
+                                      true
                                     )
                                   }
-                                  className="h-6 text-[10px] gap-1 border-amber-300 text-amber-800 dark:text-amber-200"
+                                  className={cn(
+                                    'w-full p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all cursor-pointer text-left',
+                                    isCorrect
+                                      ? 'border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 font-medium ring-1 ring-emerald-500/20'
+                                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:border-emerald-300 hover:bg-emerald-50/20'
+                                  )}
                                 >
-                                  <Plus className="h-3 w-3" /> Add Options
-                                </Button>
-                              </div>
-                            )}
+                                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                    <span
+                                      className={cn(
+                                        'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-transform',
+                                        isCorrect
+                                          ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                      )}
+                                    >
+                                      {optLetter}
+                                    </span>
+                                    <span className="text-xs leading-normal">
+                                      {optLabel}
+                                    </span>
+                                  </div>
+                                  {isCorrect ? (
+                                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 shrink-0 ml-2">
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                      Correct
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400 hover:text-emerald-600 font-medium shrink-0 ml-2 opacity-0 hover:opacity-100 transition-opacity">
+                                      Click to select
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
 
                           {q.explanation && (
@@ -3456,430 +4434,177 @@ export default function CourseJsonConverter() {
                           )}
                         </CardContent>
                       </Card>
-                    ))
-                  ) : (
-                    <Card className="border-slate-200 dark:border-slate-800">
-                      <CardContent className="p-10 text-center space-y-3">
-                        <div className="inline-flex p-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                          <HelpCircle className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                            {!includeQuizzes
-                              ? 'Quizzes Are Excluded'
-                              : 'No Quiz Questions Detected'}
-                          </h4>
-                          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                            {!includeQuizzes
-                              ? 'Quizzes are currently turned OFF. Your exported LMS JSON contains zero quiz questions and zero quiz duration.'
-                              : 'No assessment questions were found in the uploaded document or folder.'}
-                          </p>
-                        </div>
-                        {!includeQuizzes ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => handleToggleQuizzes(true)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5"
-                          >
-                            <HelpCircle className="h-3.5 w-3.5" />
-                            Enable Quizzes in JSON
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => handleAddNewQuestion(false)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                            Add First Quiz Question
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              )}
-
-              {/* Tab 2.5: Course Final Exam Inspector & Editor */}
-              {activeTab === 'final_exam' && (
-                <div className="space-y-4 max-h-[550px] overflow-y-auto">
-                  {courseJson.final_exam &&
-                  courseJson.final_exam.questions?.length > 0 ? (
-                    <>
-                      {/* Final Exam Toolbar */}
-                      <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-                        <div className="flex items-center gap-2.5">
-                          <span className="p-2 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                            <Award className="h-4 w-4" />
-                          </span>
-                          <div>
-                            <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
-                              <span>
-                                {courseJson.final_exam.title ||
-                                  'Comprehensive Final Exam'}
-                              </span>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300"
-                              >
-                                {courseJson.final_exam.questions.length}{' '}
-                                Questions
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                              >
-                                Passing Score:{' '}
-                                {courseJson.final_exam.passingScore || 80}%
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                              >
-                                Time Limit:{' '}
-                                {formatTime(
-                                  courseJson.final_exam.timeLimit || 1800
-                                )}
-                              </Badge>
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5">
-                              Click any option to set the correct answer. Click
-                              Edit to modify questions, options, or
-                              explanations.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAddNewQuestion(true)}
-                            className="h-7 text-xs font-semibold gap-1 text-slate-700 dark:text-slate-300"
-                          >
-                            <Plus className="h-3 w-3" /> Add Question
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              finalExamUploadInputRef.current?.click()
-                            }
-                            className="h-7 text-xs font-semibold gap-1 text-slate-700 dark:text-slate-300"
-                          >
-                            <Upload className="h-3 w-3" /> Re-upload Exam
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowPasteExamModal(true)}
-                            className="h-7 text-xs font-semibold gap-1 text-slate-700 dark:text-slate-300"
-                          >
-                            <FileEdit className="h-3 w-3" /> Paste Exam Text
-                          </Button>
-                        </div>
+                    ))}
+                  </>
+                ) : (
+                  /* Empty State: No Final Exam in Course */
+                  <Card className="border-slate-200 dark:border-slate-800">
+                    <CardContent className="p-10 text-center space-y-4">
+                      <div className="inline-flex p-3 rounded-full bg-purple-50 dark:bg-purple-950 text-purple-600">
+                        <Award className="h-8 w-8" />
                       </div>
-
-                      {/* Final Exam Questions List */}
-                      {courseJson.final_exam.questions.map((q, idx) => (
-                        <Card
-                          key={q.question_id || idx}
-                          className="border-slate-200 dark:border-slate-800"
-                        >
-                          <CardContent className="p-4 space-y-3">
-                            <div className="flex items-start justify-between gap-2 flex-wrap">
-                              <div>
-                                <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded">
-                                  Exam Question {idx + 1} ({q.question_id})
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[11px]">
-                                  Answer: Option {q.correct_answer}
-                                </Badge>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    handleOpenEditQuestion(q, true)
-                                  }
-                                  className="h-6 text-[11px] px-2 gap-1 text-slate-700 dark:text-slate-300"
-                                >
-                                  <Edit3 className="h-3 w-3" /> Edit
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() =>
-                                    handleDeleteQuestion(q.question_id, true)
-                                  }
-                                  className="h-6 w-6 p-0 text-slate-400 hover:text-red-600"
-                                  title="Delete Exam Question"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-
-                            <p className="text-sm font-medium text-slate-900 dark:text-white">
-                              {q.question ||
-                                q.question_text ||
-                                'No question text provided'}
-                            </p>
-
-                            {/* Options with Clickable Correct Answer Selection */}
-                            <div className="space-y-2 pt-1">
-                              {q.options?.map((opt, optIdx) => {
-                                const optLetter = (
-                                  opt.value ||
-                                  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][
-                                    optIdx
-                                  ] ||
-                                  `${optIdx + 1}`
-                                ).toUpperCase();
-                                const optLabel =
-                                  opt.label || opt.option_text || '';
-                                const isCorrect =
-                                  optLetter === q.correct_answer ||
-                                  opt.is_correct === true ||
-                                  opt.value === q.correct_answer;
-                                return (
-                                  <button
-                                    type="button"
-                                    key={`${q.question_id || 'fe'}_opt_${optLetter}_${optIdx}`}
-                                    onClick={() =>
-                                      handleSelectCorrectAnswer(
-                                        q.question_id,
-                                        optLetter,
-                                        true
-                                      )
-                                    }
-                                    className={cn(
-                                      'w-full p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all cursor-pointer text-left',
-                                      isCorrect
-                                        ? 'border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 font-medium ring-1 ring-emerald-500/20'
-                                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:border-emerald-300 hover:bg-emerald-50/20'
-                                    )}
-                                  >
-                                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                      <span
-                                        className={cn(
-                                          'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-transform',
-                                          isCorrect
-                                            ? 'bg-emerald-600 text-white shadow-xs scale-105'
-                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                        )}
-                                      >
-                                        {optLetter}
-                                      </span>
-                                      <span className="text-xs leading-normal">
-                                        {optLabel}
-                                      </span>
-                                    </div>
-                                    {isCorrect ? (
-                                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1 shrink-0 ml-2">
-                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                        Correct
-                                      </span>
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400 hover:text-emerald-600 font-medium shrink-0 ml-2 opacity-0 hover:opacity-100 transition-opacity">
-                                        Click to select
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            {q.explanation && (
-                              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 text-xs text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800">
-                                <strong className="text-slate-800 dark:text-slate-200">
-                                  Explanation:{' '}
-                                </strong>
-                                {q.explanation}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </>
-                  ) : (
-                    /* Empty State: No Final Exam in Course */
-                    <Card className="border-slate-200 dark:border-slate-800">
-                      <CardContent className="p-10 text-center space-y-4">
-                        <div className="inline-flex p-3 rounded-full bg-purple-50 dark:bg-purple-950 text-purple-600">
-                          <Award className="h-8 w-8" />
-                        </div>
-                        <div className="max-w-md mx-auto">
-                          <h4 className="text-base font-semibold text-slate-900 dark:text-white">
-                            No Final Exam in this Course Yet
-                          </h4>
-                          <p className="text-xs text-slate-500 mt-1">
-                            Uploaded all your lessons but forgot the final exam?
-                            Upload your Word document (.docx) or PDF, or paste
-                            the exam questions directly. It will be seamlessly
-                            merged into this course!
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() =>
-                              finalExamUploadInputRef.current?.click()
-                            }
-                            className="bg-purple-600 hover:bg-purple-700 text-white text-xs gap-1.5"
-                          >
-                            <Upload className="h-3.5 w-3.5" />
-                            Upload Final Exam (.docx / .pdf)
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowPasteExamModal(true)}
-                            className="text-xs gap-1.5 text-slate-700 dark:text-slate-300"
-                          >
-                            <FileEdit className="h-3.5 w-3.5" />
-                            Paste Final Exam Text
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              )}
-
-              {/* Tab 3: Clean HTML Inspector */}
-              {activeTab === 'html' && (
-                <div className="border rounded-xl p-4 bg-slate-950 text-slate-200 font-mono text-xs max-h-[500px] overflow-y-auto space-y-2">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px] text-slate-400">
-                    <span>
-                      Clean LMS HTML for Topic {selectedTopicIndex + 1}:{' '}
-                      {activeTopic?.name}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <span>
-                        Length: {activeTopic?.leftDiv?.editorHtml?.length || 0}{' '}
-                        chars
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setActiveTab('hierarchy');
-                          setIsEditingTopic(true);
-                          if (activeTopic) {
-                            setEditedTopicName(activeTopic.name || '');
-                            setEditedTopicHtml(
-                              activeTopic.leftDiv?.editorHtml || ''
-                            );
+                      <div className="max-w-md mx-auto">
+                        <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                          No Final Exam in this Course Yet
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Uploaded all your lessons but forgot the final exam?
+                          Upload your Word document (.docx) or PDF, or paste the
+                          exam questions directly. It will be seamlessly merged
+                          into this course!
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() =>
+                            finalExamUploadInputRef.current?.click()
                           }
-                        }}
-                        className="h-6 text-[10px] bg-slate-900 border-slate-700 text-blue-400 hover:text-white"
-                      >
-                        <Edit3 className="h-3 w-3 mr-1" />
-                        Edit HTML
-                      </Button>
-                    </div>
-                  </div>
-                  <pre className="whitespace-pre-wrap break-all leading-relaxed">
-                    {displayedTopicHtml}
-                  </pre>
-                </div>
-              )}
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs gap-1.5"
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          Upload Final Exam (.docx / .pdf)
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowPasteExamModal(true)}
+                          className="text-xs gap-1.5 text-slate-700 dark:text-slate-300"
+                        >
+                          <FileEdit className="h-3.5 w-3.5" />
+                          Paste Final Exam Text
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
 
-              {/* Tab 4: 14-Point Validation Suite */}
-              {activeTab === 'validation' && (
-                <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
-                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      Validation Suite Results:{' '}
-                      {validation?.summary?.passed || 14} / 14 Passed
+            {/* Tab 3: Clean HTML Inspector */}
+            {activeTab === 'html' && (
+              <div className="border rounded-xl p-4 bg-slate-950 text-slate-200 font-mono text-xs max-h-[500px] overflow-y-auto space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px] text-slate-400">
+                  <span>
+                    Clean LMS HTML for Topic {selectedTopicIndex + 1}:{' '}
+                    {activeTopic?.name}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span>
+                      Length: {activeTopic?.leftDiv?.editorHtml?.length || 0}{' '}
+                      chars
                     </span>
-                    <Badge
-                      variant={validation?.isValid ? 'default' : 'destructive'}
-                      className="text-xs"
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setActiveTab('hierarchy');
+                        setIsEditingTopic(true);
+                        if (activeTopic) {
+                          setEditedTopicName(activeTopic.name || '');
+                          setEditedTopicHtml(
+                            activeTopic.leftDiv?.editorHtml || ''
+                          );
+                        }
+                      }}
+                      className="h-6 text-[10px] bg-slate-900 border-slate-700 text-blue-400 hover:text-white"
                     >
-                      {validation?.isValid ? 'Schema Valid' : 'Issues Found'}
-                    </Badge>
+                      <Edit3 className="h-3 w-3 mr-1" />
+                      Edit HTML
+                    </Button>
                   </div>
+                </div>
+                <pre className="whitespace-pre-wrap break-all leading-relaxed">
+                  {displayedTopicHtml}
+                </pre>
+              </div>
+            )}
 
-                  {validation?.checks?.map((check) => (
-                    <div
-                      key={check.id}
-                      className={cn(
-                        'p-3 rounded-lg border text-xs flex items-start gap-3 transition-colors',
-                        check.passed
-                          ? 'border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20 text-slate-800 dark:text-slate-200'
-                          : 'border-red-200 bg-red-50/40 dark:bg-red-950/20 text-red-900 dark:text-red-100'
-                      )}
-                    >
-                      {check.passed ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-                      )}
-                      <div className="flex-1">
-                        <div className="font-semibold">{check.name}</div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                          {check.message}
-                        </div>
+            {/* Tab 4: 14-Point Validation Suite */}
+            {activeTab === 'validation' && (
+              <div className="space-y-2.5 max-h-[500px] overflow-y-auto">
+                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg text-xs">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    Validation Suite Results:{' '}
+                    {validation?.summary?.passed || 14} / 14 Passed
+                  </span>
+                  <Badge
+                    variant={validation?.isValid ? 'default' : 'destructive'}
+                    className="text-xs"
+                  >
+                    {validation?.isValid ? 'Schema Valid' : 'Issues Found'}
+                  </Badge>
+                </div>
+
+                {validation?.checks?.map((check) => (
+                  <div
+                    key={check.id}
+                    className={cn(
+                      'p-3 rounded-lg border text-xs flex items-start gap-3 transition-colors',
+                      check.passed
+                        ? 'border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20 text-slate-800 dark:text-slate-200'
+                        : 'border-red-200 bg-red-50/40 dark:bg-red-950/20 text-red-900 dark:text-red-100'
+                    )}
+                  >
+                    {check.passed ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <div className="font-semibold">{check.name}</div>
+                      <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                        {check.message}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Tab 5: LMS JSON Code View */}
-              {activeTab === 'json' && (
-                <div className="border rounded-xl p-4 bg-slate-950 text-emerald-400 font-mono text-xs max-h-[500px] overflow-y-auto space-y-2">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px] text-slate-400">
-                    <span>
-                      Full LMS Course Payload (
-                      {JSON.stringify(courseJson).length} bytes)
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleEnhanceJson()}
-                        className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 font-medium"
-                        title="Enhance & Clean Code: apply Module 0 / Introduction, format lesson numbering, purge slide titles & file codes"
-                      >
-                        <Sparkles className="h-3 w-3" />
-                        Enhance &amp; Clean Code
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCopy}
-                        className="text-blue-400 hover:underline flex items-center gap-1"
-                      >
-                        {copied ? (
-                          <Check className="h-3 w-3" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                        {copied ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
                   </div>
-                  <pre className="whitespace-pre-wrap leading-relaxed">
-                    {JSON.stringify(courseJson, null, 2)}
-                  </pre>
+                ))}
+              </div>
+            )}
+
+            {/* Tab 5: LMS JSON Code View */}
+            {activeTab === 'json' && (
+              <div className="border rounded-xl p-4 bg-slate-950 text-emerald-400 font-mono text-xs max-h-[500px] overflow-y-auto space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px] text-slate-400">
+                  <span>
+                    Full LMS Course Payload ({JSON.stringify(courseJson).length}{' '}
+                    bytes)
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleEnhanceJson()}
+                      className="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 font-medium"
+                      title="Enhance & Clean Code: apply Module 0 / Introduction, format lesson numbering, purge slide titles & file codes"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Enhance &amp; Clean Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopy}
+                      className="text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      {copied ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Copy className="h-3 w-3" />
+                      )}
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+                <pre className="whitespace-pre-wrap leading-relaxed">
+                  {JSON.stringify(courseJson, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Enhance & Clean JSON Modal */}
       <Dialog open={showEnhanceModal} onOpenChange={setShowEnhanceModal}>
@@ -4527,6 +5252,230 @@ export default function CourseJsonConverter() {
             >
               <Check className="h-4 w-4" />
               Merge Slides
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Comprehensive Course Structure & Titles Editor */}
+      <Dialog open={showStructureModal} onOpenChange={setShowStructureModal}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
+              <Edit3 className="h-5 w-5 text-blue-600" />
+              Edit Course Structure &amp; Titles
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-1">
+            {/* Course Title Field */}
+            <div className="space-y-1.5 p-3.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/20">
+              <label className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                <BookOpen className="h-3.5 w-3.5 text-blue-600" />
+                Course Title
+              </label>
+              <Input
+                value={structureModalData?.courseTitle || ''}
+                onChange={(e) =>
+                  setStructureModalData((prev) => ({
+                    ...prev,
+                    courseTitle: e.target.value,
+                  }))
+                }
+                className="bg-white dark:bg-slate-900 font-semibold text-sm"
+                placeholder="Course title..."
+              />
+              <p className="text-[11px] text-blue-700/80 dark:text-blue-300/80">
+                Renaming the course also updates Module 0 and Lesson 0&apos;s
+                empty title slide automatically.
+              </p>
+            </div>
+
+            {/* Modules & Lessons Hierarchy */}
+            <div className="space-y-3">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                <span>Modules &amp; Lessons</span>
+                <span className="text-[11px] font-normal text-slate-500">
+                  {structureModalData?.modules?.length || 0} Modules
+                </span>
+              </div>
+
+              {structureModalData?.modules?.map((mod, mIdx) => (
+                <div
+                  key={mod.module_id || mIdx}
+                  className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                      Module {mIdx}:
+                    </span>
+                    <Input
+                      value={mod.module_title}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setStructureModalData((prev) => {
+                          const newMods = [...prev.modules];
+                          newMods[mIdx].module_title = val;
+                          return { ...prev, modules: newMods };
+                        });
+                      }}
+                      className="h-8 text-xs font-medium"
+                      placeholder="Module title..."
+                    />
+                  </div>
+
+                  <div className="space-y-2 pl-3 border-l-2 border-slate-200 dark:border-slate-700">
+                    {mod.lessons?.map((les, lIdx) => (
+                      <div
+                        key={les.lesson_id || lIdx}
+                        className="flex items-center gap-2"
+                      >
+                        <span className="w-6 h-6 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono font-bold flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-400">
+                          L{lIdx}
+                        </span>
+                        <Input
+                          value={les.lesson_title}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setStructureModalData((prev) => {
+                              const newMods = [...prev.modules];
+                              newMods[mIdx].lessons[lIdx].lesson_title = val;
+                              return { ...prev, modules: newMods };
+                            });
+                          }}
+                          className="h-7 text-xs"
+                          placeholder="Lesson title..."
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowStructureModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                if (!structureModalData) return;
+                handleSaveAllStructure(
+                  structureModalData.courseTitle,
+                  structureModalData.modules
+                );
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-1.5"
+            >
+              <Save className="h-4 w-4" />
+              Save All Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Add Slide Dialog */}
+      <Dialog open={showAddSlideModal} onOpenChange={setShowAddSlideModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
+              <Plus className="h-5 w-5 text-blue-600" />
+              Add New Slide to Lesson
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            {/* Reference Topic Info */}
+            <div className="p-3 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl space-y-1">
+              <div className="font-semibold text-blue-950 dark:text-blue-100">
+                Target Lesson:{' '}
+                {allTopics[addSlideTargetTopicIndex]?.lessonTitle ||
+                  'Current Lesson'}
+              </div>
+              <div className="text-[11px] text-blue-700 dark:text-blue-300">
+                Current Reference Slide: Topic {addSlideTargetTopicIndex + 1}:
+                &ldquo;{allTopics[addSlideTargetTopicIndex]?.name}&rdquo;
+              </div>
+            </div>
+
+            {/* Slide Title */}
+            <div className="space-y-1.5">
+              <label className="font-semibold text-slate-800 dark:text-slate-200 block">
+                Slide Title / Heading:
+              </label>
+              <Input
+                value={newSlideTitle}
+                onChange={(e) => setNewSlideTitle(e.target.value)}
+                placeholder="e.g. System Configuration & Safety Procedures"
+                className="h-8 text-xs"
+                autoFocus
+              />
+            </div>
+
+            {/* Placement Position */}
+            <div className="space-y-1.5">
+              <label className="font-semibold text-slate-800 dark:text-slate-200 block">
+                Placement:
+              </label>
+              <select
+                value={newSlidePosition}
+                onChange={(e) => setNewSlidePosition(e.target.value)}
+                className="w-full h-8 text-xs border border-slate-300 dark:border-slate-700 rounded-lg px-2 bg-background text-foreground"
+              >
+                <option value="after">
+                  After current slide (as Slide {addSlideTargetTopicIndex + 2})
+                </option>
+                <option value="before">
+                  Before current slide (as Slide {addSlideTargetTopicIndex + 1})
+                </option>
+                <option value="end">At the end of this lesson</option>
+              </select>
+            </div>
+
+            {/* Slide Content */}
+            <div className="space-y-1.5">
+              <label className="font-semibold text-slate-800 dark:text-slate-200 block">
+                Slide Content (HTML or plain text paragraph):
+              </label>
+              <Textarea
+                rows={4}
+                value={newSlideContent}
+                onChange={(e) => setNewSlideContent(e.target.value)}
+                placeholder="Enter slide instructional content, bullet points, or instructions..."
+                className="text-xs"
+              />
+              <span className="text-[10px] text-slate-500">
+                Auto-wrapped into standard LMS single parent container. Leave
+                blank for default template content.
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddSlideModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleExecuteAddSlide}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Add Slide
             </Button>
           </div>
         </DialogContent>

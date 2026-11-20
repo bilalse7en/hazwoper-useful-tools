@@ -147,14 +147,6 @@ const AIVideoShorts = nextDynamic(
   { ssr: false }
 );
 
-const ShortGenerator2 = nextDynamic(
-  () =>
-    import('@/components/generators/ai-video-shorts-v2').then(
-      (m) => m.default || m.ShortGenerator2
-    ),
-  { ssr: false }
-);
-
 const AdobeStockImageFinder = nextDynamic(
   () =>
     import('@/components/generators/adobe-stock-image-finder').then(
@@ -197,8 +189,8 @@ const toolComponents = {
   'slide-generator': SlideGenerator,
   'html-design-enhancer': HtmlDesignEnhancer,
   'ai-video-shorts': AIVideoShorts,
-  'short-generator-2': ShortGenerator2,
-  'ai-video-shorts-v2': ShortGenerator2,
+  'short-generator-2': AIVideoShorts,
+  'ai-video-shorts-v2': AIVideoShorts,
   'adobe-stock-finder': AdobeStockImageFinder,
   'adobe-stock-image-finder': AdobeStockImageFinder,
   'course-json-converter': CourseJsonConverter,

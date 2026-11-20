@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MagneticCapsuleDock } from '@/components/ui/magnetic-capsule-dock';
+import { AdContainer } from '@/components/layout/ad-container';
 import {
   ArrowRight,
   Sparkles,
@@ -111,7 +112,7 @@ export function ToolsDirectoryClient() {
       {/* Hero Section */}
       <section className="relative pt-10 sm:pt-14 md:pt-16 pb-10 sm:pb-12 overflow-hidden border-b border-border bg-muted/20">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.08),transparent_50%)] pointer-events-none" />
-        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="site-container relative">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Column: Heading & Description */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-5">
@@ -232,7 +233,7 @@ export function ToolsDirectoryClient() {
       </section>
 
       {/* Directory Filter & Grid Section */}
-      <section className="py-10 sm:py-14 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl space-y-8">
+      <section className="site-container py-10 sm:py-14 space-y-8">
         {/* Search and Category Filter Controls */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
           {/* Search Box */}
@@ -270,7 +271,10 @@ export function ToolsDirectoryClient() {
           />
         </div>
 
-        {/* Tools Responsive Cubic Grid */}
+        {/* Centered Advertisement Below Filter */}
+        <AdContainer position="top-banner" margin="tight" />
+
+        {/* Tools Responsive Grid (Scales intelligently from 1 col on mobile to 6 cols on Ultrawide/4K) */}
         {filteredTools.length === 0 ? (
           <div className="py-16 text-center rounded-2xl sm:rounded-3xl border border-dashed border-border bg-card/20 space-y-3">
             <Search className="w-10 h-10 text-muted-foreground mx-auto opacity-40" />
@@ -293,7 +297,7 @@ export function ToolsDirectoryClient() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 4xl:grid-cols-5 5xl:grid-cols-6 gap-5 sm:gap-6">
             {filteredTools.map((tool, index) => {
               const Icon = iconMap[tool.id] || Layout;
               return (
@@ -382,11 +386,14 @@ export function ToolsDirectoryClient() {
             })}
           </div>
         )}
+
+        {/* Centered Advertisement After Tool Matrix */}
+        <AdContainer position="in-content" className="pt-4" />
       </section>
 
       {/* Corporate Value Addition Section */}
       <section className="py-12 sm:py-16 bg-muted/30 border-t border-border relative overflow-hidden">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="site-container">
           <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 bg-card/60 border border-border shadow-xl space-y-8">
             <div className="max-w-2xl space-y-3">
               <Badge

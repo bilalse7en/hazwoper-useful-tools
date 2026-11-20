@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { InteractiveBlogRenderer } from '@/components/interactive-blog-game';
 import { BlogGamesSection } from '@/components/blog-games-section';
 import { BlogFaqSection } from '@/components/blog-faq-section';
+import { AdContainer } from '@/components/layout/ad-container';
 import { useState } from 'react';
 import { showToast } from '@/lib/swal';
 
@@ -36,11 +37,11 @@ export function BlogPostClient({ post }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <main className="flex-1 pb-16">
+      <div className="flex-1 pb-16">
         {/* Article Header */}
         <header className="relative pt-20 pb-10 overflow-hidden border-b border-border bg-gradient-to-b from-muted/20 via-transparent to-transparent">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(59,130,246,0.08),transparent_50%)]" />
-          <div className="container relative z-10 mx-auto px-6">
+          <div className="site-container relative z-10">
             <div className="max-w-4xl mx-auto space-y-5 text-center md:text-left">
               <Link
                 href="/blog"
@@ -84,7 +85,7 @@ export function BlogPostClient({ post }) {
         </header>
 
         {/* Mobile / Tablet share bar (sidebar is hidden below lg) */}
-        <div className="container mx-auto px-6 pt-6 lg:hidden">
+        <div className="site-container pt-6 lg:hidden">
           <div className="max-w-4xl mx-auto flex items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0 flex items-center gap-1.5">
               <Share2 className="w-3.5 h-3.5 text-primary" /> Share
@@ -163,7 +164,7 @@ export function BlogPostClient({ post }) {
 
         {/* Feature Image (faded/gradient treatment — title stays HTML for accuracy) */}
         {post.image_url && (
-          <section className="container mx-auto px-6 pt-8">
+          <section className="site-container pt-8">
             <div className="max-w-4xl mx-auto relative aspect-video rounded-3xl overflow-hidden shadow-xl border border-border bg-muted/20">
               <Image
                 src={post.image_url}
@@ -178,9 +179,14 @@ export function BlogPostClient({ post }) {
           </section>
         )}
 
+        {/* Centered Top Advertisement */}
+        <div className="site-container">
+          <AdContainer position="top-banner" margin="tight" />
+        </div>
+
         {/* Content Section */}
-        <section className="container mx-auto px-6 py-12">
-          <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_230px] gap-12">
+        <section className="site-container py-8 sm:py-12">
+          <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8 lg:gap-12">
             {/* Article Content & Interactive Renderer */}
             <article className="prose prose-invert max-w-none min-w-0 prose-headings:font-black prose-headings:tracking-tighter prose-headings:text-foreground prose-p:text-muted-foreground/90 prose-p:leading-relaxed prose-strong:text-foreground prose-strong:font-black prose-a:text-primary hover:prose-a:opacity-80 prose-img:rounded-2xl prose-img:shadow-xl">
               <InteractiveBlogRenderer content={post.content} />
@@ -189,6 +195,12 @@ export function BlogPostClient({ post }) {
             {/* Sidebar / Actions (desktop only — mobile uses the share bar above) */}
             <aside className="hidden lg:block min-w-0">
               <div className="sticky top-20 space-y-6">
+                {/* Centered Sidebar Ad */}
+                <AdContainer
+                  position="sidebar"
+                  margin="none"
+                  showLabel={false}
+                />
                 <div className="space-y-3">
                   <h3 className="text-[11px] font-black uppercase tracking-widest text-foreground flex items-center gap-2">
                     <Share2 className="w-3.5 h-3.5 text-primary" /> Share
@@ -293,19 +305,24 @@ export function BlogPostClient({ post }) {
           </div>
         </section>
         {/* Interactive Games (exactly 3, generated from this article) */}
-        <section className="container mx-auto px-6 pb-6">
+        <section className="site-container pb-6">
           <div className="max-w-4xl mx-auto">
             <BlogGamesSection games={post.games} />
           </div>
         </section>
 
+        {/* Centered In-Content Advertisement */}
+        <div className="site-container">
+          <AdContainer position="in-content" margin="default" />
+        </div>
+
         {/* FAQ (exactly 5, generated from this article) */}
-        <section className="container mx-auto px-6 pb-12">
+        <section className="site-container pb-12">
           <div className="max-w-4xl mx-auto">
             <BlogFaqSection faq={post.faq} title={post.title} />
           </div>
         </section>
-      </main>
+      </div>
 
       {/* Global CSS Styling for Blog Post Content Design
           Theme-aware: light is the base, .dark / .nebula override.

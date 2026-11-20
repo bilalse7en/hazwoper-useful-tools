@@ -1354,7 +1354,7 @@ function AdminDashboard() {
   return (
     <>
       <InitialLoadingShell isReady={!loading} />
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl animate-in-card space-y-6 sm:space-y-8 focus:outline-none">
+      <div className="w-full max-w-7xl 2xl:max-w-[1800px] 3xl:max-w-[2160px] 4xl:max-w-full mx-auto px-4 sm:px-6 lg:px-8 3xl:px-10 4xl:px-12 py-6 sm:py-8 animate-in-card space-y-6 sm:space-y-8 focus:outline-none">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5 sm:pb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/80 capitalize">

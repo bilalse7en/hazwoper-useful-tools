@@ -93,7 +93,7 @@ export function ProfessionalOverview() {
       </div>
 
       {/* FOREGROUND CONTENT (SCROLLS OVER FROZEN BACKGROUND) */}
-      <div className="relative z-10 -mt-[100vh] py-20 sm:py-28 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+      <div className="relative z-10 -mt-[100vh] py-20 sm:py-28 site-container">
         {/* Section Header */}
         <div className="max-w-3xl mx-auto text-center mb-12 sm:mb-16">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 leading-[1.12] text-foreground drop-shadow-md">

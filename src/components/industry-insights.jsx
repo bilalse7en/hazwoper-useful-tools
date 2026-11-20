@@ -143,7 +143,7 @@ export function IndustryInsights() {
       </div>
 
       {/* FOREGROUND CONTENT (SCROLLS OVER FROZEN BACKGROUND - PARENT GLASS REMOVED!) */}
-      <div className="relative z-10 -mt-[100vh] py-20 sm:py-28 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+      <div className="relative z-10 -mt-[100vh] py-20 sm:py-28 site-container">
         {/* Direct Layout (No enclosing parent glass border box!) */}
         <div className="space-y-12">
           {/* Main Grid: Typography + Utility Standards + Metrics Grid */}

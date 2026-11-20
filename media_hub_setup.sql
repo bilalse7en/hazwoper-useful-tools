@@ -31,6 +31,16 @@ END $$;
 
 -- Ensure all columns exist if table was partially created
 ALTER TABLE public.media_hub ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+-- Ensure user_id allows NULL values for guest sessions and background render workers
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'media_hub' AND column_name = 'user_id' AND is_nullable = 'NO'
+    ) THEN
+        ALTER TABLE public.media_hub ALTER COLUMN user_id DROP NOT NULL;
+    END IF;
+END $$;
 ALTER TABLE public.media_hub ADD COLUMN IF NOT EXISTS file_name TEXT;
 ALTER TABLE public.media_hub ADD COLUMN IF NOT EXISTS file_type TEXT;
 ALTER TABLE public.media_hub ADD COLUMN IF NOT EXISTS file_size BIGINT DEFAULT 0;

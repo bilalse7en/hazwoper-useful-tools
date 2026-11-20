@@ -45,6 +45,19 @@
 /* Define custom variant for dark mode child support */
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --breakpoint-xs: 25rem;     /* 400px - Small mobile */
+  --breakpoint-sm: 40rem;     /* 640px - Tablet portrait */
+  --breakpoint-md: 48rem;     /* 768px - Tablet landscape */
+  --breakpoint-lg: 64rem;     /* 1024px - Laptop */
+  --breakpoint-xl: 80rem;     /* 1280px - Desktop */
+  --breakpoint-2xl: 96rem;    /* 1536px - Large desktop */
+  --breakpoint-3xl: 120rem;   /* 1920px - XXL FHD */
+  --breakpoint-4xl: 160rem;   /* 2560px - XXXL / Ultrawide QHD */
+  --breakpoint-5xl: 215rem;   /* 3440px - Ultrawide Extended */
+  --breakpoint-6xl: 240rem;   /* 3840px - 4K UHD */
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -1032,3 +1045,183 @@ ol {
   background: rgba(139, 92, 246, 0.1);
   border-color: rgba(139, 92, 246, 0.35);
 }
+
+/* PowerPoint Deck & LMS Course preview styling */
+.pptx-card {
+  background-color: #EEF1F4 !important;
+  border: 1px solid #CBD5E1 !important;
+}
+.dark .pptx-card {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+.pptx-badge-orange {
+  background-color: #E8761C !important;
+  color: #ffffff !important;
+}
+.pptx-badge-red {
+  background-color: #B3261E !important;
+  color: #ffffff !important;
+}
+.pptx-badge-teal {
+  background-color: #1F7A8C !important;
+  color: #ffffff !important;
+}
+.pptx-badge-green {
+  background-color: #2E7D4F !important;
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   GLOBAL RESPONSIVE CONTAINER & CENTERED ADVERTISING SYSTEM
+   ========================================================================== */
+
+:root {
+  --site-container-max: 1680px;
+  --site-container-gutter: 1rem; /* 16px: 320-575px mobile */
+}
+
+@media (min-width: 576px) {
+  :root {
+    --site-container-gutter: 1.25rem; /* 20px: 576-767px responsive */
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --site-container-gutter: 1.5rem; /* 24px: 768-1023px tablet */
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --site-container-gutter: 1.75rem; /* 28px: 1024-1279px desktop */
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --site-container-gutter: 2rem; /* 32px: 1280-1535px wider desktop */
+  }
+}
+
+@media (min-width: 1536px) {
+  :root {
+    --site-container-gutter: 2rem; /* 32px: XXL and above */
+  }
+}
+
+/* 
+ * MASTER SITE CONTAINER:
+ * - BELOW XXL (< 1536px): Uses 100% full available viewport width with responsive side gutters.
+ * - XXL AND ABOVE (>= 1536px): Clamps strictly to 1680px centered container with automatic horizontal margins.
+ */
+.site-container {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--site-container-gutter);
+}
+
+@media (min-width: 1536px) {
+  .site-container {
+    max-width: var(--site-container-max);
+  }
+}
+
+/* Wide Container: Fully unified with .site-container */
+.site-container-wide {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--site-container-gutter);
+}
+
+@media (min-width: 1536px) {
+  .site-container-wide {
+    max-width: var(--site-container-max);
+  }
+}
+
+/* Content Container: Articles, Blogs, Legal Policies, Forms */
+.site-container-content {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 56rem; /* 896px */
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px) {
+  .site-container-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .site-container-content {
+    max-width: 64rem; /* 1024px */
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Dedicated Centered Advertisement Shell */
+.site-ad-shell {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
+  clear: both;
+}
+.site-ad-shell-inner {
+  width: 100%;
+  max-width: 970px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Intelligent Responsive Card Grid */
+.site-card-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+@media (min-width: 640px) {
+  .site-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .site-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.75rem;
+  }
+}
+@media (min-width: 1536px) {
+  .site-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 2rem;
+  }
+}
+@media (min-width: 2560px) {
+  .site-card-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2.25rem;
+  }
+}
+@media (min-width: 3440px) {
+  .site-card-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 2.5rem;
+  }
+}
+

@@ -263,7 +263,7 @@ export function MainframeHeroBanner({ user }) {
       </div>
 
       {/* LEFT CONTENT COLUMN OVERLAY */}
-      <div className="container relative z-10 mx-auto px-6 sm:px-8 lg:px-12 py-16 sm:py-20 lg:py-24 max-w-7xl">
+      <div className="site-container relative z-10 py-16 sm:py-20 lg:py-24">
         <div className="max-w-2xl lg:max-w-3xl space-y-6">
           {/* Typewriter Headline */}
           <motion.div

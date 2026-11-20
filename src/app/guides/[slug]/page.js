@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
-import { AdPlacement } from '@/components/ad-placement';
+import { AdContainer } from '@/components/layout/ad-container';
+import { ContentContainer } from '@/components/layout/content-container';
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -107,7 +108,7 @@ export default async function GuideDetailPage({ params }) {
       />
 
       <div className="min-h-screen bg-background pb-32">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <ContentContainer size="default" className="py-8 sm:py-12">
           {/* Breadcrumbs */}
           <nav
             aria-label="Breadcrumb"
@@ -166,7 +167,7 @@ export default async function GuideDetailPage({ params }) {
             </div>
           </header>
 
-          <AdPlacement type="top-banner" className="my-6" />
+          <AdContainer position="top-banner" margin="default" />
 
           {/* Table of Contents */}
           <div className="my-6 sm:my-8 p-5 sm:p-6 rounded-2xl sm:rounded-3xl bg-muted/20 border border-border space-y-3">
@@ -208,7 +209,7 @@ export default async function GuideDetailPage({ params }) {
             ))}
           </article>
 
-          <AdPlacement type="in-content" className="my-12" />
+          <AdContainer position="in-content" margin="spacious" />
 
           {/* Connected Tools CTA Block */}
           {guide.relatedTools?.length > 0 && (
@@ -271,8 +272,8 @@ export default async function GuideDetailPage({ params }) {
             </Link>
           </div>
 
-          <AdPlacement type="footer" className="mt-12" />
-        </div>
+          <AdContainer position="footer" margin="spacious" />
+        </ContentContainer>
       </div>
     </>
   );

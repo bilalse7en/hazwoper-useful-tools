@@ -179,6 +179,7 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   if (!rawHtml || typeof rawHtml !== 'string') return '';
 
   const stripImages = options.stripImages !== false; // default: true (clean text without image junk)
+  const preserveTailwind = options.preserveTailwind === true;
   let html = purgeInitialStageArtifacts(rawHtml, options);
 
   // 1. Remove comments and doctype / html / head / body tags
@@ -189,9 +190,13 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   // 2. Remove XML tags and Word office namespaces (e.g., <o:p>, </o:p>, <w:...>)
   html = html.replace(/<\/?\w+:[^>]*>/gi, '');
 
-  // 3. Remove non-semantic wrappers: <font>, <span>
+  // 3. Remove non-semantic wrappers: <font>, <span> (preserve styled spans when preserving Tailwind)
   html = html.replace(/<\/?font[^>]*>/gi, '');
-  html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+  if (!preserveTailwind) {
+    html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+  } else {
+    html = html.replace(/<span>([\s\S]*?)<\/span>/gi, '$1');
+  }
 
   // Replace &nbsp;, &#160;, and unicode non-breaking spaces with standard space ' '
   html = html.replace(/(&nbsp;|&#160;|\u00a0)/gi, ' ');
@@ -260,9 +265,11 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     );
   }
 
-  // 6. Strip ALL class and style attributes from all elements
-  html = html.replace(/\s*class=(?:"[^"]*"|'[^']*')/gi, '');
-  html = html.replace(/\s*style=(?:"[^"]*"|'[^']*')/gi, '');
+  // 6. Strip ALL class and style attributes from all elements unless preserving Tailwind classes
+  if (!preserveTailwind) {
+    html = html.replace(/\s*class=(?:"[^"]*"|'[^']*')/gi, '');
+    html = html.replace(/\s*style=(?:"[^"]*"|'[^']*')/gi, '');
+  }
 
   // 7. Strip IDs, lang, and obsolete formatting/presentational attributes
   html = html.replace(
@@ -271,42 +278,64 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   );
 
   // 8. Standardize headers (strip any remaining attributes, enforce clean tags)
-  html = html.replace(
-    /<h2[^>]*>([\s\S]*?)<\/h2>/gi,
-    (m, text) => `<h2>${text.trim()}</h2>`
-  );
-  html = html.replace(
-    /<h3[^>]*>([\s\S]*?)<\/h3>/gi,
-    (m, text) => `<h3>${text.trim()}</h3>`
-  );
-  html = html.replace(
-    /<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi,
-    (m, text) => `<h4>${text.trim()}</h4>`
-  );
+  if (!preserveTailwind) {
+    html = html.replace(
+      /<h2[^>]*>([\s\S]*?)<\/h2>/gi,
+      (m, text) => `<h2>${text.trim()}</h2>`
+    );
+    html = html.replace(
+      /<h3[^>]*>([\s\S]*?)<\/h3>/gi,
+      (m, text) => `<h3>${text.trim()}</h3>`
+    );
+    html = html.replace(
+      /<h[4-6][^>]*>([\s\S]*?)<\/h[4-6]>/gi,
+      (m, text) => `<h4>${text.trim()}</h4>`
+    );
 
-  // 9. Standardize lists and list items
-  html = html.replace(/<ul[^>]*>/gi, '<ul>');
-  html = html.replace(/<ol[^>]*>/gi, '<ol>');
-  html = html.replace(
-    /<li[^>]*>([\s\S]*?)<\/li>/gi,
-    (m, text) => `<li>${text.trim()}</li>`
-  );
+    // 9. Standardize lists and list items
+    html = html.replace(/<ul[^>]*>/gi, '<ul>');
+    html = html.replace(/<ol[^>]*>/gi, '<ol>');
+    html = html.replace(
+      /<li[^>]*>([\s\S]*?)<\/li>/gi,
+      (m, text) => `<li>${text.trim()}</li>`
+    );
+  }
 
   // 10. Standardize paragraphs and drop completely empty paragraphs (or paragraphs containing only empty tags)
-  html = html.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (m, content) => {
-    const textOnly = content.replace(/<[^>]*>/g, '').trim();
-    const hasMedia = /<img[^>]*>/i.test(content);
-    const trimmed = content.trim();
-    if (
-      (!textOnly && !hasMedia) ||
-      trimmed === '&nbsp;' ||
-      trimmed === '<br>' ||
-      trimmed === '<br/>'
-    ) {
-      return '';
-    }
-    return `<p>${trimmed}</p>`;
-  });
+  if (!preserveTailwind) {
+    html = html.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (m, content) => {
+      const textOnly = content.replace(/<[^>]*>/g, '').trim();
+      const hasMedia = /<img[^>]*>/i.test(content);
+      const trimmed = content.trim();
+      if (
+        (!textOnly && !hasMedia) ||
+        trimmed === '&nbsp;' ||
+        trimmed === '<br>' ||
+        trimmed === '<br/>'
+      ) {
+        return '';
+      }
+      return `<p>${trimmed}</p>`;
+    });
+  } else {
+    html = html.replace(
+      /<p(\s+[^>]*)?>([\s\S]*?)<\/p>/gi,
+      (m, attrs, content) => {
+        const textOnly = content.replace(/<[^>]*>/g, '').trim();
+        const hasMedia = /<img[^>]*>/i.test(content);
+        const trimmed = content.trim();
+        if (
+          (!textOnly && !hasMedia) ||
+          trimmed === '&nbsp;' ||
+          trimmed === '<br>' ||
+          trimmed === '<br/>'
+        ) {
+          return '';
+        }
+        return `<p${attrs || ''}>${trimmed}</p>`;
+      }
+    );
+  }
 
   // 10. Standardize strong and emphasis
   html = html.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '<strong>$1</strong>');
@@ -382,12 +411,14 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     '<a href="$2" target="_blank" rel="noopener noreferrer">$3</a>'
   );
 
-  // 13. Unwrap all inner / nested / empty <div> tags so they never nest or create empty wrappers
+  // 13. Unwrap inner / nested / empty <div> tags (unless preserving Tailwind container hierarchy)
   let prev;
   do {
     prev = html;
     html = html.replace(/<div>\s*<\/div>/gi, '');
-    html = html.replace(/<div>([\s\S]*?)<\/div>/gi, '$1');
+    if (!preserveTailwind) {
+      html = html.replace(/<div>([\s\S]*?)<\/div>/gi, '$1');
+    }
   } while (html !== prev);
 
   // 14. Clean up multiple empty lines or trailing breaks
@@ -402,31 +433,54 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
 }
 
 /**
- * Wraps clean inner HTML in strictly ONE single parent <div> without any classes or styles:
- * <div>...content elements...</div>
+ * Wraps clean inner HTML in LMS container
  * @param {string} innerHtml - Normalized inner HTML
- * @param {object} [options={}] - { stripImages: boolean }
- * @returns {string} - Clean LMS editorHtml wrapped in 1 parent div
+ * @param {object} [options={}] - { stripImages: boolean, preserveTailwind: boolean }
+ * @returns {string} - Clean LMS editorHtml
  */
 export function wrapInLmsContainer(innerHtml, options = {}) {
   const clean = normalizeHtmlContent(innerHtml, options);
+  if (!clean || clean.trim() === '') return '';
+  if (
+    options.preserveTailwind &&
+    clean.startsWith('<div') &&
+    clean.endsWith('</div>')
+  ) {
+    return clean;
+  }
   return `<div>${clean}</div>`;
 }
 
 /**
  * Calculates word count from an HTML string or text
+ * Smartly purges script tags, style rules, comments, SVG definitions,
+ * and HTML tags before splitting into actual visible words.
+ *
  * @param {string} htmlOrText
  * @returns {number}
  */
 export function calculateWordCount(htmlOrText) {
-  if (!htmlOrText) return 0;
-  // Strip tags
-  const plainText = htmlOrText
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!plainText) return 0;
-  return plainText.split(/\s+/).filter(Boolean).length;
+  if (!htmlOrText || typeof htmlOrText !== 'string') return 0;
+  // 1. Strip non-content blocks (scripts, styles, comments, svgs)
+  let plain = htmlOrText
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, ' ');
+  // 2. Strip all HTML tags
+  plain = plain.replace(/<[^>]+>/g, ' ');
+  // 3. Decode common entities
+  plain = plain
+    .replace(/(&nbsp;|&#160;|\u00a0)/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+  // 4. Collapse whitespace
+  plain = plain.replace(/\s+/g, ' ').trim();
+  if (!plain) return 0;
+  return plain.split(/\s+/).filter(Boolean).length;
 }
 
 /**

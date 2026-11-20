@@ -335,12 +335,15 @@ export function AuthProvider({ children }) {
               error.code === 'PGRST204' ||
               String(error.message || '').includes('does not exist') ||
               String(error.message || '').includes('Could not find') ||
-              String(error.message || '').includes('schema cache'))
+              String(error.message || '').includes('schema cache') ||
+              String(error.message || '').includes('Failed to fetch') ||
+              String(error.message || '').includes('network') ||
+              String(error.message || '').includes('CONNECTION'))
           ) {
             canSyncDbPresence = false;
             return;
           }
-        } catch (err) {
+        } catch (_) {
           canSyncDbPresence = false;
         }
       };

@@ -87,7 +87,7 @@ export function Footer({ overrideShow = false }) {
       {/* Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-primary/5 dark:bg-blue-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="container relative z-10 mx-auto px-6 py-20">
+      <div className="site-container relative z-10 py-16 sm:py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-20">
           {/* Company Info */}
           <div className="space-y-8">

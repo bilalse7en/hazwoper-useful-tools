@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { createPageMetadata } from '@/lib/seo';
+import { ContentContainer } from '@/components/layout/content-container';
+import { AdContainer } from '@/components/layout/ad-container';
 
 export const metadata = createPageMetadata({
   title: 'Privacy Policy | All Useful Tools',
@@ -11,20 +13,25 @@ export const metadata = createPageMetadata({
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
+      <ContentContainer size="default" className="py-8 sm:py-12">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <Link
             href="/"
-            className="text-primary hover:text-primary/80 transition-colors mb-4 inline-block"
+            className="text-primary hover:text-primary/80 transition-colors mb-4 inline-block font-semibold text-sm"
           >
             ← Back to Home
           </Link>
-          <h1 className="text-4xl font-bold mb-4">Privacy Policy</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl sm:text-4xl font-black mb-3 text-foreground tracking-tight">
+            Privacy Policy
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground font-medium">
             Last Updated: February 3, 2026
           </p>
         </div>
+
+        {/* Centered Top Banner Ad */}
+        <AdContainer position="top-banner" margin="tight" />
 
         {/* Content */}
         <div className="prose prose-slate dark:prose-invert max-w-none space-y-6">
@@ -384,7 +391,10 @@ export default function PrivacyPolicy() {
             </div>
           </section>
         </div>
-      </div>
+
+        {/* Centered Footer Ad */}
+        <AdContainer position="footer" margin="spacious" />
+      </ContentContainer>
     </div>
   );
 }

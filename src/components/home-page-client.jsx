@@ -6,6 +6,7 @@ import { InitialLoadingShell } from '@/components/initial-loading-shell';
 import { showSuccess } from '@/lib/swal';
 import { ToolsLanding } from '@/components/tools-landing';
 import { useAuth } from '@/components/auth-provider';
+import { AdContainer } from '@/components/layout/ad-container';
 
 const WelcomeScroll = dynamic(
   () => import('@/components/welcome-scroll').then((mod) => mod.WelcomeScroll),
@@ -83,7 +84,19 @@ export function HomePageClient() {
     <>
       {showWelcome && <WelcomeScroll onComplete={handleWelcomeComplete} />}
       <ToolsLanding user={user} />
+
+      {/* Centered Top Banner Advertisement */}
+      <div className="site-container py-4">
+        <AdContainer position="top-banner" margin="tight" />
+      </div>
+
       <FeaturedCoursesSection />
+
+      {/* Centered In-Content Advertisement */}
+      <div className="site-container py-4">
+        <AdContainer position="in-content" margin="tight" />
+      </div>
+
       <IndustryInsights />
       <ProfessionalOverview />
     </>

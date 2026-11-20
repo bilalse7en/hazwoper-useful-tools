@@ -95,8 +95,13 @@ export function captionsToSRT(captions, mode = 'urdu') {
     .map((cap, index) => {
       const start = formatSrtTimestamp(cap.start);
       const end = formatSrtTimestamp(cap.end);
-      let text = cap.textUrdu || cap.text || '';
-      if (mode === 'urdu' && cap.textUrdu) text = cap.textUrdu;
+      let text = cap.textEnglish || cap.textUrdu || cap.text || '';
+      if (
+        (mode === 'english' || mode === 'en') &&
+        (cap.textEnglish || cap.text)
+      )
+        text = cap.textEnglish || cap.text;
+      else if (mode === 'urdu' && cap.textUrdu) text = cap.textUrdu;
       else if (mode === 'roman-urdu' && cap.textRoman) text = cap.textRoman;
       else if (mode === 'dual-urdu-roman' && cap.textCombined)
         text = cap.textCombined;
@@ -117,8 +122,13 @@ export function captionsToVTT(captions, mode = 'urdu') {
     .map((cap, index) => {
       const start = formatVttTimestamp(cap.start);
       const end = formatVttTimestamp(cap.end);
-      let text = cap.textUrdu || cap.text || '';
-      if (mode === 'urdu' && cap.textUrdu) text = cap.textUrdu;
+      let text = cap.textEnglish || cap.textUrdu || cap.text || '';
+      if (
+        (mode === 'english' || mode === 'en') &&
+        (cap.textEnglish || cap.text)
+      )
+        text = cap.textEnglish || cap.text;
+      else if (mode === 'urdu' && cap.textUrdu) text = cap.textUrdu;
       else if (mode === 'roman-urdu' && cap.textRoman) text = cap.textRoman;
       else if (mode === 'dual-urdu-roman' && cap.textCombined)
         text = cap.textCombined;
@@ -197,6 +207,7 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,Montserrat,${fontSize},${textColorHex},${highlightColorHex},&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,2,2,90,90,${marginV},1
+Style: GamingEnglish,Montserrat,${fontSize},&H00FFFFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,5,2,2,90,90,${marginV},1
 Style: RockybillyCaption,Montserrat,${fontSize},${textColorHex},${highlightColorHex},&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,2,2,90,90,${marginV},1
 Style: UrduNastaliq,Noto Nastaliq Urdu,${Math.round(fontSize * 1.15)},${textColorHex},&H0034D399,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,2,2,90,90,${marginV},1
 Style: DualStacked,Noto Nastaliq Urdu,${Math.round(fontSize * 0.88)},${textColorHex},${highlightColorHex},&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,2,2,90,90,${marginV},1
@@ -216,7 +227,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       return '';
     }
 
-    if (captionMode === 'urdu') {
+    if (captionMode === 'english' || captionMode === 'en') {
+      textToBurn = cap.textEnglish || cap.text || '';
+      styleToUse = 'GamingEnglish';
+    } else if (captionMode === 'urdu') {
       textToBurn = cap.textUrdu || cap.text;
       styleToUse = 'UrduNastaliq';
     } else if (captionMode === 'dual-urdu-roman') {
@@ -413,11 +427,13 @@ export function renderCanvasCaptions(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Stylish Rockybilly font for captions only, with authentic Urdu ligature fallbacks
+  // Stylish fonts for Urdu and English gaming captions
   const urduFontFamily =
     '"Rockybilly", "Kumail", "Noto Nastaliq Urdu", "Noto Sans Arabic", "Jameel Noori Nastaleeq", sans-serif';
   const romanFontFamily =
     '"Rockybilly", "Caveat", "Dancing Script", "Brush Script MT", cursive, sans-serif';
+  const englishFontFamily =
+    '"Montserrat", "Impact", "Arial Black", "Inter", sans-serif';
 
   // Calculate typing progress within active caption time window
   const capStart = activeCap.start;
@@ -436,10 +452,24 @@ export function renderCanvasCaptions(
       ? 0
       : Math.min(1.0, elapsed / Math.max(0.2, capDur * 0.8));
 
+  const isEnglishOnly =
+    captionMode === 'english' ||
+    captionMode === 'en' ||
+    !!activeCap.textEnglish;
+
   // Extract raw text lines to format
   const rawSegments = [];
 
-  if (isDualMode) {
+  if (isEnglishOnly) {
+    // Mode D: Creative English Captions (for GTA 5 / Gaming / Podcasts)
+    const engText = activeCap.textEnglish || activeCap.text || '';
+    rawSegments.push({
+      text: engText,
+      isUrdu: false,
+      isEnglish: true,
+      fontSize: Math.round(baseFontSize * 1.15),
+    });
+  } else if (isDualMode) {
     // Mode C: Stacked Dual Mode (Urdu Nastaliq top line, Roman Urdu bottom line)
     const urduLine = activeCap.textUrdu || activeCap.text || '';
     const romanLine = activeCap.textRoman || '';
@@ -481,7 +511,12 @@ export function renderCanvasCaptions(
   // Wrap and fit each segment into maximum 2 lines without clipping
   const linesToRender = [];
   rawSegments.forEach((seg) => {
-    ctx.font = `800 ${seg.fontSize}px ${seg.isUrdu ? urduFontFamily : romanFontFamily}`;
+    const segFont = seg.isUrdu
+      ? urduFontFamily
+      : seg.isEnglish
+        ? englishFontFamily
+        : romanFontFamily;
+    ctx.font = `800 ${seg.fontSize}px ${segFont}`;
     let wrapped = wrapTextToLines(ctx, seg.text, maxSafeTextWidth, 2);
 
     // If still too wide, scale font down by 15% to guarantee no clipping
@@ -489,7 +524,7 @@ export function renderCanvasCaptions(
     let effectiveFontSize = seg.fontSize;
     if (maxWidth > maxSafeTextWidth) {
       effectiveFontSize = Math.round(seg.fontSize * 0.85);
-      ctx.font = `800 ${effectiveFontSize}px ${seg.isUrdu ? urduFontFamily : romanFontFamily}`;
+      ctx.font = `800 ${effectiveFontSize}px ${segFont}`;
       wrapped = wrapTextToLines(ctx, seg.text, maxSafeTextWidth, 2);
     }
 
@@ -517,6 +552,7 @@ export function renderCanvasCaptions(
           fullText: lineText,
           text: lineText.slice(0, visibleLen),
           isUrdu: seg.isUrdu,
+          isEnglish: seg.isEnglish,
           fontSize: effectiveFontSize,
           isTyping: visibleLen < lineLen,
           lineIndex: wIdx,
@@ -539,7 +575,12 @@ export function renderCanvasCaptions(
 
   linesToRender.forEach((l, lIdx) => {
     const lineY = startLineY + lIdx * lineHeight;
-    ctx.font = `800 ${l.fontSize}px ${l.isUrdu ? urduFontFamily : romanFontFamily}`;
+    const lFont = l.isUrdu
+      ? urduFontFamily
+      : l.isEnglish
+        ? englishFontFamily
+        : romanFontFamily;
+    ctx.font = `800 ${l.fontSize}px ${lFont}`;
 
     // Deep outer shadow for extreme readability without needing a black box
     ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
@@ -554,8 +595,12 @@ export function renderCanvasCaptions(
     ctx.miterLimit = 2;
     ctx.strokeText(l.text, canvasWidth / 2, lineY);
 
-    // Brilliant white / gold text fill
-    ctx.fillStyle = l.isUrdu ? '#FFFFFF' : styleConfig.textColor || '#FFFFFF';
+    // Brilliant white / viral yellow / gold text fill
+    ctx.fillStyle = l.isUrdu
+      ? '#FFFFFF'
+      : l.isEnglish
+        ? styleConfig.textColor || '#FFDF00'
+        : styleConfig.textColor || '#FFFFFF';
     ctx.fillText(l.text, canvasWidth / 2, lineY);
 
     // Subtle typing cursor at the active typing edge

@@ -40,7 +40,22 @@ export function MediaHubDrawer({
       );
       const data = await res.json();
       if (data.success && Array.isArray(data.items)) {
-        setItems(data.items);
+        // Client-side: filter out generated shorts, stubs, and 0-byte phantom entries
+        const BLOCKED = [
+          'another_hub_video.mp4',
+          'naat_recitation_sample.mp4',
+          'to_be_deleted.mp4',
+        ];
+        const sourceVideos = data.items.filter(
+          (it) =>
+            !BLOCKED.includes(
+              (it.fileName || it.file_name || '').toLowerCase()
+            ) &&
+            (it.sourceType || it.source_type || '') !== 'generated_short' &&
+            !String(it.id || '').startsWith('short_') &&
+            (it.fileSize || it.file_size || 0) >= 1000
+        );
+        setItems(sourceVideos);
       }
     } catch (err) {
       console.warn('Could not fetch Media Hub assets:', err);
@@ -249,9 +264,29 @@ export function MediaHubDrawer({
                       {item.file_name}
                     </h4>
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                      <span>
-                        {item.resolution || '1080p'} •{' '}
-                        {formatFileSize(item.file_size)}
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded text-[9px]',
+                            item.resolution?.includes('3840') ||
+                              item.resolution?.includes('2160')
+                              ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 font-black'
+                              : item.resolution?.includes('2560') ||
+                                  item.resolution?.includes('1440')
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-black'
+                                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          )}
+                        >
+                          {item.resolution?.includes('3840') ||
+                          item.resolution?.includes('2160')
+                            ? '4K UHD (3840x2160)'
+                            : item.resolution?.includes('2560') ||
+                                item.resolution?.includes('1440')
+                              ? '2K QHD (2560x1440)'
+                              : item.resolution || '1080p'}
+                        </span>
+                        <span>•</span>
+                        <span>{formatFileSize(item.file_size)}</span>
                       </span>
                       <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                         <Clock className="w-2.5 h-2.5" /> 24h Expiry

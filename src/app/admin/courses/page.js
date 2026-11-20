@@ -1024,7 +1024,7 @@ export default function AdminCoursesPage() {
       />
 
       {view === 'list' && (
-        <div className="mx-auto max-w-7xl">
+        <div className="site-container">
           <CourseListView
             courses={courses}
             isLoading={isLoading}
@@ -1040,7 +1040,7 @@ export default function AdminCoursesPage() {
       )}
 
       {view === 'wizard' && (
-        <div className="mx-auto max-w-7xl">
+        <div className="site-container">
           <CourseWizard
             onCancel={handleBackToList}
             onComplete={(course) => {

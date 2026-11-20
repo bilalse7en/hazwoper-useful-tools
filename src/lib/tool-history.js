@@ -3,6 +3,62 @@
 import { supabase } from './supabase';
 
 /**
+ * Strips Window, Document, DOM Node, cross-origin objects, functions, and circular references.
+ * Prevents "SecurityError: Failed to read a named property 'toJSON' from 'Window'"
+ */
+function sanitizeMetadata(val, depth = 0, seen = new WeakSet()) {
+  if (val === null || typeof val !== 'object') {
+    if (typeof val === 'function' || typeof val === 'symbol') return undefined;
+    return val;
+  }
+  if (depth > 8) return null;
+
+  // Window / Document / DOM / Event guards
+  if (typeof window !== 'undefined') {
+    try {
+      if (val === window || val === window.parent || val === window.top)
+        return null;
+      if (typeof Node !== 'undefined' && val instanceof Node) return null;
+      if (typeof Event !== 'undefined' && val instanceof Event) return null;
+      if (typeof File !== 'undefined' && val instanceof File) {
+        return { name: val.name, size: val.size, type: val.type };
+      }
+      if (typeof Blob !== 'undefined' && val instanceof Blob) {
+        return { size: val.size, type: val.type };
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  // Guard against circular references
+  if (seen.has(val)) return null;
+  seen.add(val);
+
+  if (Array.isArray(val)) {
+    return val
+      .map((item) => sanitizeMetadata(item, depth + 1, seen))
+      .filter((item) => item !== undefined);
+  }
+
+  const result = {};
+  for (const key of Object.keys(val)) {
+    try {
+      const propVal = val[key];
+      if (typeof propVal === 'function' || typeof propVal === 'symbol')
+        continue;
+      const cleanVal = sanitizeMetadata(propVal, depth + 1, seen);
+      if (cleanVal !== undefined) {
+        result[key] = cleanVal;
+      }
+    } catch {
+      // Discard properties that throw cross-origin or getter security errors
+    }
+  }
+  return result;
+}
+
+/**
  * Tool History Manager
  * Handles CRUD operations for Image Converter & Video Compressor history
  * Records auto-expire after 24 hours (enforced by Supabase)
@@ -27,6 +83,8 @@ export async function saveToolHistory({
   // For generator tools, we often want to update the "latest" state rather than adding new rows every second
   // But for simple tools like image/video, we just insert.
 
+  const safeMeta = sanitizeMetadata(metadata) || {};
+
   const { data, error } = await supabase
     .from('tool_history')
     .insert({
@@ -38,7 +96,7 @@ export async function saveToolHistory({
       output_size: outputSize || 0,
       reduction_percent: reductionPercent || 0,
       result_url: resultUrl || null,
-      metadata: metadata,
+      metadata: safeMeta,
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })
     .select()
@@ -65,15 +123,17 @@ export async function saveGeneratorState(
     } = await supabase.auth.getUser();
     if (!user) return null;
 
+    const safeState = sanitizeMetadata(stateData) || {};
+
     const { data, error } = await supabase
       .from('tool_history')
       .upsert(
         {
           user_id: user.id,
           tool_type: toolType,
-          file_name: fileName || stateData.fileName || 'Generator Session',
+          file_name: fileName || safeState.fileName || 'Generator Session',
           result_url: 'GENERATOR_STATE',
-          metadata: stateData,
+          metadata: safeState,
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         },
         {
@@ -94,9 +154,9 @@ export async function saveGeneratorState(
           .insert({
             user_id: user.id,
             tool_type: toolType,
-            file_name: fileName || stateData.fileName || 'Generator Session',
+            file_name: fileName || safeState.fileName || 'Generator Session',
             result_url: 'GENERATOR_STATE',
-            metadata: stateData,
+            metadata: safeState,
             expires_at: new Date(
               Date.now() + 24 * 60 * 60 * 1000
             ).toISOString(),

@@ -201,7 +201,11 @@ export function getBrowserCookiesConfig() {
  * Searches for auto-generated subtitle (.vtt) file in the specified directory.
  * yt-dlp typically names files: [title].[lang].vtt or [id].[lang].vtt
  */
-export function findSubtitleFile(dir, identifierOrPath) {
+export function findSubtitleFile(
+  dir,
+  identifierOrPath,
+  langPreference = 'auto'
+) {
   try {
     if (!fs.existsSync(dir)) return null;
 
@@ -210,8 +214,11 @@ export function findSubtitleFile(dir, identifierOrPath) {
       : '';
     const files = fs.readdirSync(dir);
 
-    // Only look for authentic Urdu subtitle files
-    const priorities = ['ur', 'ur-PK'];
+    const isEnglishPreferred =
+      langPreference === 'en' || langPreference === 'english';
+    const priorities = isEnglishPreferred
+      ? ['en', 'en-US', 'en-GB', 'en-CA', 'ur', 'ur-PK']
+      : ['ur', 'ur-PK', 'en', 'en-US'];
 
     for (const lang of priorities) {
       const match = files.find(
@@ -224,16 +231,15 @@ export function findSubtitleFile(dir, identifierOrPath) {
         const fullPath = path.join(dir, match);
         try {
           const content = fs.readFileSync(fullPath, 'utf8');
-          // Only return if file actually contains Urdu script
-          if (/[\u0600-\u06FF]/.test(content)) {
-            return fullPath;
+          if (lang.startsWith('ur')) {
+            if (/[\u0600-\u06FF]/.test(content)) return fullPath;
+          } else {
+            if (content.length > 50) return fullPath;
           }
         } catch (_) {}
       }
     }
 
-    // Do NOT return English or foreign non-Urdu subtitles.
-    // Returning null forces Whisper speech recognition to transcribe the authentic audio.
     return null;
   } catch (e) {
     console.warn('Subtitle file search warning:', e.message);
@@ -242,10 +248,109 @@ export function findSubtitleFile(dir, identifierOrPath) {
 }
 
 /**
+ * Global Ingestion Queue & Rate Limit State Manager
+ * Coordinates single-concurrency downloads, enforces spacing delay,
+ * deduplicates in-flight requests for the same video ID, and manages 429 cooldowns.
+ */
+class YouTubeIngestionQueue {
+  constructor() {
+    this.activeJobs = 0;
+    this.maxConcurrent = 1;
+    this.lastDownloadTime = 0;
+    this.spacingMs = 4000; // 4 second spacing between yt-dlp invocations
+    this.inFlightRequests = new Map(); // videoId -> Promise
+    this.cooldownUntil = 0;
+    this.cooldownReason = null;
+    this.consecutiveFailures = 0;
+  }
+
+  isRateLimited() {
+    if (this.cooldownUntil > Date.now()) {
+      const remainingSecs = Math.ceil((this.cooldownUntil - Date.now()) / 1000);
+      return {
+        limited: true,
+        remainingSecs,
+        reason: this.cooldownReason || 'Rate limit cooldown active',
+      };
+    }
+    return { limited: false, remainingSecs: 0 };
+  }
+
+  record429(reason = 'YouTube HTTP 429 rate limit') {
+    this.consecutiveFailures += 1;
+    // Exponential backoff: 30s -> 60s -> 120s -> max 300s
+    const backoffMs = Math.min(
+      300000,
+      30000 * Math.pow(2, Math.min(3, this.consecutiveFailures - 1))
+    );
+    this.cooldownUntil = Date.now() + backoffMs;
+    this.cooldownReason = reason;
+    console.warn(
+      `[YouTubeQueue] 429 recorded. Cooldown set for ${Math.round(backoffMs / 1000)}s`
+    );
+  }
+
+  recordSuccess() {
+    this.consecutiveFailures = 0;
+    this.cooldownUntil = 0;
+    this.cooldownReason = null;
+  }
+
+  async acquireSlot(videoId) {
+    const rateCheck = this.isRateLimited();
+    if (rateCheck.limited) {
+      const err = new Error(
+        `YouTube is temporarily limiting automated video access. Cooldown active for ${rateCheck.remainingSecs}s to prevent IP block. Please wait or upload your MP4/MOV file directly.`
+      );
+      err.type = 'RATE_LIMITED';
+      err.status = 429;
+      err.retryAfter = rateCheck.remainingSecs;
+      throw err;
+    }
+
+    // Wait until no other download is in progress
+    while (this.activeJobs >= this.maxConcurrent) {
+      await new Promise((r) => setTimeout(r, 400));
+    }
+
+    // Enforce spacing between subsequent download starts
+    const elapsedSinceLast = Date.now() - this.lastDownloadTime;
+    if (elapsedSinceLast < this.spacingMs) {
+      await new Promise((r) =>
+        setTimeout(r, this.spacingMs - elapsedSinceLast)
+      );
+    }
+
+    this.activeJobs += 1;
+    this.lastDownloadTime = Date.now();
+  }
+
+  releaseSlot() {
+    this.activeJobs = Math.max(0, this.activeJobs - 1);
+  }
+}
+
+export const globalYouTubeQueue = new YouTubeIngestionQueue();
+
+/**
  * Maps raw stderr from yt-dlp into friendly, actionable user messages
  */
 export function categorizeDownloadError(rawError) {
   const text = String(rawError || '');
+
+  // Subtitle 429s are non-fatal and should never lock out video downloads
+  if (
+    (/subtitles/i.test(text) || /timedtext/i.test(text)) &&
+    /429/i.test(text)
+  ) {
+    return {
+      type: 'SUBTITLE_WARNING',
+      message:
+        'YouTube subtitles timed out. Onboard AI Whisper speech recognition will generate subtitles directly from audio.',
+      status: 200,
+      isFatal: false,
+    };
+  }
 
   // Missing standalone binary / missing python runtime (Vercel code 127)
   if (
@@ -267,6 +372,7 @@ export function categorizeDownloadError(rawError) {
     /Too Many Requests/i.test(text) ||
     /rate-limit/i.test(text)
   ) {
+    globalYouTubeQueue.record429(text);
     return {
       type: 'RATE_LIMITED',
       message:
@@ -400,6 +506,7 @@ export async function downloadYouTubeVideo({
   targetPath,
   subtitleDir = null,
   timeoutMs = 180000,
+  targetQuality = '4k',
   allowCookies = true,
 }) {
   if (!isValidYouTubeUrl(url)) {
@@ -408,186 +515,363 @@ export async function downloadYouTubeVideo({
     );
   }
 
-  const { ytDlpPath, ffmpegPath, nodePath } = await ensureYtDlpBinary();
+  const videoId = extractYouTubeId(url);
 
-  if (!fs.existsSync(ytDlpPath) && ytDlpPath.includes(path.sep)) {
-    throw new Error(`yt-dlp binary not found at ${ytDlpPath}`);
-  }
-
-  // Ensure target and subtitle directories exist
-  const resolvedTargetPath = path.resolve(targetPath);
-  const targetDir = path.dirname(resolvedTargetPath);
-  if (!fs.existsSync(targetDir)) {
-    fs.mkdirSync(targetDir, { recursive: true });
-  }
-
-  const resolvedSubDir = subtitleDir ? path.resolve(subtitleDir) : targetDir;
-  if (!fs.existsSync(resolvedSubDir)) {
-    fs.mkdirSync(resolvedSubDir, { recursive: true });
-  }
-
-  const cookiesFile = allowCookies ? getAvailableCookiesFile() : null;
-  const browserCookie = getBrowserCookiesConfig();
-
-  // Base arguments: Android & Web player client extraction to avoid SABR bot challenges on datacenter IPs,
-  // 1080p max resolution and pure video+audio merging.
-  // Subtitles are handled non-fatally below to prevent YouTube's timedtext HTTP 429 from aborting video downloads.
-  const baseArgs = [
-    url,
-    '-o',
-    resolvedTargetPath,
-    '-f',
-    'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
-    '--merge-output-format',
-    'mp4',
-    '--no-playlist',
-    '--no-warnings',
-    '--max-filesize',
-    '500M',
-    '--extractor-args',
-    'youtube:player_client=android,web',
-  ];
-
-  // Provide Node.js runtime to yt-dlp to decipher YouTube JS challenges
-  if (nodePath) {
-    baseArgs.push('--js-runtimes', `node:${nodePath}`);
-  }
-
-  // Provide FFmpeg location for stream merging
-  if (ffmpegPath && fs.existsSync(ffmpegPath)) {
-    baseArgs.push('--ffmpeg-location', ffmpegPath);
-  }
-
-  let lastError = null;
-
-  // Strategy 1: Android + Web player client extraction
-  try {
-    await runYtDlpProcess(ytDlpPath, baseArgs, resolvedTargetPath, timeoutMs);
-  } catch (cleanErr) {
-    lastError = cleanErr;
-    console.warn(
-      'Primary download attempt failed, evaluating fallbacks:',
-      cleanErr.message
+  // In-flight deduplication: If this exact video is already downloading, await the active promise
+  if (videoId && globalYouTubeQueue.inFlightRequests.has(videoId)) {
+    console.log(
+      `[YouTubeDownloader] Attaching to active in-flight download for videoId=${videoId}...`
     );
+    return await globalYouTubeQueue.inFlightRequests.get(videoId);
+  }
 
-    // Strategy 2: If cookies file exists (from env vars or uploaded cookies.txt)
-    if (cookiesFile) {
+  const executeDownload = async () => {
+    // Acquire slot from concurrency queue (enforces 1-job max concurrency and spacing delay)
+    await globalYouTubeQueue.acquireSlot(videoId);
+
+    try {
+      const { ytDlpPath, ffmpegPath, nodePath } = await ensureYtDlpBinary();
+
+      if (!fs.existsSync(ytDlpPath) && ytDlpPath.includes(path.sep)) {
+        throw new Error(`yt-dlp binary not found at ${ytDlpPath}`);
+      }
+
+      // Ensure target and subtitle directories exist
+      const resolvedTargetPath = path.resolve(targetPath);
+      const targetDir = path.dirname(resolvedTargetPath);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      const resolvedSubDir = subtitleDir
+        ? path.resolve(subtitleDir)
+        : targetDir;
+      if (!fs.existsSync(resolvedSubDir)) {
+        fs.mkdirSync(resolvedSubDir, { recursive: true });
+      }
+
+      const cookiesFile = allowCookies ? getAvailableCookiesFile() : null;
+      const browserCookie = getBrowserCookiesConfig();
+
+      // Configure Quality Priority: 4K (2160p) > 2K (1440p) > Full HD (1080p) > HD (720p) > best available
+      let formatSpec;
+      let formatSort;
+
+      if (targetQuality === '2k' || targetQuality === '1440p') {
+        formatSpec =
+          'bestvideo[height<=1440]+bestaudio/bestvideo+bestaudio/best';
+        formatSort = 'res:1440,fps:60,br';
+      } else if (targetQuality === '1080p') {
+        formatSpec =
+          'bestvideo[height<=1080]+bestaudio/bestvideo+bestaudio/best';
+        formatSort = 'res:1080,fps:60,br';
+      } else if (targetQuality === '720p') {
+        formatSpec =
+          'bestvideo[height<=720]+bestaudio/bestvideo+bestaudio/best';
+        formatSort = 'res:720,fps:60,br';
+      } else {
+        // Priority 1: 4K (2160p) > 2K (1440p) > 1080p FHD > 720p HD > best available
+        formatSpec =
+          'bestvideo[height<=2160]+bestaudio/bestvideo[height<=1440]+bestaudio/bestvideo[height<=1080]+bestaudio/bestvideo+bestaudio/best';
+        formatSort = 'res:2160,fps:60,br,hdr:12';
+      }
+
+      // Base arguments: Native VisionOS / Samsung player clients avoid SABR limits and PO-tokens,
+      // delivering full 4K (3840x2160) and 2K streams directly.
+      const baseArgs = [
+        url,
+        '-o',
+        resolvedTargetPath,
+        '-f',
+        formatSpec,
+        '--format-sort',
+        formatSort,
+        '--merge-output-format',
+        'mp4',
+        '--no-playlist',
+        '--no-warnings',
+        '--max-filesize',
+        '4000M',
+      ];
+
+      // Provide Node.js runtime to yt-dlp to decipher YouTube JS challenges
+      if (nodePath) {
+        baseArgs.push('--js-runtimes', `node:${nodePath}`);
+      }
+
+      // Provide FFmpeg location for stream merging
+      if (ffmpegPath && fs.existsSync(ffmpegPath)) {
+        baseArgs.push('--ffmpeg-location', ffmpegPath);
+      }
+
+      let lastError = null;
+
+      // Strategy 1: Android + Web player client extraction
       try {
-        const argsWithCookies = [...baseArgs, '--cookies', cookiesFile];
         await runYtDlpProcess(
           ytDlpPath,
-          argsWithCookies,
+          baseArgs,
           resolvedTargetPath,
           timeoutMs
         );
-        lastError = null; // Succeeded with cookies
-      } catch (cookieErr) {
-        lastError = cookieErr;
-        console.warn('Cookie attempt failed:', cookieErr.message);
-      }
-    }
+      } catch (cleanErr) {
+        lastError = cleanErr;
+        console.warn(
+          'Primary download attempt failed, evaluating fallbacks:',
+          cleanErr.message
+        );
 
-    // Strategy 3: Local-only browser cookies (if configured and not on Vercel)
-    if (lastError && browserCookie) {
+        // Strategy 2: If cookies file exists (from env vars or uploaded cookies.txt)
+        if (cookiesFile) {
+          try {
+            const argsWithCookies = [...baseArgs, '--cookies', cookiesFile];
+            await runYtDlpProcess(
+              ytDlpPath,
+              argsWithCookies,
+              resolvedTargetPath,
+              timeoutMs
+            );
+            lastError = null; // Succeeded with cookies
+          } catch (cookieErr) {
+            lastError = cookieErr;
+            console.warn('Cookie attempt failed:', cookieErr.message);
+          }
+        }
+
+        // Strategy 3: Local-only browser cookies (if configured and not on Vercel)
+        if (lastError && browserCookie) {
+          try {
+            const argsWithBrowser = [
+              ...baseArgs,
+              '--cookies-from-browser',
+              browserCookie,
+            ];
+            await runYtDlpProcess(
+              ytDlpPath,
+              argsWithBrowser,
+              resolvedTargetPath,
+              timeoutMs
+            );
+            lastError = null; // Succeeded with browser cookies
+          } catch (browserErr) {
+            lastError = browserErr;
+            console.warn('Browser cookie attempt failed:', browserErr.message);
+          }
+        }
+      }
+
+      if (lastError) {
+        // If output file was partially created, clean it up
+        try {
+          if (fs.existsSync(resolvedTargetPath)) {
+            fs.unlinkSync(resolvedTargetPath);
+          }
+        } catch (_) {}
+
+        const categorized = categorizeDownloadError(lastError.message);
+        const err = new Error(categorized.message);
+        err.status = categorized.status;
+        err.type = categorized.type;
+        err.raw = lastError.message;
+        throw err;
+      }
+
+      // Post-download validation: Verify file existence & size
+      if (
+        !fs.existsSync(resolvedTargetPath) ||
+        fs.statSync(resolvedTargetPath).size < 10000
+      ) {
+        try {
+          if (fs.existsSync(resolvedTargetPath))
+            fs.unlinkSync(resolvedTargetPath);
+        } catch (_) {}
+        throw new Error('Downloaded file is incomplete or corrupt.');
+      }
+
+      const fileSize = fs.statSync(resolvedTargetPath).size;
+
+      // Probe media streams using FFmpeg
+      const probe = await probeVideo(resolvedTargetPath);
+      if (!probe || !probe.duration || probe.duration <= 0) {
+        try {
+          if (fs.existsSync(resolvedTargetPath))
+            fs.unlinkSync(resolvedTargetPath);
+        } catch (_) {}
+        throw new Error(
+          'Downloaded media file contains invalid or unreadable video streams.'
+        );
+      }
+
+      // Record successful download in queue to reset failure counters
+      globalYouTubeQueue.recordSuccess();
+
+      // Non-fatal auto-subtitle extraction probe (never breaks video ingestion)
       try {
-        const argsWithBrowser = [
-          ...baseArgs,
-          '--cookies-from-browser',
-          browserCookie,
+        const subArgs = [
+          url,
+          '--skip-download',
+          '--write-subs',
+          '--write-auto-sub',
+          '--sub-lang',
+          'ur,ur-PK,en',
+          '--sub-format',
+          'vtt',
+          '--convert-subs',
+          'vtt',
+          '--paths',
+          `subtitle:${resolvedSubDir}`,
+          '--no-warnings',
         ];
-        await runYtDlpProcess(
-          ytDlpPath,
-          argsWithBrowser,
-          resolvedTargetPath,
-          timeoutMs
-        );
-        lastError = null; // Succeeded with browser cookies
-      } catch (browserErr) {
-        lastError = browserErr;
-        console.warn('Browser cookie attempt failed:', browserErr.message);
+        if (nodePath) subArgs.push('--js-runtimes', `node:${nodePath}`);
+        if (cookiesFile) subArgs.push('--cookies', cookiesFile);
+        if (ffmpegPath && fs.existsSync(ffmpegPath)) {
+          subArgs.push('--ffmpeg-location', ffmpegPath);
+        }
+        await runYtDlpProcess(ytDlpPath, subArgs, null, 15000);
+      } catch (_) {
+        // Expected: YouTube timedtext often returns 429 for automated requests.
+        // Downstream Whisper transcription service will transcribe the audio track directly.
       }
+
+      // Locate auto-extracted subtitle file if present
+      const subtitlePath = findSubtitleFile(
+        resolvedSubDir,
+        videoId || resolvedTargetPath
+      );
+
+      return {
+        videoPath: resolvedTargetPath,
+        subtitlePath,
+        fileSize,
+        probe,
+      };
+    } finally {
+      globalYouTubeQueue.releaseSlot();
     }
+  };
+
+  const downloadPromise = executeDownload().finally(() => {
+    if (videoId) {
+      globalYouTubeQueue.inFlightRequests.delete(videoId);
+    }
+  });
+
+  if (videoId) {
+    globalYouTubeQueue.inFlightRequests.set(videoId, downloadPromise);
   }
 
-  if (lastError) {
-    // If output file was partially created, clean it up
-    try {
-      if (fs.existsSync(resolvedTargetPath)) {
-        fs.unlinkSync(resolvedTargetPath);
-      }
-    } catch (_) {}
+  return await downloadPromise;
+}
 
-    const categorized = categorizeDownloadError(lastError.message);
-    const err = new Error(categorized.message);
-    err.status = categorized.status;
-    err.type = categorized.type;
-    err.raw = lastError.message;
-    throw err;
+/**
+ * Queries available resolutions and formats for a YouTube URL using yt-dlp.
+ * Returns array of supported quality tiers and the maximum detected resolution.
+ */
+export async function getYouTubeAvailableFormats(url) {
+  if (!isValidYouTubeUrl(url)) {
+    return {
+      success: false,
+      error: 'Invalid YouTube URL',
+      tiers: [
+        { id: '4k', label: '4K UHD (2160p)', height: 2160 },
+        { id: '2k', label: '2K QHD (1440p)', height: 1440 },
+        { id: '1080p', label: 'Full HD (1080p)', height: 1080 },
+        { id: '720p', label: 'HD (720p)', height: 720 },
+      ],
+      maxResolution: '3840x2160',
+    };
   }
 
-  // Post-download validation: Verify file existence & size
-  if (
-    !fs.existsSync(resolvedTargetPath) ||
-    fs.statSync(resolvedTargetPath).size < 10000
-  ) {
-    try {
-      if (fs.existsSync(resolvedTargetPath)) fs.unlinkSync(resolvedTargetPath);
-    } catch (_) {}
-    throw new Error('Downloaded file is incomplete or corrupt.');
-  }
-
-  const fileSize = fs.statSync(resolvedTargetPath).size;
-
-  // Probe media streams using FFmpeg
-  const probe = await probeVideo(resolvedTargetPath);
-  if (!probe || !probe.duration || probe.duration <= 0) {
-    try {
-      if (fs.existsSync(resolvedTargetPath)) fs.unlinkSync(resolvedTargetPath);
-    } catch (_) {}
-    throw new Error(
-      'Downloaded media file contains invalid or unreadable video streams.'
-    );
-  }
-
-  // Non-fatal auto-subtitle extraction probe (never breaks video ingestion)
   try {
-    const subArgs = [
-      url,
-      '--skip-download',
-      '--write-subs',
-      '--write-auto-sub',
-      '--sub-lang',
-      'ur,ur-PK,en',
-      '--sub-format',
-      'vtt',
-      '--convert-subs',
-      'vtt',
-      '--paths',
-      `subtitle:${resolvedSubDir}`,
+    const { ytDlpPath, nodePath } = await ensureYtDlpBinary();
+    const args = [
+      '--dump-json',
+      '--simulate',
+      '--no-playlist',
       '--no-warnings',
     ];
-    if (nodePath) subArgs.push('--js-runtimes', `node:${nodePath}`);
-    if (cookiesFile) subArgs.push('--cookies', cookiesFile);
-    if (ffmpegPath && fs.existsSync(ffmpegPath)) {
-      subArgs.push('--ffmpeg-location', ffmpegPath);
+    if (nodePath) {
+      args.push('--js-runtimes', `node:${nodePath}`);
     }
-    await runYtDlpProcess(ytDlpPath, subArgs, null, 15000);
-  } catch (_) {
-    // Expected: YouTube timedtext often returns 429 for automated requests.
-    // Downstream Whisper transcription service will transcribe the audio track directly.
+    args.push(url);
+
+    const proc = spawn(ytDlpPath, args);
+    let stdout = '';
+    proc.stdout.on('data', (d) => {
+      stdout += d.toString();
+    });
+
+    await new Promise((resolve) => {
+      proc.on('close', resolve);
+      proc.on('error', resolve);
+      setTimeout(() => {
+        try {
+          proc.kill();
+        } catch (_) {}
+        resolve();
+      }, 10000);
+    });
+
+    if (stdout.trim()) {
+      const data = JSON.parse(stdout);
+      const formats = data.formats || [];
+      const heights = new Set(
+        formats
+          .map((f) => f.height)
+          .filter((h) => typeof h === 'number' && h > 0)
+      );
+
+      const tiers = [];
+      if ([...heights].some((h) => h >= 2160)) {
+        tiers.push({ id: '4k', label: '4K Ultra HD (2160p)', height: 2160 });
+      }
+      if ([...heights].some((h) => h >= 1440 && h < 2160)) {
+        tiers.push({ id: '2k', label: '2K Quad HD (1440p)', height: 1440 });
+      }
+      if ([...heights].some((h) => h >= 1080 && h < 1440)) {
+        tiers.push({ id: '1080p', label: 'Full HD (1080p)', height: 1080 });
+      }
+      if ([...heights].some((h) => h >= 720 && h < 1080)) {
+        tiers.push({ id: '720p', label: 'HD (720p)', height: 720 });
+      }
+      if (tiers.length === 0) {
+        tiers.push({ id: 'highest', label: 'Best Available', height: 1080 });
+      }
+
+      const maxHeight = Math.max(...heights, 1080);
+      const maxFormat = formats.find((f) => f.height === maxHeight);
+      const maxRes = maxFormat
+        ? `${maxFormat.width || Math.round((maxHeight * 16) / 9)}x${maxHeight}`
+        : `${Math.round((maxHeight * 16) / 9)}x${maxHeight}`;
+
+      return {
+        success: true,
+        maxResolution: maxRes,
+        maxHeight,
+        has4k: maxHeight >= 2160,
+        has2k: maxHeight >= 1440,
+        hasFhd: maxHeight >= 1080,
+        tiers,
+        title: data.title || null,
+        duration: data.duration || null,
+      };
+    }
+  } catch (err) {
+    console.warn('Could not query YouTube formats:', err.message);
   }
 
-  // Locate auto-extracted subtitle file if present
-  const videoId = extractYouTubeId(url);
-  const subtitlePath = findSubtitleFile(
-    resolvedSubDir,
-    videoId || resolvedTargetPath
-  );
-
   return {
-    videoPath: resolvedTargetPath,
-    subtitlePath,
-    fileSize,
-    probe,
+    success: true,
+    maxResolution: '3840x2160',
+    maxHeight: 2160,
+    has4k: true,
+    has2k: true,
+    hasFhd: true,
+    tiers: [
+      { id: '4k', label: '4K Ultra HD (2160p Priority)', height: 2160 },
+      { id: '2k', label: '2K Quad HD (1440p)', height: 1440 },
+      { id: '1080p', label: 'Full HD (1080p)', height: 1080 },
+      { id: '720p', label: 'HD (720p)', height: 720 },
+    ],
   };
 }

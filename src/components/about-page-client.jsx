@@ -15,6 +15,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { AdContainer } from '@/components/layout/ad-container';
 
 export function AboutPageClient() {
   return (
@@ -22,7 +23,7 @@ export function AboutPageClient() {
       {/* Hero Section */}
       <section className="relative pt-10 sm:pt-14 md:pt-16 pb-10 sm:pb-12 overflow-hidden border-b border-border bg-card/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.08),transparent_50%)] pointer-events-none" />
-        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="site-container relative">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Column: Heading & Mission */}
             <motion.div
@@ -139,8 +140,13 @@ export function AboutPageClient() {
         </div>
       </section>
 
+      {/* Top Banner Advertisement (Centered) */}
+      <div className="site-container pt-6">
+        <AdContainer position="top-banner" margin="tight" />
+      </div>
+
       {/* Mission & Core Values Section */}
-      <section className="py-10 sm:py-14 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+      <section className="site-container py-10 sm:py-14">
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-start">
           {/* Mission */}
           <div className="space-y-6 sm:space-y-8">
@@ -240,9 +246,14 @@ export function AboutPageClient() {
         </div>
       </section>
 
+      {/* In-Content Centered Advertisement */}
+      <div className="site-container py-4">
+        <AdContainer position="in-content" />
+      </div>
+
       {/* Trusted Worldwide Banner */}
       <section className="py-10 sm:py-12 border-t border-border bg-muted/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl text-center">
+        <div className="site-container text-center">
           <div className="max-w-2xl mx-auto space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mx-auto shadow-xs">
               <Award className="w-6 h-6" />
@@ -261,7 +272,7 @@ export function AboutPageClient() {
 
       {/* Technical Infrastructure Section */}
       <section className="py-10 sm:py-14 border-t border-border bg-card/40 relative overflow-hidden">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="w-full max-w-7xl 2xl:max-w-[1720px] 3xl:max-w-[1920px] 4xl:max-w-full mx-auto px-4 sm:px-6 lg:px-8 3xl:px-10 4xl:px-12">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Ecosystem Points */}
             <div className="order-2 lg:order-1">
@@ -333,7 +344,7 @@ export function AboutPageClient() {
 
       {/* Global Impact Section */}
       <section className="py-10 sm:py-14 border-t border-border bg-muted/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="w-full max-w-7xl 2xl:max-w-[1720px] 3xl:max-w-[1920px] 4xl:max-w-full mx-auto px-4 sm:px-6 lg:px-8 3xl:px-10 4xl:px-12">
           <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 bg-card/60 border border-border shadow-xl space-y-6">
             <div className="max-w-2xl space-y-2">
               <Badge
@@ -369,6 +380,11 @@ export function AboutPageClient() {
           </div>
         </div>
       </section>
+
+      {/* Centered Footer Advertisement */}
+      <div className="w-full max-w-7xl 2xl:max-w-[1720px] 3xl:max-w-[1920px] 4xl:max-w-full mx-auto px-4 sm:px-6 lg:px-8 3xl:px-10 4xl:px-12 py-8">
+        <AdContainer position="footer" />
+      </div>
     </div>
   );
 }

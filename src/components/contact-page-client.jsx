@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { showSuccess, showAlert, showToast } from '@/lib/swal';
 import { cn } from '@/lib/utils';
+import { AdContainer } from '@/components/layout/ad-container';
 
 const LOCAL_STORAGE_KEY = 'my_contact_inquiries';
 
@@ -362,7 +363,7 @@ export function ContactPageClient() {
       {/* Hero Section: Balanced 2-Column Responsive Layout */}
       <section className="relative pt-10 sm:pt-14 md:pt-16 pb-10 sm:pb-12 overflow-hidden border-b border-border bg-card/20 backdrop-blur-sm">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(59,130,246,0.06),transparent_60%)] pointer-events-none" />
-        <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="site-container relative">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Hero Column */}
             <motion.div
@@ -484,13 +485,18 @@ export function ContactPageClient() {
         </div>
       </section>
 
+      {/* Centered Top Banner Ad */}
+      <div className="site-container pt-6">
+        <AdContainer position="top-banner" margin="tight" />
+      </div>
+
       {/* Tracked Inquiries & Official Responses Section */}
       {myInquiries.length > 0 && (
         <section
           id="inquiries-list"
           className="py-10 border-b border-border bg-card/30"
         >
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
+          <div className="site-container max-w-5xl">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -783,7 +789,7 @@ export function ContactPageClient() {
       {/* Main Contact Form & Details Section: Tightened Spacing */}
       <section
         ref={formRef}
-        className="py-12 sm:py-16 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl"
+        className="py-12 sm:py-16 w-full max-w-7xl 2xl:max-w-[1720px] 3xl:max-w-[1920px] 4xl:max-w-full mx-auto px-4 sm:px-6 lg:px-8 3xl:px-10 4xl:px-12"
       >
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* Contact Details Column */}
@@ -976,6 +982,11 @@ export function ContactPageClient() {
           </div>
         </div>
       </section>
+
+      {/* Centered Footer Ad */}
+      <div className="site-container py-8">
+        <AdContainer position="footer" margin="spacious" />
+      </div>
     </div>
   );
 }

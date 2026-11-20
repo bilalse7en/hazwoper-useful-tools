@@ -65,6 +65,16 @@ export function saveLocalRegistry(items) {
 /**
  * Stores a video file permanently into Media Hub and registers DB entry
  */
+// Filenames that must never be persisted (test fixtures, stubs, seed data)
+const BLOCKED_FILENAMES = [
+  'another_hub_video.mp4',
+  'naat_recitation_sample.mp4',
+  'to_be_deleted.mp4',
+  'sample_video.mp4',
+  'test_video.mp4',
+  'placeholder.mp4',
+];
+
 export async function ingestMediaFile({
   buffer,
   fileName,
@@ -76,6 +86,16 @@ export async function ingestMediaFile({
   resolution: explicitResolution = null,
 }) {
   ensureDirectories();
+
+  // Guard: reject known test/stub filenames in production/dev runtime
+  const isTest = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test');
+  const baseName = (fileName || '').toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+  if (!isTest && BLOCKED_FILENAMES.some((b) => baseName === b.toLowerCase())) {
+    throw new Error(
+      `File name "${fileName}" is a reserved test fixture and cannot be ingested.`
+    );
+  }
+
   const id =
     customId || `vid_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const cleanFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -198,7 +218,16 @@ export async function ingestMediaFile({
   // Ensure we never pass non-UUID strings into Postgres UUID columns
   const isIdUUID = isValidUUID(id);
   const dbId = isIdUUID ? id : crypto.randomUUID();
-  const dbUserId = isValidUUID(userId) ? userId : null;
+  let dbUserId = isValidUUID(userId) ? userId : null;
+
+  if (!dbUserId) {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user?.id && isValidUUID(authData.user.id)) {
+        dbUserId = authData.user.id;
+      }
+    } catch (_) {}
+  }
 
   mediaItem.db_id = dbId;
   mediaItem.metadata = {
@@ -225,7 +254,16 @@ export async function ingestMediaFile({
       },
     ]);
     if (dbErr) {
-      console.warn('Supabase media_hub insert notice:', dbErr.message);
+      if (
+        dbErr.message?.includes('user_id') &&
+        dbErr.message?.includes('not-null')
+      ) {
+        console.warn(
+          'Supabase media_hub insert notice: user_id is null. To allow anonymous/queue renders, run in Supabase SQL editor: ALTER TABLE public.media_hub ALTER COLUMN user_id DROP NOT NULL;'
+        );
+      } else {
+        console.warn('Supabase media_hub insert notice:', dbErr.message);
+      }
     }
   } catch (dbEx) {
     console.warn('Supabase media_hub exception:', dbEx.message);
@@ -298,7 +336,11 @@ export async function listMediaHubItems(search = '') {
 
     const canonicalId = db.metadata?.external_id || db.id;
     const existing = map.get(canonicalId) || map.get(db.id);
+
     if (!existing) {
+      // New entry from DB — add it (unless it's a phantom)
+      const dbFn = (db.file_name || '').toLowerCase();
+      if (BLOCKED_FILENAMES.some((b) => dbFn === b.toLowerCase())) return;
       map.set(canonicalId, {
         id: canonicalId,
         db_id: db.id,
@@ -328,17 +370,25 @@ export async function listMediaHubItems(search = '') {
         status: 'ready',
       });
     } else {
-      // Refresh URLs if DB has public Supabase URL
-      if (db.download_url && db.download_url.startsWith('http')) {
+      // Local registry wins — only enrich with Supabase public URLs (never overwrite resolution/size)
+      if (
+        db.download_url &&
+        db.download_url.startsWith('http') &&
+        !existing.downloadUrl?.startsWith('http')
+      ) {
         existing.download_url = db.download_url;
         existing.downloadUrl = db.download_url;
         existing.videoUrl = db.download_url;
       }
-      if (db.preview_url && db.preview_url.startsWith('http')) {
+      if (
+        db.preview_url &&
+        db.preview_url.startsWith('http') &&
+        !existing.previewUrl?.startsWith('http')
+      ) {
         existing.preview_url = db.preview_url;
         existing.previewUrl = db.preview_url;
       }
-      if (localCandidate) {
+      if (localCandidate && !existing.localPath) {
         existing.local_path = localCandidate;
         existing.localPath = localCandidate;
       }
@@ -346,10 +396,23 @@ export async function listMediaHubItems(search = '') {
   });
 
   const now = Date.now();
+  const isTest = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test');
   let result = Array.from(map.values()).filter((item) => {
+    // Filter out expired entries
     if (item.expires_at) {
       const exp = new Date(item.expires_at).getTime();
-      if (!isNaN(exp) && exp < now) return false; // Filter out expired
+      if (!isNaN(exp) && exp < now) return false;
+    }
+    if (!isTest) {
+      // Filter out known test/stub filenames in non-test runtimes
+      const fn = (item.file_name || item.fileName || '').toLowerCase();
+      if (BLOCKED_FILENAMES.some((b) => fn === b.toLowerCase())) return false;
+      // Filter out generated short clips from the source-video library view
+      const st = item.source_type || item.sourceType || '';
+      if (st === 'generated_short') return false;
+      // Filter out entries where the local file no longer exists and size is 0
+      const sz = item.file_size || item.fileSize || 0;
+      if (sz > 0 && sz < 1000) return false; // Stub/corrupt file (< 1KB)
     }
     return true;
   });

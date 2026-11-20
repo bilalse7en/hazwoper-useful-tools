@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { guidesData } from '@/lib/guides-data';
 import { toolInfo, createPageMetadata } from '@/lib/seo';
 import { Badge } from '@/components/ui/badge';
+import { AdContainer } from '@/components/layout/ad-container';
 import {
   BookOpen,
   Clock,
@@ -54,7 +55,7 @@ export default function GuidesPage() {
         {/* Hero Section */}
         <section className="relative pt-10 sm:pt-14 md:pt-16 pb-10 sm:pb-12 overflow-hidden border-b border-border bg-card/10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.08),transparent_50%)] pointer-events-none" />
-          <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+          <div className="site-container relative">
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
               {/* Left: Heading & Description */}
               <div className="lg:col-span-7 space-y-4 sm:space-y-5">
@@ -137,9 +138,14 @@ export default function GuidesPage() {
           </div>
         </section>
 
-        {/* Guides Responsive Cubic Grid */}
-        <section className="py-10 sm:py-14 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+        {/* Top Banner Advertisement (Centered) */}
+        <div className="site-container pt-6">
+          <AdContainer position="top-banner" margin="tight" />
+        </div>
+
+        {/* Guides Responsive Grid */}
+        <section className="site-container py-8 sm:py-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 4xl:grid-cols-4 gap-5 sm:gap-6">
             {guidesData.map((guide) => (
               <article
                 key={guide.slug}
@@ -213,6 +219,11 @@ export default function GuidesPage() {
                 </div>
               </article>
             ))}
+          </div>
+
+          {/* Centered In-Content Advertisement */}
+          <div className="mt-12">
+            <AdContainer position="in-content" />
           </div>
         </section>
       </div>

@@ -292,7 +292,7 @@ export default function AdminBlogSyncPage() {
     blog.sync_version !== CURRENT_BLOG_SYNC_VERSION;
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in-fade">
+    <div className="site-container py-6 sm:py-8 space-y-6 sm:space-y-8 animate-in-fade">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 border-b border-border pb-6">
         <div className="space-y-3">

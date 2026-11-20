@@ -37,23 +37,60 @@ export function ThumbnailEditorModal({
   onClose,
   initialFrameUrl = null,
   candidateFrames = [],
-  clipTitle = 'فاصلوں کو تکلف ہے ہم سے اگر',
-  clipSubline = 'قاری شاہد محمود',
+  clipTitle,
+  clipSubline,
+  isGaming: propIsGaming = false,
+  contentType = null,
   onSaveThumbnail,
 }) {
+  const resolvedIsGaming = Boolean(
+    propIsGaming ||
+    contentType === 'gaming-gta' ||
+    /gta|game|heist|chase|drift|stunt|explosion|destroy|action|pursuit|blast/i.test(
+      clipTitle || ''
+    ) ||
+    /gta|game|heist|chase|drift|stunt|explosion|destroy|action|pursuit|blast/i.test(
+      clipSubline || ''
+    )
+  );
+
+  const defaultTitle = resolvedIsGaming
+    ? 'GTA 6 Stunt & Action'
+    : 'فاصلوں کو تکلف ہے ہم سے اگر';
+  const defaultSubline = resolvedIsGaming
+    ? 'Epic Police Evasion'
+    : 'قاری شاہد محمود';
+
+  const finalTitle = clipTitle || defaultTitle;
+  const finalSubline = clipSubline || defaultSubline;
+
+  const isGaming = resolvedIsGaming;
+
+  const sanitizeGamingText = (val, fallback) => {
+    if (!val) return fallback;
+    if (/[\u0600-\u06FF]/.test(val)) return fallback;
+    return val;
+  };
+
   const [aspectRatio, setAspectRatio] = useState('9:16'); // '9:16' | '16:9'
   const [selectedFrame, setSelectedFrame] = useState(
     initialFrameUrl || candidateFrames[0]?.publicUrl || null
   );
   const [customImage, setCustomImage] = useState(null);
   const [badgeText, setBadgeText] = useState(
-    '🕌 NAAT SHARIF • HIGH VIRAL HOOK'
+    isGaming
+      ? '🎮 GTA 6 GAMEPLAY • VIRAL MOMENT'
+      : '🕌 NAAT SHARIF • HIGH VIRAL HOOK'
   );
   const [naatName, setNaatName] = useState(
-    clipTitle || 'فاصلوں کو تکلف ہے ہم سے اگر'
+    isGaming
+      ? sanitizeGamingText(clipTitle, 'GTA 6 Stunt & Action')
+      : clipTitle || 'فاصلوں کو تکلف ہے ہم سے اگر'
   );
   const [reciterName, setReciterName] = useState(
-    clipSubline || 'قاری شاہد محمود'
+    isGaming
+      ? sanitizeGamingText(clipSubline, 'Epic Police Evasion')
+      : clipSubline || 'قاری شاہد محمود'
   );
   const [textColor, setTextColor] = useState('#FBBF24'); // Radiant Gold
   const [vignetteOpacity, setVignetteOpacity] = useState(85);
@@ -482,62 +519,96 @@ export function ThumbnailEditorModal({
               )}
             </div>
 
-            {/* 2. Top & Bottom Center Urdu Typography in Kumail Font */}
+            {/* 2. Top & Bottom Center Typography */}
             <div className="space-y-3 pt-2 border-t border-border/50">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>2. Urdu &quot;Kumail Font&quot; Viral Thumbnails</span>
+                  <span>
+                    {isGaming
+                      ? '2. Bold Viral Typography (Montserrat / Impact)'
+                      : '2. Urdu "Kumail Font" Viral Thumbnails'}
+                  </span>
                 </Label>
                 <Badge
                   variant="outline"
                   className="text-[10px] bg-primary/10 text-primary border-primary/30"
                 >
-                  Kumail Calligraphy
+                  {isGaming ? 'Gaming Cover' : 'Kumail Calligraphy'}
                 </Badge>
               </div>
 
-              {/* What's on Top: Naat Name */}
+              {/* What's on Top: Title */}
               <div className="space-y-1.5 p-3 rounded-2xl bg-muted/40 border border-border/60">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                    <span>What&apos;s on Top (Naat Name)</span>
-                    <span className="text-[11px] text-primary font-urdu">
-                      نعت کا نام
+                    <span>
+                      {isGaming
+                        ? 'Top Title Headline'
+                        : "What's on Top (Naat Name)"}
                     </span>
+                    {!isGaming && (
+                      <span className="text-[11px] text-primary font-urdu">
+                        نعت کا نام
+                      </span>
+                    )}
                   </Label>
                   <span className="text-[10px] text-muted-foreground font-mono">
-                    Top Center • Kumail Font
+                    {isGaming
+                      ? 'Top Center • Montserrat ExtraBold'
+                      : 'Top Center • Kumail Font'}
                   </span>
                 </div>
                 <Input
                   value={naatName}
                   onChange={(e) => setNaatName(e.target.value)}
-                  dir="rtl"
-                  className="text-sm font-kumail h-9 bg-background text-right"
-                  placeholder="مثلاً: فاصلوں کو تکلف ہے ہم سے اگر"
+                  dir={isGaming ? 'ltr' : 'rtl'}
+                  className={cn(
+                    'text-sm h-9 bg-background',
+                    isGaming ? 'font-bold' : 'font-kumail text-right'
+                  )}
+                  placeholder={
+                    isGaming
+                      ? 'e.g.: Epic Jet Stunt & Police Escape'
+                      : 'مثلاً: فاصلوں کو تکلف ہے ہم سے اگر'
+                  }
                 />
               </div>
 
-              {/* What's on Bottom Center: Naat Reciter Name */}
+              {/* What's on Bottom Center: Subline */}
               <div className="space-y-1.5 p-3 rounded-2xl bg-muted/40 border border-border/60">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                    <span>What&apos;s on Bottom Center (Reciter Name)</span>
-                    <span className="text-[11px] text-primary font-urdu">
-                      نعت خواں کا نام
+                    <span>
+                      {isGaming
+                        ? 'Bottom Subtitle / Action Tag'
+                        : "What's on Bottom Center (Reciter Name)"}
                     </span>
+                    {!isGaming && (
+                      <span className="text-[11px] text-primary font-urdu">
+                        نعت خواں کا نام
+                      </span>
+                    )}
                   </Label>
                   <span className="text-[10px] text-muted-foreground font-mono">
-                    Bottom Center • Kumail Font
+                    {isGaming
+                      ? 'Bottom Center • Bold'
+                      : 'Bottom Center • Kumail Font'}
                   </span>
                 </div>
                 <Input
                   value={reciterName}
                   onChange={(e) => setReciterName(e.target.value)}
-                  dir="rtl"
-                  className="text-sm font-kumail h-9 bg-background text-right"
-                  placeholder="مثلاً: قاری شاہد محمود / اویس رضا قادری"
+                  dir={isGaming ? 'ltr' : 'rtl'}
+                  className={cn(
+                    'text-sm h-9 bg-background',
+                    isGaming ? 'font-bold' : 'font-kumail text-right'
+                  )}
+                  placeholder={
+                    isGaming
+                      ? 'e.g.: High Speed Chase'
+                      : 'مثلاً: قاری شاہد محمود'
+                  }
                 />
               </div>
 

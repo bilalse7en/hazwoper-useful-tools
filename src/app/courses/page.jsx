@@ -27,6 +27,7 @@ import { getAllCoursesAsync } from '@/lib/course-storage';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { MagneticCapsuleDock } from '@/components/ui/magnetic-capsule-dock';
+import { AdContainer } from '@/components/layout/ad-container';
 
 export default function AllCoursesPage() {
   const [courses, setCourses] = useState([]);
@@ -95,7 +96,7 @@ export default function AllCoursesPage() {
       <div className="border-b border-border bg-gradient-to-b from-muted/30 via-background to-background relative overflow-hidden py-10 sm:py-12 md:py-14">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[350px] bg-primary/5 rounded-full blur-[140px] pointer-events-none" />
 
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10 space-y-6 sm:space-y-8">
+        <div className="site-container relative z-10 space-y-6 sm:space-y-8">
           {/* Breadcrumb Navigation */}
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             <Link
@@ -221,8 +222,13 @@ export default function AllCoursesPage() {
         </div>
       </div>
 
+      {/* Top Centered Banner Ad Slot */}
+      <div className="site-container pt-6">
+        <AdContainer position="top-banner" margin="tight" />
+      </div>
+
       {/* Main Courses Grid Section */}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-10 sm:py-12 flex-1">
+      <div className="site-container py-8 sm:py-12 flex-1">
         {loading ? (
           <div className="py-20 text-center space-y-3">
             <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -251,95 +257,102 @@ export default function AllCoursesPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
-            {filteredCourses.map((course, idx) => {
-              const courseId = course.numericId || idx + 1;
-              return (
-                <motion.div
-                  key={course.id || idx}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.3,
-                    delay: Math.min(idx * 0.05, 0.3),
-                  }}
-                  className="group flex flex-col h-full"
-                >
-                  <Card className="flex flex-col h-full overflow-hidden border-border bg-card hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/5 transition-all duration-300 rounded-2xl sm:rounded-3xl">
-                    {/* Thumbnail Banner */}
-                    <div className="relative h-44 bg-muted overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={
-                          typeof course.thumbnail === 'string' &&
-                          course.thumbnail.trim() !== ''
-                            ? course.thumbnail
-                            : 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&auto=format&fit=crop&q=70'
-                        }
-                        alt={course.title || 'Course Thumbnail'}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src =
-                            'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&auto=format&fit=crop&q=70';
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 4xl:grid-cols-5 5xl:grid-cols-6 gap-5 sm:gap-6">
+              {filteredCourses.map((course, idx) => {
+                const courseId = course.numericId || idx + 1;
+                return (
+                  <motion.div
+                    key={course.id || idx}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: Math.min(idx * 0.05, 0.3),
+                    }}
+                    className="group flex flex-col h-full"
+                  >
+                    <Card className="flex flex-col h-full overflow-hidden border-border bg-card hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/5 transition-all duration-300 rounded-2xl sm:rounded-3xl">
+                      {/* Thumbnail Banner */}
+                      <div className="relative h-44 bg-muted overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={
+                            typeof course.thumbnail === 'string' &&
+                            course.thumbnail.trim() !== ''
+                              ? course.thumbnail
+                              : 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&auto=format&fit=crop&q=70'
+                          }
+                          alt={course.title || 'Course Thumbnail'}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src =
+                              'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&auto=format&fit=crop&q=70';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
 
-                      {/* Sequential Course ID Badge */}
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-xs tracking-wider shadow-md">
-                          ID #{courseId}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold">
-                          {course.category?.toUpperCase() || 'SAFETY'}
-                        </span>
-                      </div>
-
-                      {/* Quick Preview Hover Overlay */}
-                      <button
-                        onClick={() => setSelectedPreviewCourse(course)}
-                        className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <div className="px-4 py-2 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center gap-2 shadow-xl hover:scale-105 transition-transform">
-                          <Play className="w-3.5 h-3.5 fill-slate-950" /> View
-                          Demo Course
+                        {/* Sequential Course ID Badge */}
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-xs tracking-wider shadow-md">
+                            ID #{courseId}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-bold">
+                            {course.category?.toUpperCase() || 'SAFETY'}
+                          </span>
                         </div>
-                      </button>
 
-                      <div className="absolute bottom-3 left-3 right-3 text-white">
-                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                          <Clock className="w-3 h-3" />{' '}
-                          {course.durationLabel || '2 Hours'} •{' '}
-                          {course.ceuCredits || '0.2 CEU'}
-                        </span>
-                        <h3 className="font-bold text-sm leading-tight mt-1 line-clamp-2 drop-shadow-sm">
-                          {course.title}
-                        </h3>
-                      </div>
-                    </div>
-
-                    {/* Body Content */}
-                    <CardContent className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                      <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                        {course.description}
-                      </p>
-
-                      <div className="space-y-2.5 pt-2 border-t border-border">
-                        <Button
+                        {/* Quick Preview Hover Overlay */}
+                        <button
                           onClick={() => setSelectedPreviewCourse(course)}
-                          className="w-full h-10 rounded-xl font-black text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md gap-1.5"
+                          className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Play className="w-3.5 h-3.5 fill-slate-950" />
-                          View Demo Course
-                        </Button>
+                          <div className="px-4 py-2 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center gap-2 shadow-xl hover:scale-105 transition-transform">
+                            <Play className="w-3.5 h-3.5 fill-slate-950" /> View
+                            Demo Course
+                          </div>
+                        </button>
+
+                        <div className="absolute bottom-3 left-3 right-3 text-white">
+                          <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                            <Clock className="w-3 h-3" />{' '}
+                            {course.durationLabel || '2 Hours'} •{' '}
+                            {course.ceuCredits || '0.2 CEU'}
+                          </span>
+                          <h3 className="font-bold text-sm leading-tight mt-1 line-clamp-2 drop-shadow-sm">
+                            {course.title}
+                          </h3>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
+
+                      {/* Body Content */}
+                      <CardContent className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                          {course.description}
+                        </p>
+
+                        <div className="space-y-2.5 pt-2 border-t border-border">
+                          <Button
+                            onClick={() => setSelectedPreviewCourse(course)}
+                            className="w-full h-10 rounded-xl font-black text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md gap-1.5"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-slate-950" />
+                            View Demo Course
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* In-Content Centered Advertisement */}
+            <div className="mt-12">
+              <AdContainer position="in-content" />
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -87,13 +87,34 @@ async function resolveMediaFilePath(paramsPromise) {
         fs.statSync(parentFolder).isDirectory()
       ) {
         const files = fs.readdirSync(parentFolder);
-        const match = files.find(
+        let match = files.find(
           (f) =>
             f === requestedFile ||
             f.toLowerCase() === requestedFile.toLowerCase() ||
             f.replace(/[^a-zA-Z0-9]/g, '_') ===
               requestedFile.replace(/[^a-zA-Z0-9]/g, '_')
         );
+
+        // Fallback: If requesting video.mp4 or generic video, select first available video file
+        if (
+          !match &&
+          (/\.(mp4|webm|mov|mkv)$/i.test(requestedFile) ||
+            requestedFile === 'video.mp4' ||
+            requestedFile === 'source.mp4')
+        ) {
+          match = files.find((f) => /\.(mp4|webm|mov|mkv)$/i.test(f));
+        }
+
+        // Fallback: If requesting poster or image, select first available image file
+        if (
+          !match &&
+          (/\.(jpg|jpeg|png|webp)$/i.test(requestedFile) ||
+            requestedFile.startsWith('poster') ||
+            requestedFile.startsWith('thumb'))
+        ) {
+          match = files.find((f) => /\.(jpg|jpeg|png|webp)$/i.test(f));
+        }
+
         if (match) {
           const candidate = path.join(parentFolder, match);
           if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {

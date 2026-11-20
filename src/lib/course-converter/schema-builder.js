@@ -33,6 +33,114 @@ import { validateCourseJson } from './validator.js';
  *   Lesson 2: <name of lesson 2>
  *   Lesson 3: <name of lesson 3>
  */
+/**
+ * Ensures that the first topic of an Introduction lesson (Lesson 0)
+ * is an empty title slide named strictly after the course title.
+ *
+ * @param {Array<object>} topics - Array of topic objects
+ * @param {string} courseTitle - Name of the course
+ * @param {string} [modId='mod_0'] - Module ID
+ * @param {string} [lesId='les_0_0'] - Lesson ID
+ * @returns {Array<object>} Topics array with empty course title topic at index 0
+ */
+export function ensureEmptyCourseTitleTopic(
+  topics = [],
+  courseTitle = '',
+  modId = 'mod_0',
+  lesId = 'les_0_0'
+) {
+  const cleanCourse = (courseTitle || '').trim();
+  if (!cleanCourse) return topics;
+
+  // Check if first topic is already the empty course title slide
+  const first = topics[0];
+  const firstHtml = (
+    first?.leftDiv?.editorHtml ||
+    first?.leftDiv?.editor ||
+    first?.leftDiv?.editorSaved ||
+    ''
+  )
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
+
+  const isFirstAlreadyEmptyCourseTitle =
+    first &&
+    (first.name === cleanCourse || first.headingContent === cleanCourse) &&
+    firstHtml === '';
+
+  if (isFirstAlreadyEmptyCourseTitle) {
+    first.name = cleanCourse;
+    first.headingContent = cleanCourse;
+    if (!first.leftDiv) first.leftDiv = {};
+    first.leftDiv.editor = '';
+    first.leftDiv.editorHtml = '';
+    first.leftDiv.editorSaved = '';
+    first.leftDiv.editorHtmlSaved = '';
+    first.allocated_duration_seconds = 30;
+    first.topicDuration = 30;
+    return topics;
+  }
+
+  const emptyTopic = {
+    id: `${lesId}_1`.replace(/^les_/, 'top_'),
+    name: cleanCourse,
+    headingContent: cleanCourse,
+    selectedTemplate: 0,
+    lessonId: lesId,
+    moduleId: modId,
+    slide_type: 'text',
+    allocated_duration_seconds: 30,
+    topicDuration: 30,
+    image_source: '',
+    image_code: '',
+    image_prompt: '',
+    has_embedded_image: false,
+    datatime: '0',
+    captions: [],
+    narration_script: '',
+    leftDiv: {
+      audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
+      image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+      video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
+      width: 'col-12',
+      editor: '',
+      editorHtml: '',
+      editorSaved: '',
+      editorHtmlSaved: '',
+      captureTime: [],
+      mediaDuration: 0,
+      isEditorSelected: true,
+      mediaCurrentTime: 0,
+    },
+    rightDiv: {
+      audio: { isAudio: false, audioURL: '', audioFile: '', audioName: '' },
+      image: { isImage: false, imageURL: '', imageFile: '', imageName: '' },
+      video: { isVideo: false, videoURL: '', videoFile: '', videoName: '' },
+      width: 'col-12',
+      editor: '',
+      editorHtml: '',
+      editorSaved: '',
+      editorHtmlSaved: '',
+      captureTime: [],
+      mediaDuration: 0,
+      isEditorSelected: false,
+      mediaCurrentTime: 0,
+    },
+  };
+
+  const newTopics = [emptyTopic, ...topics];
+
+  // Renumber topic IDs in this lesson
+  newTopics.forEach((top, idx) => {
+    top.id = `${lesId}_${idx + 1}`.replace(/^les_/, 'top_');
+    top.lessonId = lesId;
+    top.moduleId = modId;
+  });
+
+  return newTopics;
+}
+
 export function normalizeCourseHierarchy(
   rawModules = [],
   courseTitle = '',
@@ -137,12 +245,21 @@ export function normalizeCourseHierarchy(
           ? 'Introduction'
           : ensureLessonNumberPrefix(les.lesson_title, lesNum);
 
-        const formattedTopics = (les.topics || []).map((top, tIdx) => ({
+        let formattedTopics = (les.topics || []).map((top, tIdx) => ({
           ...top,
           id: `top_${mod0Num}_${lesNum}_${tIdx + 1}`,
           lessonId: lesId,
           moduleId: mod0Id,
         }));
+
+        if (isLes0) {
+          formattedTopics = ensureEmptyCourseTitleTopic(
+            formattedTopics,
+            cleanCourse || mod0Title,
+            mod0Id,
+            lesId
+          );
+        }
 
         return {
           ...les,
@@ -153,12 +270,18 @@ export function normalizeCourseHierarchy(
       });
 
     if (mod0Lessons.length === 0) {
+      const emptyTopics = ensureEmptyCourseTitleTopic(
+        [],
+        cleanCourse || mod0Title,
+        mod0Id,
+        `les_${mod0Num}_0`
+      );
       mod0Lessons.push({
         lesson_id: `les_${mod0Num}_0`,
         lesson_title: 'Introduction',
         has_assessment_after: false,
         knowledge_check: [],
-        topics: [],
+        topics: emptyTopics,
       });
     }
 
@@ -192,12 +315,21 @@ export function normalizeCourseHierarchy(
         const lesTitle = isLes0
           ? 'Introduction'
           : ensureLessonNumberPrefix(les.lesson_title, lesNum);
-        const formattedTopics = (les.topics || []).map((top, tIdx) => ({
+        let formattedTopics = (les.topics || []).map((top, tIdx) => ({
           ...top,
           id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
           lessonId: lesId,
           moduleId: modId,
         }));
+
+        if (isLes0) {
+          formattedTopics = ensureEmptyCourseTitleTopic(
+            formattedTopics,
+            cleanCourse || modTitle,
+            modId,
+            lesId
+          );
+        }
 
         return {
           ...les,
@@ -254,12 +386,21 @@ export function normalizeCourseHierarchy(
         const lesTitle = isLes0
           ? 'Introduction'
           : ensureLessonNumberPrefix(les.lesson_title, lesNum);
-        const formattedTopics = (les.topics || []).map((top, tIdx) => ({
+        let formattedTopics = (les.topics || []).map((top, tIdx) => ({
           ...top,
           id: `top_${modNum}_${lesNum}_${tIdx + 1}`,
           lessonId: lesId,
           moduleId: modId,
         }));
+
+        if (isLes0) {
+          formattedTopics = ensureEmptyCourseTitleTopic(
+            formattedTopics,
+            cleanCourse || modTitle,
+            modId,
+            lesId
+          );
+        }
 
         return {
           ...les,
@@ -296,11 +437,9 @@ export function cleanTopicSlideContent(topic, options = {}) {
   if (!topic.headingContent)
     topic.headingContent = topic.name || 'Topic Content';
   if (!topic.name) topic.name = topic.headingContent;
-  if (!topic.selectedTemplate) topic.selectedTemplate = 1;
   if (!topic.leftDiv) topic.leftDiv = {};
   if (!topic.leftDiv.width) topic.leftDiv.width = 'col-12';
-  if (topic.leftDiv.isEditorSelected === undefined)
-    topic.leftDiv.isEditorSelected = true;
+  topic.leftDiv.isEditorSelected = true;
 
   if (!topic.rightDiv) {
     topic.rightDiv = {
@@ -325,11 +464,52 @@ export function cleanTopicSlideContent(topic, options = {}) {
     topic.leftDiv?.editorSaved ||
     '';
 
+  // If the slide already has an embedded image in its HTML layout, select 1st frame (template 0)
+  // and do NOT create an empty right-side image slot in LMS
+  if (rawHtml.includes('<img') || topic.has_embedded_image) {
+    topic.selectedTemplate = 0;
+    if (topic.rightDiv) {
+      topic.rightDiv.image = {
+        isImage: false,
+        imageURL: '',
+        imageFile: '',
+        imageName: '',
+      };
+      topic.rightDiv.isEditorSelected = false;
+    }
+  } else if (
+    topic.rightDiv?.image?.isImage &&
+    topic.rightDiv?.image?.imageURL
+  ) {
+    topic.selectedTemplate = 1;
+    topic.rightDiv.isEditorSelected = false;
+  } else {
+    topic.selectedTemplate = 0;
+    if (topic.rightDiv) {
+      topic.rightDiv.isEditorSelected = false;
+    }
+  }
+
+  const hasTailwind =
+    rawHtml.includes('bg-[') ||
+    rawHtml.includes('text-[') ||
+    rawHtml.includes('grid') ||
+    rawHtml.includes('flex') ||
+    rawHtml.includes('rounded-') ||
+    rawHtml.includes('bg-') ||
+    rawHtml.includes('#EEF1F4') ||
+    rawHtml.includes('#E8761C') ||
+    rawHtml.includes('style=');
+
   const cleanInner = normalizeHtmlContent(rawHtml, {
     stripImages,
+    preserveTailwind: hasTailwind,
     topicTitle: topic.name || topic.headingContent,
   });
-  const wrapped = wrapInLmsContainer(cleanInner, { stripImages });
+  const wrapped = wrapInLmsContainer(cleanInner, {
+    stripImages,
+    preserveTailwind: hasTailwind,
+  });
   const duration = calculateTopicDuration(cleanInner);
 
   topic.allocated_duration_seconds = duration;

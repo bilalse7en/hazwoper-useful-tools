@@ -1449,6 +1449,14 @@ describe('CourseJsonConverter Core Engine', () => {
         'Introduction'
       );
 
+      // Inside Module 0, Lesson 0 first topic is an empty title slide named after course
+      const introTopics = courseJson.modules[0].lessons[0].topics;
+      expect(introTopics.length).toBeGreaterThanOrEqual(2);
+      expect(introTopics[0].name).toBe('Hazardous Waste Operations');
+      expect(introTopics[0].headingContent).toBe('Hazardous Waste Operations');
+      expect(introTopics[0].leftDiv.editorHtml).toBe('');
+      expect(introTopics[0].leftDiv.editor).toBe('');
+
       // Module 1: Lessons 1, 2, 3
       expect(courseJson.modules[1].module_id).toBe('mod_1');
       expect(courseJson.modules[1].module_title).toBe(
@@ -1589,15 +1597,21 @@ describe('CourseJsonConverter Core Engine', () => {
           expect(res.courseJson.modules[0].lessons[0].lesson_title).toBe(
             'Introduction'
           );
-          expect(
-            res.courseJson.modules[0].lessons[0].topics[0].slide_type
-          ).toBe('content');
+          expect(res.courseJson.modules[0].lessons[0].topics[0].name).toBe(
+            'Confined Space Safety'
+          );
           expect(
             res.courseJson.modules[0].lessons[0].topics[0].leftDiv.editorHtml
+          ).toBe('');
+          expect(
+            res.courseJson.modules[0].lessons[0].topics[1].leftDiv.editorHtml
           ).not.toContain('FILE #:');
           expect(
-            res.courseJson.modules[0].lessons[0].topics[0].leftDiv.editorHtml
+            res.courseJson.modules[0].lessons[0].topics[1].leftDiv.editorHtml
           ).not.toContain('Slide 1');
+          expect(
+            res.courseJson.modules[0].lessons[0].topics[1].leftDiv.editorHtml
+          ).toContain('Proper entry protocols.');
           expect(res.validation.isValid).toBe(true);
         }
       );
@@ -1896,6 +1910,136 @@ describe('CourseJsonConverter Core Engine', () => {
         // Topic 2: Ventilation Techniques
         expect(lesson.topics[2].name).toBe('Ventilation Techniques');
         expect(res.validation.isValid).toBe(true);
+      });
+    });
+
+    describe('PowerPoint (.pptx) Ingestion & Responsive Tailwind Conversion', () => {
+      const pptxPath = path.resolve(
+        process.env.USERPROFILE || 'C:/Users/User',
+        '.gemini/antigravity/brain/25b6cf54-05c0-4506-a81e-06c19d4b3ef7/.user_uploaded/media_1794899957932_1d716844.pptx'
+      );
+
+      it('normalizes HTML while preserving Tailwind CSS classes when preserveTailwind is enabled', () => {
+        const raw =
+          '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200"><p class="text-sm text-slate-800">Hello Tailwind</p></div>';
+        const stripped = normalizeHtmlContent(raw, { preserveTailwind: false });
+        expect(stripped).not.toContain('grid');
+        expect(stripped).not.toContain('rounded-xl');
+        expect(stripped).toContain('Hello Tailwind');
+
+        const preserved = normalizeHtmlContent(raw, { preserveTailwind: true });
+        expect(preserved).toContain(
+          'grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200'
+        );
+        expect(preserved).toContain('Hello Tailwind');
+      });
+
+      it('converts Hand and Power Tool Safety PPTX to 100% valid LMS Course JSON with zero base64', async () => {
+        if (!fs.existsSync(pptxPath)) {
+          console.warn('Skipping test: pptx file not found at', pptxPath);
+          return;
+        }
+
+        const buffer = fs.readFileSync(pptxPath);
+        const { courseJson, validation } = await convertDocumentToCourseJson(
+          buffer,
+          {
+            fileName: 'Hand_and_Power_Tool_Safety_choladeck.pptx',
+          }
+        );
+
+        expect(validation.isValid).toBe(true);
+        expect(courseJson.course_title).toBe('Hand and Power Tool Safety');
+
+        // Module 0: Course Name without number, Lesson 0: Introduction without number
+        expect(courseJson.modules[0].module_title).toBe(
+          'Hand and Power Tool Safety'
+        );
+        expect(courseJson.modules[0].module_title).not.toMatch(/^Module\s*0/i);
+        expect(courseJson.modules[0].lessons[0].lesson_title).toBe(
+          'Introduction'
+        );
+        expect(courseJson.modules[0].lessons[0].lesson_title).not.toMatch(
+          /^Lesson\s*0/i
+        );
+
+        // Topic 1 must be empty course title topic
+        const topic1 = courseJson.modules[0].lessons[0].topics[0];
+        expect(topic1.name).toBe('Hand and Power Tool Safety');
+        expect(topic1.duration).toBe(30);
+        expect(topic1.leftDiv.editorHtml).toBe('<div></div>');
+        expect(topic1.selectedTemplate).toBe(0); // Frame 0: 1st frame selected if no right image
+        expect(topic1.leftDiv.isEditorSelected).toBe(true); // Toggle under heading on Text by default
+        expect(topic1.rightDiv.image.isImage).toBe(false);
+
+        // Topic 2: Introduction with responsive embedded layout (1st frame selected, no right-side upload slot)
+        const topic2 = courseJson.modules[0].lessons[0].topics[1];
+        expect(topic2.name).toBe('Introduction');
+        expect(topic2.selectedTemplate).toBe(0); // 1st frame selected (full width layout)
+        expect(topic2.leftDiv.isEditorSelected).toBe(true); // Toggle under heading on Text by default
+        expect(topic2.rightDiv.image.isImage).toBe(false); // No empty right upload box in LMS
+        expect(topic2.leftDiv.editorHtml).toContain(
+          'Cordless-Drill-And-Tools-Arranged-On-A-Workbench.webp'
+        );
+
+        // Topic 3: Terminal Learning Objectives (NO right-side image)
+        const topic3 = courseJson.modules[0].lessons[0].topics[2];
+        expect(topic3.name).toBe('Terminal Learning Objectives');
+        expect(topic3.selectedTemplate).toBe(0); // Frame 0: 1st frame selected because no right image!
+        expect(topic3.leftDiv.isEditorSelected).toBe(true); // Toggle on Text
+        expect(topic3.rightDiv.image.isImage).toBe(false);
+        expect(topic3.leftDiv.editorHtml).toContain('#E8761C');
+
+        // Subsequent modules have sequential numbering: Module 1..5
+        expect(courseJson.modules[1].module_title).toBe('Module 1: The Basics');
+        expect(courseJson.modules[1].lessons[0].lesson_title).toBe(
+          'Lesson 1: The Basics'
+        );
+
+        expect(courseJson.modules[2].module_title).toBe(
+          'Module 2: Health Hazards'
+        );
+        expect(courseJson.modules[2].lessons[0].lesson_title).toBe(
+          'Lesson 2: Health Hazards'
+        );
+
+        expect(courseJson.modules[3].module_title).toBe('Module 3: Hand Tools');
+        expect(courseJson.modules[3].lessons[0].lesson_title).toBe(
+          'Lesson 3: Hand Tools'
+        );
+
+        expect(courseJson.modules[4].module_title).toBe(
+          'Module 4: Power Tools'
+        );
+        expect(courseJson.modules[4].lessons[0].lesson_title).toBe(
+          'Lesson 4: Power Tools'
+        );
+
+        expect(courseJson.modules[5].module_title).toBe(
+          'Module 5: Safe Work Practices'
+        );
+        expect(courseJson.modules[5].lessons[0].lesson_title).toBe(
+          'Lesson 5: Safe Work Practices'
+        );
+
+        // Verify total topics & modules
+        expect(courseJson.total_topics).toBe(22);
+        expect(courseJson.total_modules).toBe(6);
+
+        // STRICT INVARIANT: ZERO BASE64 IMAGES
+        const jsonStr = JSON.stringify(courseJson);
+        expect(jsonStr).not.toContain('data:image');
+
+        // Verify WordPress Bucket URLs
+        expect(jsonStr).toContain(
+          'https://media.hazwoper-osha.com/wp-content/uploads/2026/11/1794837302/'
+        );
+        expect(jsonStr).toContain('.webp');
+
+        // Verify rich responsive Tailwind markup & bright luminous design
+        expect(jsonStr).toContain('grid');
+        expect(jsonStr).toContain('rounded-2xl');
+        expect(jsonStr).toContain('#E8761C');
       });
     });
   });

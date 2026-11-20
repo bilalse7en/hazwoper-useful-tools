@@ -89,16 +89,16 @@ export const PROFESSIONAL_TOOLS = [
   },
   {
     id: 'short-generator',
-    title: 'Short Generator 2.0 (AI Cloud)',
-    badge: 'Instant WASM Launch',
+    title: 'AI Video to Shorts 2.0 (4K Studio)',
+    badge: '4K PRO STUDIO',
     category: 'Kinetic Motion Studio',
     description:
-      'Third-party cloud AI video shorts studio powered by OpusClip AI, Shotstack Cloud Render, and authentic kinetic motion typography.',
+      'Automated 4K vertical Shorts studio powered by ALL USEFUL TOOLS Pro Engine with multi-profile AI, smart 9:16 tracking, and authentic typography.',
     iconName: 'Film',
     accentColor: '#f59e0b',
     route: '/tools/ai-video-shorts',
     techSpecs: {
-      engine: 'Shotstack Cloud v2.4',
+      engine: 'ALL USEFUL TOOLS Pro Engine',
       runtime: 'GPU Hardware Transcode',
       memory: '64 MB Shared',
       latency: '4K 60fps render',

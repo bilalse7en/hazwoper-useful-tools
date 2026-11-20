@@ -18,6 +18,8 @@ export { BgRemover } from './bg-remover';
 export { PDFEditor } from './pdf-editor';
 export { SlideGenerator } from './slide-generator';
 export { HtmlDesignEnhancer } from './html-design-enhancer';
-export { AIVideoShorts } from './ai-video-shorts';
-export { ShortGenerator2 } from './ai-video-shorts-v2';
+export {
+  AIVideoShorts,
+  AIVideoShorts as ShortGenerator2,
+} from './ai-video-shorts';
 export { AdobeStockImageFinder } from './adobe-stock-image-finder';

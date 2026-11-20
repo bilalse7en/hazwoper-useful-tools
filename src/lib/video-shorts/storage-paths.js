@@ -34,7 +34,9 @@ export const isReadOnlyEnv = checkIsReadOnly();
  */
 export function getTempDir(subDir = '') {
   let baseDir;
-  if (isReadOnlyEnv) {
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    baseDir = path.join(os.tmpdir(), 'vitest-hazwoper-shorts');
+  } else if (isReadOnlyEnv) {
     baseDir = path.join(os.tmpdir(), 'hazwoper-shorts');
   } else {
     baseDir = path.join(process.cwd(), 'temp');
@@ -62,7 +64,9 @@ export function getTempDir(subDir = '') {
  */
 export function getLocalMediaDir(subDir = '') {
   let baseDir;
-  if (isReadOnlyEnv) {
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    baseDir = path.join(os.tmpdir(), 'vitest-media-hub');
+  } else if (isReadOnlyEnv) {
     baseDir = path.join(os.tmpdir(), 'media-hub');
   } else {
     baseDir = path.join(process.cwd(), 'public', 'media-hub');
@@ -89,6 +93,9 @@ export function getLocalMediaDir(subDir = '') {
  * On Local: data/media-hub-registry.json
  */
 export function getRegistryFilePath() {
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return path.join(os.tmpdir(), 'vitest-media-hub-registry.json');
+  }
   if (isReadOnlyEnv) {
     return path.join(os.tmpdir(), 'media-hub-registry.json');
   }
@@ -101,6 +108,9 @@ export function getRegistryFilePath() {
  * On Local: data/video-shorts-jobs.json
  */
 export function getJobsFilePath() {
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return path.join(os.tmpdir(), 'vitest-video-shorts-jobs.json');
+  }
   if (isReadOnlyEnv) {
     return path.join(os.tmpdir(), 'video-shorts-jobs.json');
   }

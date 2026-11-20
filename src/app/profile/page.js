@@ -257,7 +257,7 @@ export default function ProfilePage() {
     <>
       <InitialLoadingShell isReady={!loading} />
       <div className="min-h-screen bg-transparent pb-12 sm:pb-16">
-        <div className="container mx-auto px-4 py-8 sm:py-10 max-w-3xl animate-in-card">
+        <div className="site-container py-8 sm:py-10 max-w-3xl animate-in-card">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
             <Button
               variant="ghost"

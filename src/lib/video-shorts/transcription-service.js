@@ -263,7 +263,8 @@ export async function transcribeUrduVideo({
 
         try {
           result = await transcriber(audioData, {
-            language: language === 'ur' ? 'ur' : null,
+            language:
+              language === 'en' ? 'en' : language === 'ur' ? 'ur' : null,
             task: 'transcribe',
             return_timestamps: true,
             chunk_length_s: 30,
@@ -271,7 +272,8 @@ export async function transcribeUrduVideo({
           });
         } catch (innerErr) {
           result = await transcriber(audioData, {
-            language: language === 'ur' ? 'ur' : null,
+            language:
+              language === 'en' ? 'en' : language === 'ur' ? 'ur' : null,
             task: 'transcribe',
           });
         }
@@ -356,29 +358,52 @@ export async function transcribeUrduVideo({
 
         if (isPause || isLongEnough || isLast) {
           const phraseEnd = w.end;
-          const phraseTextUrdu = currentPhrase.map((p) => p.word).join(' ');
-          const phraseTextRoman = transliterateUrduSentence(
-            phraseTextUrdu,
-            'conversational'
-          );
+          const phraseWords = currentPhrase.map((p) => p.word);
+          const rawPhraseText = phraseWords.join(' ');
 
-          finalCaptions.push({
-            id: `cap-${finalCaptions.length + 1}`,
-            start: phraseStart,
-            end: phraseEnd,
-            textUrdu: phraseTextUrdu,
-            textRoman: phraseTextRoman,
-            textCombined: `${phraseTextUrdu}\n${phraseTextRoman}`,
-            text: phraseTextUrdu || phraseTextRoman, // Authentic Urdu script by default
-            isVerseBoundary: isPause || isLast,
-            words: currentPhrase.map((cp) => ({
-              start: cp.start,
-              end: cp.end,
-              wordUrdu: cp.word,
-              wordRoman: transliterateUrduWord(cp.word, 'conversational'),
-              word: cp.word, // Authentic Urdu word token by default
-            })),
-          });
+          if (language === 'en') {
+            // Clean English dialogue / speech formatting (no Roman Urdu transliteration)
+            const cleanEnglish = rawPhraseText.replace(/\s+/g, ' ').trim();
+            finalCaptions.push({
+              id: `cap-${finalCaptions.length + 1}`,
+              start: phraseStart,
+              end: phraseEnd,
+              textEnglish: cleanEnglish,
+              text: cleanEnglish,
+              captionMode: 'english',
+              isVerseBoundary: isPause || isLast,
+              words: currentPhrase.map((cp) => ({
+                start: cp.start,
+                end: cp.end,
+                wordEnglish: cp.word,
+                word: cp.word,
+              })),
+            });
+          } else {
+            const phraseTextUrdu = rawPhraseText;
+            const phraseTextRoman = transliterateUrduSentence(
+              phraseTextUrdu,
+              'conversational'
+            );
+
+            finalCaptions.push({
+              id: `cap-${finalCaptions.length + 1}`,
+              start: phraseStart,
+              end: phraseEnd,
+              textUrdu: phraseTextUrdu,
+              textRoman: phraseTextRoman,
+              textCombined: `${phraseTextUrdu}\n${phraseTextRoman}`,
+              text: phraseTextUrdu || phraseTextRoman, // Authentic Urdu script by default
+              isVerseBoundary: isPause || isLast,
+              words: currentPhrase.map((cp) => ({
+                start: cp.start,
+                end: cp.end,
+                wordUrdu: cp.word,
+                wordRoman: transliterateUrduWord(cp.word, 'conversational'),
+                word: cp.word, // Authentic Urdu word token by default
+              })),
+            });
+          }
 
           if (!isLast && idx < wordTimings.length - 1) {
             phraseStart = wordTimings[idx + 1].start;
@@ -437,14 +462,19 @@ export async function transcribeUrduVideo({
     }
 
     if (onProgress)
-      onProgress(100, 'Audio transcription & Urdu verse alignment completed.');
+      onProgress(
+        100,
+        language === 'en'
+          ? 'Audio transcription & English dialogue formatting completed.'
+          : 'Audio transcription & Urdu verse alignment completed.'
+      );
 
     return {
       success: true,
       rawText: rawTranscription || '',
       captions: finalCaptions,
-      language: 'ur',
-      isUrdu: true,
+      language: language === 'en' ? 'en' : 'ur',
+      isUrdu: language !== 'en',
       transcriptionConfidence: finalCaptions.length > 0 ? 0.94 : 0,
     };
   } finally {

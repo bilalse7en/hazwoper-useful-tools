@@ -9,6 +9,7 @@
  */
 
 import { parseQuizFromHtml } from './quiz-extractor.js';
+import { ensureEmptyCourseTitleTopic } from './schema-builder.js';
 import {
   ensureLessonNumberPrefix,
   ensureModuleNumberPrefix,
@@ -223,6 +224,15 @@ export function renumberAllLessons(courseJson) {
 
       const newLessonId = `les_${modNum}_${currentLesNum}`;
       les.lesson_id = newLessonId;
+
+      if (isLes0) {
+        les.topics = ensureEmptyCourseTitleTopic(
+          les.topics || [],
+          courseTitle || mod.module_title,
+          mod.module_id,
+          newLessonId
+        );
+      }
 
       (les.topics || []).forEach((top, tIdx) => {
         top.lessonId = newLessonId;

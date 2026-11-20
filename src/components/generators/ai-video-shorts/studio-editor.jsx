@@ -40,6 +40,8 @@ import {
   BookOpen,
   RefreshCw,
   Languages,
+  Maximize2,
+  X,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +58,8 @@ import {
   ASPECT_RATIOS,
   CAPTION_STYLES,
   CAPTION_MODES,
+  GAMING_CAPTION_MODES,
+  MUSIC_CAPTION_MODES,
   FRAMING_MODES,
 } from '@/lib/video-shorts/types';
 import { IslamicStockGalleryModal } from './islamic-stock-gallery-modal';
@@ -80,8 +84,54 @@ export function StudioEditor({
   onRenderExport,
   onUpdateClip,
   onCreateShortFromPhrase,
+  onDownloadClip,
+  downloadQueue = [],
   allClips = [],
+  settings = {},
+  contentType,
 }) {
+  const explicitContentType =
+    clip?.contentType ||
+    settings?.contentType ||
+    contentType ||
+    videoSource?.contentType;
+
+  let resolvedGenre = 'naat-recitation';
+  if (explicitContentType === 'gaming-gta') {
+    resolvedGenre = 'gaming-gta';
+  } else if (explicitContentType === 'music-songs') {
+    resolvedGenre = 'music-songs';
+  } else if (explicitContentType === 'naat-recitation') {
+    resolvedGenre = 'naat-recitation';
+  } else {
+    // Infer strictly from title when no explicit contentType is set
+    const titleToCheck = (
+      videoSource?.title ||
+      videoSource?.fileName ||
+      clip?.title ||
+      ''
+    ).toLowerCase();
+    if (
+      /song|music|sing|singer|audio|remix|track|melody|album|acoustic|chorus|darshan|raval|lyrics|dj|dance|pop|hiphop|rap|bollywood|soundtrack/i.test(
+        titleToCheck
+      )
+    ) {
+      resolvedGenre = 'music-songs';
+    } else if (
+      /gta|game|gaming|gameplay|fps|speedrun|trailer|walkthrough|playthrough|action stunt/i.test(
+        titleToCheck
+      )
+    ) {
+      resolvedGenre = 'gaming-gta';
+    } else {
+      resolvedGenre = 'naat-recitation';
+    }
+  }
+
+  const isGaming = resolvedGenre === 'gaming-gta';
+  const isMusic = resolvedGenre === 'music-songs';
+  const isNaat = resolvedGenre === 'naat-recitation';
+
   // Mode A: 'short' (editing specific short) vs Mode B: 'full_video' (scrubbing full master video)
   const [editorMode, setEditorMode] = useState(
     clip?.isFullVideo ? 'full_video' : 'short'
@@ -96,7 +146,13 @@ export function StudioEditor({
     {
       id: `seg-${clip.id || '1'}`,
       sourceId: videoSource.id,
-      fileName: videoSource.fileName || 'Recitation Source',
+      fileName:
+        videoSource.fileName ||
+        (isGaming
+          ? 'Gameplay Source'
+          : isMusic
+            ? 'Music Track'
+            : 'Recitation Source'),
       start: clip.start,
       end: clip.end,
       duration: clip.duration || clip.end - clip.start,
@@ -114,25 +170,64 @@ export function StudioEditor({
     clip?.aspectRatio || (clip?.isFullVideo ? '16:9' : '9:16')
   );
   const [framingMode, setFramingMode] = useState(
-    clip.framingMode || 'trending-ai-speaker'
+    clip.framingMode ||
+      (isGaming
+        ? 'action-tracking'
+        : isMusic
+          ? 'rhythm-framing'
+          : 'trending-ai-speaker')
   );
   const [manualCropX, setManualCropX] = useState(50); // 0 to 100%
 
-  // Stream URL
+  // Stream URL with robust fallback and dead-blob protection across both videoSource and clip
+  const candidateUrls = [
+    videoSource?.videoUrl,
+    videoSource?.downloadUrl,
+    videoSource?.url,
+    clip?.videoUrl,
+    clip?.downloadUrl,
+    clip?.url,
+  ];
+  const nonBlobUrl = candidateUrls.find(
+    (u) => u && typeof u === 'string' && !u.startsWith('blob:')
+  );
+
+  const resolvedMediaId =
+    videoSource?.id ||
+    videoSource?.mediaId ||
+    clip?.mediaId ||
+    clip?.sourceMediaId ||
+    (nonBlobUrl && /yt_[a-zA-Z0-9_-]+/.test(nonBlobUrl)
+      ? nonBlobUrl.match(/yt_[a-zA-Z0-9_-]+/)[0]
+      : null);
+
+  const resolvedFileName =
+    videoSource?.fileName ||
+    videoSource?.file_name ||
+    clip?.fileName ||
+    clip?.file_name ||
+    'video.mp4';
+
   const videoStreamUrl =
-    videoSource?.blobUrl || videoSource?.videoUrl || videoSource?.url || null;
+    nonBlobUrl ||
+    (resolvedMediaId
+      ? `/media-hub/${resolvedMediaId}/${resolvedFileName}`
+      : null) ||
+    videoSource?.blobUrl ||
+    clip?.blobUrl ||
+    null;
 
   // Audio Settings
   const [audioVolume, setAudioVolume] = useState(1.0);
-  const [fadeIn, setFadeIn] = useState(0.5);
-  const [fadeOut, setFadeOut] = useState(0.5);
+  const [fadeIn, setFadeIn] = useState(0.4);
+  const [fadeOut, setFadeOut] = useState(0.6);
   const [normalizeAudio, setNormalizeAudio] = useState(true);
 
   // Captions State & Styling (Subtitles OFF by default unless user requests them)
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [captions, setCaptions] = useState(clip.captions || []);
   const [captionMode, setCaptionMode] = useState(
-    clip.captionMode || 'dual-urdu-roman'
+    clip.captionMode || (isGaming ? 'english' : 'dual-urdu-roman')
   );
   const [captionStyle, setCaptionStyle] = useState('beast-bold');
   const [captionFontSize, setCaptionFontSize] = useState(24);
@@ -141,8 +236,21 @@ export function StudioEditor({
   const [isSyncingCaptions, setIsSyncingCaptions] = useState(false);
   const [isThumbModalOpen, setIsThumbModalOpen] = useState(false);
   const [isTranscriptModalOpen, setIsTranscriptModalOpen] = useState(false);
+  const [isFullscreenPreview, setIsFullscreenPreview] = useState(false);
+  const fsCanvasRef = useRef(null);
 
-  // Keyboard shortcut listener ('c' toggles subtitles)
+  const closeFullscreenPreview = () => {
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+    if (brollVideoRef.current && !brollVideoRef.current.paused) {
+      brollVideoRef.current.pause();
+    }
+    setIsPlaying(false);
+    setIsFullscreenPreview(false);
+  };
+
+  // Keyboard shortcut listener ('c' toggles subtitles, 'Escape' exits fullscreen)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName))
@@ -154,14 +262,16 @@ export function StudioEditor({
           `Subtitles ${!subtitlesEnabled ? 'Enabled' : 'Disabled'}`,
           'info'
         );
+      } else if (e.key === 'Escape' && isFullscreenPreview) {
+        closeFullscreenPreview();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [subtitlesEnabled]);
+  }, [subtitlesEnabled, isFullscreenPreview]);
 
-  // Re-align selected Short's Urdu transcript with its exact audio slice
-  const handleSyncUrduCaptions = async () => {
+  // Re-align selected Short's speech transcript with its exact audio slice
+  const handleSyncCaptions = async () => {
     setIsSyncingCaptions(true);
     try {
       const sourceStartSeconds = segments[0]?.start ?? clip.start ?? 0;
@@ -176,8 +286,39 @@ export function StudioEditor({
           clipId: clip.id,
           sourceStartSeconds,
           sourceEndSeconds,
-          videoUrl: videoStreamUrl,
+          mediaId:
+            resolvedMediaId ||
+            videoSource?.id ||
+            videoSource?.mediaId ||
+            clip?.mediaId ||
+            clip?.sourceMediaId ||
+            null,
+          sourceMediaId:
+            resolvedMediaId ||
+            videoSource?.mediaId ||
+            videoSource?.id ||
+            clip?.sourceMediaId ||
+            clip?.mediaId ||
+            null,
+          localPath:
+            videoSource?.localPath ||
+            videoSource?.local_path ||
+            clip?.localPath ||
+            null,
+          videoUrl:
+            videoStreamUrl ||
+            clip?.videoUrl ||
+            clip?.downloadUrl ||
+            videoSource?.downloadUrl ||
+            videoSource?.url ||
+            null,
           existingCaptions: captions,
+          language: isGaming ? 'en' : isMusic ? 'en' : 'ur',
+          contentType: isGaming
+            ? 'gaming-gta'
+            : isMusic
+              ? 'music-songs'
+              : 'naat-recitation',
         }),
       });
       const data = await res.json();
@@ -186,6 +327,11 @@ export function StudioEditor({
       }
       setCaptions(data.captions);
       setSubtitlesEnabled(true);
+      if (isGaming) {
+        setCaptionMode('english');
+      } else if (isMusic) {
+        setCaptionMode('karaoke-glow');
+      }
       pushHistory({ segments, captions: data.captions });
       setHasUnsavedChanges(true);
       if (onUpdateClip) {
@@ -196,7 +342,11 @@ export function StudioEditor({
         });
       }
       showSuccess(
-        'Urdu & Roman Subtitles Generated!',
+        isGaming
+          ? 'English Dialogue Subtitles Generated!'
+          : isMusic
+            ? 'Song Lyrics Synchronized to Beat!'
+            : 'Urdu & Roman Subtitles Generated!',
         `Generated and aligned ${data.captions?.length || 0} subtitles directly to Short #${clip.index || 1}'s audio.`
       );
     } catch (err) {
@@ -210,6 +360,7 @@ export function StudioEditor({
   // Phrase Selection State
   const [selectedPhraseIds, setSelectedPhraseIds] = useState([]);
   const [availablePhrases, setAvailablePhrases] = useState([]);
+  const [selectedCaptionId, setSelectedCaptionId] = useState(null);
 
   // Media Bin State & Stock Modal
   const [mediaBin, setMediaBin] = useState([
@@ -233,15 +384,69 @@ export function StudioEditor({
   const videoRef = useRef(null);
   const brollVideoRef = useRef(null);
   const canvasRef = useRef(null);
+  const renderFrameRef = useRef(null);
   const timelineRef = useRef(null);
   const lastReportedTimeRef = useRef(clip.start);
 
-  // Extract available phrases from video transcript or clip captions
+  // Extract available phrases or action moments
   useEffect(() => {
     if (clip.captions && clip.captions.length > 0) {
-      setAvailablePhrases(clip.captions);
-    } else if (videoSource.transcript) {
-      // Parse transcript into phrase cards
+      if (isGaming) {
+        const gamingCaps = clip.captions
+          .filter(
+            (c) =>
+              !/[\u0600-\u06FF]/.test(c.text || '') &&
+              !/[\u0600-\u06FF]/.test(c.textUrdu || '')
+          )
+          .map((c, idx) => ({
+            ...c,
+            id: c.id || `moment-${idx + 1}`,
+            text: c.textEnglish || c.text || `Action Moment #${idx + 1}`,
+            textEnglish: c.textEnglish || c.text || `Action Moment #${idx + 1}`,
+            textUrdu: '',
+          }));
+
+        if (gamingCaps.length > 0) {
+          setAvailablePhrases(gamingCaps);
+          return;
+        }
+      } else {
+        setAvailablePhrases(clip.captions);
+        return;
+      }
+    }
+
+    if (isGaming) {
+      // For GTA / Gaming: Generate exciting action moments partitioned across clip duration
+      const clipDur = clip.duration || clip.end - clip.start || 30;
+      const step = Math.min(6.5, Math.max(3.5, clipDur / 4));
+      const actionLabels = [
+        'High Speed Action & Vehicle Acceleration',
+        'Stunt Maneuver & Drift Cornering',
+        'Near Miss Traffic Evasion',
+        'Massive Explosion & Destruction',
+        'Police Evasion & High-Octane Escape',
+      ];
+      const moments = [];
+      let cur = 0;
+      let mIdx = 0;
+      while (cur < clipDur) {
+        const mEnd = Math.min(clipDur, parseFloat((cur + step).toFixed(2)));
+        moments.push({
+          id: `moment-${mIdx + 1}`,
+          start: cur,
+          end: mEnd,
+          duration: parseFloat((mEnd - cur).toFixed(2)),
+          text: actionLabels[mIdx % actionLabels.length],
+          textEnglish: actionLabels[mIdx % actionLabels.length],
+          textUrdu: '',
+        });
+        cur = mEnd;
+        mIdx++;
+      }
+      setAvailablePhrases(moments);
+    } else if (videoSource.transcript && !isGaming) {
+      // Parse transcript into phrase cards for Naat/recitation
       const lines = videoSource.transcript
         .split('\n')
         .filter((l) => l.trim().length > 0);
@@ -258,7 +463,7 @@ export function StudioEditor({
       }));
       setAvailablePhrases(parsed);
     }
-  }, [clip, videoSource]);
+  }, [clip, videoSource, isGaming]);
 
   // Switch to another Short from the Left Feed
   const handleSwitchClip = (targetClip) => {
@@ -349,11 +554,18 @@ export function StudioEditor({
           const maxCX = Math.max(0, vw - cropW);
 
           let cx = (vw - cropW) / 2;
-          if (manualCropX !== 50 && framingMode === 'manual') {
+          if (framingMode === 'action-tracking') {
+            const actionTargetX =
+              manualCropX !== 50 ? manualCropX : clip.cropX || 50;
+            cx = maxCX * (actionTargetX / 100);
+          } else if (manualCropX !== 50 && framingMode === 'manual') {
             cx = maxCX * (manualCropX / 100);
           }
 
-          if (framingMode === 'blurred-bg') {
+          if (
+            framingMode === 'blurred-bg' ||
+            framingMode === 'gameplay-blur-bg'
+          ) {
             // Draw blurred background
             ctx.filter = 'blur(25px) brightness(0.6)';
             ctx.drawImage(sourceVideo, 0, 0, cw, ch);
@@ -444,12 +656,26 @@ export function StudioEditor({
             }
           }
         }
+
+        // Mirror active monitor frame to fullscreen canvas if modal is open
+        if (fsCanvasRef.current && canvas) {
+          if (fsCanvasRef.current.width !== canvas.width) {
+            fsCanvasRef.current.width = canvas.width;
+            fsCanvasRef.current.height = canvas.height;
+          }
+          const fsCtx = fsCanvasRef.current.getContext('2d');
+          if (fsCtx) {
+            fsCtx.drawImage(canvas, 0, 0);
+          }
+        }
       }
 
       if (isPlaying) {
         animId = requestAnimationFrame(renderFrame);
       }
     };
+
+    renderFrameRef.current = renderFrame;
 
     if (isPlaying) {
       animId = requestAnimationFrame(renderFrame);
@@ -918,15 +1144,15 @@ export function StudioEditor({
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
-      {/* Top Header Bar: Mode Indicator & Global Actions */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 p-4 rounded-3xl border border-border/70 bg-card/90 backdrop-blur-md shadow-lg">
-        {/* Left Side: Back & Project Title */}
+      {/* Top Professional Toolbar */}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 p-3.5 rounded-3xl bg-card border border-border/80 shadow-md">
+        {/* Left Side: Navigation & Active Short Context */}
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="sm"
             onClick={onBackToGallery}
-            className="rounded-xl cursor-pointer"
+            className="rounded-xl font-bold cursor-pointer h-9 px-3 border border-border/70 hover:bg-muted/80 text-foreground"
           >
             <ArrowLeft className="w-4 h-4 mr-1.5" />
             <span>Clips Gallery</span>
@@ -934,58 +1160,60 @@ export function StudioEditor({
 
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-foreground flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-black text-foreground flex items-center gap-1.5">
                 <span>
                   {editorMode === 'short'
-                    ? `Editing Short #${currentClip.index || 1}`
-                    : 'Full Video Master Mode'}
+                    ? `Short #${currentClip.index || 1}`
+                    : 'Master Video'}
                 </span>
-                <Badge
-                  className={cn(
-                    'text-[10px] font-mono',
-                    editorMode === 'short'
-                      ? 'bg-primary/10 text-primary border-primary/20'
-                      : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                  )}
-                >
-                  {editorMode === 'short' ? 'Bounded Short' : 'Full Video'}
-                </Badge>
+                {isGaming ? (
+                  <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-[10px] font-mono font-bold">
+                    🎮 4K Action • {Math.round(currentClip.duration || 30)}s
+                  </Badge>
+                ) : isMusic ? (
+                  <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30 text-[10px] font-mono font-bold">
+                    🎵 Song Hook • {Math.round(currentClip.duration || 30)}s
+                  </Badge>
+                ) : (
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px] font-mono font-bold">
+                    🕌 Sacred Verse • {Math.round(currentClip.duration || 30)}s
+                  </Badge>
+                )}
               </h2>
               {hasUnsavedChanges && (
                 <Badge
                   variant="outline"
-                  className="text-[10px] font-mono text-amber-500 border-amber-500/40"
+                  className="text-[10px] font-mono text-amber-500 border-amber-500/40 bg-amber-500/10"
                 >
-                  Unsaved Edits
+                  Unsaved
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground truncate max-w-sm sm:max-w-md">
-              {currentClip.title ||
-                videoSource.title ||
-                'Naat Recitation Project'}
+            <p className="text-[11px] text-muted-foreground truncate max-w-xs sm:max-w-md">
+              {currentClip.title || videoSource?.title || 'Short Video Project'}
             </p>
           </div>
         </div>
 
-        {/* Center: Mode Switcher & Aspect Ratio */}
+        {/* Center: Clean Aspect Ratio & Captions Pills */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Mode Switcher Button */}
+          {/* Mode Switcher */}
           <Button
             size="sm"
-            variant={editorMode === 'short' ? 'secondary' : 'default'}
+            variant="ghost"
             onClick={toggleEditorMode}
-            className="rounded-xl text-xs font-bold cursor-pointer h-8"
+            className="rounded-xl text-xs font-bold cursor-pointer h-8 px-2.5 text-muted-foreground hover:text-foreground"
+            title={
+              editorMode === 'short'
+                ? 'Switch to Scrubbing Full Master Video'
+                : 'Return to Editing Short Segment'
+            }
           >
-            <Film className="w-3.5 h-3.5 mr-1.5" />
-            <span>
-              {editorMode === 'short'
-                ? 'Switch to Full Video'
-                : 'Return to Short Mode'}
-            </span>
+            <Film className="w-3.5 h-3.5 mr-1" />
+            <span>{editorMode === 'short' ? 'Full Video' : 'Short Mode'}</span>
           </Button>
 
-          {/* Aspect Ratio Switcher */}
+          {/* Aspect Ratio Segmented Control */}
           <div className="flex items-center bg-muted/60 p-0.5 rounded-xl border border-border/50">
             <button
               type="button"
@@ -1040,7 +1268,7 @@ export function StudioEditor({
               );
             }}
             className={cn(
-              'rounded-xl text-xs font-bold cursor-pointer h-8 gap-1.5 transition-all shadow-xs',
+              'rounded-xl text-xs font-bold cursor-pointer h-8 px-2.5 gap-1.5 transition-all shadow-xs',
               subtitlesEnabled
                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                 : 'text-muted-foreground border-border hover:bg-muted'
@@ -1052,65 +1280,139 @@ export function StudioEditor({
             ) : (
               <EyeOff className="w-3.5 h-3.5" />
             )}
-            <span>Subtitles: {subtitlesEnabled ? 'ON' : 'OFF'}</span>
+            <span>Captions: {subtitlesEnabled ? 'ON' : 'OFF'}</span>
           </Button>
 
           {/* Subtitle Script Mode Selector */}
           {subtitlesEnabled && (
             <div className="flex items-center bg-muted/60 p-0.5 rounded-xl border border-border/50 text-[11px] font-bold">
-              <button
-                type="button"
-                onClick={() => setCaptionMode('urdu')}
-                className={cn(
-                  'px-2 py-1 rounded-lg transition-all cursor-pointer',
-                  captionMode === 'urdu'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                title="Authentic Urdu Nastaliq Script"
-              >
-                اردو
-              </button>
-              <button
-                type="button"
-                onClick={() => setCaptionMode('roman-urdu')}
-                className={cn(
-                  'px-2 py-1 rounded-lg transition-all cursor-pointer',
-                  captionMode === 'roman-urdu'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                title="Conversational Roman Urdu"
-              >
-                Roman
-              </button>
-              <button
-                type="button"
-                onClick={() => setCaptionMode('dual-urdu-roman')}
-                className={cn(
-                  'px-2 py-1 rounded-lg transition-all cursor-pointer',
-                  captionMode === 'dual-urdu-roman'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                title="Dual Stacked: Urdu on top, Roman Urdu below"
-              >
-                Dual
-              </button>
+              {isGaming ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCaptionMode('english')}
+                    className={cn(
+                      'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                      captionMode === 'english'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    title="Dynamic Word-by-Word English Highlight"
+                  >
+                    English
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCaptionMode('english-clean')}
+                    className={cn(
+                      'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                      captionMode === 'english-clean'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    title="Clean Minimal English Captions"
+                  >
+                    Clean
+                  </button>
+                </>
+              ) : isMusic ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCaptionMode('karaoke-glow')}
+                    className={cn(
+                      'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                      captionMode === 'karaoke-glow'
+                        ? 'bg-pink-600 text-white shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    title="Karaoke Neon Word Glow"
+                  >
+                    Glow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCaptionMode('kinetic-lyrics')}
+                    className={cn(
+                      'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                      captionMode === 'kinetic-lyrics'
+                        ? 'bg-pink-600 text-white shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    title="Kinetic Rhythm Pop Lyrics"
+                  >
+                    Pop
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCaptionMode('urdu')}
+                    className={cn(
+                      'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                      captionMode === 'urdu'
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    title="Authentic Urdu Nastaliq Script"
+                  >
+                    اردو
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCaptionMode('roman-urdu')}
+                    className={cn(
+                      'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                      captionMode === 'roman-urdu'
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    title="Conversational Roman Urdu"
+                  >
+                    Roman
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCaptionMode('dual-urdu-roman')}
+                    className={cn(
+                      'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                      captionMode === 'dual-urdu-roman'
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    title="Dual Stacked: Urdu on top, Roman Urdu below"
+                  >
+                    Dual
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
 
-        {/* Right Side: Apply, Sync & Render Actions */}
-        <div className="flex items-center gap-2">
-          {/* Prominent Primary Sync Action */}
+        {/* Right Side: Streamlined Actions & Primary 4K Download */}
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             size="sm"
             variant="outline"
-            onClick={handleSyncUrduCaptions}
+            onClick={handleSyncCaptions}
             disabled={isSyncingCaptions}
-            className="rounded-xl text-xs font-bold cursor-pointer h-9 gap-1.5 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15 shadow-xs"
-            title="Re-align this Short's Urdu captions directly against its audio"
+            className={cn(
+              'rounded-xl text-xs font-bold cursor-pointer h-9 px-3 gap-1.5 shadow-xs',
+              isGaming
+                ? 'border-purple-500/40 text-purple-400 bg-purple-500/10 hover:bg-purple-500/20'
+                : isMusic
+                  ? 'border-pink-500/40 text-pink-400 bg-pink-500/10 hover:bg-pink-500/20'
+                  : 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20'
+            )}
+            title={
+              isGaming
+                ? 'Sync English commentary and dialogue with audio'
+                : isMusic
+                  ? 'Sync song lyrics with rhythmic beat drop'
+                  : "Re-align this Short's Urdu captions directly against its audio"
+            }
           >
             <RefreshCw
               className={cn(
@@ -1121,7 +1423,11 @@ export function StudioEditor({
             <span>
               {isSyncingCaptions
                 ? 'Syncing...'
-                : 'SYNC URDU CAPTIONS WITH AUDIO'}
+                : isGaming
+                  ? 'Sync Dialogue'
+                  : isMusic
+                    ? 'Sync Lyrics'
+                    : 'Sync Audio'}
             </span>
           </Button>
 
@@ -1129,40 +1435,60 @@ export function StudioEditor({
             size="sm"
             variant="outline"
             onClick={() => setIsThumbModalOpen(true)}
-            className="rounded-xl text-xs font-bold cursor-pointer h-9 gap-1.5 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 border-amber-500/30"
-            title="Download Short Thumbnail in Kumail Urdu Font"
+            className="rounded-xl text-xs font-bold cursor-pointer h-9 px-3 gap-1.5 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 border-amber-500/40"
+            title={
+              isGaming
+                ? 'Customize Gaming Thumbnail & Cover'
+                : isMusic
+                  ? 'Customize Music Cover & Thumbnail'
+                  : 'Download Short Thumbnail in Kumail Urdu Font'
+            }
           >
             <ImageIcon className="w-3.5 h-3.5" />
-            <span>Thumbnail (Kumail Font)</span>
+            <span>Thumbnail</span>
           </Button>
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleApplyChanges}
-            className={cn(
-              'rounded-xl text-xs font-bold cursor-pointer h-9 gap-1.5',
-              hasUnsavedChanges && 'border-primary text-primary bg-primary/5'
-            )}
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>Apply Changes</span>
-          </Button>
+          {hasUnsavedChanges && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleApplyChanges}
+              className="rounded-xl text-xs font-bold cursor-pointer h-9 px-3 gap-1.5 border-primary text-primary bg-primary/10 shadow-xs"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Apply</span>
+            </Button>
+          )}
 
-          <Button
-            size="sm"
-            onClick={handleInitiateExport}
-            className="rounded-xl text-xs font-bold cursor-pointer h-9 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Re-render Short</span>
-          </Button>
+          {onDownloadClip && (
+            <Button
+              size="sm"
+              onClick={() =>
+                onDownloadClip({
+                  ...currentClip,
+                  start: segments[0]?.start ?? currentClip.start,
+                  end: segments[0]?.end ?? currentClip.end,
+                  duration: segments[0]?.duration ?? currentClip.duration,
+                  aspectRatio,
+                  framingMode,
+                  cropX: manualCropX,
+                  captions,
+                  captionMode,
+                })
+              }
+              className="rounded-xl text-xs font-black cursor-pointer h-9 px-4 gap-2 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/25 border border-emerald-400/30 transition-all hover:scale-[1.02]"
+              title="Directly download this exact cut short in 4K UHD"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Short (4K)</span>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Main Studio Workspace: Responsive 3-Column Layout (Klap Spaces Studio) */}
+      {/* Main Studio Workspace: Responsive 3-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Column 1: Klap Spaces Shorts Feed (3 Cols when allClips has multiple items) */}
+        {/* Column 1: Studio Shorts Feed (3 Cols when allClips has multiple items) */}
         {allClips && allClips.length > 1 && (
           <div className="lg:col-span-3 flex flex-col space-y-3">
             <Card className="p-3.5 rounded-3xl border-border/70 bg-card/90 shadow-xl space-y-3 flex-1 flex flex-col max-h-[750px]">
@@ -1246,13 +1572,15 @@ export function StudioEditor({
             allClips && allClips.length > 1 ? 'lg:col-span-5' : 'lg:col-span-7'
           )}
         >
-          <Card className="rounded-3xl border-border/70 overflow-hidden bg-black/95 shadow-xl p-3 flex flex-col items-center justify-center relative min-h-[440px]">
+          <Card className="rounded-3xl border-border/70 overflow-hidden bg-black/95 shadow-xl p-3 flex flex-col items-center justify-center relative min-h-[360px] sm:min-h-[400px]">
             {/* Offscreen Video element used as render source */}
             {videoStreamUrl && (
               <video
                 ref={videoRef}
                 src={videoStreamUrl}
-                crossOrigin="anonymous"
+                crossOrigin={
+                  videoStreamUrl.startsWith('blob:') ? undefined : 'anonymous'
+                }
                 playsInline
                 preload="auto"
                 className="absolute opacity-0 pointer-events-none -z-10 w-1 h-1"
@@ -1261,8 +1589,20 @@ export function StudioEditor({
                   e.currentTarget.currentTime = initialTime;
                   setCurrentTime(initialTime);
                 }}
+                onLoadedData={() => {
+                  renderFrameRef.current?.();
+                }}
+                onSeeked={() => {
+                  renderFrameRef.current?.();
+                }}
+                onCanPlay={() => {
+                  renderFrameRef.current?.();
+                }}
                 onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
+                onPause={() => {
+                  setIsPlaying(false);
+                  renderFrameRef.current?.();
+                }}
                 onEnded={() => setIsPlaying(false)}
               />
             )}
@@ -1281,17 +1621,65 @@ export function StudioEditor({
               />
             )}
 
-            {/* Rendered Live Monitor Output */}
+            {/* Rendered Live Monitor Output (Controlled Viewport Height) */}
             <div
               className={cn(
                 'relative max-w-full rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center border border-white/10 bg-black',
                 aspectRatio === '9:16'
-                  ? 'aspect-[9/16] h-[480px]'
+                  ? 'aspect-[9/16] h-[360px] sm:h-[400px] lg:h-[440px] max-h-[52vh]'
                   : aspectRatio === '1:1'
-                    ? 'aspect-square h-[420px]'
-                    : 'aspect-[16/9] w-full max-h-[420px]'
+                    ? 'aspect-square h-[300px] sm:h-[360px] max-h-[50vh]'
+                    : 'aspect-[16/9] w-full max-h-[320px]'
               )}
             >
+              {/* Fallback frame preview or poster if video is paused/buffering before first render */}
+              {!isPlaying &&
+                (videoSource?.thumbnailMaxRes ||
+                  videoSource?.thumbnailUrl ||
+                  clip?.thumbnailUrl) && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={
+                      clip?.thumbnailUrl ||
+                      videoSource?.thumbnailMaxRes ||
+                      videoSource?.thumbnailUrl
+                    }
+                    alt={clip?.title || 'Preview'}
+                    className="absolute inset-0 w-full h-full object-cover pointer-events-none opacity-40 filter blur-xs"
+                  />
+                )}
+
+              {clip?.categoryName && (
+                <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-purple-500/40 text-white text-xs font-bold shadow-lg pointer-events-none">
+                  <span>{clip.categoryIcon || '🎮'}</span>
+                  <span className="text-purple-300 uppercase tracking-wider text-[10px] font-black">
+                    {clip.categoryBadge || clip.categoryName}
+                  </span>
+                  <span className="text-white/60 text-[10px]">
+                    • {clip.score}% Viral
+                  </span>
+                </div>
+              )}
+
+              {/* Fullscreen 9:16 Preview Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (videoRef.current && !videoRef.current.paused) {
+                    videoRef.current.pause();
+                  }
+                  if (brollVideoRef.current && !brollVideoRef.current.paused) {
+                    brollVideoRef.current.pause();
+                  }
+                  setIsPlaying(false);
+                  setIsFullscreenPreview(true);
+                }}
+                className="absolute top-3 right-3 z-30 p-2 rounded-xl bg-black/80 backdrop-blur-md border border-white/20 text-white hover:text-primary hover:border-primary/50 transition-all cursor-pointer shadow-lg hover:scale-105"
+                title="Watch Short in Fullscreen 9:16 Preview"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+
               <canvas
                 ref={canvasRef}
                 className="w-full h-full object-contain cursor-pointer"
@@ -1311,7 +1699,7 @@ export function StudioEditor({
             </div>
           </Card>
 
-          {/* Floating Control Pill Bar directly beneath video (Klap Style) */}
+          {/* Floating Control Pill Bar directly beneath video */}
           <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-card/90 border border-border/60 shadow-md backdrop-blur-md">
             <Button
               size="sm"
@@ -1341,42 +1729,73 @@ export function StudioEditor({
 
             {subtitlesEnabled && (
               <div className="flex items-center bg-muted/60 p-0.5 rounded-xl border border-border/50 text-[11px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setCaptionMode('urdu')}
-                  className={cn(
-                    'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
-                    captionMode === 'urdu'
-                      ? 'bg-primary text-primary-foreground shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  اردو
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCaptionMode('roman-urdu')}
-                  className={cn(
-                    'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
-                    captionMode === 'roman-urdu'
-                      ? 'bg-primary text-primary-foreground shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Roman
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCaptionMode('dual-urdu-roman')}
-                  className={cn(
-                    'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
-                    captionMode === 'dual-urdu-roman'
-                      ? 'bg-primary text-primary-foreground shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Dual
-                </button>
+                {isGaming ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('english')}
+                      className={cn(
+                        'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                        captionMode === 'english'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      English
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('english-clean')}
+                      className={cn(
+                        'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                        captionMode === 'english-clean'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      Clean
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('urdu')}
+                      className={cn(
+                        'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                        captionMode === 'urdu'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      اردو
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('roman-urdu')}
+                      className={cn(
+                        'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                        captionMode === 'roman-urdu'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      Roman
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('dual-urdu-roman')}
+                      className={cn(
+                        'px-2 py-0.5 rounded-lg transition-all cursor-pointer',
+                        captionMode === 'dual-urdu-roman'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      Dual
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -1502,7 +1921,9 @@ export function StudioEditor({
                 )}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>Phrases</span>
+                <span>
+                  {isGaming ? 'Moments' : isMusic ? 'Chorus' : 'Phrases'}
+                </span>
               </button>
               <button
                 type="button"
@@ -1545,29 +1966,54 @@ export function StudioEditor({
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('media')}
+                onClick={() => {
+                  if (isGaming) {
+                    showToast(
+                      'Direct gameplay action is preserved without external B-Roll.',
+                      'info'
+                    );
+                    return;
+                  }
+                  if (isMusic) {
+                    showToast(
+                      'Dynamic rhythm video is preserved; external B-Roll is only for recitation.',
+                      'info'
+                    );
+                    return;
+                  }
+                  setActiveTab('media');
+                }}
                 className={cn(
                   'py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1',
+                  (isGaming || isMusic) && 'opacity-50 cursor-not-allowed',
                   activeTab === 'media'
                     ? 'bg-primary text-primary-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>B-Roll</span>
+                <span>
+                  {isGaming ? 'Gameplay' : isMusic ? 'Visuals' : 'B-Roll'}
+                </span>
               </button>
             </div>
 
-            {/* TAB 1: Phrase-Based Short Creation & Selection System */}
+            {/* TAB 1: Phrase / Action Moment System */}
             {activeTab === 'phrases' && (
               <div className="space-y-3 flex-1 flex flex-col">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="font-bold text-xs">
-                      Recitation Phrases ({availablePhrases.length})
+                      {isGaming
+                        ? `Action Moments & Dialogue (${availablePhrases.length})`
+                        : isMusic
+                          ? `Chorus Hooks & Lyrics (${availablePhrases.length})`
+                          : `Recitation Phrases (${availablePhrases.length})`}
                     </Label>
                     <p className="text-[10px] text-muted-foreground">
-                      Select verses to create or expand your Short.
+                      {isGaming
+                        ? 'Select gameplay events & dialogue lines to expand your Short.'
+                        : 'Select verses to create or expand your Short.'}
                     </p>
                   </div>
                   {selectedPhrasesInfo && (
@@ -1661,8 +2107,8 @@ export function StudioEditor({
                           </span>
                         </div>
 
-                        {/* Urdu Script Line */}
-                        {phrase.textUrdu && (
+                        {/* Urdu Script Line (Naat Only) */}
+                        {!isGaming && !isMusic && phrase.textUrdu && (
                           <p
                             className="font-urdu text-right text-xs text-foreground font-medium pr-1"
                             dir="rtl"
@@ -1671,9 +2117,13 @@ export function StudioEditor({
                           </p>
                         )}
 
-                        {/* Roman Urdu Line */}
-                        <p className="font-sans text-xs text-muted-foreground font-medium">
-                          {phrase.textRoman || phrase.text}
+                        {/* Dialogue / Action Moment / Roman Line */}
+                        <p className="font-sans text-xs text-foreground font-medium">
+                          {isGaming
+                            ? phrase.textEnglish || phrase.text
+                            : isMusic
+                              ? phrase.textEnglish || phrase.text
+                              : phrase.textRoman || phrase.text}
                         </p>
 
                         <div className="flex items-center justify-between pt-1">
@@ -1806,13 +2256,15 @@ export function StudioEditor({
                   {captions.length === 0 && (
                     <div className="pt-2 border-t border-border/40 space-y-2">
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Subtitles are off by default. Click below to generate
-                        authentic Urdu Nastaliq &amp; Roman Urdu subtitles
-                        directly from this short&apos;s audio.
+                        {isGaming
+                          ? "Subtitles are off by default. Click below to generate creative English dialogue & commentary subtitles directly from this short's audio."
+                          : isMusic
+                            ? "Subtitles are off by default. Click below to synchronize song lyrics & karaoke neon word-glow directly from this track's audio."
+                            : "Subtitles are off by default. Click below to generate authentic Urdu Nastaliq & Roman Urdu subtitles directly from this short's audio."}
                       </p>
                       <Button
                         size="sm"
-                        onClick={handleSyncUrduCaptions}
+                        onClick={handleSyncCaptions}
                         disabled={isSyncingCaptions}
                         className="w-full rounded-xl text-xs font-bold gap-1.5 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-8 shadow-sm"
                       >
@@ -1824,7 +2276,13 @@ export function StudioEditor({
                         ) : (
                           <>
                             <Sparkles className="w-3.5 h-3.5" />
-                            <span>Generate Urdu &amp; Roman Subtitles</span>
+                            <span>
+                              {isGaming
+                                ? 'Generate English Dialogue Subtitles'
+                                : isMusic
+                                  ? 'Generate Karaoke Song Lyrics'
+                                  : 'Generate Urdu & Roman Subtitles'}
+                            </span>
                           </>
                         )}
                       </Button>
@@ -1840,20 +2298,44 @@ export function StudioEditor({
                       variant="outline"
                       className="text-[10px] text-primary border-primary/30 font-mono"
                     >
-                      {captionMode === 'dual-urdu-roman'
-                        ? 'Stacked 2-Line'
-                        : captionMode === 'urdu'
-                          ? 'Urdu Nastaliq'
-                          : 'Roman Urdu'}
+                      {isGaming
+                        ? captionMode === 'english'
+                          ? 'Viral Pop Highlight'
+                          : captionMode === 'english-clean'
+                            ? 'Clean Minimal'
+                            : 'Subtitles Off'
+                        : isMusic
+                          ? captionMode === 'karaoke-glow'
+                            ? 'Karaoke Neon Glow'
+                            : captionMode === 'kinetic-lyrics'
+                              ? 'Kinetic Pop'
+                              : captionMode === 'minimal-lyrics'
+                                ? 'Clean Lyrics'
+                                : 'Subtitles Off'
+                          : captionMode === 'dual-urdu-roman'
+                            ? 'Stacked 2-Line'
+                            : captionMode === 'urdu'
+                              ? 'Urdu Nastaliq'
+                              : 'Roman Urdu'}
                     </Badge>
                   </Label>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {CAPTION_MODES.map((mode) => (
+                    {(isGaming
+                      ? GAMING_CAPTION_MODES
+                      : isMusic
+                        ? MUSIC_CAPTION_MODES.slice(0, 3)
+                        : CAPTION_MODES.slice(0, 3)
+                    ).map((mode) => (
                       <button
                         key={mode.id}
                         type="button"
                         onClick={() => {
                           setCaptionMode(mode.id);
+                          if (mode.id === 'off') {
+                            setSubtitlesEnabled(false);
+                          } else {
+                            setSubtitlesEnabled(true);
+                          }
                           setHasUnsavedChanges(true);
                         }}
                         className={cn(
@@ -1932,7 +2414,11 @@ export function StudioEditor({
                   className="w-full rounded-xl text-xs font-bold gap-2 h-9 border-primary/40 text-primary hover:bg-primary/10 cursor-pointer shadow-xs"
                 >
                   <Languages className="w-3.5 h-3.5" />
-                  <span>Review &amp; Edit Urdu / Roman Captions</span>
+                  <span>
+                    {isGaming
+                      ? 'Review & Edit English Dialogue Captions'
+                      : 'Review & Edit Urdu / Roman Captions'}
+                  </span>
                 </Button>
 
                 {/* Editable Subtitle Lines List */}
@@ -1943,10 +2429,14 @@ export function StudioEditor({
                     </Label>
                     <button
                       type="button"
-                      onClick={handleSyncUrduCaptions}
+                      onClick={handleSyncCaptions}
                       disabled={isSyncingCaptions}
                       className="text-[10px] font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
-                      title="Sync Urdu Captions with Audio"
+                      title={
+                        isGaming
+                          ? 'Sync English Dialogue with Audio'
+                          : 'Sync Urdu Captions with Audio'
+                      }
                     >
                       <RefreshCw
                         className={cn(
@@ -2385,15 +2875,75 @@ export function StudioEditor({
           </div>
         </div>
 
-        {/* Visual Timeline Track Container */}
+        {/* Studio Multi-Layer Timeline Track Workspace */}
         <div
           ref={timelineRef}
-          className="relative w-full overflow-x-auto min-h-[140px] bg-muted/20 rounded-2xl border border-border/40 p-2 space-y-2 select-none"
+          className="relative w-full overflow-hidden bg-zinc-950/80 rounded-2xl border border-border/70 p-3 space-y-3 select-none shadow-inner"
         >
-          {/* Track 1: Video Track */}
-          <div className="flex items-center gap-1.5 h-14 bg-background/80 rounded-xl p-1 border border-border/50 relative">
-            <div className="absolute left-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground/50 pointer-events-none">
-              Video Track
+          {/* Top Track Controls & Subtitle Add Action */}
+          <div className="flex items-center justify-between text-xs px-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-primary" />
+                <span>ALL USEFUL TOOLS Multi-Layer Timeline Engine</span>
+              </span>
+              <Badge variant="outline" className="text-[9px] h-4 font-mono">
+                3 Synchronized Layers
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  const relTime = Math.max(
+                    0,
+                    parseFloat(
+                      (currentTime - (segments[0]?.start || 0)).toFixed(2)
+                    )
+                  );
+                  const newCap = {
+                    id: `cap-${Date.now()}`,
+                    start: relTime,
+                    end: parseFloat((relTime + 2.5).toFixed(2)),
+                    text: isGaming ? 'High speed action sequence' : 'نئی سطر',
+                    textEnglish: 'High speed action sequence',
+                    textUrdu: isGaming ? '' : 'نئی سطر',
+                    textRoman: 'Nayi satar',
+                    words: [],
+                  };
+                  const updated = [...captions, newCap].sort(
+                    (a, b) => a.start - b.start
+                  );
+                  setCaptions(updated);
+                  setSelectedCaptionId(newCap.id);
+                  setActiveTab('captions');
+                  setHasUnsavedChanges(true);
+                }}
+                className="h-6 text-[10px] font-bold text-amber-400 hover:bg-amber-500/10 gap-1 rounded-lg cursor-pointer"
+                title="Insert subtitle block at current playhead"
+              >
+                <Plus className="w-3 h-3" />
+                <span>+ Add Subtitle</span>
+              </Button>
+
+              <span className="font-mono text-[11px] text-primary font-bold">
+                {formatTimecode(currentTime)} /{' '}
+                {formatTimecode(
+                  (segments[0]?.start || 0) + (currentClip?.duration || 30)
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* LAYER 1: VIDEO / GAMEPLAY TRACK */}
+          <div className="flex items-center gap-1.5 h-14 bg-zinc-900/90 rounded-xl p-1 border border-indigo-500/30 relative overflow-hidden group">
+            <div className="absolute left-2 z-10 text-[9px] font-black uppercase tracking-wider bg-black/70 text-indigo-300 px-2 py-0.5 rounded pointer-events-none flex items-center gap-1 border border-indigo-500/20">
+              <Film className="w-3 h-3 text-indigo-400" />
+              <span>
+                V1 • {isGaming ? 'GTA 6 Gameplay (4K)' : 'Video Master'}
+              </span>
             </div>
             {segments.map((seg, idx) => {
               const active = idx === activeSegmentIndex;
@@ -2407,15 +2957,17 @@ export function StudioEditor({
                   className={cn(
                     'h-full flex-1 rounded-lg border p-2 flex items-center justify-between cursor-pointer transition-all relative overflow-hidden',
                     active
-                      ? 'border-primary bg-primary/20 text-primary font-bold ring-2 ring-primary/30 shadow-xs'
+                      ? 'border-indigo-500 bg-indigo-500/20 text-indigo-300 font-bold ring-2 ring-indigo-500/30 shadow-xs'
                       : seg.isStock
-                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-500 hover:border-amber-500/70'
-                        : 'border-border/60 bg-muted/50 text-muted-foreground hover:border-primary/50'
+                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:border-amber-500/70'
+                        : 'border-white/10 bg-indigo-950/40 text-muted-foreground hover:border-indigo-500/50'
                   )}
                 >
-                  <div className="truncate">
-                    <p className="text-xs font-bold truncate">{seg.fileName}</p>
-                    <p className="text-[10px] font-mono">
+                  <div className="truncate pl-24">
+                    <p className="text-xs font-bold truncate text-foreground">
+                      {seg.fileName}
+                    </p>
+                    <p className="text-[10px] font-mono text-muted-foreground">
                       {formatTimecode(seg.start)} - {formatTimecode(seg.end)} (
                       {Math.round(seg.duration)}s)
                     </p>
@@ -2425,31 +2977,188 @@ export function StudioEditor({
             })}
           </div>
 
-          {/* Track 2: Audio Track */}
-          <div
-            onClick={() => setActiveTab('audio')}
-            className="flex items-center h-8 bg-background/60 rounded-xl px-3 border border-border/30 text-[10px] font-mono text-muted-foreground justify-between cursor-pointer hover:border-primary/40 transition-colors"
-          >
-            <span className="flex items-center gap-1 font-bold text-primary">
-              <Volume2 className="w-3 h-3" />
-              <span>Audio (Normalized -14 LUFS)</span>
-            </span>
-            <span>Volume: {Math.round(audioVolume * 100)}%</span>
+          {/* LAYER 2: CAPTIONS / SUBTITLE TRACK (Synchronized Visual Blocks) */}
+          <div className="relative h-12 bg-zinc-900/90 rounded-xl p-1 border border-amber-500/30 overflow-hidden flex items-center">
+            <div className="absolute left-2 z-10 text-[9px] font-black uppercase tracking-wider bg-black/70 text-amber-300 px-2 py-0.5 rounded pointer-events-none flex items-center gap-1 border border-amber-500/20">
+              <Type className="w-3 h-3 text-amber-400" />
+              <span>T1 • Captions ({captions.length})</span>
+            </div>
+
+            {/* Horizontal timeline blocks placed proportionally */}
+            <div className="relative w-full h-full pl-24 pr-2 flex items-center">
+              {captions.map((cap, cIdx) => {
+                const totalDur = currentClip?.duration || 30;
+                const leftPct = Math.max(
+                  0,
+                  Math.min(95, (cap.start / totalDur) * 100)
+                );
+                const widthPct = Math.max(
+                  4,
+                  Math.min(
+                    100 - leftPct,
+                    ((cap.end - cap.start) / totalDur) * 100
+                  )
+                );
+                const isSelected = selectedCaptionId === cap.id;
+                const isPlayingActive =
+                  currentTime - (segments[0]?.start || 0) >= cap.start &&
+                  currentTime - (segments[0]?.start || 0) <= cap.end;
+
+                return (
+                  <div
+                    key={cap.id || cIdx}
+                    style={{
+                      position: 'absolute',
+                      left: `${leftPct}%`,
+                      width: `${widthPct}%`,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedCaptionId(cap.id);
+                      handleSeek((segments[0]?.start || 0) + cap.start);
+                    }}
+                    className={cn(
+                      'h-8 rounded-md px-1.5 flex items-center justify-between text-[10px] font-medium transition-all cursor-pointer truncate border shadow-xs',
+                      isSelected
+                        ? 'bg-amber-400 text-black font-bold ring-2 ring-white border-white z-20 shadow-md'
+                        : isPlayingActive
+                          ? 'bg-amber-500 text-white font-bold border-amber-300 z-10 animate-pulse'
+                          : 'bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border-amber-500/40'
+                    )}
+                    title={cap.textEnglish || cap.text}
+                  >
+                    <span className="truncate pr-1 text-[9px]">
+                      {cap.textEnglish || cap.text || `Line #${cIdx + 1}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Track 3: Captions Track */}
+          {/* LAYER 3: AUDIO & LUFS NORMALIZATION TRACK */}
           <div
-            onClick={() => setActiveTab('captions')}
-            className="flex items-center h-8 bg-background/60 rounded-xl px-3 border border-border/30 text-[10px] font-mono text-muted-foreground justify-between cursor-pointer hover:border-amber-500/40 transition-colors"
+            onClick={() => setActiveTab('audio')}
+            className="flex items-center h-8 bg-zinc-900/90 rounded-xl px-3 border border-emerald-500/30 text-[10px] font-mono text-muted-foreground justify-between cursor-pointer hover:border-emerald-500/60 transition-colors"
           >
-            <span className="flex items-center gap-1 font-bold text-amber-500">
-              <Type className="w-3 h-3" />
-              <span>
-                Viral Captions ({captions.length} phrases synchronized)
-              </span>
+            <span className="flex items-center gap-1.5 font-bold text-emerald-400">
+              <Volume2 className="w-3 h-3 text-emerald-400" />
+              <span>A1 • Master Audio (Normalized -14 LUFS)</span>
             </span>
-            <span className="text-foreground capitalize">{captionMode}</span>
+            <div className="flex items-center gap-3 text-emerald-300/80">
+              <span>Fade In: {fadeIn}s</span>
+              <span>Fade Out: {fadeOut}s</span>
+              <span>Volume: {Math.round(audioVolume * 100)}%</span>
+            </div>
           </div>
+
+          {/* INLINE SUBTITLE QUICK INSPECTOR (Studio Inline Editor) */}
+          {selectedCaptionId && (
+            <div className="p-2.5 rounded-xl bg-card border border-primary/40 flex flex-wrap items-center justify-between gap-2 shadow-sm animate-in fade-in">
+              {(() => {
+                const targetCap = captions.find(
+                  (c) => c.id === selectedCaptionId
+                );
+                if (!targetCap) return null;
+                return (
+                  <>
+                    <div className="flex-1 min-w-[220px] flex items-center gap-2">
+                      <Badge className="bg-primary text-primary-foreground text-[10px] font-mono shrink-0">
+                        Editing Line
+                      </Badge>
+                      <Input
+                        value={targetCap.textEnglish || targetCap.text || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCaptions((prev) =>
+                            prev.map((c) =>
+                              c.id === targetCap.id
+                                ? {
+                                    ...c,
+                                    text: val,
+                                    textEnglish: val,
+                                    textUrdu: isGaming ? '' : val,
+                                  }
+                                : c
+                            )
+                          );
+                          setHasUnsavedChanges(true);
+                        }}
+                        placeholder="Type subtitle line..."
+                        className="h-8 text-xs font-medium bg-background"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-[11px] font-mono">
+                        <span className="text-muted-foreground text-[10px]">
+                          Start:
+                        </span>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={targetCap.start}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setCaptions((prev) =>
+                              prev.map((c) =>
+                                c.id === targetCap.id ? { ...c, start: val } : c
+                              )
+                            );
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="h-7 w-16 text-[11px] px-1 font-mono"
+                        />
+                        <span className="text-muted-foreground text-[10px]">
+                          End:
+                        </span>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={targetCap.end}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setCaptions((prev) =>
+                              prev.map((c) =>
+                                c.id === targetCap.id ? { ...c, end: val } : c
+                              )
+                            );
+                            setHasUnsavedChanges(true);
+                          }}
+                          className="h-7 w-16 text-[11px] px-1 font-mono"
+                        />
+                      </div>
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setCaptions((prev) =>
+                            prev.filter((c) => c.id !== targetCap.id)
+                          );
+                          setSelectedCaptionId(null);
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="h-7 px-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 text-xs cursor-pointer"
+                        title="Delete this subtitle line"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedCaptionId(null)}
+                        className="h-7 px-2 text-muted-foreground text-xs cursor-pointer"
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </Card>
 
@@ -2465,21 +3174,31 @@ export function StudioEditor({
         }}
       />
 
-      {/* Thumbnail Editor Modal with Kumail Urdu Font */}
+      {/* Thumbnail Editor Modal */}
       <ThumbnailEditorModal
         isOpen={isThumbModalOpen}
         onClose={() => setIsThumbModalOpen(false)}
+        isGaming={isGaming}
+        contentType={isGaming ? 'gaming-gta' : 'naat-recitation'}
         initialFrameUrl={
           currentClip.thumbnailUrl ||
           videoSource?.thumbnailMaxRes ||
           videoSource?.thumbnailUrl
         }
-        clipTitle={currentClip.title || 'فاصلوں کو تکلف ہے ہم سے اگر'}
+        clipTitle={
+          currentClip.title ||
+          (isGaming ? 'GTA 6 Stunt & Action' : 'فاصلوں کو تکلف ہے ہم سے اگر')
+        }
         clipSubline={
-          currentClip.primaryVerse ||
-          captions[0]?.textUrdu ||
-          captions[0]?.text ||
-          'قاری شاہد محمود'
+          isGaming
+            ? captions[0]?.textEnglish ||
+              captions[0]?.text ||
+              currentClip.categoryName ||
+              'High-Speed Action'
+            : currentClip.primaryVerse ||
+              captions[0]?.textUrdu ||
+              captions[0]?.text ||
+              'قاری شاہد محمود'
         }
         onSaveThumbnail={(dataUrl) => {
           setCurrentClip((prev) => ({ ...prev, thumbnailUrl: dataUrl }));
@@ -2507,6 +3226,99 @@ export function StudioEditor({
           );
         }}
       />
+      {/* 9:16 Fullscreen Shorts Preview Modal */}
+      {isFullscreenPreview && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200">
+          <div className="w-full max-w-4xl flex items-center justify-between z-10 pb-2 border-b border-white/10">
+            <div className="flex items-center gap-2 text-white">
+              <span className="text-xs font-black uppercase tracking-wider bg-primary/20 text-primary px-2.5 py-1 rounded-full border border-primary/30">
+                9:16 Fullscreen Shorts Preview
+              </span>
+              <span className="text-xs font-mono text-white/70">
+                Short #{clip.index || 1} • {Math.round(clip.duration || 30)}s
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={closeFullscreenPreview}
+              className="rounded-xl border-white/20 text-white bg-white/10 hover:bg-white/20 h-8 px-3 gap-1.5 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+              <span>Close (ESC)</span>
+            </Button>
+          </div>
+
+          {/* Center High-Definition Vertical Preview Screen */}
+          <div className="relative h-[75vh] sm:h-[80vh] aspect-[9/16] rounded-3xl overflow-hidden shadow-2xl border-2 border-white/20 bg-black flex items-center justify-center my-auto">
+            {clip?.categoryName && (
+              <div className="absolute top-4 left-4 z-30 flex items-center gap-1.5 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-purple-500/40 text-white text-xs font-bold shadow-lg pointer-events-none">
+                <span>{clip.categoryIcon || '🎮'}</span>
+                <span className="text-purple-300 uppercase tracking-wider text-[10px] font-black">
+                  {clip.categoryBadge || clip.categoryName}
+                </span>
+                <span className="text-white/60 text-[10px]">
+                  • {clip.score}% Viral
+                </span>
+              </div>
+            )}
+            <canvas
+              className="w-full h-full object-contain cursor-pointer"
+              ref={(fsCanvas) => {
+                fsCanvasRef.current = fsCanvas;
+                if (fsCanvas && canvasRef.current) {
+                  fsCanvas.width = canvasRef.current.width || 1080;
+                  fsCanvas.height = canvasRef.current.height || 1920;
+                  const fsCtx = fsCanvas.getContext('2d');
+                  if (fsCtx) {
+                    fsCtx.drawImage(canvasRef.current, 0, 0);
+                  }
+                }
+              }}
+              onClick={togglePlay}
+            />
+            {!isPlaying && (
+              <button
+                type="button"
+                onClick={togglePlay}
+                className="absolute inset-0 m-auto w-20 h-20 rounded-full bg-black/60 backdrop-blur-md border border-white/30 text-white flex items-center justify-center hover:scale-110 transition-transform cursor-pointer shadow-2xl"
+                aria-label="Play video"
+              >
+                <Play className="w-10 h-10 ml-1.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Playback Bar */}
+          <div className="w-full max-w-md flex items-center justify-between gap-3 p-2 rounded-2xl bg-card/90 border border-white/10 shadow-lg text-white">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={togglePlay}
+              className="h-8 px-3 rounded-xl hover:bg-white/10 text-white cursor-pointer"
+            >
+              {isPlaying ? (
+                <Pause className="w-4 h-4 mr-1.5" />
+              ) : (
+                <Play className="w-4 h-4 mr-1.5" />
+              )}
+              <span>{isPlaying ? 'Pause' : 'Play'}</span>
+            </Button>
+            <span className="font-mono text-xs text-white/80">
+              {formatTimecode(currentTime)} /{' '}
+              {formatTimecode(clip.end || clip.duration || 30)}
+            </span>
+            <Button
+              size="sm"
+              variant={subtitlesEnabled ? 'default' : 'outline'}
+              onClick={() => setSubtitlesEnabled(!subtitlesEnabled)}
+              className="h-8 px-3 rounded-xl text-xs font-bold cursor-pointer"
+            >
+              Subtitles: {subtitlesEnabled ? 'ON' : 'OFF'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

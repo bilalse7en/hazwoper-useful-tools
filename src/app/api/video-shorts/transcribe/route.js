@@ -26,7 +26,9 @@ export async function POST(request) {
       const videoFile = formData.get('video');
       referenceLyrics = formData.get('referenceLyrics') || '';
       videoTitle = formData.get('videoTitle') || '';
-      language = formData.get('language') || 'ur';
+      language =
+        formData.get('language') ||
+        (formData.get('contentType') === 'gaming-gta' ? 'en' : 'ur');
 
       if (!videoFile || typeof videoFile === 'string') {
         return NextResponse.json(

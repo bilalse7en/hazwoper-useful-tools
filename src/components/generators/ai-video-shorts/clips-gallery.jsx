@@ -24,6 +24,10 @@ import {
   ScanFace,
   RefreshCw,
   Film,
+  Maximize2,
+  Music,
+  X,
+  Clock,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,6 +63,7 @@ function ClipCardPlayer({
   thumbnailCandidates = [],
   isPlaying,
   isSelected = false,
+  downloadQueue = [],
   onSelectClip,
   onTogglePlay,
   onOpenEditor,
@@ -75,9 +80,46 @@ function ClipCardPlayer({
   const [seoModalOpen, setSeoModalOpen] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
   const [isTranscriptModalOpen, setIsTranscriptModalOpen] = useState(false);
+  const explicitContentType = clip?.contentType || videoSource?.contentType;
+
+  let resolvedGenre = 'naat-recitation';
+  if (explicitContentType === 'gaming-gta') {
+    resolvedGenre = 'gaming-gta';
+  } else if (explicitContentType === 'music-songs') {
+    resolvedGenre = 'music-songs';
+  } else if (explicitContentType === 'naat-recitation') {
+    resolvedGenre = 'naat-recitation';
+  } else {
+    const titleToCheck = (
+      videoSource?.title ||
+      videoSource?.fileName ||
+      clip?.title ||
+      ''
+    ).toLowerCase();
+    if (
+      /song|music|sing|singer|audio|remix|track|melody|album|acoustic|chorus|darshan|raval|lyrics|dj|dance|pop|hiphop|rap|bollywood|soundtrack/i.test(
+        titleToCheck
+      )
+    ) {
+      resolvedGenre = 'music-songs';
+    } else if (
+      /gta|game|gaming|gameplay|fps|speedrun|trailer|walkthrough|playthrough|action stunt/i.test(
+        titleToCheck
+      )
+    ) {
+      resolvedGenre = 'gaming-gta';
+    } else {
+      resolvedGenre = 'naat-recitation';
+    }
+  }
+
+  const isGaming = resolvedGenre === 'gaming-gta';
+  const isMusic = resolvedGenre === 'music-songs';
+  const isNaat = resolvedGenre === 'naat-recitation';
+
   const [captionMode, setCaptionMode] = useState(
-    clip.captionMode || 'dual-urdu-roman'
-  ); // 'dual-urdu-roman' | 'urdu' | 'roman-urdu'
+    clip.captionMode || (isGaming ? 'english' : 'dual-urdu-roman')
+  );
   const [clipCaptions, setClipCaptions] = useState(clip.captions || []);
   const [syncStatus, setSyncStatus] = useState(
     clip.syncStatus || 'synchronized'
@@ -85,6 +127,25 @@ function ClipCardPlayer({
   const [isSyncing, setIsSyncing] = useState(false);
   const [activeSpeakerTag, setActiveSpeakerTag] = useState(null);
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
+  const [fullscreenPreview, setFullscreenPreview] = useState(false);
+
+  const handleOpenFullscreen = (e) => {
+    if (e) e.stopPropagation();
+    if (isPlaying && onTogglePlay) {
+      onTogglePlay();
+    }
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('video').forEach((v) => {
+        try {
+          v.pause();
+        } catch (_) {}
+      });
+    }
+    setFullscreenPreview(true);
+  };
 
   const handleGenerateSubtitles = async () => {
     setIsGeneratingSubtitles(true);
@@ -97,6 +158,8 @@ function ClipCardPlayer({
           sourceStartSeconds: clip.start,
           sourceEndSeconds: clip.end,
           videoUrl: videoStreamUrl,
+          language: isGaming ? 'en' : 'ur',
+          contentType: isGaming ? 'gaming-gta' : 'naat-recitation',
         }),
       });
       const data = await res.json();
@@ -106,11 +169,16 @@ function ClipCardPlayer({
       const caps = data.captions || [];
       setClipCaptions(caps);
       setSyncStatus('synchronized');
+      if (isGaming) {
+        setCaptionMode('english');
+      }
       if (onUpdateCaptions) {
         onUpdateCaptions(clip.id, caps);
       }
       showSuccess(
-        'Urdu & Roman Subtitles Generated!',
+        isGaming
+          ? 'English Dialogue Subtitles Generated!'
+          : 'Urdu & Roman Subtitles Generated!',
         `Generated ${caps.length} authentic subtitles for Short #${clip.index || 1}.`
       );
     } catch (err) {
@@ -133,14 +201,52 @@ function ClipCardPlayer({
   const isRenderedClip = Boolean(
     clip.isRendered && (clip.videoUrl || clip.downloadUrl)
   );
+
+  const candidateMasterUrls = [
+    videoSource?.videoUrl,
+    videoSource?.downloadUrl,
+    videoSource?.url,
+    clip?.videoUrl,
+    clip?.downloadUrl,
+    clip?.url,
+  ];
+  const nonBlobMaster = candidateMasterUrls.find(
+    (u) => u && typeof u === 'string' && !u.startsWith('blob:')
+  );
+
+  const resolvedMediaId =
+    videoSource?.id ||
+    videoSource?.mediaId ||
+    clip?.mediaId ||
+    clip?.sourceMediaId ||
+    (nonBlobMaster && /yt_[a-zA-Z0-9_-]+/.test(nonBlobMaster)
+      ? nonBlobMaster.match(/yt_[a-zA-Z0-9_-]+/)[0]
+      : null);
+
+  const resolvedFileName =
+    videoSource?.fileName ||
+    videoSource?.file_name ||
+    clip?.fileName ||
+    clip?.file_name ||
+    'video.mp4';
+
+  const resolvedMasterUrl =
+    nonBlobMaster ||
+    (resolvedMediaId
+      ? `/media-hub/${resolvedMediaId}/${resolvedFileName}`
+      : null) ||
+    videoSource?.blobUrl ||
+    clip?.blobUrl ||
+    null;
+
   const videoStreamUrl = isRenderedClip
     ? clip.videoUrl || clip.downloadUrl
-    : videoSource?.blobUrl || videoSource?.videoUrl || null;
+    : resolvedMasterUrl;
 
-  const clipStart = isRenderedClip ? 0 : clip.start;
+  const clipStart = isRenderedClip ? 0 : (clip.start ?? 0);
   const clipEnd = isRenderedClip
-    ? clip.duration || Math.max(1, clip.end - clip.start)
-    : clip.end;
+    ? clip.duration || Math.max(1, (clip.end ?? 30) - (clip.start ?? 0))
+    : (clip.end ?? (clip.start ?? 0) + (clip.duration || 30));
 
   // Sync Subtitles with Short Audio Handler
   const handleSyncSubtitles = async (e) => {
@@ -293,7 +399,7 @@ function ClipCardPlayer({
     }
   }, [videoSource, clip, aiThumbnail, isGeneratingThumb]);
 
-  // CapCut Smart 9:16 Portrait GPU Renderer with Active Speaker Face Tracking & Zero Black Background
+  // ALL USEFUL TOOLS Smart 9:16 Portrait GPU Renderer with Active Speaker Face Tracking & Zero Black Background
   const drawFrame = (timeToDraw) => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -315,7 +421,7 @@ function ClipCardPlayer({
     const cropW = Math.round(vh * (9 / 16));
     const maxCX = Math.max(0, vw - cropW);
 
-    // 1. CapCut Dynamic Ambient Blurred Background Layer (Guarantees ZERO black borders on any aspect ratio)
+    // 1. ALL USEFUL TOOLS Dynamic Ambient Blurred Background Layer (Guarantees ZERO black borders on any aspect ratio)
     ctx.save();
     ctx.filter = 'blur(28px) brightness(0.65)';
     ctx.drawImage(video, 0, 0, cw, ch);
@@ -490,13 +596,23 @@ function ClipCardPlayer({
     Math.max(0, (currentClipTime / (clip.duration || 1)) * 100)
   );
 
+  const isCurrentlyRendering =
+    clip.renderStatus === 'rendering' || clip.renderStatus === 'in_progress';
+  const isQueued = clip.renderStatus === 'queued';
+  const isCompleted =
+    clip.isRendered ||
+    clip.renderStatus === 'completed' ||
+    (!isCurrentlyRendering && !isQueued);
+
   return (
     <Card
       className={cn(
-        'rounded-3xl border overflow-hidden shadow-xl bg-card flex flex-col transition-all duration-200 group h-full justify-between',
-        isSelected
-          ? 'border-primary ring-2 ring-primary/30 shadow-2xl'
-          : 'border-border/70 hover:border-primary/50'
+        'rounded-3xl border overflow-hidden shadow-xl bg-card flex flex-col transition-all duration-300 group h-full justify-between',
+        isCurrentlyRendering
+          ? 'border-primary ring-2 ring-primary/40 shadow-primary/25 shadow-2xl animate-pulse'
+          : isSelected
+            ? 'border-primary ring-2 ring-primary/30 shadow-2xl'
+            : 'border-border/70 hover:border-primary/50'
       )}
     >
       {/* Top Header Card Selector & Status */}
@@ -510,7 +626,7 @@ function ClipCardPlayer({
             className="w-4 h-4 text-primary accent-primary cursor-pointer"
           />
           <span className="font-bold text-xs text-foreground">
-            Select Short #{clip.index}
+            Short #{clip.index}
           </span>
         </label>
 
@@ -528,37 +644,45 @@ function ClipCardPlayer({
               {clip.verseStatusLabel}
             </Badge>
           )}
-          <Badge
-            variant="outline"
-            className={cn(
-              'text-[10px] font-mono px-2 py-0.5 font-bold',
-              syncStatus === 'synchronized'
-                ? 'text-emerald-500 border-emerald-500/30 bg-emerald-500/5'
-                : 'text-amber-500 border-amber-500/30 bg-amber-500/5'
-            )}
-          >
-            {syncStatus === 'synchronized' ? '✓ Synced' : 'Sync Needed'}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="text-[10px] font-mono px-1.5 py-0.5 text-muted-foreground border-border/60"
-          >
-            {clip.renderStatus || 'Ready'}
-          </Badge>
+
+          {/* 1-by-1 Live Generation Badge on Card */}
+          {isCurrentlyRendering ? (
+            <Badge className="text-[10px] font-mono px-2 py-0.5 bg-primary text-primary-foreground font-black animate-pulse flex items-center gap-1 shadow-md">
+              <Sparkles className="w-3 h-3 animate-spin" />
+              <span>Rendering {clip.renderProgress || 35}%</span>
+            </Badge>
+          ) : isQueued ? (
+            <Badge
+              variant="outline"
+              className="text-[10px] font-mono px-2 py-0.5 text-amber-500 border-amber-500/30 bg-amber-500/5 font-bold flex items-center gap-1"
+            >
+              <Clock className="w-3 h-3 animate-pulse" />
+              <span>Queued #{clip.index}</span>
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="text-[10px] font-mono px-2 py-0.5 text-emerald-500 border-emerald-500/30 bg-emerald-500/10 font-bold"
+            >
+              ✓ Ready
+            </Badge>
+          )}
         </div>
       </div>
 
-      {/* 9:16 Portrait Player Container with CapCut Face Tracking & Zero Black Background */}
+      {/* 9:16 Portrait Player Container with Controlled Max Height */}
       <div
         onClick={onTogglePlay}
-        className="relative aspect-[9/16] w-full bg-zinc-950 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer select-none group border border-border/40 shadow-inner"
+        className="relative aspect-[9/16] w-full max-h-[380px] sm:max-h-[420px] max-w-[260px] mx-auto bg-zinc-950 rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer select-none group border border-border/40 shadow-inner"
       >
         {/* Offscreen Bucket Video Element for GPU frame decoding */}
         {videoStreamUrl && (
           <video
             ref={videoRef}
             src={videoStreamUrl}
-            crossOrigin="anonymous"
+            crossOrigin={
+              videoStreamUrl.startsWith('blob:') ? undefined : 'anonymous'
+            }
             playsInline
             preload="auto"
             muted={isMuted}
@@ -572,36 +696,97 @@ function ClipCardPlayer({
           />
         )}
 
-        {/* Guaranteed 9:16 Portrait Canvas (Decoded directly from downloaded bucket video with CapCut Smart Pan) */}
+        {/* Guaranteed 9:16 Portrait Canvas */}
         <canvas ref={canvasRef} className="w-full h-full object-cover" />
 
-        {/* Media Missing or Unreachable Error Overlay */}
-        {mediaLoadError && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-zinc-950/92 text-center select-none">
-            <Film className="w-10 h-10 text-amber-500 mb-2 opacity-85" />
-            <p className="text-xs font-bold text-foreground">
-              Preview Unavailable
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
-              Video source stream could not be loaded from storage.
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-3 text-[11px] h-7 bg-card hover:bg-muted font-bold pointer-events-auto"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMediaLoadError(false);
-                if (videoRef.current) {
-                  videoRef.current.load();
-                }
-              }}
-            >
-              <RefreshCw className="w-3 h-3 mr-1" />
-              Retry Stream
-            </Button>
+        {/* In-Progress or Queued Card Display (Renders cards progressively 1 by 1) */}
+        {(isCurrentlyRendering || isQueued) && (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-zinc-950/95 text-center select-none space-y-3">
+            {isCurrentlyRendering ? (
+              <>
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 border border-primary/50 flex items-center justify-center shadow-[0_0_25px_rgba(var(--primary-rgb),0.35)] animate-pulse">
+                  <Sparkles className="w-7 h-7 text-primary animate-spin" />
+                </div>
+                <div className="w-full px-2">
+                  <div className="flex items-center justify-between text-[11px] font-mono mb-1.5">
+                    <span className="font-bold text-foreground">
+                      Rendering Short #{clip.index}
+                    </span>
+                    <span className="font-black text-primary">
+                      {clip.renderProgress || 35}%
+                    </span>
+                  </div>
+                  {/* Dynamic Progress Bar On Card */}
+                  <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden border border-border/50">
+                    <div
+                      className="bg-gradient-to-r from-primary to-indigo-500 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${clip.renderProgress || 35}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2 max-w-[200px] mx-auto leading-relaxed">
+                    {clip.renderStage ||
+                      'Cutting 9:16 vertical crop & burning subtitles...'}
+                  </p>
+                </div>
+                <Badge className="bg-primary/15 text-primary border-primary/40 text-[9px] font-mono font-bold animate-pulse">
+                  ⚡ 1-by-1 Live Generation
+                </Badge>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-border/60 flex items-center justify-center text-muted-foreground">
+                  <Clock className="w-6 h-6 text-muted-foreground animate-pulse" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-foreground">
+                    Short #{clip.index} Queued
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1 max-w-[180px] leading-relaxed">
+                    Waiting in line... Starts automatically after Short #
+                    {clip.index - 1} finishes.
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="bg-zinc-900 text-muted-foreground border-border/50 text-[9px] font-mono"
+                >
+                  ⏳ Position #{clip.index} in Line
+                </Badge>
+              </>
+            )}
           </div>
         )}
+
+        {/* Media Missing or Unreachable Error Overlay */}
+        {mediaLoadError &&
+          clip.renderStatus !== 'in_progress' &&
+          clip.renderStatus !== 'rendering' &&
+          clip.renderStatus !== 'queued' && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-zinc-950/92 text-center select-none">
+              <Film className="w-10 h-10 text-amber-500 mb-2 opacity-85" />
+              <p className="text-xs font-bold text-foreground">
+                Preview Unavailable
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1 max-w-[200px] leading-relaxed">
+                Video source stream could not be loaded from storage.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 text-[11px] h-7 bg-card hover:bg-muted font-bold pointer-events-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMediaLoadError(false);
+                  if (videoRef.current) {
+                    videoRef.current.load();
+                  }
+                }}
+              >
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Retry Stream
+              </Button>
+            </div>
+          )}
 
         {/* Paused Cinematic Overlay with Play Button & Metadata Badges */}
         {!isPlaying && (
@@ -614,10 +799,24 @@ function ClipCardPlayer({
               </div>
 
               <div className="flex items-center gap-1.5">
-                <Badge className="bg-emerald-600/90 text-white text-[10px] font-bold flex items-center gap-1 border-0 shadow-sm">
-                  <ScanFace className="w-3 h-3" />
-                  <span>Face Centered (9:16)</span>
-                </Badge>
+                {clip.categoryName ? (
+                  <Badge className="bg-purple-600/90 text-white text-[10px] font-bold flex items-center gap-1 border-0 shadow-sm">
+                    <span>
+                      {clip.categoryIcon || '🎮'}{' '}
+                      {clip.categoryBadge || clip.categoryName}
+                    </span>
+                  </Badge>
+                ) : isMusic ? (
+                  <Badge className="bg-pink-600/90 text-white text-[10px] font-bold flex items-center gap-1 border-0 shadow-sm">
+                    <Music className="w-3 h-3" />
+                    <span>🎵 Song Hook</span>
+                  </Badge>
+                ) : (
+                  <Badge className="bg-emerald-600/90 text-white text-[10px] font-bold flex items-center gap-1 border-0 shadow-sm">
+                    <ScanFace className="w-3 h-3" />
+                    <span>🕌 Sacred Verse</span>
+                  </Badge>
+                )}
 
                 <Badge
                   className={cn(
@@ -629,6 +828,16 @@ function ClipCardPlayer({
                 >
                   ★ {clip.score}% Viral
                 </Badge>
+
+                {/* Fullscreen Preview Icon on Thumbnail */}
+                <button
+                  type="button"
+                  onClick={handleOpenFullscreen}
+                  className="p-1 rounded-lg bg-black/60 border border-white/20 text-white hover:text-primary transition-colors cursor-pointer"
+                  title="Watch in Fullscreen"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
@@ -639,7 +848,7 @@ function ClipCardPlayer({
               </div>
               <div className="bg-black/80 backdrop-blur-sm px-3 py-1 rounded-lg border border-white/10">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                  CapCut Smart Pan • Zero Black Bars
+                  ALL USEFUL TOOLS Smart Pan • Zero Black Bars
                 </span>
               </div>
             </div>
@@ -670,7 +879,10 @@ function ClipCardPlayer({
             <div className="flex items-center justify-between text-white text-xs">
               <button
                 type="button"
-                onClick={onTogglePlay}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTogglePlay();
+                }}
                 className="p-1 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
                 title="Pause"
               >
@@ -682,18 +894,32 @@ function ClipCardPlayer({
                 {formatSeconds(clip.end)}
               </span>
 
-              <button
-                type="button"
-                onClick={() => setIsMuted(!isMuted)}
-                className="p-1 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
-                {isMuted ? (
-                  <VolumeX className="w-4 h-4 text-red-400" />
-                ) : (
-                  <Volume2 className="w-4 h-4" />
-                )}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMuted(!isMuted);
+                  }}
+                  className="p-1 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  {isMuted ? (
+                    <VolumeX className="w-4 h-4 text-red-400" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenFullscreen}
+                  className="p-1 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+                  title="Watch Short in Fullscreen"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -716,10 +942,40 @@ function ClipCardPlayer({
           </h3>
 
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 min-h-[2rem]">
-            {clip.explanation || clip.summary}
+            {clip.reason || clip.explanation || clip.summary}
           </p>
 
-          {/* Transparent OpusClip Quality Score Breakdown */}
+          {/* GTA / Gameplay Score Breakdown */}
+          {clip.motionScore !== undefined && (
+            <div className="grid grid-cols-3 gap-1.5 p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[9px] text-center font-mono">
+              <div title="Gameplay motion intensity & action speed">
+                <span className="text-muted-foreground block text-[8px] uppercase font-sans">
+                  Motion
+                </span>
+                <span className="font-bold text-amber-500">
+                  {Math.round(clip.motionScore)}%
+                </span>
+              </div>
+              <div title="Audio transient, impact, explosion & crash acoustics">
+                <span className="text-muted-foreground block text-[8px] uppercase font-sans">
+                  Audio
+                </span>
+                <span className="font-bold text-primary">
+                  {Math.round(clip.audioScore || 50)}%
+                </span>
+              </div>
+              <div title="Multimodal AI event detection confidence">
+                <span className="text-muted-foreground block text-[8px] uppercase font-sans">
+                  Confidence
+                </span>
+                <span className="font-bold text-emerald-500">
+                  {Math.round(clip.confidence || clip.score)}%
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Transparent ALL USEFUL TOOLS Quality Score Breakdown */}
           {clip.breakdown && (
             <div className="grid grid-cols-4 gap-1.5 p-2 rounded-xl bg-muted/30 border border-border/40 text-[9px] text-center font-mono">
               <div title="Vocal hook strength in first 3 seconds">
@@ -762,56 +1018,110 @@ function ClipCardPlayer({
             <div className="pt-1 space-y-2">
               {/* Caption Mode Switcher */}
               <div className="flex items-center justify-between gap-1 p-1 bg-muted/30 rounded-xl border border-border/40 text-[10px]">
-                <button
-                  type="button"
-                  onClick={() => setCaptionMode('dual-urdu-roman')}
-                  className={cn(
-                    'flex-1 py-1 px-1.5 rounded-lg font-bold transition-all cursor-pointer truncate',
-                    captionMode === 'dual-urdu-roman'
-                      ? 'bg-primary text-primary-foreground shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                  title="Urdu Nastaliq top line, Roman Urdu bottom line"
-                >
-                  Dual Stacked
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCaptionMode('roman-urdu')}
-                  className={cn(
-                    'flex-1 py-1 px-1.5 rounded-lg font-bold transition-all cursor-pointer truncate',
-                    captionMode === 'roman-urdu'
-                      ? 'bg-primary text-primary-foreground shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                  title="Roman Urdu only"
-                >
-                  Roman Urdu
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCaptionMode('urdu')}
-                  className={cn(
-                    'flex-1 py-1 px-1.5 rounded-lg font-bold transition-all cursor-pointer truncate',
-                    captionMode === 'urdu'
-                      ? 'bg-primary text-primary-foreground shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                  title="Urdu Nastaliq only"
-                >
-                  اردو نستعلیق
-                </button>
+                {isGaming ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('english')}
+                      className={cn(
+                        'flex-1 py-1 px-1.5 rounded-lg font-bold transition-all cursor-pointer truncate',
+                        captionMode === 'english'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      title="Dynamic Word-by-Word English Highlight"
+                    >
+                      English (Viral)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('english-clean')}
+                      className={cn(
+                        'flex-1 py-1 px-1.5 rounded-lg font-bold transition-all cursor-pointer truncate',
+                        captionMode === 'english-clean'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      title="Clean Minimal English Subtitles"
+                    >
+                      English (Clean)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('off')}
+                      className={cn(
+                        'py-1 px-2 rounded-lg font-bold transition-all cursor-pointer truncate',
+                        captionMode === 'off'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      title="Subtitles Off"
+                    >
+                      Off
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('dual-urdu-roman')}
+                      className={cn(
+                        'flex-1 py-1 px-1.5 rounded-lg font-bold transition-all cursor-pointer truncate',
+                        captionMode === 'dual-urdu-roman'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      title="Urdu Nastaliq top line, Roman Urdu bottom line"
+                    >
+                      Dual Stacked
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('roman-urdu')}
+                      className={cn(
+                        'flex-1 py-1 px-1.5 rounded-lg font-bold transition-all cursor-pointer truncate',
+                        captionMode === 'roman-urdu'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      title="Roman Urdu only"
+                    >
+                      Roman Urdu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCaptionMode('urdu')}
+                      className={cn(
+                        'flex-1 py-1 px-1.5 rounded-lg font-bold transition-all cursor-pointer truncate',
+                        captionMode === 'urdu'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      title="Urdu Nastaliq only"
+                    >
+                      اردو نستعلیق
+                    </button>
+                  </>
+                )}
               </div>
 
               <div className="p-3 rounded-2xl bg-muted/40 border border-border/50 space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground pb-1 border-b border-border/30">
                   <div className="flex items-center gap-1.5">
-                    <span>Spoken Script &amp; Lines</span>
+                    <span>
+                      {isGaming
+                        ? 'Dialogue & Action Lines'
+                        : 'Spoken Script & Lines'}
+                    </span>
                     <button
                       type="button"
                       onClick={() => setIsTranscriptModalOpen(true)}
                       className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 cursor-pointer ml-1"
-                      title="Edit Urdu words, Roman spelling, and timestamps"
+                      title={
+                        isGaming
+                          ? 'Edit English words and timestamps'
+                          : 'Edit Urdu words, Roman spelling, and timestamps'
+                      }
                     >
                       <Languages className="w-3 h-3" />
                       <span>Edit Script</span>
@@ -857,9 +1167,15 @@ function ClipCardPlayer({
                         <span className="text-primary/80 font-semibold mr-1.5 text-[10px]">
                           [{formatSeconds(clip.start + cap.start)}]
                         </span>
-                        <span>&ldquo;{cap.textRoman || cap.text}&rdquo;</span>
+                        <span>
+                          &ldquo;
+                          {isGaming
+                            ? cap.textEnglish || cap.text
+                            : cap.textRoman || cap.text}
+                          &rdquo;
+                        </span>
                       </div>
-                      {cap.textUrdu && (
+                      {!isGaming && cap.textUrdu && (
                         <span className="font-serif text-right text-[11px] opacity-80 shrink-0 text-emerald-400">
                           {cap.textUrdu}
                         </span>
@@ -890,8 +1206,9 @@ function ClipCardPlayer({
                     <span>Subtitles: Off</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Generate authentic Urdu Nastaliq &amp; Roman Urdu subtitles
-                    for this short.
+                    {isGaming
+                      ? 'Generate dynamic English commentary & dialogue subtitles for this short.'
+                      : 'Generate authentic Urdu Nastaliq & Roman Urdu subtitles for this short.'}
                   </p>
                 </div>
                 <Button
@@ -931,7 +1248,11 @@ function ClipCardPlayer({
                   ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15'
                   : 'border-primary/50 text-primary bg-primary/5 hover:bg-primary/15 font-black'
               )}
-              title="Extract this short's exact audio slice and re-align Urdu captions"
+              title={
+                isGaming
+                  ? "Re-align this short's English dialogue with audio"
+                  : "Extract this short's exact audio slice and re-align Urdu captions"
+              }
             >
               <RefreshCw
                 className={cn(
@@ -941,10 +1262,16 @@ function ClipCardPlayer({
               />
               <span>
                 {isSyncing
-                  ? 'Aligning Urdu Speech & Audio...'
+                  ? isGaming
+                    ? 'Aligning English Dialogue...'
+                    : 'Aligning Urdu Speech & Audio...'
                   : syncStatus === 'synchronized'
-                    ? '✓ Urdu Captions Synchronized with Audio'
-                    : 'SYNC URDU CAPTIONS WITH AUDIO'}
+                    ? isGaming
+                      ? '✓ English Dialogue Synchronized'
+                      : '✓ Urdu Captions Synchronized with Audio'
+                    : isGaming
+                      ? 'SYNC ENGLISH DIALOGUE WITH AUDIO'
+                      : 'SYNC URDU CAPTIONS WITH AUDIO'}
               </span>
             </Button>
           )}
@@ -962,23 +1289,54 @@ function ClipCardPlayer({
           </Button>
 
           <div className="grid grid-cols-3 gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDownloadClip({
-                  ...clip,
-                  captions: clipCaptions,
-                  captionMode,
-                });
-              }}
-              className="w-full text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1 px-1.5"
-              title="Download MP4 video with burned-in captions"
-            >
-              <Download className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="truncate">MP4</span>
-            </Button>
+            {(() => {
+              const queueItem = downloadQueue.find((i) => i.clipId === clip.id);
+              const isRendering = queueItem && queueItem.status === 'rendering';
+              const isReady = queueItem && queueItem.status === 'ready';
+
+              return (
+                <Button
+                  variant={isReady ? 'default' : 'outline'}
+                  size="sm"
+                  disabled={isRendering}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDownloadClip({
+                      ...clip,
+                      captions: clipCaptions,
+                      captionMode,
+                    });
+                  }}
+                  className={cn(
+                    'w-full text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1 px-1.5 transition-all',
+                    isReady &&
+                      'bg-emerald-600 hover:bg-emerald-500 text-white font-bold border-0 shadow-sm',
+                    isRendering &&
+                      'border-primary/40 bg-primary/10 text-primary font-bold cursor-not-allowed'
+                  )}
+                  title="Direct 4K UHD download with burned-in captions"
+                >
+                  {isRendering ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
+                      <span className="truncate">
+                        {Math.round(queueItem.progress)}%
+                      </span>
+                    </>
+                  ) : isReady ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
+                      <span className="truncate">4K Ready</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="truncate">4K Short</span>
+                    </>
+                  )}
+                </Button>
+              );
+            })()}
             <Button
               variant="outline"
               size="sm"
@@ -1015,7 +1373,11 @@ function ClipCardPlayer({
             className="w-full text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <span>🚀 YouTube SEO &amp; Viral Details (Roman Urdu)</span>
+            <span>
+              {isGaming
+                ? '🚀 YouTube SEO & Viral Details (Gaming)'
+                : '🚀 YouTube SEO & Viral Details (Roman Urdu)'}
+            </span>
           </Button>
 
           {/* YouTube Viral SEO Modal Dialog */}
@@ -1024,7 +1386,7 @@ function ClipCardPlayer({
               <DialogHeader className="space-y-1.5 text-left border-b border-border/40 pb-3">
                 <div className="flex items-center gap-2">
                   <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 text-xs font-bold">
-                    🇵🇰 Roman Urdu SEO
+                    {isGaming ? '🎮 Gaming SEO (Global)' : '🇵🇰 Roman Urdu SEO'}
                   </Badge>
                   <span className="text-xs font-mono text-muted-foreground">
                     Short #{clip.index}
@@ -1034,8 +1396,9 @@ function ClipCardPlayer({
                   YouTube Viral Posting Details &amp; Metadata
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Pre-optimized for high CTR and retention in Pakistan, India,
-                  and Bangladesh. 100% compliant with YouTube guidelines.
+                  {isGaming
+                    ? 'Pre-optimized for high CTR, viral discovery, and YouTube / TikTok gaming recommendations worldwide.'
+                    : 'Pre-optimized for high CTR and retention in Pakistan, India, and Bangladesh. 100% compliant with YouTube guidelines.'}
                 </DialogDescription>
               </DialogHeader>
 
@@ -1195,13 +1558,22 @@ function ClipCardPlayer({
             onClose={() => setIsThumbModalOpen(false)}
             candidateFrames={thumbnailCandidates || []}
             initialFrameUrl={aiThumbnail}
-            clipTitle={clip.title || 'Naat Sharif'}
+            isGaming={isGaming}
+            contentType={isGaming ? 'gaming-gta' : 'naat-recitation'}
+            clipTitle={
+              clip.title || (isGaming ? 'GTA 6 Stunt & Action' : 'Naat Sharif')
+            }
             clipSubline={
-              clip.primaryVerse ||
-              clip.captions?.[0]?.textUrdu ||
-              clip.captions?.[0]?.textRoman ||
-              clip.captions?.[0]?.text ||
-              ''
+              isGaming
+                ? clip.captions?.[0]?.textEnglish ||
+                  clip.captions?.[0]?.text ||
+                  clip.categoryName ||
+                  'High-Speed Action'
+                : clip.primaryVerse ||
+                  clip.captions?.[0]?.textUrdu ||
+                  clip.captions?.[0]?.textRoman ||
+                  clip.captions?.[0]?.text ||
+                  ''
             }
             onSaveThumbnail={(dataUrl) => {
               setAiThumbnail(dataUrl);
@@ -1209,6 +1581,76 @@ function ClipCardPlayer({
           />
         </div>
       </div>
+
+      {/* 9:16 Fullscreen Shorts Preview Modal */}
+      {fullscreenPreview && (
+        <Dialog open={fullscreenPreview} onOpenChange={setFullscreenPreview}>
+          <DialogContent className="max-w-md w-full h-[90vh] p-4 bg-black/95 border-white/20 text-white rounded-3xl flex flex-col justify-between items-center shadow-2xl backdrop-blur-2xl">
+            <div className="w-full flex items-center justify-between pb-2 border-b border-white/10 z-10">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider bg-primary/20 text-primary px-2.5 py-0.5 rounded-full border border-primary/30">
+                  Short #{clip.index}
+                </span>
+                <span className="text-xs text-white/70 font-mono">
+                  {Math.round(clip.duration)}s • {clip.score}% Viral
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFullscreenPreview(false)}
+                className="h-8 w-8 p-0 text-white hover:bg-white/20 rounded-xl cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="relative w-full h-[75vh] aspect-[9/16] rounded-2xl overflow-hidden bg-black flex items-center justify-center border border-white/20 my-auto">
+              {clip?.categoryName && (
+                <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-purple-500/40 text-white text-xs font-bold shadow-lg pointer-events-none">
+                  <span>{clip.categoryIcon || '🎮'}</span>
+                  <span className="text-purple-300 uppercase tracking-wider text-[10px] font-black">
+                    {clip.categoryBadge || clip.categoryName}
+                  </span>
+                </div>
+              )}
+              {videoStreamUrl && (
+                <video
+                  src={videoStreamUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain"
+                  onLoadedMetadata={(e) => {
+                    e.currentTarget.currentTime = clip.start;
+                  }}
+                />
+              )}
+            </div>
+
+            <div className="w-full flex items-center justify-between gap-2 pt-2 border-t border-white/10 text-xs">
+              <span className="font-mono text-white/70">
+                {formatSeconds(clip.start)} - {formatSeconds(clip.end)}
+              </span>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setFullscreenPreview(false);
+                  onDownloadClip({
+                    ...clip,
+                    captions: clipCaptions,
+                    captionMode,
+                  });
+                }}
+                className="h-8 px-3 rounded-xl bg-primary text-primary-foreground font-bold text-xs cursor-pointer shadow-md"
+              >
+                <Download className="w-3.5 h-3.5 mr-1" />
+                <span>Download Short</span>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 }
@@ -1218,6 +1660,10 @@ export function ClipsGallery({
   clips = [],
   thumbnailCandidates = [],
   generationDuration = null,
+  downloadQueue = [],
+  isGenerating = false,
+  currentStage = '',
+  currentProgress = 0,
   onOpenEditor,
   onOpenFullVideo,
   onDownloadClip,
@@ -1228,7 +1674,23 @@ export function ClipsGallery({
 }) {
   const [activePlayingId, setActivePlayingId] = useState(null);
   const [selectedClipId, setSelectedClipId] = useState(clips[0]?.id || null);
-  const [captionLang, setCaptionLang] = useState('urdu'); // 'urdu' | 'roman-urdu' | 'en'
+  const isGamingOverall =
+    clips.some(
+      (c) =>
+        c.isGaming ||
+        c.contentType === 'gaming-gta' ||
+        c.captionMode === 'english' ||
+        Boolean(c.category)
+    ) ||
+    videoSource?.contentType === 'gaming-gta' ||
+    /gta|game|gaming/i.test(videoSource?.fileName || '') ||
+    /gta|game|gaming/i.test(videoSource?.title || '');
+
+  const isDefaultEnglish =
+    isGamingOverall || clips[0]?.captionMode === 'english';
+  const [captionLang, setCaptionLang] = useState(
+    isDefaultEnglish ? 'en' : 'urdu'
+  ); // 'urdu' | 'roman-urdu' | 'en'
   const [activeReviewIndex, setActiveReviewIndex] = useState(0);
   const [confirmedClips, setConfirmedClips] = useState({});
 
@@ -1236,7 +1698,10 @@ export function ClipsGallery({
     if (!selectedClipId && clips.length > 0) {
       setSelectedClipId(clips[0]?.id);
     }
-  }, [clips, selectedClipId]);
+    if (isGamingOverall) {
+      setCaptionLang('en');
+    }
+  }, [clips, selectedClipId, isGamingOverall]);
 
   const formatSeconds = (sec) => {
     const s = Math.max(0, sec || 0);
@@ -1263,6 +1728,15 @@ export function ClipsGallery({
         captions: (clip.captions || []).map((c) => ({
           ...c,
           text: c.textUrdu || c.text,
+        })),
+      };
+    } else if (captionLang === 'en') {
+      return {
+        ...clip,
+        title: clip.title,
+        captions: (clip.captions || []).map((c) => ({
+          ...c,
+          text: c.textEnglish || c.text || '',
         })),
       };
     }
@@ -1365,46 +1839,52 @@ export function ClipsGallery({
             <span>Edit Selected Short #{selectedClip?.index || 1}</span>
           </Button>
 
-          {/* Urdu / Roman Urdu / English Switcher */}
-          <div className="flex items-center bg-muted/80 p-1 rounded-xl border border-border/60 shadow-xs">
-            <button
-              type="button"
-              onClick={() => setCaptionLang('urdu')}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                captionLang === 'urdu'
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <span>🇵🇰 اردو نستعلیق</span>
-              <span className="text-[10px] opacity-80">(Urdu)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCaptionLang('roman-urdu')}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
-                captionLang === 'roman-urdu'
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <span>Roman Urdu</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCaptionLang('en')}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
-                captionLang === 'en'
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <span>English</span>
-            </button>
-          </div>
+          {/* Subtitle Language Switcher */}
+          {isGamingOverall ? (
+            <div className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-xl border border-primary/30 text-xs font-bold">
+              <span>🎮 English Gaming Dialogue Active</span>
+            </div>
+          ) : (
+            <div className="flex items-center bg-muted/80 p-1 rounded-xl border border-border/60 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setCaptionLang('urdu')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  captionLang === 'urdu'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <span>🇵🇰 اردو نستعلیق</span>
+                <span className="text-[10px] opacity-80">(Urdu)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCaptionLang('roman-urdu')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                  captionLang === 'roman-urdu'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <span>Roman Urdu</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCaptionLang('en')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer',
+                  captionLang === 'en'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <span>English</span>
+              </button>
+            </div>
+          )}
 
           {onDownloadFullVideo && (
             <Button
@@ -1428,6 +1908,54 @@ export function ClipsGallery({
         </div>
       </div>
 
+      {/* 1-by-1 Live Generation In-Progress Banner */}
+      {(isGenerating ||
+        displayClips.some(
+          (c) => c.renderStatus === 'rendering' || c.renderStatus === 'queued'
+        )) && (
+        <div className="p-4 rounded-3xl border border-primary/40 bg-gradient-to-r from-primary/15 via-indigo-500/10 to-primary/5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-primary/20 border border-primary/50 flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)]">
+              <Sparkles className="w-5 h-5 text-primary animate-spin" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-sm text-foreground">
+                  ⚡ Generating Shorts 1-by-1
+                </span>
+                <Badge className="bg-primary text-primary-foreground text-[10px] font-mono font-black animate-pulse">
+                  Rendering Live
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {currentStage ||
+                  `Currently rendering Short #${
+                    displayClips.find((c) => c.renderStatus === 'rendering')
+                      ?.index || 1
+                  } of ${displayClips.length}. Ready shorts are playable immediately!`}
+              </p>
+            </div>
+          </div>
+
+          <div className="w-full sm:w-72 flex flex-col gap-1.5 shrink-0 bg-background/60 p-3 rounded-2xl border border-border/50">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-muted-foreground font-semibold">
+                Total Queue Progress
+              </span>
+              <span className="font-black text-primary">
+                {currentProgress || 45}%
+              </span>
+            </div>
+            <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden border border-border/40">
+              <div
+                className="bg-gradient-to-r from-primary to-indigo-500 h-full rounded-full transition-all duration-300"
+                style={{ width: `${currentProgress || 45}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Interactive Phrase Boundary Review & Confirmation for All Clips */}
       {displayClips.length > 0 && (
         <div className="p-5 rounded-3xl border border-primary/30 bg-card/90 backdrop-blur-md shadow-lg space-y-4">
@@ -1435,12 +1963,16 @@ export function ClipsGallery({
             <div>
               <h3 className="font-black text-sm sm:text-base text-foreground flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
-                <span>Phrase Boundary Verification: Perfect Your Shorts</span>
+                <span>
+                  {isGamingOverall
+                    ? 'Action Sequence Verification: Review Your Shorts'
+                    : 'Phrase Boundary Verification: Perfect Your Shorts'}
+                </span>
               </h3>
               <p className="text-xs text-muted-foreground">
-                Each Short is bounded to full poetic verses. Verify each Short
-                sequentially to ensure the recitation is 100% complete and
-                synchronized.
+                {isGamingOverall
+                  ? 'Each Short is bounded to complete, high-intensity gameplay moments. Verify timestamps and English dialogue before 4K export.'
+                  : 'Each Short is bounded to full poetic verses. Verify each Short sequentially to ensure the recitation is 100% complete and synchronized.'}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 shrink-0">
@@ -1504,33 +2036,58 @@ export function ClipsGallery({
                     </Badge>
                   )}
                 </div>
-                <p
-                  className="text-xs sm:text-sm font-bold text-foreground font-urdu"
-                  dir="rtl"
-                >
-                  پہلا شعر: &ldquo;
-                  {displayClips[activeReviewIndex].captions?.[0]?.textUrdu ||
-                    displayClips[activeReviewIndex].captions?.[0]?.text ||
-                    displayClips[activeReviewIndex].primaryVerse ||
-                    displayClips[activeReviewIndex].title}
-                  &rdquo;
-                </p>
-                <p
-                  className="text-[11px] text-muted-foreground font-urdu"
-                  dir="rtl"
-                >
-                  آخری شعر: &ldquo;
-                  {displayClips[activeReviewIndex].captions?.[
-                    displayClips[activeReviewIndex].captions.length - 1
-                  ]?.textUrdu ||
-                    displayClips[activeReviewIndex].captions?.[
-                      displayClips[activeReviewIndex].captions.length - 1
-                    ]?.text ||
-                    'مکمل قافیہ و ردیف'}
-                  &rdquo; • مشتمل بر{' '}
-                  {displayClips[activeReviewIndex].captions?.length || 0} کلمات
-                  بغیر کسی لفظ کی کٹوتی کے۔
-                </p>
+                {isGamingOverall ? (
+                  <>
+                    <p className="text-xs sm:text-sm font-bold text-foreground">
+                      Action Hook: &ldquo;
+                      {displayClips[activeReviewIndex].captions?.[0]
+                        ?.textEnglish ||
+                        displayClips[activeReviewIndex].captions?.[0]?.text ||
+                        displayClips[activeReviewIndex].primaryVerse ||
+                        displayClips[activeReviewIndex].title}
+                      &rdquo;
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Moment Title: &ldquo;
+                      {displayClips[activeReviewIndex].title ||
+                        'High Octane Action'}
+                      &rdquo; •{' '}
+                      {displayClips[activeReviewIndex].captions?.length || 0}{' '}
+                      dialogue &amp; commentary cues with dynamic 4K framing.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p
+                      className="text-xs sm:text-sm font-bold text-foreground font-urdu"
+                      dir="rtl"
+                    >
+                      پہلا شعر: &ldquo;
+                      {displayClips[activeReviewIndex].captions?.[0]
+                        ?.textUrdu ||
+                        displayClips[activeReviewIndex].captions?.[0]?.text ||
+                        displayClips[activeReviewIndex].primaryVerse ||
+                        displayClips[activeReviewIndex].title}
+                      &rdquo;
+                    </p>
+                    <p
+                      className="text-[11px] text-muted-foreground font-urdu"
+                      dir="rtl"
+                    >
+                      آخری شعر: &ldquo;
+                      {displayClips[activeReviewIndex].captions?.[
+                        displayClips[activeReviewIndex].captions.length - 1
+                      ]?.textUrdu ||
+                        displayClips[activeReviewIndex].captions?.[
+                          displayClips[activeReviewIndex].captions.length - 1
+                        ]?.text ||
+                        'مکمل قافیہ و ردیف'}
+                      &rdquo; • مشتمل بر{' '}
+                      {displayClips[activeReviewIndex].captions?.length || 0}{' '}
+                      کلمات بغیر کسی لفظ کی کٹوتی کے۔
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2 shrink-0 w-full md:w-auto">
@@ -1569,6 +2126,10 @@ export function ClipsGallery({
                           videoSource?.blobUrl ||
                           videoSource?.videoUrl ||
                           videoSource?.url,
+                        language: isGamingOverall ? 'en' : 'ur',
+                        contentType: isGamingOverall
+                          ? 'gaming-gta'
+                          : 'naat-recitation',
                         existingCaptions: activeClipToSync.captions,
                       }),
                     })
@@ -1577,7 +2138,9 @@ export function ClipsGallery({
                         if (data.success && onUpdateCaptions) {
                           onUpdateCaptions(activeClipToSync.id, data.captions);
                           showSuccess(
-                            'Urdu Captions Synchronized!',
+                            isGamingOverall
+                              ? 'English Dialogue Synchronized!'
+                              : 'Urdu Captions Synchronized!',
                             `Aligned ${data.stats?.wordsCount || 0} words directly to Short #${activeReviewIndex + 1}'s audio.`
                           );
                         }
@@ -1585,10 +2148,18 @@ export function ClipsGallery({
                       .catch((err) => showToast(err.message, 'error'));
                   }}
                   className="rounded-xl text-xs font-bold gap-1 cursor-pointer h-9 border-primary/40 text-primary hover:bg-primary/10"
-                  title="Re-align this Short's Urdu captions directly against its audio"
+                  title={
+                    isGamingOverall
+                      ? "Re-align this Short's English dialogue with audio"
+                      : "Re-align this Short's Urdu captions directly against its audio"
+                  }
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Sync Urdu Captions</span>
+                  <span>
+                    {isGamingOverall
+                      ? 'Sync English Dialogue'
+                      : 'Sync Urdu Captions'}
+                  </span>
                 </Button>
 
                 <Button
@@ -1639,8 +2210,8 @@ export function ClipsGallery({
         </div>
       )}
 
-      {/* Grid of Generated Clips with Interactive In-Card Players & AI Cover Downloads */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Grid of Generated Clips with Controlled Responsive Columns */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 gap-5 sm:gap-6">
         {displayClips.map((clip) => (
           <ClipCardPlayer
             key={`${clip.id}-${captionLang}`}

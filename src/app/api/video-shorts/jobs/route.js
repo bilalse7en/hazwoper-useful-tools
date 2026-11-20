@@ -8,6 +8,7 @@ import {
   updateJob,
   loadAllJobs,
 } from '@/lib/video-shorts/job-queue-service';
+import { scheduleQueueTick } from '@/lib/video-shorts/ingestion-queue-service';
 import { getMediaHubItem } from '@/lib/video-shorts/media-storage-service';
 import { getLocalMediaDir } from '@/lib/video-shorts/storage-paths';
 
@@ -86,22 +87,18 @@ export async function POST(request) {
       }
     }
 
-    // Fallback: search most recent media in media-hub
-    if (!videoUrl && !localPath) {
+    // Strictly resolve from specified actualMediaId if localPath is not yet set
+    if (!localPath && actualMediaId) {
       const hubBase = getLocalMediaDir();
-      if (fs.existsSync(hubBase)) {
-        const dirs = fs.readdirSync(hubBase).sort().reverse();
-        for (const d of dirs) {
-          const dPath = path.join(hubBase, d);
-          if (fs.statSync(dPath).isDirectory()) {
-            const vFiles = fs
-              .readdirSync(dPath)
-              .filter((f) => f.endsWith('.mp4') || f.endsWith('.webm'));
-            if (vFiles.length > 0) {
-              localPath = path.join(dPath, vFiles[0]);
-              videoUrl = `/media-hub/${d}/${vFiles[0]}`;
-              break;
-            }
+      const targetDir = path.join(hubBase, actualMediaId);
+      if (fs.existsSync(targetDir) && fs.statSync(targetDir).isDirectory()) {
+        const vFiles = fs
+          .readdirSync(targetDir)
+          .filter((f) => f.endsWith('.mp4') || f.endsWith('.webm'));
+        if (vFiles.length > 0) {
+          localPath = path.join(targetDir, vFiles[0]);
+          if (!videoUrl) {
+            videoUrl = `/media-hub/${actualMediaId}/${vFiles[0]}`;
           }
         }
       }
@@ -147,7 +144,7 @@ export async function POST(request) {
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const jobId = searchParams.get('id');
+    const jobId = searchParams.get('id') || searchParams.get('jobId');
 
     if (!jobId) {
       const allJobs = loadAllJobs();
@@ -161,6 +158,14 @@ export async function GET(request) {
     const job = getJob(jobId);
     if (!job) {
       return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
+    }
+
+    // If this is an ingestion job that is waiting, ensure worker is alive
+    if (
+      job.type === 'youtube_ingest' &&
+      ['queued', 'waiting_retry'].includes(job.status)
+    ) {
+      scheduleQueueTick(50);
     }
 
     return NextResponse.json({

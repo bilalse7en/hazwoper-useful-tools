@@ -1125,7 +1125,7 @@ export function FacetGlassSuite({ user, isGuest }) {
   }, [isDark, isGuest, handleCTAClick, handleToggleShatter]);
 
   return (
-    <section className="py-12 sm:py-16 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+    <section className="site-container py-12 sm:py-16">
       <div
         ref={containerRef}
         className="relative w-full aspect-[16/10] sm:aspect-[16/9] min-h-[540px] max-h-[720px] overflow-hidden flex items-center justify-center select-none group bg-transparent"

@@ -142,9 +142,21 @@ export function validateCourseJson(courseJson) {
       : 'At least one lesson has no topics or topics missing id/name/headingContent.'
   );
 
-  // Check 6: Topics have leftDiv.editorHtml populated
+  // Check 6: Topics have leftDiv.editorHtml populated (exempt intentional Course Title slides)
+  const courseTitle = courseJson.course_title || courseJson.courseTitle || '';
   let emptyEditors = 0;
   for (const t of allTopics) {
+    const isCourseTitleSlide =
+      (courseTitle &&
+        (t.name === courseTitle || t.headingContent === courseTitle)) ||
+      t.id?.endsWith('_0_0_1') ||
+      t.id?.endsWith('_1_0_1');
+    const isImageSlide = Boolean(
+      t.leftDiv?.image?.isImage || t.image_source || t.image_code
+    );
+    if (isCourseTitleSlide || isImageSlide) {
+      continue;
+    }
     const html = t.leftDiv?.editorHtml;
     if (!html || typeof html !== 'string' || html.trim().length === 0) {
       emptyEditors += 1;
@@ -357,8 +369,10 @@ export function validateCourseJson(courseJson) {
   let invalidDefaults = 0;
   for (const t of allTopics) {
     if (
-      t.selectedTemplate !== 1 ||
-      (t.slide_type !== 'image' && t.slide_type !== 'content') ||
+      (t.selectedTemplate !== 1 && t.selectedTemplate !== 0) ||
+      (t.slide_type !== 'image' &&
+        t.slide_type !== 'content' &&
+        t.slide_type !== 'text') ||
       t.leftDiv?.width !== 'col-12'
     ) {
       invalidDefaults += 1;
@@ -371,7 +385,7 @@ export function validateCourseJson(courseJson) {
     passedDefaults,
     passedDefaults ? 'info' : 'warning',
     passedDefaults
-      ? 'All topics correctly configured with selectedTemplate: 1, valid slide_type ("image" or "content"), width: "col-12".'
+      ? 'All topics correctly configured with valid selectedTemplate (0 or 1), valid slide_type ("image", "content", or "text"), width: "col-12".'
       : `${invalidDefaults} topic(s) deviate from required LMS slide defaults.`
   );
 
@@ -398,6 +412,49 @@ export function validateCourseJson(courseJson) {
       : `${invalidRightDivs} topic(s) have uninitialized or non-standard rightDiv.`
   );
 
+  // Check 15: Unique slide titles within each lesson
+  const duplicateSlideAlerts = [];
+  modules.forEach((m) => {
+    (m.lessons || []).forEach((l) => {
+      const seenTitles = new Map();
+      (l.topics || []).forEach((t, tIdx) => {
+        const norm = (t.name || t.headingContent || '').trim().toLowerCase();
+        if (norm) {
+          if (seenTitles.has(norm)) {
+            duplicateSlideAlerts.push({
+              moduleId: m.module_id,
+              moduleTitle: m.module_title,
+              lessonId: l.lesson_id,
+              lessonTitle: l.lesson_title,
+              topicId: t.id,
+              topicName: t.name,
+              topicIndex: tIdx,
+              firstIndex: seenTitles.get(norm),
+            });
+          } else {
+            seenTitles.set(norm, tIdx);
+          }
+        }
+      });
+    });
+  });
+
+  const passedUniqueTitles = duplicateSlideAlerts.length === 0;
+  addCheck(
+    'CHECK_15_UNIQUE_SLIDE_TITLES',
+    'Unique Slide Titles Within Lessons',
+    passedUniqueTitles,
+    passedUniqueTitles ? 'info' : 'warning',
+    passedUniqueTitles
+      ? 'All slide titles are unique within their respective lessons.'
+      : `${duplicateSlideAlerts.length} duplicate slide title(s) detected: ${duplicateSlideAlerts
+          .map(
+            (d) =>
+              `"${d.topicName}" in ${d.lessonTitle} (Slide ${d.firstIndex + 1} & Slide ${d.topicIndex + 1})`
+          )
+          .join(', ')}.`
+  );
+
   const errorChecks = checks.filter((c) => !c.passed && c.level === 'error');
   const warningChecks = checks.filter(
     (c) => !c.passed && c.level === 'warning'
@@ -411,11 +468,13 @@ export function validateCourseJson(courseJson) {
     isValid,
     score,
     checks,
+    duplicateSlideAlerts,
     summary: {
       total: checks.length,
       passed: passedCount,
       errors: errorChecks.length,
       warnings: warningChecks.length,
+      duplicateSlideAlertsCount: duplicateSlideAlerts.length,
     },
   };
 }

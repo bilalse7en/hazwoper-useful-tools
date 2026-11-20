@@ -254,15 +254,20 @@ export async function runJobWorker(jobId) {
       }
 
       // 3. Stage: Transcribing Audio with Whisper ONNX
+      const isGaming = job.settings?.contentType === 'gaming-gta';
+      const isEnglish = isGaming || job.settings?.captionLanguage === 'en';
+      const lang = isEnglish ? 'en' : job.settings?.captionLanguage || 'ur';
+
       updateJob(jobId, {
         status: 'transcribing',
-        current_stage:
-          'Transcribing speech into authentic Urdu script via Whisper (45%)',
+        current_stage: isEnglish
+          ? 'Transcribing commentary & dialogue into creative English captions (45%)'
+          : 'Transcribing speech into authentic Urdu script via Whisper (45%)',
         progress: 45,
       });
 
       const hasUrdu = /[\u0600-\u06FF]/.test(job.transcript || '');
-      if (job.transcript && hasUrdu) {
+      if (job.transcript && (hasUrdu || isEnglish)) {
         const parsed = parseVttFile(job.transcript);
         captions = mergeIntoPhraseCaptions(parsed, 10, 1.0);
       } else if (fs.existsSync(wavPath)) {
@@ -270,8 +275,8 @@ export async function runJobWorker(jobId) {
           const whisperRes = await transcribeUrduVideo({
             audioPath: wavPath,
             videoPath: localVideoPath,
-            language: 'ur',
-            referenceLyrics: job.settings?.referenceLyrics,
+            language: lang,
+            referenceLyrics: isEnglish ? null : job.settings?.referenceLyrics,
           });
           captions = whisperRes.captions || [];
         } catch (sttErr) {
@@ -282,17 +287,20 @@ export async function runJobWorker(jobId) {
         }
       }
 
-      // 4. Stage: Aligning & Transliterating Urdu to Roman Urdu
+      // 4. Stage: Subtitle Formatting & Transliteration
       updateJob(jobId, {
         status: 'aligning',
-        current_stage:
-          'Linguistically aligning Urdu script & Roman Urdu transliteration (65%)',
+        current_stage: isEnglish
+          ? 'Formatting dynamic viral English captions & word timings (65%)'
+          : 'Linguistically aligning Urdu script & Roman Urdu transliteration (65%)',
         progress: 65,
       });
 
-      const transliterationStyle =
-        job.settings?.transliterationStyle || 'conversational';
-      captions = transliterateUrduCaptions(captions, transliterationStyle);
+      if (!isEnglish) {
+        const transliterationStyle =
+          job.settings?.transliterationStyle || 'conversational';
+        captions = transliterateUrduCaptions(captions, transliterationStyle);
+      }
     } else {
       updateJob(jobId, {
         status: 'selecting_clips',
@@ -320,10 +328,27 @@ export async function runJobWorker(jobId) {
 
     // Attach authentic phrase-segmented captions to each individual clip
     const clipsWithCaptions = discovered.map((clip, idx) => {
+      const rawStart =
+        typeof clip.start === 'number'
+          ? clip.start
+          : typeof clip.startTime === 'number'
+            ? clip.startTime
+            : clip.sourceStartSeconds || 0;
+      const rawEnd =
+        typeof clip.end === 'number'
+          ? clip.end
+          : typeof clip.endTime === 'number'
+            ? clip.endTime
+            : clip.sourceEndSeconds || rawStart + (clip.duration || 25);
+      const rawDuration =
+        typeof clip.duration === 'number'
+          ? clip.duration
+          : parseFloat((rawEnd - rawStart).toFixed(2));
+
       const timing = normalizeCanonicalTiming({
-        sourceStartSeconds: clip.start,
-        sourceEndSeconds: clip.end,
-        duration: clip.duration,
+        sourceStartSeconds: rawStart,
+        sourceEndSeconds: rawEnd,
+        duration: rawDuration,
       });
 
       const clipCaptions =
@@ -335,20 +360,56 @@ export async function runJobWorker(jobId) {
               timing.sourceEndSeconds
             );
 
+      const resolvedCaptionMode =
+        job.settings?.captionMode ||
+        (job.settings?.contentType === 'gaming-gta' ||
+        job.settings?.captionLanguage === 'en'
+          ? 'english'
+          : 'dual-urdu-roman');
+
       return {
         ...clip,
         ...timing,
+        start: timing.sourceStartSeconds,
+        end: timing.sourceEndSeconds,
+        sourceStartSeconds: timing.sourceStartSeconds,
+        sourceEndSeconds: timing.sourceEndSeconds,
+        startTime: timing.sourceStartSeconds,
+        endTime: timing.sourceEndSeconds,
+        duration: timing.duration,
         id: clip.id || `clip-${idx + 1}`,
         clipId: clip.id || `clip-${idx + 1}`,
         index: idx + 1,
         captions: clipCaptions,
-        captionMode: job.settings?.captionMode || 'dual-urdu-roman',
+        captionMode: resolvedCaptionMode,
         sourceUrl: job.video_url,
         syncStatus:
           clipCaptions.length > 0 ? 'synchronized' : 'needs_manual_review',
         renderStatus: 'ready',
         lastModified: new Date().toISOString(),
       };
+    });
+
+    // Immediately publish candidate clips so frontend displays all cards 1 by 1
+    const initialDiscoveredClips = clipsWithCaptions.map((c, idx) => ({
+      ...c,
+      isRendered: false,
+      renderStatus: idx === 0 ? 'rendering' : 'queued',
+      renderProgress: idx === 0 ? 15 : 0,
+      renderStage:
+        idx === 0
+          ? 'Preparing 9:16 vertical crop...'
+          : `Queued (#${idx + 1} in line)`,
+    }));
+
+    updateJob(jobId, {
+      status: 'rendering_shorts',
+      current_stage: `Discovered ${clipsWithCaptions.length} shorts. Rendering Short #1 of ${clipsWithCaptions.length} (80%)...`,
+      progress: 80,
+      output: {
+        clips: initialDiscoveredClips,
+        thumbnailCandidates: [],
+      },
     });
 
     // 6. Stage: Generating Thumbnail Candidates
@@ -399,9 +460,35 @@ export async function runJobWorker(jobId) {
       const clipCaptionMode = clip.captionMode || defaultCaptionMode;
       const clipProgress =
         88 + Math.round(((cIdx + 1) / clipsWithCaptions.length) * 8);
+
+      // Publish active rendering state for current short 1 by 1
+      const activeClipsStage1 = clipsWithCaptions.map((c, idx) => {
+        if (idx < cIdx) return renderedShorts[idx];
+        if (idx === cIdx) {
+          return {
+            ...c,
+            isRendered: false,
+            renderStatus: 'rendering',
+            renderProgress: 25,
+            renderStage: `Cutting 9:16 vertical crop (${c.duration}s)...`,
+          };
+        }
+        return {
+          ...c,
+          isRendered: false,
+          renderStatus: 'queued',
+          renderProgress: 0,
+          renderStage: `Queued (#${idx + 1} in line)`,
+        };
+      });
+
       updateJob(jobId, {
-        current_stage: `Rendering Short #${cIdx + 1}/${clipsWithCaptions.length}: 1080x1920 with ${clipCaptionMode} captions (${clipProgress}%)...`,
+        current_stage: `Rendering Short #${cIdx + 1} of ${clipsWithCaptions.length} 1-by-1 (${clipProgress}%)...`,
         progress: clipProgress,
+        output: {
+          clips: activeClipsStage1,
+          thumbnailCandidates: thumbCandidates,
+        },
       });
 
       const shortTempDir = path.join(tempDir, `clip_${cIdx + 1}`);
@@ -436,17 +523,22 @@ export async function runJobWorker(jobId) {
         }
       }
 
-      // Build high-quality vertical 9:16 FFmpeg arguments
+      // Build high-quality vertical 9:16 FFmpeg arguments with shot-by-shot tracking and audio fades
       const ffmpegArgs = buildFFmpegArgs({
         inputPath: localVideoPath,
         outputPath: shortOutPath,
-        startTime: clip.start,
+        startTime: clip.sourceStartSeconds ?? clip.start ?? clip.startTime ?? 0,
         duration: clip.duration,
         aspectRatio: '9:16',
-        framingMode: job.settings?.framingMode || 'smart-face',
-        cropX: null,
+        framingMode:
+          job.settings?.framingMode ||
+          (job.settings?.contentType === 'gaming-gta'
+            ? 'action-tracking'
+            : 'smart-face'),
+        cropX: clip.cropX ?? 50,
+        shotTracking: clip.shotTracking || null,
         fadeIn: 0.4,
-        fadeOut: 0.4,
+        fadeOut: 0.6,
         normalizeAudio: true,
         assPath: assSubtitlePath,
         sourceWidth: probe?.width || 1920,
@@ -454,11 +546,44 @@ export async function runJobWorker(jobId) {
         hasAudio: probe?.hasAudio ?? true,
       });
 
+      const renderTimeout = Math.max(
+        360000,
+        Math.round((clip.duration || 60) * 15000)
+      );
+
+      // Publish mid-render update: burning subtitles
+      const activeClipsStage2 = clipsWithCaptions.map((c, idx) => {
+        if (idx < cIdx) return renderedShorts[idx];
+        if (idx === cIdx) {
+          return {
+            ...c,
+            isRendered: false,
+            renderStatus: 'rendering',
+            renderProgress: 65,
+            renderStage: `Encoding 9:16 vertical video & subtitles (65%)...`,
+          };
+        }
+        return {
+          ...c,
+          isRendered: false,
+          renderStatus: 'queued',
+          renderProgress: 0,
+          renderStage: `Queued (#${idx + 1} in line)`,
+        };
+      });
+      updateJob(jobId, {
+        output: {
+          clips: activeClipsStage2,
+          thumbnailCandidates: thumbCandidates,
+        },
+      });
+
       try {
         await new Promise((resolve, reject) => {
           runFFmpegJob({
             args: ffmpegArgs,
             duration: clip.duration,
+            timeoutMs: renderTimeout,
             onComplete: resolve,
             onError: reject,
           });
@@ -473,13 +598,19 @@ export async function runJobWorker(jobId) {
           const cleanFfmpegArgs = buildFFmpegArgs({
             inputPath: localVideoPath,
             outputPath: shortOutPath,
-            startTime: clip.start,
+            startTime:
+              clip.sourceStartSeconds ?? clip.start ?? clip.startTime ?? 0,
             duration: clip.duration,
             aspectRatio: '9:16',
-            framingMode: job.settings?.framingMode || 'smart-face',
-            cropX: null,
+            framingMode:
+              job.settings?.framingMode ||
+              (job.settings?.contentType === 'gaming-gta'
+                ? 'action-tracking'
+                : 'smart-face'),
+            cropX: clip.cropX ?? 50,
+            shotTracking: clip.shotTracking || null,
             fadeIn: 0.4,
-            fadeOut: 0.4,
+            fadeOut: 0.6,
             normalizeAudio: true,
             assPath: null,
             sourceWidth: probe?.width || 1920,
@@ -490,6 +621,7 @@ export async function runJobWorker(jobId) {
             runFFmpegJob({
               args: cleanFfmpegArgs,
               duration: clip.duration,
+              timeoutMs: renderTimeout,
               onComplete: resolve,
               onError: reject,
             });
@@ -526,14 +658,46 @@ export async function runJobWorker(jobId) {
         resolution: '1080x1920',
       });
 
-      renderedShorts.push({
+      const completedClip = {
         ...clip,
         videoUrl: shortMediaItem.download_url || shortMediaItem.downloadUrl,
         downloadUrl: shortMediaItem.download_url || shortMediaItem.downloadUrl,
         mediaHubId: shortMediaItem.id,
         isRendered: true,
         renderStatus: 'completed',
+        renderProgress: 100,
+        renderStage: '✓ Ready to play',
         probe: shortProbe,
+      };
+      renderedShorts.push(completedClip);
+
+      // PROGRESSIVE 1-BY-1 OUTPUT: Immediately publish completed short! Next short transitions to rendering!
+      const inProgressOutputs = clipsWithCaptions.map((c, idx) => {
+        if (idx <= cIdx) return renderedShorts[idx];
+        if (idx === cIdx + 1) {
+          return {
+            ...c,
+            isRendered: false,
+            renderStatus: 'rendering',
+            renderProgress: 15,
+            renderStage: `Starting Short #${idx + 1}...`,
+          };
+        }
+        return {
+          ...c,
+          isRendered: false,
+          renderStatus: 'queued',
+          renderProgress: 0,
+          renderStage: `Queued (#${idx + 1} in line)`,
+        };
+      });
+
+      updateJob(jobId, {
+        current_stage: `Short #${cIdx + 1} ready! ${cIdx + 1 < clipsWithCaptions.length ? `Rendering Short #${cIdx + 2} of ${clipsWithCaptions.length}...` : 'All shorts generated!'}`,
+        output: {
+          clips: inProgressOutputs,
+          thumbnailCandidates: thumbCandidates,
+        },
       });
     }
 

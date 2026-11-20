@@ -25,6 +25,7 @@ import {
   Mic,
   GraduationCap,
   Flame,
+  Gamepad2,
   CheckCircle2,
   ArrowRight,
   RotateCcw,
@@ -49,6 +50,8 @@ import {
   CAPTION_STYLES,
   CAPTION_LANGUAGES,
   CAPTION_MODES,
+  GAMING_CAPTION_MODES,
+  MUSIC_CAPTION_MODES,
   TRANSLITERATION_STYLES,
   OPENING_STYLES,
   CONTENT_TYPES,
@@ -57,6 +60,13 @@ import {
 import { isValidYouTubeUrl } from '@/lib/video-shorts/source-parser';
 import { MediaHubDrawer } from './media-hub-drawer';
 import { YouTubeCookieButton } from './youtube-cookie-button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 export function VideoInputSection({
@@ -68,6 +78,7 @@ export function VideoInputSection({
   onResetVideo,
   settings,
   onUpdateSettings,
+  onSelectGenre,
   isProcessing,
   processingStatus,
   queueStatus,
@@ -75,8 +86,16 @@ export function VideoInputSection({
   youtubeIssue,
   onClearYoutubeIssue,
 }) {
+  const handleProfileClick = (genre, defaults) => {
+    if (onSelectGenre) {
+      onSelectGenre(genre, defaults);
+    } else {
+      onUpdateSettings({ contentType: genre, ...defaults });
+    }
+  };
   const [isMediaHubOpen, setIsMediaHubOpen] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [downloadQuality, setDownloadQuality] = useState('4k'); // '4k' | '2k' | '1080p' | '720p' | 'highest'
   const [urlError, setUrlError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [showLyricsPanel, setShowLyricsPanel] = useState(false);
@@ -174,7 +193,7 @@ export function VideoInputSection({
       return;
     }
 
-    onAnalyzeUrl(youtubeUrl.trim());
+    onAnalyzeUrl(youtubeUrl.trim(), downloadQuality);
   };
 
   const formatSeconds = (sec) => {
@@ -190,10 +209,13 @@ export function VideoInputSection({
       <div className="text-center space-y-3 max-w-2xl mx-auto">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 shadow-xs">
           <Sparkles className="w-3.5 h-3.5 text-primary" />
-          <span>OpusClip-Style Intelligent AI Shorts Studio</span>
+          <span>ALL USEFUL TOOLS AI Video Shorts Studio 2.0</span>
+          <Badge className="bg-primary/20 text-primary border-primary/30 text-[9px] font-mono font-bold">
+            v2.0 4K
+          </Badge>
         </div>
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground to-primary">
-          Turn Long Videos into Viral Shorts
+          Turn Long Videos into Viral 4K Shorts
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
           Upload any video or YouTube link. The AI detects true speech onsets,
@@ -243,9 +265,145 @@ export function VideoInputSection({
             </div>
           </div>
 
-          {/* Unified Klap-Style Ingestion Container */}
+          {/* Unified Ingestion Container */}
           <div className="space-y-5">
-            {/* Direct YouTube Link Input (1-Click Primary Action) */}
+            {/* Step 0: Select Content Profile Upfront */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  <span>1. Select Video Genre & AI Profile</span>
+                </Label>
+                <span className="text-[11px] font-mono font-bold text-primary">
+                  {settings.contentType === 'gaming-gta'
+                    ? '🎮 GTA 6 / Gaming Action'
+                    : settings.contentType === 'music-songs'
+                      ? '🎵 Songs & Vocal Hooks'
+                      : '🕌 Islamic Naat / Tilawat'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. GAMING */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleProfileClick('gaming-gta', {
+                      captionLanguage: 'en',
+                      captionMode: 'english',
+                      captionStyle: 'beast-bold',
+                      framingMode: 'action-tracking',
+                      exportQuality: '4k',
+                      targetDuration: 30,
+                    })
+                  }
+                  className={cn(
+                    'p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between text-left shadow-xs',
+                    settings.contentType === 'gaming-gta'
+                      ? 'border-purple-500 bg-purple-500/15 shadow-md shadow-purple-500/10 ring-2 ring-purple-500/30'
+                      : 'border-border/70 bg-card hover:border-purple-500/40'
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-lg shrink-0">
+                      🎮
+                    </div>
+                    <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-[9px] font-mono font-bold">
+                      4K ACTION
+                    </Badge>
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm text-foreground">
+                      GTA 6 & Gaming Action
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-snug mt-1">
+                      Action scene cuts • Vehicle & stunt tracking • Bold
+                      English punchlines
+                    </p>
+                  </div>
+                </button>
+
+                {/* 2. NAAT & RECITATION */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleProfileClick('naat-recitation', {
+                      captionLanguage: 'urdu',
+                      captionMode: 'dual-urdu-roman',
+                      captionStyle: 'beast-bold',
+                      framingMode: 'trending-ai-speaker',
+                      exportQuality: '4k',
+                      targetDuration: 35,
+                    })
+                  }
+                  className={cn(
+                    'p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between text-left shadow-xs',
+                    (settings.contentType || 'naat-recitation') ===
+                      'naat-recitation'
+                      ? 'border-emerald-500 bg-emerald-500/15 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/30'
+                      : 'border-border/70 bg-card hover:border-emerald-500/40'
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg shrink-0">
+                      🕌
+                    </div>
+                    <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[9px] font-mono font-bold">
+                      SACRED VERSE
+                    </Badge>
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm text-foreground">
+                      Islamic Naat & Tilawat
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-snug mt-1">
+                      Urdu Nastaliq & Roman • Couplet phrase snapping • Sacred
+                      B-Roll
+                    </p>
+                  </div>
+                </button>
+
+                {/* 3. SONGS & MUSIC */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleProfileClick('music-songs', {
+                      captionLanguage: 'en',
+                      captionMode: 'karaoke-glow',
+                      captionStyle: 'karaoke-glow',
+                      framingMode: 'rhythm-framing',
+                      exportQuality: '4k',
+                      targetDuration: 30,
+                    })
+                  }
+                  className={cn(
+                    'p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between text-left shadow-xs',
+                    settings.contentType === 'music-songs'
+                      ? 'border-pink-500 bg-pink-500/15 shadow-md shadow-pink-500/10 ring-2 ring-pink-500/30'
+                      : 'border-border/70 bg-card hover:border-pink-500/40'
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center font-bold text-lg shrink-0">
+                      🎵
+                    </div>
+                    <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30 text-[9px] font-mono font-bold">
+                      VIRAL CHORUS
+                    </Badge>
+                  </div>
+                  <div>
+                    <div className="font-bold text-sm text-foreground">
+                      Songs & Music Tracks
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-snug mt-1">
+                      Beat-drop hooks • Karaoke neon glow lyrics • Rhythm-synced
+                      cuts
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Direct YouTube Link Input */}
             <form onSubmit={handleUrlSubmit} className="space-y-3">
               <div className="p-4 sm:p-6 rounded-2xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all space-y-3 shadow-inner">
                 <div className="flex items-center justify-between">
@@ -259,7 +417,7 @@ export function VideoInputSection({
                     variant="outline"
                     className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
                   >
-                    1080p FHD Quality
+                    4K Ultra HD Master Quality
                   </Badge>
                 </div>
 
@@ -275,13 +433,51 @@ export function VideoInputSection({
                     className="h-12 rounded-xl text-sm font-mono flex-1 bg-background shadow-xs"
                     disabled={isProcessing}
                   />
+
+                  {/* Quality Priority Dropdown */}
+                  <div className="w-full sm:w-[190px] shrink-0">
+                    <Select
+                      value={downloadQuality}
+                      onValueChange={setDownloadQuality}
+                      disabled={isProcessing}
+                    >
+                      <SelectTrigger className="h-12 rounded-xl bg-background border-border font-bold text-xs text-foreground shadow-xs">
+                        <SelectValue placeholder="Target Quality" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-popover border-border">
+                        <SelectItem value="4k" className="font-bold text-xs">
+                          ⚡ 4K UHD (2160p First)
+                        </SelectItem>
+                        <SelectItem value="2k" className="font-bold text-xs">
+                          ✨ 2K QHD (1440p)
+                        </SelectItem>
+                        <SelectItem value="1080p" className="font-bold text-xs">
+                          🎬 Full HD (1080p)
+                        </SelectItem>
+                        <SelectItem value="720p" className="font-bold text-xs">
+                          📱 HD (720p)
+                        </SelectItem>
+                        <SelectItem
+                          value="highest"
+                          className="font-bold text-xs"
+                        >
+                          🚀 Best Available
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <Button
                     type="submit"
                     disabled={isProcessing || !youtubeUrl.trim()}
                     className="h-12 px-6 rounded-xl font-bold cursor-pointer shrink-0 bg-gradient-to-r from-amber-500 via-primary to-primary text-white hover:opacity-95 shadow-lg shadow-primary/25 transition-all"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
-                    <span>⚡ Generate Shorts</span>
+                    <span>
+                      {settings.contentType === 'gaming-gta'
+                        ? '⚡ Ingest 4K Gaming Video'
+                        : '⚡ Ingest 4K Video'}
+                    </span>
                   </Button>
                 </div>
 
@@ -294,18 +490,22 @@ export function VideoInputSection({
 
                 <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />{' '}
-                    1080p Full HD
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> 4K
+                    Ultra HD (2160p 60fps)
                   </span>
                   <span>•</span>
                   <span className="inline-flex items-center gap-1 font-medium text-foreground">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />{' '}
-                    Audio-Onset Lead-In (-1.0s)
+                    {settings.contentType === 'gaming-gta'
+                      ? 'Multi-View Action Camera Tracking'
+                      : 'Audio-Onset Lead-In (-1.0s)'}
                   </span>
                   <span>•</span>
                   <span className="inline-flex items-center gap-1 font-medium text-foreground">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />{' '}
-                    Urdu &amp; Roman Typing Subtitles
+                    {settings.contentType === 'gaming-gta'
+                      ? 'Creative English Captions'
+                      : 'Urdu & Roman Typing Subtitles'}
                   </span>
                   <span>•</span>
                   <span className="inline-flex items-center gap-1 font-medium text-foreground">
@@ -417,7 +617,7 @@ export function VideoInputSection({
             </div>
           </div>
 
-          {/* 3-Phase Klap Loading Screen */}
+          {/* ALL USEFUL TOOLS Generation Progress */}
           {isProcessing && (
             <div className="p-6 rounded-3xl border border-primary/30 bg-primary/5 space-y-5 animate-in fade-in">
               <div className="flex items-center justify-between">
@@ -427,7 +627,7 @@ export function VideoInputSection({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-foreground">
-                      Klap AI Shorts Engine Active
+                      ALL USEFUL TOOLS AI Shorts Engine Active
                     </h4>
                     <p className="text-xs text-muted-foreground">
                       {processingStatus ||
@@ -550,6 +750,29 @@ export function VideoInputSection({
                     <CheckCircle2 className="w-3 h-3" />
                     <span>Saved to Media Assets</span>
                   </Badge>
+                  {videoSource.resolution && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-[10px] font-mono font-bold flex items-center gap-1',
+                        videoSource.resolution.includes('3840') ||
+                          videoSource.resolution.includes('2160')
+                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                          : videoSource.resolution.includes('1920') ||
+                              videoSource.resolution.includes('1080')
+                            ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                            : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      )}
+                    >
+                      {videoSource.resolution.includes('3840') ||
+                      videoSource.resolution.includes('2160')
+                        ? `⚡ 4K UHD (${videoSource.resolution})`
+                        : videoSource.resolution.includes('1920') ||
+                            videoSource.resolution.includes('1080')
+                          ? `🎬 1080p FHD (${videoSource.resolution})`
+                          : `📱 ${videoSource.resolution}`}
+                    </Badge>
+                  )}
                   {videoSource.transcript && (
                     <Badge
                       variant="outline"
@@ -585,90 +808,197 @@ export function VideoInputSection({
             </Button>
           </Card>
 
-          {/* 1-Click Fast Generation Hero Card */}
-          <Card className="p-6 sm:p-8 rounded-3xl border-primary/40 shadow-2xl bg-gradient-to-b from-card via-card to-primary/5 space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1.5">
+          {/* STEP 2: CONFIGURE & GENERATE SHORTS (Clean, Compact, Responsive) */}
+          <Card className="p-4 sm:p-6 md:p-8 rounded-3xl border-primary/40 shadow-2xl bg-gradient-to-b from-card via-card to-primary/5 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-4">
+              <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-primary text-primary-foreground font-bold text-xs uppercase px-2.5 py-0.5">
-                    1-Click Auto Mode
+                  <Badge className="bg-primary text-primary-foreground font-black text-xs uppercase px-2.5 py-0.5 rounded-full">
+                    Step 2: Ready to Generate
                   </Badge>
-                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> All Pro Settings
-                    Auto-Selected
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Highest Quality 4K / 1080p FHD
                   </span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
-                  Auto-Generate 9:16 Shorts with Typing Subtitles
+                  Choose Profile &amp; Launch
                 </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  AI will auto-center the reciter, transcribe Urdu &amp; Roman
-                  Urdu, add 1.0s audio pre-roll, and detect complete verses.
+              </div>
+
+              {/* Compact Mode Pill Selector */}
+              <div className="inline-flex p-1 rounded-2xl bg-muted/60 border border-border/60 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateSettings({
+                      contentType: 'gaming-gta',
+                      captionLanguage: 'en',
+                      captionMode: 'english',
+                      captionStyle: 'beast-bold',
+                      framingMode: 'action-tracking',
+                      exportQuality: '4k',
+                      targetDuration: 30,
+                    })
+                  }
+                  className={cn(
+                    'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    settings.contentType === 'gaming-gta'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <span>🎮</span>
+                  <span>Gaming (4K Action)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateSettings({
+                      contentType: 'naat-recitation',
+                      captionLanguage: 'urdu',
+                      captionMode: 'dual-urdu-roman',
+                      captionStyle: 'beast-bold',
+                      framingMode: 'trending-ai-speaker',
+                      exportQuality: '4k',
+                      targetDuration: 35,
+                    })
+                  }
+                  className={cn(
+                    'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    (settings.contentType || 'naat-recitation') ===
+                      'naat-recitation'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <span>🕌</span>
+                  <span>Islamic Naat (Urdu)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateSettings({
+                      contentType: 'music-songs',
+                      captionLanguage: 'en',
+                      captionMode: 'karaoke-glow',
+                      captionStyle: 'karaoke-glow',
+                      framingMode: 'rhythm-framing',
+                      exportQuality: '4k',
+                      targetDuration: 30,
+                    })
+                  }
+                  className={cn(
+                    'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5',
+                    settings.contentType === 'music-songs'
+                      ? 'bg-pink-600 text-white shadow-md'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <span>🎵</span>
+                  <span>Songs &amp; Music (Beat Drop)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Profile Summary & Duration Selector */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="p-3.5 rounded-2xl bg-card border border-border/70 space-y-1.5">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Target Short Duration
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onUpdateSettings({ targetDuration: 30 })}
+                    className={cn(
+                      'flex-1 py-1.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center',
+                      (settings.targetDuration || 30) <= 30
+                        ? 'bg-primary/15 border-primary text-primary font-black shadow-xs'
+                        : 'border-border/70 bg-muted/40 hover:bg-muted text-muted-foreground'
+                    )}
+                  >
+                    ⚡ 15s - 30s (Ultra Viral)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateSettings({ targetDuration: 60 })}
+                    className={cn(
+                      'flex-1 py-1.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center',
+                      (settings.targetDuration || 30) > 30
+                        ? 'bg-primary/15 border-primary text-primary font-black shadow-xs'
+                        : 'border-border/70 bg-muted/40 hover:bg-muted text-muted-foreground'
+                    )}
+                  >
+                    ⏱️ 30s - 60s (Extended)
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-card border border-border/70 space-y-1.5">
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Captions &amp; Framing Mode
+                </span>
+                <p className="text-xs text-foreground font-medium flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                  {settings.contentType === 'gaming-gta'
+                    ? 'English Creative Dialogue • Vehicle & Stunt Action Tracking'
+                    : settings.contentType === 'music-songs'
+                      ? 'Karaoke Neon Glow Lyrics • Rhythm & Beat-Drop Framing'
+                      : 'Urdu Nastaliq & Roman Urdu • Couplet Boundary Snapping'}
                 </p>
+              </div>
+            </div>
+
+            {/* Launch CTA */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <span className="font-bold text-foreground block">
+                  Highest Quality Standard: 4K Master Source &bull; Zero
+                  Watermarks
+                </span>
+                <span>
+                  Audio normalized with smooth fade-in and fade-out transitions.
+                </span>
               </div>
 
               <Button
                 size="lg"
                 onClick={onStartGeneration}
                 disabled={isProcessing}
-                className="w-full sm:w-auto px-8 h-14 rounded-2xl font-black text-base cursor-pointer shadow-xl bg-gradient-to-r from-primary via-emerald-600 to-primary text-primary-foreground hover:opacity-95 flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] shrink-0"
+                className={cn(
+                  'w-full sm:w-auto px-8 h-12 rounded-2xl font-black text-sm cursor-pointer shadow-xl text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shrink-0',
+                  settings.contentType === 'gaming-gta'
+                    ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:opacity-95 shadow-purple-500/20'
+                    : settings.contentType === 'music-songs'
+                      ? 'bg-gradient-to-r from-pink-600 via-purple-600 to-pink-600 hover:opacity-95 shadow-pink-500/20'
+                      : 'bg-gradient-to-r from-emerald-600 via-primary to-emerald-600 hover:opacity-95 shadow-emerald-500/20'
+                )}
               >
                 {isProcessing ? (
                   <>
-                    <Wand2 className="w-5 h-5 animate-spin" />
-                    <span>Auto-Generating Shorts...</span>
+                    <Wand2 className="w-4 h-4 animate-spin" />
+                    <span>Analyzing &amp; Generating Shorts...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5 text-amber-300" />
-                    <span>AUTO-GENERATE SHORTS (1080p FHD)</span>
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <span>
+                      {settings.contentType === 'gaming-gta'
+                        ? 'GENERATE GTA 6 SHORTS (4K)'
+                        : settings.contentType === 'music-songs'
+                          ? 'GENERATE MUSIC SHORTS (4K)'
+                          : 'GENERATE ISLAMIC SHORTS (4K)'}
+                    </span>
                     <ArrowRight className="w-4 h-4 ml-1" />
                   </>
                 )}
               </Button>
             </div>
 
-            {/* Smart Feature Badges */}
-            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/50 text-[11px] text-muted-foreground">
-              <span className="font-semibold text-foreground">
-                Active Defaults:
-              </span>
-              <Badge
-                variant="outline"
-                className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-medium"
-              >
-                1080p FHD Ingestion
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-primary/40 text-primary bg-primary/10 font-medium"
-              >
-                Smart Face &amp; Torso Centering
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-medium"
-              >
-                Urdu &rarr; Roman Urdu Typing Subtitles
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-sky-500/40 text-sky-600 dark:text-sky-400 bg-sky-500/10 font-medium"
-              >
-                1.0s Audio Onset Pre-roll
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-violet-500/40 text-violet-600 dark:text-violet-400 bg-violet-500/10 font-medium"
-              >
-                Complete Ash&apos;aar (Never Cut Mid-Verse)
-              </Badge>
-            </div>
-
             {/* Collapsible Advanced Toggle */}
-            <div className="pt-2 flex items-center justify-between">
+            <div className="pt-2 border-t border-border/40 flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                You can edit subtitles, trim, and adjust framing anytime in the
+                Subtitles, camera framing, and audio can be refined anytime in
                 Studio Editor.
               </p>
               <Button
@@ -711,247 +1041,398 @@ export function VideoInputSection({
                 </div>
               </div>
 
-              {/* SECTION 1: SHORTS CONTENT TYPE */}
+              {/* Profile-Specific Studio Mode Switcher */}
               <div className="space-y-3">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  <span>
-                    1. What type of video shorts do you want to create?
-                  </span>
-                </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {CONTENT_TYPES.map((type) => {
-                    const active =
-                      (settings.contentType || 'naat-recitation') === type.id;
-                    const Icon =
-                      type.id === 'naat-recitation'
-                        ? Moon
-                        : type.id === 'podcast-interview'
-                          ? Mic
-                          : type.id === 'educational-lecture'
-                            ? GraduationCap
-                            : Flame;
-
-                    return (
-                      <button
-                        key={type.id}
-                        type="button"
-                        onClick={() =>
-                          onUpdateSettings({ contentType: type.id })
-                        }
-                        className={cn(
-                          'p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 relative group hover:scale-[1.01]',
-                          active
-                            ? 'border-primary bg-primary/10 shadow-md text-foreground'
-                            : 'border-border/60 hover:border-border text-muted-foreground bg-muted/20'
-                        )}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <div
-                            className={cn(
-                              'w-9 h-9 rounded-xl flex items-center justify-center shadow-xs',
-                              active
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground'
-                            )}
-                          >
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-[9px] font-mono font-bold',
-                              active
-                                ? 'border-primary/50 text-primary'
-                                : 'text-muted-foreground'
-                            )}
-                          >
-                            {type.badge}
-                          </Badge>
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="font-bold text-xs sm:text-sm text-foreground">
-                            {type.name}
-                          </h4>
-                          <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
-                            {type.description}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* SECTION 2: VISUAL SOURCE SELECTION */}
-              <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <Film className="w-3.5 h-3.5 text-primary" />
-                    <span>2. Visual Source Mode</span>
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span>Choose Studio Customization Mode</span>
                   </Label>
-                  <span className="text-[11px] text-muted-foreground font-mono">
-                    Active:{' '}
-                    <strong className="text-primary">
-                      {VISUAL_SOURCES.find(
-                        (v) =>
-                          v.id === (settings.visualSourceMode || 'ai-choice')
-                      )?.label || 'AI Choose Best Option'}
-                    </strong>
+                  <span className="text-[11px] font-mono font-bold text-primary">
+                    {settings.contentType === 'gaming-gta'
+                      ? '🎮 Gaming Studio'
+                      : settings.contentType === 'music-songs'
+                        ? '🎵 Songs Studio'
+                        : '🕌 Naat Studio'}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {VISUAL_SOURCES.map((vs) => {
-                    const active =
-                      (settings.visualSourceMode || 'ai-choice') === vs.id;
-                    return (
-                      <button
-                        key={vs.id}
-                        type="button"
-                        onClick={() =>
-                          onUpdateSettings({ visualSourceMode: vs.id })
-                        }
-                        className={cn(
-                          'p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 relative group hover:scale-[1.01]',
-                          active
-                            ? 'border-primary bg-primary/10 shadow-md text-foreground ring-1 ring-primary/40'
-                            : 'border-border/60 hover:border-border text-muted-foreground bg-muted/20'
-                        )}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className="text-xs font-bold text-foreground">
-                            {vs.label}
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'text-[9px] font-mono font-bold',
-                              active
-                                ? 'border-primary/50 text-primary bg-primary/10'
-                                : 'text-muted-foreground'
-                            )}
-                          >
-                            {vs.badge}
-                          </Badge>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground leading-snug line-clamp-3">
-                          {vs.description}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* SECTION 3: DURATION & MOMENTS COUNT */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                {/* Duration Preset */}
-                <div className="space-y-3">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-primary" />
-                    <span>3. Shorts Duration (Strict 30s Minimum)</span>
-                  </Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {DURATION_PRESETS.filter((p) => p.id !== 'custom').map(
-                      (preset) => {
-                        const active = settings.durationPreset === preset.id;
-                        return (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() =>
-                              onUpdateSettings({ durationPreset: preset.id })
-                            }
-                            className={cn(
-                              'p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between',
-                              active
-                                ? 'border-primary bg-primary/10 text-primary shadow-xs'
-                                : 'border-border/60 hover:border-border text-muted-foreground bg-muted/20'
-                            )}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold uppercase">
-                                {preset.label}
-                              </span>
-                              <span className="text-[10px] font-mono font-bold">
-                                Target {preset.target}s
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-muted-foreground mt-1">
-                              {preset.description}
-                            </span>
-                          </button>
-                        );
-                      }
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleProfileClick('gaming-gta', {
+                        captionLanguage: 'en',
+                        captionMode: 'english',
+                        captionStyle: 'beast-bold',
+                        framingMode: 'action-tracking',
+                        exportQuality: '4k',
+                        targetDuration: 30,
+                      })
+                    }
+                    className={cn(
+                      'p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3',
+                      settings.contentType === 'gaming-gta'
+                        ? 'border-purple-500 bg-purple-500/15 shadow-md shadow-purple-500/10'
+                        : 'border-border/60 hover:border-purple-500/40 bg-card'
                     )}
-                  </div>
-                </div>
+                  >
+                    <span className="text-2xl">🎮</span>
+                    <div>
+                      <div className="font-bold text-xs text-foreground">
+                        Gaming Action Studio
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Action cuts • Drift • English
+                      </div>
+                    </div>
+                  </button>
 
-                {/* Number of Clips */}
-                <div className="space-y-3">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-primary" />
-                    <span>3. How Many Shorts to Generate?</span>
-                  </Label>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {CLIP_COUNT_PRESETS.map((cp) => {
-                      const active = settings.clipCount === cp.count;
-                      return (
-                        <button
-                          key={cp.count}
-                          type="button"
-                          onClick={() =>
-                            onUpdateSettings({ clipCount: cp.count })
-                          }
-                          className={cn(
-                            'p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1',
-                            active
-                              ? 'border-primary bg-primary/10 text-primary shadow-xs font-bold'
-                              : 'border-border/60 hover:border-border text-muted-foreground bg-muted/20'
-                          )}
-                        >
-                          <span className="text-sm font-black">
-                            {cp.count} Shorts
-                          </span>
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            {cp.count === 5 ? 'Recommended' : 'Highlights'}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleProfileClick('naat-recitation', {
+                        captionLanguage: 'urdu',
+                        captionMode: 'dual-urdu-roman',
+                        captionStyle: 'beast-bold',
+                        framingMode: 'trending-ai-speaker',
+                        exportQuality: '4k',
+                        targetDuration: 35,
+                      })
+                    }
+                    className={cn(
+                      'p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3',
+                      (settings.contentType || 'naat-recitation') ===
+                        'naat-recitation'
+                        ? 'border-emerald-500 bg-emerald-500/15 shadow-md shadow-emerald-500/10'
+                        : 'border-border/60 hover:border-emerald-500/40 bg-card'
+                    )}
+                  >
+                    <span className="text-2xl">🕌</span>
+                    <div>
+                      <div className="font-bold text-xs text-foreground">
+                        Islamic Naat Studio
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Nastaliq • Couplets • B-Roll
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleProfileClick('music-songs', {
+                        captionLanguage: 'en',
+                        captionMode: 'karaoke-glow',
+                        captionStyle: 'karaoke-glow',
+                        framingMode: 'rhythm-framing',
+                        exportQuality: '4k',
+                        targetDuration: 30,
+                      })
+                    }
+                    className={cn(
+                      'p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer flex items-center gap-3',
+                      settings.contentType === 'music-songs'
+                        ? 'border-pink-500 bg-pink-500/15 shadow-md shadow-pink-500/10'
+                        : 'border-border/60 hover:border-pink-500/40 bg-card'
+                    )}
+                  >
+                    <span className="text-2xl">🎵</span>
+                    <div>
+                      <div className="font-bold text-xs text-foreground">
+                        Songs & Music Studio
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        Beat drop • Karaoke • Hooks
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
 
-              {/* SECTION 3: SUBTITLES & FRAMING */}
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Aspect & Watermarks */}
+              {/* ========================================================================= */}
+              {/* MODE 1: GAMING & ACTION CUSTOMIZATION PANEL */}
+              {/* ========================================================================= */}
+              {settings.contentType === 'gaming-gta' && (
+                <div className="space-y-6 pt-2 border-t border-purple-500/30">
+                  <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Gamepad2 className="w-5 h-5 text-purple-400" />
+                      <div>
+                        <h3 className="font-bold text-sm text-foreground">
+                          🎮 Gaming Action Shorts Settings
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Tailored for GTA 6, high-speed car chases, explosions,
+                          stunts, and FPS gameplay
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/40 font-mono text-[10px]">
+                      4K 60FPS ENGINE
+                    </Badge>
+                  </div>
+
+                  {/* 1. Gaming Framing Mode */}
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-primary" />
-                      <span>Portrait &amp; Framing</span>
-                    </Label>
-                    <div className="p-3 rounded-2xl border border-primary/30 bg-primary/5 space-y-1">
-                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>9:16 Vertical Portrait</span>
+                      <Sliders className="w-3.5 h-3.5 text-purple-400" />
+                      <span>
+                        1. Gameplay Framing &amp; 9:16 Portrait Tracking
                       </span>
-                      <p className="text-[11px] text-muted-foreground">
-                        Auto-crops horizontal space + audio-visual speaker lip
-                        tracking.
-                      </p>
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        {
+                          id: 'action-tracking',
+                          title: 'Action Tracking & Stunt Camera',
+                          desc: 'Smart motion vector tracking keeps vehicles & explosions dynamically centered in 9:16.',
+                          badge: 'RECOMMENDED',
+                        },
+                        {
+                          id: 'gameplay-blur-bg',
+                          title: 'Full 16:9 Landscape + Ambient Blur',
+                          desc: 'Preserves the entire wide gameplay field-of-view with full HUD & mini-map visible.',
+                          badge: 'NO CROP',
+                        },
+                        {
+                          id: 'center-crop',
+                          title: 'Fixed Static Center Crop',
+                          desc: 'Locked center crop for traditional cutscenes, driving scenes, or story dialogues.',
+                          badge: 'STATIC',
+                        },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            onUpdateSettings({ framingMode: item.id })
+                          }
+                          className={cn(
+                            'p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5',
+                            settings.framingMode === item.id
+                              ? 'border-purple-500 bg-purple-500/15 text-foreground shadow-xs'
+                              : 'border-border/60 hover:border-purple-500/30 text-muted-foreground bg-muted/20'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-foreground">
+                              {item.title}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] font-mono border-purple-500/30 text-purple-400"
+                            >
+                              {item.badge}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-snug">
+                            {item.desc}
+                          </p>
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Subtitles Mode (Urdu, Roman, Dual Stacked) */}
+                  {/* 2. Gaming Subtitle & Font Options */}
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <Languages className="w-3.5 h-3.5 text-primary" />
-                      <span>AI Caption Mode</span>
+                      <Type className="w-3.5 h-3.5 text-purple-400" />
+                      <span>2. Gaming Subtitle &amp; Punchline Style</span>
                     </Label>
-                    <div className="grid grid-cols-1 gap-1.5">
-                      {CAPTION_MODES.map((mode) => {
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {GAMING_CAPTION_MODES.map((mode) => (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() =>
+                            onUpdateSettings({
+                              captionMode: mode.id,
+                              captionLanguage: 'en',
+                            })
+                          }
+                          className={cn(
+                            'p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5',
+                            (settings.captionMode || 'english') === mode.id
+                              ? 'border-purple-500 bg-purple-500/15 text-foreground shadow-xs'
+                              : 'border-border/60 hover:border-purple-500/30 text-muted-foreground bg-muted/20'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-foreground">
+                              {mode.label}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] font-mono border-purple-500/30 text-purple-400"
+                            >
+                              {mode.badge}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-snug">
+                            {mode.description}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. Gaming Duration & Clip Count */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-purple-400" />
+                        <span>3. Target Action Burst Duration</span>
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateSettings({
+                              targetDuration: 30,
+                              durationPreset: 'standard',
+                            })
+                          }
+                          className={cn(
+                            'p-3 rounded-2xl border text-left transition-all cursor-pointer',
+                            (settings.targetDuration || 30) <= 30
+                              ? 'border-purple-500 bg-purple-500/15 text-purple-300 font-bold'
+                              : 'border-border/60 hover:border-border text-muted-foreground'
+                          )}
+                        >
+                          <div className="text-xs font-bold">⚡ 15s - 30s</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            High-Speed Viral Burst
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateSettings({
+                              targetDuration: 45,
+                              durationPreset: 'extended',
+                            })
+                          }
+                          className={cn(
+                            'p-3 rounded-2xl border text-left transition-all cursor-pointer',
+                            (settings.targetDuration || 30) > 30
+                              ? 'border-purple-500 bg-purple-500/15 text-purple-300 font-bold'
+                              : 'border-border/60 hover:border-border text-muted-foreground'
+                          )}
+                        >
+                          <div className="text-xs font-bold">⏱️ 30s - 45s</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            Full Chase Sequence
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-purple-400" />
+                        <span>4. How Many Action Shorts?</span>
+                      </Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[3, 4, 5].map((cnt) => (
+                          <button
+                            key={cnt}
+                            type="button"
+                            onClick={() => onUpdateSettings({ clipCount: cnt })}
+                            className={cn(
+                              'p-3 rounded-2xl border text-center transition-all cursor-pointer font-bold text-xs',
+                              (settings.clipCount || 4) === cnt
+                                ? 'border-purple-500 bg-purple-500/15 text-purple-300'
+                                : 'border-border/60 hover:border-border text-muted-foreground'
+                            )}
+                          >
+                            <span>{cnt} Shorts</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* MODE 2: ISLAMIC NAAT & TILAWAT SACRED CUSTOMIZATION PANEL */}
+              {/* ========================================================================= */}
+              {(settings.contentType || 'naat-recitation') ===
+                'naat-recitation' && (
+                <div className="space-y-6 pt-2 border-t border-emerald-500/30">
+                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Moon className="w-5 h-5 text-emerald-400" />
+                      <div>
+                        <h3 className="font-bold text-sm text-foreground">
+                          🕌 Islamic Naat &amp; Tilawat Studio Settings
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Authentic Urdu Nastaliq (`Kumail`), Roman Urdu
+                          phonetics, complete verse boundaries, sacred B-roll
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-mono text-[10px]">
+                      SACRED VERSE
+                    </Badge>
+                  </div>
+
+                  {/* 1. Visual Source Selection */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Film className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>1. Visual Source Mode</span>
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {VISUAL_SOURCES.map((vs) => {
+                        const active =
+                          (settings.visualSourceMode || 'ai-choice') === vs.id;
+                        return (
+                          <button
+                            key={vs.id}
+                            type="button"
+                            onClick={() =>
+                              onUpdateSettings({ visualSourceMode: vs.id })
+                            }
+                            className={cn(
+                              'p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5',
+                              active
+                                ? 'border-emerald-500 bg-emerald-500/15 text-foreground shadow-xs'
+                                : 'border-border/60 hover:border-emerald-500/30 text-muted-foreground bg-muted/20'
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-foreground">
+                                {vs.label}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] font-mono border-emerald-500/30 text-emerald-400"
+                              >
+                                {vs.badge}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-snug">
+                              {vs.description}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 2. Subtitles Mode: Urdu Nastaliq / Dual / Roman */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Languages className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>2. Subtitles Script &amp; Typography</span>
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {CAPTION_MODES.filter(
+                        (m) => m.id !== 'english' && m.id !== 'english-clean'
+                      ).map((mode) => {
                         const active =
                           (settings.captionMode || 'dual-urdu-roman') ===
                           mode.id;
@@ -967,277 +1448,436 @@ export function VideoInputSection({
                               })
                             }
                             className={cn(
-                              'p-2 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2',
+                              'p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5',
                               active
-                                ? 'border-primary bg-primary/10 text-primary shadow-xs'
-                                : 'border-border/60 hover:border-border text-muted-foreground'
+                                ? 'border-emerald-500 bg-emerald-500/15 text-foreground shadow-xs'
+                                : 'border-border/60 hover:border-emerald-500/30 text-muted-foreground bg-muted/20'
                             )}
                           >
-                            <span className="text-xs font-bold truncate">
-                              {mode.label}
-                            </span>
-                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-muted/60 uppercase font-semibold">
-                              {mode.badge}
-                            </span>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-foreground">
+                                {mode.label}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] font-mono border-emerald-500/30 text-emerald-400"
+                              >
+                                {mode.badge}
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-snug">
+                              {mode.description}
+                            </p>
                           </button>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Subtitles Animation Style */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <Type className="w-3.5 h-3.5 text-primary" />
-                      <span>Subtitle Preset</span>
-                    </Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {CAPTION_STYLES.slice(0, 4).map((style) => {
-                        const active = settings.captionStyle === style.id;
-                        return (
-                          <button
-                            key={style.id}
-                            type="button"
-                            onClick={() =>
-                              onUpdateSettings({ captionStyle: style.id })
-                            }
-                            className={cn(
-                              'p-2.5 rounded-xl border text-center transition-all cursor-pointer text-xs font-bold truncate',
-                              active
-                                ? 'border-primary bg-primary/10 text-primary shadow-xs'
-                                : 'border-border/60 hover:border-border text-muted-foreground'
-                            )}
-                          >
-                            {style.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Roman Urdu Spelling Style (when Roman or Dual mode is active) */}
-                {(settings.captionMode || 'dual-urdu-roman') !== 'urdu' && (
-                  <div className="p-3.5 rounded-2xl bg-muted/30 border border-border/60 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-primary" />
-                        <span>Roman Urdu Spelling Style</span>
-                      </Label>
-                      <span className="text-[11px] text-muted-foreground font-mono">
-                        Selected:{' '}
-                        <strong className="text-primary">
-                          {settings.transliterationStyle || 'conversational'}
-                        </strong>
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      {TRANSLITERATION_STYLES.map((st) => {
-                        const active =
-                          (settings.transliterationStyle ||
-                            'conversational') === st.id;
-                        return (
-                          <button
-                            key={st.id}
-                            type="button"
-                            onClick={() =>
-                              onUpdateSettings({ transliterationStyle: st.id })
-                            }
-                            className={cn(
-                              'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1',
-                              active
-                                ? 'border-primary bg-primary/10 shadow-xs text-foreground'
-                                : 'border-border/60 hover:border-border text-muted-foreground'
-                            )}
-                          >
-                            <span className="text-xs font-bold text-foreground">
-                              {st.label}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground italic font-serif truncate">
-                              &ldquo;{st.example}&rdquo;
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* SECTION 4: OPENING STYLE & RECITER BRANDING */}
-              <div className="space-y-4 pt-2 border-t border-border/50">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-primary" />
-                    <span>4. Opening Style &amp; Visual Intro</span>
-                  </Label>
-                  <span className="text-[11px] text-muted-foreground font-mono">
-                    Duration:{' '}
-                    <strong className="text-primary">
-                      {settings.openingDuration ?? 1.5}s
-                    </strong>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                  {OPENING_STYLES.map((op) => {
-                    const active =
-                      (settings.openingStyle || 'face-speaker') === op.id;
-                    return (
-                      <button
-                        key={op.id}
-                        type="button"
-                        onClick={() =>
-                          onUpdateSettings({ openingStyle: op.id })
-                        }
-                        className={cn(
-                          'p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1',
-                          active
-                            ? 'border-primary bg-primary/10 shadow-xs text-foreground'
-                            : 'border-border/60 hover:border-border text-muted-foreground bg-muted/20'
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-foreground leading-tight">
-                            {op.name}
-                          </span>
-                          <span className="text-[8px] font-mono opacity-80 uppercase font-semibold">
-                            {op.badge}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight">
-                          {op.description}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Opening Duration Slider & Inputs when not none */}
-                {(settings.openingStyle || 'face-speaker') !== 'none' && (
-                  <div className="p-3.5 rounded-2xl bg-muted/30 border border-border/60 space-y-3">
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <Label className="text-[11px] font-semibold">
-                          Opening Duration
+                  {/* 3. Roman Urdu Transliteration Style */}
+                  {(settings.captionMode || 'dual-urdu-roman') !== 'urdu' && (
+                    <div className="p-3.5 rounded-2xl bg-muted/30 border border-border/60 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Roman Urdu Phonetics &amp; Spelling</span>
                         </Label>
-                        <span className="font-mono text-primary text-[11px]">
-                          {settings.openingDuration ?? 1.5} seconds
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          Active:{' '}
+                          <strong className="text-emerald-400">
+                            {settings.transliterationStyle || 'conversational'}
+                          </strong>
                         </span>
                       </div>
-                      <Slider
-                        value={[settings.openingDuration ?? 1.5]}
-                        onValueChange={(vals) =>
-                          onUpdateSettings({ openingDuration: vals[0] })
-                        }
-                        min={0.5}
-                        max={3.0}
-                        step={0.5}
-                        className="cursor-pointer"
-                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {TRANSLITERATION_STYLES.map((st) => {
+                          const active =
+                            (settings.transliterationStyle ||
+                              'conversational') === st.id;
+                          return (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onClick={() =>
+                                onUpdateSettings({
+                                  transliterationStyle: st.id,
+                                })
+                              }
+                              className={cn(
+                                'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1',
+                                active
+                                  ? 'border-emerald-500 bg-emerald-500/15 text-foreground'
+                                  : 'border-border/60 hover:border-border text-muted-foreground'
+                              )}
+                            >
+                              <span className="text-xs font-bold text-foreground">
+                                {st.label}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground italic font-serif truncate">
+                                &ldquo;{st.example}&rdquo;
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Couplet Snapping & Optional Reference Stanzas */}
+                  <div className="space-y-3 pt-2 border-t border-border/50">
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setShowLyricsPanel(!showLyricsPanel)}
+                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground hover:text-emerald-400 transition-colors cursor-pointer"
+                      >
+                        <Music className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>
+                          Reference Lyrics &amp; Naat Stanzas (Optional)
+                        </span>
+                        {showLyricsPanel ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] font-mono text-emerald-400 border-emerald-500/30"
+                      >
+                        VERSE-SNAPPING
+                      </Badge>
                     </div>
 
-                    {(settings.openingStyle === 'channel-logo' ||
-                      settings.openingStyle === 'title-card') && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/40">
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-semibold">
-                            Reciter / Speaker Name (Optional)
-                          </Label>
-                          <Input
-                            value={settings.reciterName || ''}
-                            onChange={(e) =>
-                              onUpdateSettings({ reciterName: e.target.value })
-                            }
-                            placeholder="e.g. Qari Waheed Zafar Qasmi"
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-semibold">
-                            Channel Logo URL or PNG
-                          </Label>
-                          <Input
-                            value={settings.channelLogoUrl || ''}
-                            onChange={(e) =>
-                              onUpdateSettings({
-                                channelLogoUrl: e.target.value,
-                              })
-                            }
-                            placeholder="https://.../logo.png"
-                            className="h-8 text-xs font-mono"
-                          />
-                        </div>
+                    {showLyricsPanel && (
+                      <div className="space-y-2 pt-2 animate-in fade-in duration-200">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Paste authentic Urdu poetry or recitation lyrics. The
+                          ALL USEFUL TOOLS AI engine snaps clip cuts strictly to
+                          complete couplets and never truncates sacred verses in
+                          half.
+                        </p>
+                        <Textarea
+                          value={settings.referenceLyrics || ''}
+                          onChange={(e) =>
+                            onUpdateSettings({
+                              referenceLyrics: e.target.value,
+                            })
+                          }
+                          placeholder={`کبھی تو سبز گنبد کا اجالا ہم بھی دیکھیں گے\nکبھی تو اپنے آنگن میں سویرا ہم بھی دیکھیں گے\n\nہم اپنی آنکھ سے روضہ خدا کے پاک پیارے کا\nنہ جانے کس دن آقا کا مدینہ ہم بھی دیکھیں گے`}
+                          dir="rtl"
+                          className="min-h-[110px] font-urdu text-sm leading-relaxed border-border/50 bg-background/50 focus:border-emerald-500 resize-y text-right"
+                        />
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-
-              {/* Optional Reference Lyrics Accordion */}
-              <div className="pt-2 border-t border-border/50">
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setShowLyricsPanel(!showLyricsPanel)}
-                    className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
-                  >
-                    <Music className="w-3.5 h-3.5 text-primary" />
-                    <span>Reference Lyrics & Naat Stanzas (Optional)</span>
-                    {showLyricsPanel ? (
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    )}
-                  </button>
                 </div>
+              )}
 
-                {showLyricsPanel && (
-                  <div className="space-y-2 pt-3 animate-in fade-in duration-200">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Paste reference poetry or recitation lyrics. The OpusClip
-                      AI engine aligns full stanzas and joins consecutive short
-                      verses into 35–45s shorts without ever cutting lyrics in
-                      half.
-                    </p>
-                    <Textarea
-                      value={settings.referenceLyrics || ''}
-                      onChange={(e) =>
-                        onUpdateSettings({ referenceLyrics: e.target.value })
-                      }
-                      placeholder={`کبھی تو سبز گنبد کا اجالا ہم بھی دیکھیں گے\nکبھی تو اپنے آنگن میں سویرا ہم بھی دیکھیں گے\n\nہم اپنی آنکھ سے روضہ خدا کے پاک پیارے کا\nنہ جانے کس دن آقا کا مدینہ ہم بھی دیکھیں گے\n\n(اختیاری: نعت کے اصل اشعار یہاں پیسٹ کریں)`}
-                      dir="rtl"
-                      className="min-h-[120px] font-urdu text-sm leading-relaxed border-border/50 bg-background/50 focus:border-primary resize-y text-right"
-                    />
+              {/* ========================================================================= */}
+              {/* MODE 3: SONGS, MUSIC & VIRAL HOOKS CUSTOMIZATION PANEL */}
+              {/* ========================================================================= */}
+              {settings.contentType === 'music-songs' && (
+                <div className="space-y-6 pt-2 border-t border-pink-500/30">
+                  <div className="p-4 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Music className="w-5 h-5 text-pink-400" />
+                      <div>
+                        <h3 className="font-bold text-sm text-foreground">
+                          🎵 Songs &amp; Music Studio Settings
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          Beat-drop alignment, karaoke neon word glow, kinetic
+                          typography, and chorus hook prioritization
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/40 font-mono text-[10px]">
+                      VIRAL CHORUS
+                    </Badge>
                   </div>
-                )}
-              </div>
+
+                  {/* 1. Music Framing & Dynamics */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5 text-pink-400" />
+                      <span>1. Rhythm Framing &amp; Dynamic Visuals</span>
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        {
+                          id: 'rhythm-framing',
+                          title: 'Dynamic Rhythm & Beat Framing',
+                          desc: 'Dynamically scales and subtle-punches on beat drops and vocal climaxes for music video energy.',
+                          badge: 'RECOMMENDED',
+                        },
+                        {
+                          id: 'blurred-bg',
+                          title: 'Full Screen + Ambient Blurred Fill',
+                          desc: 'Keeps full video width centered with a glowing ambient blurred background behind.',
+                          badge: 'AMBIENT GLOW',
+                        },
+                        {
+                          id: 'center-crop',
+                          title: 'Cinematic Center Crop',
+                          desc: 'Centered vertical crop focusing directly on the performing singer or music artist.',
+                          badge: 'CINEMATIC',
+                        },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            onUpdateSettings({ framingMode: item.id })
+                          }
+                          className={cn(
+                            'p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5',
+                            (settings.framingMode || 'rhythm-framing') ===
+                              item.id
+                              ? 'border-pink-500 bg-pink-500/15 text-foreground shadow-xs'
+                              : 'border-border/60 hover:border-pink-500/30 text-muted-foreground bg-muted/20'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-foreground">
+                              {item.title}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] font-mono border-pink-500/30 text-pink-400"
+                            >
+                              {item.badge}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-snug">
+                            {item.desc}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. Music Lyrics & Karaoke Modes */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Type className="w-3.5 h-3.5 text-pink-400" />
+                      <span>2. Song Lyrics &amp; Karaoke Word-Glow</span>
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {MUSIC_CAPTION_MODES.map((mode) => (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() =>
+                            onUpdateSettings({
+                              captionMode: mode.id,
+                              captionLanguage: 'en',
+                              captionStyle:
+                                mode.id === 'karaoke-glow'
+                                  ? 'karaoke-glow'
+                                  : 'beast-bold',
+                            })
+                          }
+                          className={cn(
+                            'p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5',
+                            (settings.captionMode || 'karaoke-glow') === mode.id
+                              ? 'border-pink-500 bg-pink-500/15 text-foreground shadow-xs'
+                              : 'border-border/60 hover:border-pink-500/30 text-muted-foreground bg-muted/20'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-foreground">
+                              {mode.label}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] font-mono border-pink-500/30 text-pink-400"
+                            >
+                              {mode.badge}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground leading-snug">
+                            {mode.description}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. Chorus Duration & Clips Count */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-pink-400" />
+                        <span>3. Target Chorus / Hook Duration</span>
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateSettings({
+                              targetDuration: 30,
+                              durationPreset: 'standard',
+                            })
+                          }
+                          className={cn(
+                            'p-3 rounded-2xl border text-left transition-all cursor-pointer',
+                            (settings.targetDuration || 30) <= 30
+                              ? 'border-pink-500 bg-pink-500/15 text-pink-300 font-bold'
+                              : 'border-border/60 hover:border-border text-muted-foreground'
+                          )}
+                        >
+                          <div className="text-xs font-bold">⚡ 20s - 35s</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            Viral Chorus Hook
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onUpdateSettings({
+                              targetDuration: 45,
+                              durationPreset: 'extended',
+                            })
+                          }
+                          className={cn(
+                            'p-3 rounded-2xl border text-left transition-all cursor-pointer',
+                            (settings.targetDuration || 30) > 30
+                              ? 'border-pink-500 bg-pink-500/15 text-pink-300 font-bold'
+                              : 'border-border/60 hover:border-border text-muted-foreground'
+                          )}
+                        >
+                          <div className="text-xs font-bold">⏱️ 35s - 50s</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            Verse + Chorus Drop
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-pink-400" />
+                        <span>4. How Many Music Shorts?</span>
+                      </Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[3, 4, 5].map((cnt) => (
+                          <button
+                            key={cnt}
+                            type="button"
+                            onClick={() => onUpdateSettings({ clipCount: cnt })}
+                            className={cn(
+                              'p-3 rounded-2xl border text-center transition-all cursor-pointer font-bold text-xs',
+                              (settings.clipCount || 4) === cnt
+                                ? 'border-pink-500 bg-pink-500/15 text-pink-300'
+                                : 'border-border/60 hover:border-border text-muted-foreground'
+                            )}
+                          >
+                            <span>{cnt} Shorts</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 5. Optional Reference Song Lyrics */}
+                  <div className="space-y-3 pt-2 border-t border-border/50">
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setShowLyricsPanel(!showLyricsPanel)}
+                        className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-foreground hover:text-pink-400 transition-colors cursor-pointer"
+                      >
+                        <Music className="w-3.5 h-3.5 text-pink-400" />
+                        <span>
+                          Song Lyrics &amp; Chorus Keywords (Optional)
+                        </span>
+                        {showLyricsPanel ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <Badge
+                        variant="outline"
+                        className="text-[9px] font-mono text-pink-400 border-pink-500/30"
+                      >
+                        HOOK-FINDER
+                      </Badge>
+                    </div>
+
+                    {showLyricsPanel && (
+                      <div className="space-y-2 pt-2 animate-in fade-in duration-200">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Paste English, Hindi, or Roman lyrics. The AI engine
+                          identifies chorus lines, hooks, and vocal climaxes to
+                          center the short around the song&apos;s most catchy
+                          moment.
+                        </p>
+                        <Textarea
+                          value={settings.referenceLyrics || ''}
+                          onChange={(e) =>
+                            onUpdateSettings({
+                              referenceLyrics: e.target.value,
+                            })
+                          }
+                          placeholder="Paste chorus lines, vocal hook phrases, or song lyrics here..."
+                          className="min-h-[110px] text-xs leading-relaxed border-border/50 bg-background/50 focus:border-pink-500 resize-y"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Big Primary Action Button: Generate Complete Short with AI */}
               <div className="pt-4 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-xs text-muted-foreground">
                   Targeting{' '}
                   <strong className="text-foreground">
-                    {settings.clipCount || 4} Complete Shorts
+                    {settings.clipCount || 4}{' '}
+                    {settings.contentType === 'gaming-gta'
+                      ? '4K Action Shorts'
+                      : settings.contentType === 'music-songs'
+                        ? 'Viral Music Shorts'
+                        : 'Complete Naat Shorts'}
                   </strong>{' '}
-                  • Complete Verses • Urdu Script • Centered 9:16
+                  •{' '}
+                  {settings.contentType === 'gaming-gta'
+                    ? 'Action Cuts • English Punchlines • 9:16 Portrait'
+                    : settings.contentType === 'music-songs'
+                      ? 'Beat-Drop Snapping • Karaoke Glow • 9:16'
+                      : 'Complete Verses • Urdu Nastaliq • Centered 9:16'}
                 </div>
 
                 <Button
                   size="lg"
                   onClick={onStartGeneration}
                   disabled={isProcessing}
-                  className="w-full sm:w-auto px-8 h-14 rounded-2xl font-black text-base cursor-pointer shadow-xl bg-gradient-to-r from-primary via-emerald-500 to-primary text-primary-foreground hover:opacity-95 flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01]"
+                  className={cn(
+                    'w-full sm:w-auto px-8 h-14 rounded-2xl font-black text-base cursor-pointer shadow-xl text-white hover:opacity-95 flex items-center justify-center gap-2.5 transition-all hover:scale-[1.01]',
+                    settings.contentType === 'gaming-gta'
+                      ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 shadow-purple-500/20'
+                      : settings.contentType === 'music-songs'
+                        ? 'bg-gradient-to-r from-pink-600 via-rose-600 to-pink-700 shadow-pink-500/20'
+                        : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 shadow-emerald-500/20'
+                  )}
                 >
                   {isProcessing ? (
                     <>
                       <Wand2 className="w-5 h-5 animate-spin" />
-                      <span>Generating Complete Short with AI...</span>
+                      <span>Generating Shorts with AI...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5 text-amber-300" />
-                      <span>GENERATE COMPLETE SHORT WITH AI</span>
+                      <span>
+                        {settings.contentType === 'gaming-gta'
+                          ? 'GENERATE GAMING ACTION SHORTS (4K)'
+                          : settings.contentType === 'music-songs'
+                            ? 'GENERATE MUSIC & SONG SHORTS (4K)'
+                            : 'GENERATE ISLAMIC NAAT SHORTS (4K)'}
+                      </span>
                       <ArrowRight className="w-4 h-4 ml-1" />
                     </>
                   )}

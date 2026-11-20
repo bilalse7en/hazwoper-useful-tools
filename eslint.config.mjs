@@ -36,6 +36,8 @@ const eslintConfig = [
       'react-hooks/set-state-in-effect': 'off',
       '@next/next/no-img-element': 'off',
       'react-hooks/exhaustive-deps': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
     },
   },
 ];

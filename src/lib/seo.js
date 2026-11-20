@@ -47,22 +47,22 @@ export const toolMetadata = {
   },
   'short-generator-2': {
     title:
-      'Short Generator 2.0 - Third-Party Cloud AI Video Shorts Studio | All Useful Tools',
+      'Short Generator 2.0 - ALL USEFUL TOOLS Cloud AI Video Shorts Studio | All Useful Tools',
     description:
-      'Next-generation automated AI Shorts Studio powered by OpusClip AI, Shotstack Cloud Render, and authentic Urdu Nastaliq & Roman subtitles. 1-click cloud generation.',
+      'Next-generation automated AI Shorts Studio powered by ALL USEFUL TOOLS AI Engine and authentic Urdu Nastaliq & Roman subtitles. 1-click generation.',
     keywords:
-      'short generator 2, opusclip api, shotstack render, ai video shorts, naat shorts studio, urdu subtitles, roman urdu, cloud video rendering',
-    canonical: '/tools/short-generator-2',
+      'short generator 2, ai video shorts, naat shorts studio, gta shorts, urdu subtitles, roman urdu, 4k video rendering',
+    canonical: '/tools/ai-video-shorts',
     ogImage: '/og-web-content.png',
   },
   'ai-video-shorts-v2': {
     title:
-      'AI Video Shorts 2.0 - Cloud AI Video Repurposing | All Useful Tools',
+      'AI Video Shorts - 4K YouTube Video to Shorts Generator | All Useful Tools',
     description:
-      'Automated cloud AI shorts generation with OpusClip viral curation and Shotstack distributed video rendering.',
+      'Automated high quality 4K video shorts generation with smart tracking, English dialogue, and viral clip detection.',
     keywords:
-      'ai video shorts v2, cloud video repurposing, opusclip, shotstack',
-    canonical: '/tools/ai-video-shorts-v2',
+      'ai video shorts, gta shorts, gaming shorts, youtube to shorts 4k',
+    canonical: '/tools/ai-video-shorts',
     ogImage: '/og-web-content.png',
   },
   'adobe-stock-finder': {
@@ -365,32 +365,37 @@ export const toolInfo = {
       '1. Upload a video file or paste a YouTube URL.\n2. Choose portrait (9:16), landscape (16:9), or square (1:1) format and select duration.\n3. Click "Analyze Video" to generate scored viral clips.\n4. Click "Open in Studio Editor" to trim, adjust captions, split segments, or add music.\n5. Click "Render & Export Short" to download in high-definition MP4.',
   },
   'short-generator-2': {
-    name: 'Short Generator 2.0 (AI Cloud)',
+    name: 'AI Video to Shorts 2.0 (4K Studio)',
     icon: '⚡',
     description:
-      'Third-party cloud AI video shorts studio powered by OpusClip AI, Shotstack Cloud Render, and authentic Urdu Nastaliq & Roman speech transcription.',
+      'AI video shorts studio powered by ALL USEFUL TOOLS AI Engine and authentic kinetic speech transcription.',
     category: 'Video & Audio Processing',
     detailedDescription:
-      'Short Generator 2.0 brings enterprise-tier automated video repurposing to Hazwoper Useful Tools by orchestrating OpusClip AI for moment curation, Shotstack for distributed cloud rendering, and Whisper for phonetic Urdu and Roman captions.',
+      'AI Video to Shorts 2.0 brings enterprise-tier automated video repurposing to ALL USEFUL TOOLS by orchestrating the ALL USEFUL TOOLS AI Engine for viral moment curation, distributed rendering, and multi-profile intelligence for Gaming, Songs, and Naat.',
     benefits: [
-      'OpusClip Cloud AI Integration: Automatic viral hook curation and speaker tracking',
-      'Shotstack Cloud Render: High-throughput distributed rendering in Full HD 1080x1920',
-      'Urdu Speech Recognition: Authentic Nastaliq & Roman Urdu subtitles aligned to couplets',
+      'ALL USEFUL TOOLS AI Engine: Automatic viral hook curation and speaker tracking',
+      'High-throughput rendering in 4K UHD and Full HD 1080x1920',
+      'Multi-Profile Intelligence: Dedicated profiles for GTA Gaming, Songs & Music, and Islamic Naat',
       'Islamic B-Roll Studio: 1-click footage replacement for Makkah, Madinah, and Mosques',
       'Durable Media Hub: Seamless asset storage with instant cloud downloads',
     ],
     howToUse:
-      '1. Paste any YouTube video link or upload your raw video file.\n2. Configure output aspect ratio (9:16 portrait) and target duration.\n3. Click "Generate Shorts with Cloud AI".\n4. Preview, apply Islamic B-roll, and export directly in 1080p FHD.',
+      '1. Paste any YouTube video link or upload your raw video file.\n2. Configure output aspect ratio (9:16 portrait) and select your profile (Gaming, Songs, or Naat).\n3. Click "Generate Shorts (4K)".\n4. Preview cards 1-by-1, edit in Timeline Studio, and download directly in 4K UHD.',
   },
   'ai-video-shorts-v2': {
-    name: 'Short Generator 2.0 (AI Cloud)',
+    name: 'AI Video to Shorts 2.0 (4K Studio)',
     icon: '⚡',
     description:
-      'Third-party cloud AI video shorts studio powered by OpusClip AI and Shotstack Cloud Render.',
+      'Automated 4K AI video shorts studio powered by ALL USEFUL TOOLS AI Engine.',
     category: 'Video & Audio Processing',
-    detailedDescription: 'Enterprise cloud AI video shorts generator.',
-    benefits: ['Cloud AI clipping', 'Shotstack cloud render', 'Urdu subtitles'],
-    howToUse: '1. Paste video URL. 2. Generate shorts.',
+    detailedDescription:
+      'Enterprise AI video shorts generator powered by ALL USEFUL TOOLS.',
+    benefits: [
+      'ALL USEFUL TOOLS AI clipping',
+      '4K UHD render',
+      'Urdu and English subtitles',
+    ],
+    howToUse: '1. Paste video URL. 2. Generate 4K shorts.',
   },
   'adobe-stock-finder': {
     name: 'Global Stock Photo Finder',

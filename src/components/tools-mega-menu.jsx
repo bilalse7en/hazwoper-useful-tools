@@ -168,22 +168,13 @@ export const TOOLS_DIRECTORY = [
         badge: 'GLOBAL AI',
       },
       {
-        id: 'short-generator-2',
-        name: 'Short Generator 2.0',
-        href: '/tools/short-generator-2',
-        description:
-          'AI Cloud video shorts with authentic Urdu & Roman captions',
-        icon: Sparkles,
-        badge: 'v2.0',
-      },
-      {
         id: 'ai-video-shorts',
-        name: 'AI Video to Shorts',
+        name: 'AI Video to Shorts 2.0',
         href: '/tools/ai-video-shorts',
         description:
-          'Smart 9:16 portrait framing & multi-track timeline studio',
-        icon: Scissors,
-        badge: 'STUDIO',
+          'Convert long videos into viral 4K vertical Shorts with smart 9:16 framing, multi-profile AI, auto-captions & studio editor',
+        icon: Sparkles,
+        badge: '4K PRO',
       },
       {
         id: 'youtube-downloader',
