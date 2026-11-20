@@ -193,12 +193,18 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   // 2. Remove XML tags and Word office namespaces (e.g., <o:p>, </o:p>, <w:...>)
   html = html.replace(/<\/?\w+:[^>]*>/gi, '');
 
+  // Replace &nbsp;, &#160;, and unicode non-breaking spaces with standard space ' ' immediately
+  html = html.replace(/(&nbsp;|&#160;|\u00a0)/gi, ' ');
+
   // 3. Remove non-semantic wrappers: <font>, <span> (preserve styled spans when preserving Tailwind)
   html = html.replace(/<\/?font[^>]*>/gi, '');
   if (!preserveTailwind) {
-    // Strip decorative / empty spans (e.g. fake colored bullet dots <span style="...border-radius:9999px..."></span> or bullet symbols)
+    // Spacer spans containing whitespace become a single space ' ' (e.g. Word mso-spacerun:yes or spacer spans)
+    html = html.replace(/<span[^>]*>\s+<\/span>/gi, ' ');
+
+    // Strip purely empty / decorative spans without any text or space (e.g. fake colored bullet dots or standalone bullet symbols)
     html = html.replace(
-      /<span[^>]*>(?:\s|&nbsp;|&#8226;|&#x2022;|•|▪|–|-|\*)*<\/span>/gi,
+      /<span[^>]*>(?:&#8226;|&#x2022;|•|▪|–|-|\*)*<\/span>/gi,
       ''
     );
     // Recursively unwrap all text-containing spans
@@ -210,9 +216,6 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   } else {
     html = html.replace(/<span>([\s\S]*?)<\/span>/gi, '$1');
   }
-
-  // Replace &nbsp;, &#160;, and unicode non-breaking spaces with standard space ' '
-  html = html.replace(/(&nbsp;|&#160;|\u00a0)/gi, ' ');
 
   // 4. Strip pure slide markers and Slide Titles (e.g. <p><strong>Slide 3 </strong></p>, <p>Slide Title</p>, <h3>Slide 6</h3>, <div>Slide 7</div>)
   // Standalone slide markers are PowerPoint/Word layout artifacts, not educational reading content
@@ -352,17 +355,23 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     );
   }
 
-  // 10. Standardize strong and emphasis
+  // 10. Standardize strong and emphasis while strictly preserving spaces outside tags
   html = html.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '<strong>$1</strong>');
   html = html.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '<em>$1</em>');
   html = html.replace(
-    /<strong[^>]*>([\s\S]*?)<\/strong>/gi,
-    (m, text) => `<strong>${text.trim()}</strong>`
+    /<(strong|em)[^>]*>([\s\S]*?)<\/\1>/gi,
+    (m, tag, inner) => {
+      const hasLeading = /^\s/.test(inner);
+      const hasTrailing = /\s$/.test(inner);
+      const trimmed = inner.trim();
+      if (!trimmed) return hasLeading || hasTrailing ? ' ' : '';
+      return `${hasLeading ? ' ' : ''}<${tag}>${trimmed}</${tag}>${hasTrailing ? ' ' : ''}`;
+    }
   );
-  html = html.replace(
-    /<em[^>]*>([\s\S]*?)<\/em>/gi,
-    (m, text) => `<em>${text.trim()}</em>`
-  );
+
+  // Guarantee a single space after colon when immediately adjacent to an HTML tag or link (e.g. Grounding:<a ...> -> Grounding: <a ...>)
+  html = html.replace(/(:\s*<\/(?:strong|em|b|i)>)(?=<[a-zA-Z])/gi, '$1 ');
+  html = html.replace(/:(?=<a\b)/gi, ': ');
 
   // 11. Standardize tables: unwrap thead/tbody/tfoot, prune empty tr rows, and apply standard classes
   html = html.replace(/<\/?(?:thead|tbody|tfoot)[^>]*>/gi, '');

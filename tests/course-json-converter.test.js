@@ -251,6 +251,37 @@ describe('CourseJsonConverter Core Engine', () => {
       );
     });
 
+    it('replaces &nbsp; with 1 empty space and guarantees space between labels and links', () => {
+      const input = `
+        <ul>
+          <li><strong>Grounding:</strong>&nbsp;<a href="https://example.com/304">29 CFR 1910.304</a> requires equipment grounding.</li>
+          <li><strong>Grounding:&nbsp;</strong><a href="https://example.com/304">29 CFR 1910.304</a> requires equipment grounding.</li>
+          <li><strong>Grounding:</strong><span style="mso-spacerun:yes">&nbsp;</span><a href="https://example.com/304">29 CFR 1910.304</a> requires equipment grounding.</li>
+          <li><strong>OSHA:</strong><a href="https://example.com/332">29 CFR 1910.332</a> electrical training.</li>
+          <li><strong>OSHA:&nbsp;</strong><a href="https://example.com/332">29 CFR 1910.332</a> electrical training.</li>
+        </ul>
+        <p>Electrical training is not one-and-done:&nbsp;<a href="https://example.com">practices apply:</a></p>
+      `;
+
+      const cleaned = purgeRandomClassesAndStyles(input);
+
+      // Verify that Grounding: and OSHA: are NEVER glued to the links without space
+      expect(cleaned).not.toContain('Grounding:29 CFR');
+      expect(cleaned).not.toContain('OSHA:29 CFR');
+      expect(cleaned).not.toContain('one-and-done:practices');
+
+      // Verify clean single space is present
+      expect(cleaned).toContain(
+        '<strong>Grounding:</strong> <a href="https://example.com/304"'
+      );
+      expect(cleaned).toContain(
+        '<strong>OSHA:</strong> <a href="https://example.com/332"'
+      );
+      expect(cleaned).toContain(
+        'Electrical training is not one-and-done: <a href="https://example.com"'
+      );
+    });
+
     it('calculates topic reading duration based on word count with 30s minimum', () => {
       const shortText = 'A quick summary.';
       expect(calculateTopicDuration(shortText)).toBe(30);
