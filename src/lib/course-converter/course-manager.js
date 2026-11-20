@@ -1055,16 +1055,36 @@ export function purgeCourseClassesAndStyles(course, options = {}) {
           stripImages: options.stripImages === true, // Default to FALSE to ensure 100% content preservation (zero instructional paragraphs or text skipped)
         });
 
-        const newDuration = calculateTopicDuration(cleaned);
+        // Preserve original audio and media durations if present
+        const hasAudio =
+          (top.leftDiv?.audio?.isAudio &&
+            Number(top.leftDiv?.mediaDuration || top.topicDuration) > 0) ||
+          Number(top.leftDiv?.mediaDuration) > 0;
+
+        if (!hasAudio && (!top.topicDuration || options.recalculateDuration)) {
+          const newDuration = calculateTopicDuration(cleaned);
+          top.allocated_duration_seconds = newDuration;
+          top.topicDuration = newDuration;
+        }
 
         if (!top.leftDiv) top.leftDiv = {};
         top.leftDiv.editor = cleaned;
         top.leftDiv.editorHtml = cleaned;
         top.leftDiv.editorSaved = cleaned;
         top.leftDiv.editorHtmlSaved = cleaned;
-        top.allocated_duration_seconds = newDuration;
-        top.topicDuration = newDuration;
         delete top.raw_body_content;
+
+        if (top.rightDiv?.editorHtml || top.rightDiv?.editor) {
+          const rawRight = top.rightDiv.editorHtml || top.rightDiv.editor;
+          const cleanRight = wrapInLmsContainer(rawRight, {
+            preserveTailwind: false,
+            stripImages: false,
+          });
+          top.rightDiv.editor = cleanRight;
+          top.rightDiv.editorHtml = cleanRight;
+          top.rightDiv.editorSaved = cleanRight;
+          top.rightDiv.editorHtmlSaved = cleanRight;
+        }
 
         modifiedTopicsCount++;
       });

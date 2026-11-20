@@ -369,9 +369,21 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     }
   );
 
-  // Guarantee a single space after colon when immediately adjacent to an HTML tag or link (e.g. Grounding:<a ...> -> Grounding: <a ...>)
-  html = html.replace(/(:\s*<\/(?:strong|em|b|i)>)(?=<[a-zA-Z])/gi, '$1 ');
-  html = html.replace(/:(?=<a\b)/gi, ': ');
+  // Guarantee a single space after colon when immediately adjacent to an HTML tag, link, or text (e.g. Grounding:<a ...> -> Grounding: <a ...>, Grounding:29 CFR -> Grounding: 29 CFR)
+  html = html.replace(
+    /(:(?:\s*<\/(?:strong|em|b|i|span)>)+)(?=[^\s\/>,;.])/gi,
+    '$1 '
+  );
+  html = html.replace(/:(?=<[a-zA-Z])/gi, ': ');
+  html = html.replace(
+    /([a-zA-Z]+):\s*(?=[a-zA-Z0-9])/g,
+    (m, word, offset, fullStr) => {
+      if (/^https?$/i.test(word)) return m;
+      const before = fullStr.substring(Math.max(0, offset - 30), offset);
+      if (/=["'][^"']*$/.test(before)) return m;
+      return `${word}: `;
+    }
+  );
 
   // 11. Standardize tables: unwrap thead/tbody/tfoot, prune empty tr rows, and apply standard classes
   html = html.replace(/<\/?(?:thead|tbody|tfoot)[^>]*>/gi, '');

@@ -257,15 +257,19 @@ describe('CourseJsonConverter Core Engine', () => {
           <li><strong>Grounding:</strong>&nbsp;<a href="https://example.com/304">29 CFR 1910.304</a> requires equipment grounding.</li>
           <li><strong>Grounding:&nbsp;</strong><a href="https://example.com/304">29 CFR 1910.304</a> requires equipment grounding.</li>
           <li><strong>Grounding:</strong><span style="mso-spacerun:yes">&nbsp;</span><a href="https://example.com/304">29 CFR 1910.304</a> requires equipment grounding.</li>
+          <li><strong>Grounding:</strong>29 CFR 1910.304 requires equipment grounding.</li>
+          <li>Grounding:29 CFR 1910.304 requires equipment grounding.</li>
           <li><strong>OSHA:</strong><a href="https://example.com/332">29 CFR 1910.332</a> electrical training.</li>
           <li><strong>OSHA:&nbsp;</strong><a href="https://example.com/332">29 CFR 1910.332</a> electrical training.</li>
+          <li><strong>OSHA:</strong>29 CFR 1910.332 electrical training.</li>
+          <li>OSHA:29 CFR 1910.332 electrical training.</li>
         </ul>
         <p>Electrical training is not one-and-done:&nbsp;<a href="https://example.com">practices apply:</a></p>
       `;
 
       const cleaned = purgeRandomClassesAndStyles(input);
 
-      // Verify that Grounding: and OSHA: are NEVER glued to the links without space
+      // Verify that Grounding: and OSHA: are NEVER glued to the links or text without space
       expect(cleaned).not.toContain('Grounding:29 CFR');
       expect(cleaned).not.toContain('OSHA:29 CFR');
       expect(cleaned).not.toContain('one-and-done:practices');
@@ -274,12 +278,95 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(cleaned).toContain(
         '<strong>Grounding:</strong> <a href="https://example.com/304"'
       );
+      expect(cleaned).toContain('<strong>Grounding:</strong> 29 CFR 1910.304');
+      expect(cleaned).toContain('Grounding: 29 CFR 1910.304');
       expect(cleaned).toContain(
         '<strong>OSHA:</strong> <a href="https://example.com/332"'
       );
+      expect(cleaned).toContain('<strong>OSHA:</strong> 29 CFR 1910.332');
+      expect(cleaned).toContain('OSHA: 29 CFR 1910.332');
       expect(cleaned).toContain(
         'Electrical training is not one-and-done: <a href="https://example.com"'
       );
+    });
+
+    it('preserves audio duration and images intact when purging course classes', () => {
+      const courseWithMedia = {
+        course_id: '1100',
+        course_title: 'Generator Fundamentals Training',
+        total_modules: 1,
+        total_topics: 1,
+        total_duration_seconds: 116,
+        modules: [
+          {
+            module_id: '1903',
+            module_title: 'Generator Fundamentals',
+            lessons: [
+              {
+                lesson_id: '6878',
+                lesson_title: 'Introduction',
+                topics: [
+                  {
+                    id: '102298',
+                    name: 'Generator Fundamentals',
+                    allocated_duration_seconds: 116,
+                    topicDuration: 106,
+                    selectedTemplate: 0,
+                    leftDiv: {
+                      audio: {
+                        isAudio: true,
+                        audioURL: 'https://media.example.com/audio.mp3',
+                      },
+                      image: {
+                        isImage: true,
+                        imageURL: 'https://media.example.com/titlecard.png',
+                      },
+                      mediaDuration: 106,
+                      editorHtml:
+                        '<div class="w-full flex flex-col gap-3" style="padding:0"><p class="mb-0"><strong>Topic:</strong></p><ul class="flex flex-col"><li class="flex items-start"><span style="width:8px;border-radius:9999px;"></span><span class="text-[15px]"><strong>Grounding:</strong>&nbsp;<a href="https://example.com">29 CFR 1910.304</a></span></li></ul></div>',
+                    },
+                    rightDiv: {
+                      image: {
+                        isImage: false,
+                        imageURL: '',
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = purgeCourseClassesAndStyles(courseWithMedia);
+      const top = result.courseJson.modules[0].lessons[0].topics[0];
+
+      // Durations preserved
+      expect(top.allocated_duration_seconds).toBe(116);
+      expect(top.topicDuration).toBe(106);
+      expect(top.leftDiv.mediaDuration).toBe(106);
+
+      // Audio & Image preserved
+      expect(top.leftDiv.audio.isAudio).toBe(true);
+      expect(top.leftDiv.audio.audioURL).toBe(
+        'https://media.example.com/audio.mp3'
+      );
+      expect(top.leftDiv.image.isImage).toBe(true);
+      expect(top.leftDiv.image.imageURL).toBe(
+        'https://media.example.com/titlecard.png'
+      );
+      expect(top.selectedTemplate).toBe(0);
+
+      // HTML cleaned of random classes & styles
+      expect(top.leftDiv.editorHtml).not.toContain('w-full');
+      expect(top.leftDiv.editorHtml).not.toContain('flex');
+      expect(top.leftDiv.editorHtml).not.toContain('style=');
+      expect(top.leftDiv.editorHtml).not.toContain('Grounding:29 CFR');
+      expect(top.leftDiv.editorHtml).toContain(
+        '<strong>Grounding:</strong> <a href="https://example.com"'
+      );
+      expect(top.leftDiv.editorHtml).toContain('<p class="mb-0">');
     });
 
     it('calculates topic reading duration based on word count with 30s minimum', () => {

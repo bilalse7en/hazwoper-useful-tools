@@ -481,10 +481,14 @@ export function cleanTopicSlideContent(topic, options = {}) {
     topic.rightDiv?.image?.isImage &&
     topic.rightDiv?.image?.imageURL
   ) {
-    topic.selectedTemplate = 1;
+    topic.selectedTemplate = topic.selectedTemplate || 1;
     topic.rightDiv.isEditorSelected = false;
+  } else if (topic.leftDiv?.image?.isImage && topic.leftDiv?.image?.imageURL) {
+    topic.selectedTemplate =
+      topic.selectedTemplate !== undefined ? topic.selectedTemplate : 0;
   } else {
-    topic.selectedTemplate = 0;
+    topic.selectedTemplate =
+      topic.selectedTemplate !== undefined ? topic.selectedTemplate : 0;
     if (topic.rightDiv) {
       topic.rightDiv.isEditorSelected = false;
     }
@@ -503,10 +507,29 @@ export function cleanTopicSlideContent(topic, options = {}) {
     stripImages,
     preserveTailwind: shouldPreserveTailwind,
   });
-  const duration = calculateTopicDuration(cleanInner);
 
-  topic.allocated_duration_seconds = duration;
-  topic.topicDuration = duration;
+  // Preserve audio duration and media duration if topic has audio
+  const hasAudio =
+    (topic.leftDiv?.audio?.isAudio &&
+      Number(topic.leftDiv?.mediaDuration || topic.topicDuration) > 0) ||
+    Number(topic.leftDiv?.mediaDuration) > 0;
+
+  if (
+    !hasAudio &&
+    (!topic.allocated_duration_seconds ||
+      topic.allocated_duration_seconds === 30 ||
+      options.recalculateDuration)
+  ) {
+    const duration = calculateTopicDuration(cleanInner);
+    topic.allocated_duration_seconds = duration;
+    topic.topicDuration = duration;
+  } else if (!topic.allocated_duration_seconds && hasAudio) {
+    const audDur = Math.round(
+      Number(topic.leftDiv?.mediaDuration || topic.topicDuration) * 1.1
+    );
+    topic.allocated_duration_seconds = audDur;
+  }
+
   if (!topic.leftDiv) topic.leftDiv = {};
   topic.leftDiv.editor = wrapped;
   topic.leftDiv.editorHtml = wrapped;

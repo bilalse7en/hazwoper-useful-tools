@@ -424,7 +424,7 @@ export default function CourseJsonConverter() {
           'Normalizing structure, assessments, durations & purging random classes...'
         );
         const res = enhanceAndCleanCourseJson(rawObj, {
-          stripImages: !includeImages,
+          stripImages: false,
           includeQuizzes,
           course_title: courseTitleOverride || undefined,
           preserveTailwind: false,
@@ -1627,7 +1627,7 @@ export default function CourseJsonConverter() {
     if (!courseJson) return;
     try {
       const res = purgeCourseClassesAndStyles(courseJson, {
-        stripImages: !includeImages,
+        stripImages: false,
       });
       if (res && res.courseJson) {
         setCourseJson(res.courseJson);

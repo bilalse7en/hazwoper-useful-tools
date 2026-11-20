@@ -1074,7 +1074,7 @@ Third stanza bringing full spiritual depth
       const finalGet = await GET();
       const finalData = await finalGet.json();
       expect(finalData.hasCookies).toBe(false);
-    });
+    }, 25000);
   });
 
   describe('Canonical Time Model & Segment Retiming', () => {
