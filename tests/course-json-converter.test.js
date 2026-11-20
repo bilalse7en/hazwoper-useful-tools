@@ -369,6 +369,39 @@ describe('CourseJsonConverter Core Engine', () => {
       expect(top.leftDiv.editorHtml).toContain('<p class="mb-0">');
     });
 
+    it('merges adjacent lists, converts bold section titles to h3, and formats in-content images as p.text-center > img.w-75', () => {
+      const userSlide = `<div><p>In a critical facility such as a data center, a utility outage cannot be allowed to stop the IT load. The standby generator carries the site until utility power returns. Requirements for these systems come from NFPA 110 (2025 edition) as adopted by the local authority having jurisdiction, which may enforce an older edition. A UPS that carries the IT load until the generator picks up falls under NFPA 111 (2025). Data center frameworks such as ANSI/TIA-942 and the Uptime Institute Tier standards also set expectations for generator redundancy and runtime, but they are design references, not codes.</p><p><strong>What the Generator Must Do</strong></p><p class="mb-0">A standby set is only useful if it completes three tasks within seconds of an outage:</p><ul><li>It starts reliably on demand, even after long idle periods.</li></ul><ul><li>It reaches stable voltage and frequency so connected equipment receives usable power.</li></ul><ul><li>It accepts load when the transfer switch connects the facility to it.</li></ul><p><strong>Ratings and Site Conditions</strong></p><p>Manufacturer data sheets list separate ratings, such as Emergency Standby Power (ESP) and Prime Power (PRP), and the correct rating depends on how the set is used. Site conditions such as high altitude and high ambient temperature also reduce output, as the manufacturer's derate data shows.</p><p><img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/11/1795088988/Standby-Power-in-Critical-Facilities---CONTENT-IMAGE-1.webp" alt="Topic Image" /></p></div>`;
+
+      const cleaned = wrapInLmsContainer(userSlide, {
+        preserveTailwind: false,
+        stripImages: false,
+      });
+
+      // 1. Standalone bold headings converted to <h3>
+      expect(cleaned).toContain('<h3>What the Generator Must Do</h3>');
+      expect(cleaned).toContain('<h3>Ratings and Site Conditions</h3>');
+      expect(cleaned).not.toContain(
+        '<p><strong>What the Generator Must Do</strong></p>'
+      );
+
+      // 2. Lead-in ending in colon remains <p class="mb-0">, not <h3>
+      expect(cleaned).toContain(
+        '<p class="mb-0">A standby set is only useful if it completes three tasks within seconds of an outage:</p>'
+      );
+
+      // 3. Merged into strictly 1 <ul> with 3 <li> items
+      const ulMatches = (cleaned.match(/<ul>/g) || []).length;
+      expect(ulMatches).toBe(1);
+      expect(cleaned).toContain(
+        '<ul><li>It starts reliably on demand, even after long idle periods.</li><li>It reaches stable voltage and frequency so connected equipment receives usable power.</li><li>It accepts load when the transfer switch connects the facility to it.</li></ul>'
+      );
+
+      // 4. In-content image formatted with <p class="text-center"><img src="..." class="w-75" alt="Topic Image" /></p>
+      expect(cleaned).toContain(
+        '<p class="text-center"><img src="https://media.hazwoper-osha.com/wp-content/uploads/2026/11/1795088988/Standby-Power-in-Critical-Facilities---CONTENT-IMAGE-1.webp" class="w-75" alt="Topic Image" /></p>'
+      );
+    });
+
     it('calculates topic reading duration based on word count with 30s minimum', () => {
       const shortText = 'A quick summary.';
       expect(calculateTopicDuration(shortText)).toBe(30);

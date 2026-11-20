@@ -295,6 +295,24 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
 
   // 8. Standardize headers (strip any remaining attributes, enforce clean tags)
   if (!preserveTailwind) {
+    // Convert standalone bold paragraphs into <h3> headings
+    // e.g. <p><strong>What the Generator Must Do</strong></p> -> <h3>What the Generator Must Do</h3>
+    html = html.replace(
+      /<p[^>]*>\s*<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>\s*<\/p>/gi,
+      (match, text) => {
+        const clean = text.trim();
+        // If it ends with a colon, it's a lead-in to a list (e.g. By the end of this course...:), preserve as paragraph for mb-0
+        if (clean.endsWith(':')) {
+          return match;
+        }
+        // If it contains media/tables or is an entire long paragraph (>140 chars), keep as <p>
+        if (/<(?:img|table|ul|ol)\b/i.test(clean) || clean.length > 140) {
+          return match;
+        }
+        return `<h3>${clean}</h3>`;
+      }
+    );
+
     html = html.replace(
       /<h2[^>]*>([\s\S]*?)<\/h2>/gi,
       (m, text) => `<h2>${text.trim()}</h2>`
@@ -317,6 +335,14 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
         .replace(/^(\s*(?:&bull;|&#8226;|&#x2022;|•|▪|–|-|\*)\s*)+/gi, '');
       return `<li>${cleanText.trim()}</li>`;
     });
+
+    // Merge consecutive / adjacent <ul> and <ol> lists into a single list
+    let prevList;
+    do {
+      prevList = html;
+      html = html.replace(/<\/ul>\s*<ul[^>]*>/gi, '');
+      html = html.replace(/<\/ol>\s*<ol[^>]*>/gi, '');
+    } while (html !== prevList);
   }
 
   // 10. Standardize paragraphs and drop completely empty paragraphs (or paragraphs containing only empty tags)
@@ -421,7 +447,25 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   // Remove any table that has no tr left
   html = html.replace(/<table[^>]*>\s*<\/table>/gi, '');
 
-  // 12. Paragraph preceding bullet points ending in ':' gets class="mb-0", and <ol> gets class="mt-0"
+  // 12. Unwrap inner / nested / empty <div> tags (unless preserving Tailwind container hierarchy)
+  let prev;
+  do {
+    prev = html;
+    html = html.replace(/<div>\s*<\/div>/gi, '');
+    if (!preserveTailwind) {
+      html = html.replace(/<div>([\s\S]*?)<\/div>/gi, '$1');
+    }
+  } while (html !== prev);
+
+  // Merge consecutive / adjacent <ul> and <ol> lists into a single list
+  let prevListAfterDivs;
+  do {
+    prevListAfterDivs = html;
+    html = html.replace(/<\/ul>\s*<ul[^>]*>/gi, '');
+    html = html.replace(/<\/ol>\s*<ol[^>]*>/gi, '');
+  } while (html !== prevListAfterDivs);
+
+  // 13. Paragraph preceding bullet points ending in ':' gets class="mb-0", and <ol> gets class="mt-0"
   html = html.replace(
     /<p([^>]*)>((?:(?!<\/?p\b)[\s\S])*?)<\/p>(\s*<(ul|ol)[^>]*>)/gi,
     (match, attrs, content, listWhitespaceAndTag, listTagName) => {
@@ -441,27 +485,33 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     }
   );
 
-  // 13. Clean links (preserve href and target)
+  // 14. Clean links (preserve href and target)
   html = html.replace(
     /<a\s+[^>]*href=(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi,
     '<a href="$2" target="_blank" rel="noopener noreferrer">$3</a>'
   );
 
-  // 13. Unwrap inner / nested / empty <div> tags (unless preserving Tailwind container hierarchy)
-  let prev;
-  do {
-    prev = html;
-    html = html.replace(/<div>\s*<\/div>/gi, '');
-    if (!preserveTailwind) {
-      html = html.replace(/<div>([\s\S]*?)<\/div>/gi, '$1');
-    }
-  } while (html !== prev);
+  // 15. In-content images formatting: <p class="text-center"><img src="..." class="w-75" alt="Topic Image" /></p>
+  if (!stripImages) {
+    html = html.replace(
+      /<img\s+[^>]*src=(["'])(.*?)\1[^>]*>/gi,
+      (m, q, src) => `<img src="${src}" class="w-75" alt="Topic Image" />`
+    );
+    html = html.replace(
+      /<p[^>]*>\s*(<img\s+[^>]*class=["']w-75["'][^>]*>)\s*<\/p>/gi,
+      '<p class="text-center">$1</p>'
+    );
+    html = html.replace(
+      /(?<!<p[^>]*>\s*)(<img\s+[^>]*class=["']w-75["'][^>]*>)(?!\s*<\/p>)/gi,
+      '<p class="text-center">$1</p>'
+    );
+  }
 
-  // 14. Clean up multiple empty lines or trailing breaks
+  // 16. Clean up multiple empty lines or trailing breaks
   html = html.replace(/<p>\s*<\/p>/gi, '');
   html = html.replace(/(\r?\n\s*){3,}/g, '\n\n');
 
-  // 15. Guarantee zero leftover &nbsp;, &#160;, or \u00a0 entities and collapse horizontal runs of spaces
+  // 17. Guarantee zero leftover &nbsp;, &#160;, or \u00a0 entities and collapse horizontal runs of spaces
   html = html.replace(/(&nbsp;|&#160;|\u00a0)/gi, ' ');
   html = html.replace(/[^\S\r\n]{2,}/g, ' ');
 
