@@ -6,6 +6,7 @@ import {
   wrapInLmsContainer,
   calculateTopicDuration,
   calculateWordCount,
+  purgeRandomClassesAndStyles,
 } from '../src/lib/course-converter/html-normalizer.js';
 import {
   parseQuizFromHtml,
@@ -20,6 +21,7 @@ import {
 import { buildCourseJson } from '../src/lib/course-converter/schema-builder.js';
 import { validateCourseJson } from '../src/lib/course-converter/validator.js';
 import { convertDocumentToCourseJson } from '../src/lib/course-converter/index.js';
+import { purgeCourseClassesAndStyles } from '../src/lib/course-converter/course-manager.js';
 
 describe('CourseJsonConverter Core Engine', () => {
   describe('HTML Normalizer (Section 5.1)', () => {
@@ -168,6 +170,85 @@ describe('CourseJsonConverter Core Engine', () => {
       expect((wrapped.match(/<\/div>/g) || []).length).toBe(1);
       expect(wrapped).not.toContain('class=');
       expect(wrapped).not.toContain('style=');
+    });
+
+    it('purges random classes, styles, and fake bullet spans from JSON HTML, keeping only mb-0, mt-0, and table classes', () => {
+      const jsonSnippet = `<div class="w-full" style="background:transparent;padding:0"><p class="mb-0"><strong>By the end of this course, you will be able to:</strong></p><ul class="flex flex-col gap-3 slide-animate-up slide-delay-1" style="list-style:none;margin:0;padding:0"><li class="flex items-start gap-3" style="margin-bottom:4px"><span style="width:8px;height:8px;border-radius:9999px;background-color:#0D9488;flex-shrink:0;margin-top:8px"></span><span class="text-[15px]" style="color:;line-height:1.4">Explain how voltage and current relate in single-phase and three-phase systems;</span></li><li class="flex items-start gap-3" style="margin-bottom:4px"><span style="width:8px;height:8px;border-radius:9999px;background-color:#0D9488;flex-shrink:0;margin-top:8px"></span><span class="text-[15px]" style="color:;line-height:1.4">Calculate kW, kVA, and current using power factor;</span></li></ul></div>`;
+
+      const cleaned = purgeRandomClassesAndStyles(jsonSnippet);
+
+      // Verify outer wrapper is clean single <div> without classes or styles
+      expect(cleaned.startsWith('<div>')).toBe(true);
+      expect(cleaned.endsWith('</div>')).toBe(true);
+      expect((cleaned.match(/<div>/g) || []).length).toBe(1);
+      expect((cleaned.match(/<\/div>/g) || []).length).toBe(1);
+
+      // Verify random Tailwind classes and inline styles are completely purged
+      expect(cleaned).not.toContain('w-full');
+      expect(cleaned).not.toContain('slide-animate-up');
+      expect(cleaned).not.toContain('flex-col');
+      expect(cleaned).not.toContain('items-start');
+      expect(cleaned).not.toContain('text-[15px]');
+      expect(cleaned).not.toContain('style=');
+      expect(cleaned).not.toContain('background:transparent');
+      expect(cleaned).not.toContain('list-style:none');
+
+      // Verify fake colored bullet dot span is completely removed
+      expect(cleaned).not.toContain('border-radius:9999px');
+      expect(cleaned).not.toContain('#0D9488');
+      expect(cleaned).not.toContain('<span>');
+
+      // Verify strict allowed classes are retained
+      expect(cleaned).toContain(
+        '<p class="mb-0"><strong>By the end of this course, you will be able to:</strong></p>'
+      );
+      expect(cleaned).toContain(
+        '<ul><li>Explain how voltage and current relate in single-phase and three-phase systems;</li><li>Calculate kW, kVA, and current using power factor;</li></ul>'
+      );
+    });
+
+    it('purgeCourseClassesAndStyles purges classes and styles across all topics in Course JSON', () => {
+      const mockCourse = {
+        course_id: 'course_test',
+        course_title: 'Test Course',
+        modules: [
+          {
+            module_id: 'mod_1',
+            module_title: 'Module 1: Intro',
+            lessons: [
+              {
+                lesson_id: 'les_1_1',
+                lesson_title: 'Lesson 1: Overview',
+                knowledge_check: [],
+                topics: [
+                  {
+                    id: 'top_1_1_1',
+                    name: 'Objectives',
+                    leftDiv: {
+                      editorHtml: `<div class="p-6 bg-slate-900" style="margin:10px"><p class="mb-0 font-bold" style="color:red">Objectives:</p><ul class="flex flex-col"><li><span style="border-radius:9999px"></span><span class="text-sm">Safety first</span></li></ul><table style="width:100%" class="custom-table"><tr><td>Data</td></tr></table></div>`,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const result = purgeCourseClassesAndStyles(mockCourse);
+      expect(result.modifiedTopicsCount).toBe(1);
+
+      const topicHtml =
+        result.courseJson.modules[0].lessons[0].topics[0].leftDiv.editorHtml;
+      expect(topicHtml).not.toContain('bg-slate-900');
+      expect(topicHtml).not.toContain('custom-table');
+      expect(topicHtml).not.toContain('style=');
+      expect(topicHtml).not.toContain('border-radius:9999px');
+      expect(topicHtml).toContain('<p class="mb-0">Objectives:</p>');
+      expect(topicHtml).toContain('<ul><li>Safety first</li></ul>');
+      expect(topicHtml).toContain(
+        '<table class="table table-m table-bordered table-yellow"><tr><td>Data</td></tr></table>'
+      );
     });
 
     it('calculates topic reading duration based on word count with 30s minimum', () => {

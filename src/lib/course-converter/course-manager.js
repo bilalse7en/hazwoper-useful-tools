@@ -1007,3 +1007,76 @@ export function mergeIntroAndLearningObjectives(courseJson, options = {}) {
     mergedCount: mergedLessonsCount,
   };
 }
+
+/**
+ * Purges all random classes and inline styles across all topics in a Course JSON object.
+ *
+ * Enforces:
+ * - Strips all random classes (w-full, flex, gap-3, slide-animate-up, text-[15px], etc.)
+ * - Strips all inline style attributes
+ * - Removes decorative/fake bullet spans
+ * - Unwraps inner spans and redundant divs
+ * - Strictly keeps only:
+ *   - <p class="mb-0"> for paragraphs ending in a colon preceding lists
+ *   - <ol class="mt-0"> for ordered lists following colon paragraphs
+ *   - <table class="table table-m table-bordered table-yellow"> for tables
+ * - Wraps topic in strictly ONE clean parent <div>
+ * - Recalculates durations and schema health
+ *
+ * @param {object} course - Full Course JSON object
+ * @param {object} [options={}] - { stripImages: boolean }
+ * @returns {{ courseJson: object, validation: object, modifiedTopicsCount: number }}
+ */
+export function purgeCourseClassesAndStyles(course, options = {}) {
+  if (!course || !Array.isArray(course.modules)) {
+    return {
+      courseJson: course,
+      validation: validateCourseJson(course),
+      modifiedTopicsCount: 0,
+    };
+  }
+
+  const cloned = JSON.parse(JSON.stringify(course));
+  let modifiedTopicsCount = 0;
+
+  cloned.modules.forEach((mod) => {
+    (mod.lessons || []).forEach((les) => {
+      (les.topics || []).forEach((top) => {
+        const rawHtml =
+          top.leftDiv?.editorHtml ||
+          top.leftDiv?.editor ||
+          top.leftDiv?.editorSaved ||
+          '';
+
+        if (!rawHtml) return;
+
+        const cleaned = wrapInLmsContainer(rawHtml, {
+          preserveTailwind: false,
+          stripImages: options.stripImages === true, // Default to FALSE to ensure 100% content preservation (zero instructional paragraphs or text skipped)
+        });
+
+        const newDuration = calculateTopicDuration(cleaned);
+
+        if (!top.leftDiv) top.leftDiv = {};
+        top.leftDiv.editor = cleaned;
+        top.leftDiv.editorHtml = cleaned;
+        top.leftDiv.editorSaved = cleaned;
+        top.leftDiv.editorHtmlSaved = cleaned;
+        top.allocated_duration_seconds = newDuration;
+        top.topicDuration = newDuration;
+        delete top.raw_body_content;
+
+        modifiedTopicsCount++;
+      });
+    });
+  });
+
+  const updatedCourse = recalculateCourseDurations(cloned);
+  const validation = validateCourseJson(updatedCourse);
+
+  return {
+    courseJson: updatedCourse,
+    validation,
+    modifiedTopicsCount,
+  };
+}

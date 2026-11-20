@@ -182,10 +182,13 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   const preserveTailwind = options.preserveTailwind === true;
   let html = purgeInitialStageArtifacts(rawHtml, options);
 
-  // 1. Remove comments and doctype / html / head / body tags
+  // 1. Remove comments, doctype / html / head / body tags, and svg presentation icons
   html = html.replace(/<!--[\s\S]*?-->/g, '');
   html = html.replace(/<!DOCTYPE[^>]*>/gi, '');
   html = html.replace(/<\/?(html|head|body|meta|title|link)[^>]*>/gi, '');
+  if (!preserveTailwind) {
+    html = html.replace(/<svg[\s\S]*?<\/svg>/gi, '');
+  }
 
   // 2. Remove XML tags and Word office namespaces (e.g., <o:p>, </o:p>, <w:...>)
   html = html.replace(/<\/?\w+:[^>]*>/gi, '');
@@ -193,7 +196,17 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
   // 3. Remove non-semantic wrappers: <font>, <span> (preserve styled spans when preserving Tailwind)
   html = html.replace(/<\/?font[^>]*>/gi, '');
   if (!preserveTailwind) {
-    html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+    // Strip decorative / empty spans (e.g. fake colored bullet dots <span style="...border-radius:9999px..."></span> or bullet symbols)
+    html = html.replace(
+      /<span[^>]*>(?:\s|&nbsp;|&#8226;|&#x2022;|•|▪|–|-|\*)*<\/span>/gi,
+      ''
+    );
+    // Recursively unwrap all text-containing spans
+    let prevSpans;
+    do {
+      prevSpans = html;
+      html = html.replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, '$1');
+    } while (html !== prevSpans);
   } else {
     html = html.replace(/<span>([\s\S]*?)<\/span>/gi, '$1');
   }
@@ -295,10 +308,12 @@ export function normalizeHtmlContent(rawHtml, options = {}) {
     // 9. Standardize lists and list items
     html = html.replace(/<ul[^>]*>/gi, '<ul>');
     html = html.replace(/<ol[^>]*>/gi, '<ol>');
-    html = html.replace(
-      /<li[^>]*>([\s\S]*?)<\/li>/gi,
-      (m, text) => `<li>${text.trim()}</li>`
-    );
+    html = html.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (m, text) => {
+      const cleanText = text
+        .trim()
+        .replace(/^(\s*(?:&bull;|&#8226;|&#x2022;|•|▪|–|-|\*)\s*)+/gi, '');
+      return `<li>${cleanText.trim()}</li>`;
+    });
   }
 
   // 10. Standardize paragraphs and drop completely empty paragraphs (or paragraphs containing only empty tags)
@@ -495,4 +510,24 @@ export function calculateTopicDuration(wordCountOrHtml) {
       ? wordCountOrHtml
       : calculateWordCount(wordCountOrHtml);
   return Math.max(30, Math.round(wordCount * 0.5));
+}
+
+/**
+ * Purges all random classes and inline styles from an HTML string,
+ * strictly keeping only LMS standard classes:
+ * - <p class="mb-0"> for paragraphs ending in a colon preceding lists
+ * - <ol class="mt-0"> for ordered lists following colon paragraphs
+ * - <table class="table table-m table-bordered table-yellow"> for tables
+ *
+ * Strips fake bullet spans, unwrap inner spans/divs, and wraps in strictly 1 <div>.
+ *
+ * @param {string} rawHtml
+ * @param {object} [options={}]
+ * @returns {string} Fully cleaned LMS HTML
+ */
+export function purgeRandomClassesAndStyles(rawHtml, options = {}) {
+  return wrapInLmsContainer(rawHtml, {
+    ...options,
+    preserveTailwind: false,
+  });
 }

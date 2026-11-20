@@ -43,6 +43,8 @@ import {
   ArrowUpDown,
   ListOrdered,
   FilePlus,
+  Brush,
+  Eraser,
   CheckSquare,
   BookOpen,
   X,
@@ -88,6 +90,7 @@ import {
   getLessonBaseTitle,
   detectSeparateIntroAndObjectives,
   mergeIntroAndLearningObjectives,
+  purgeCourseClassesAndStyles,
 } from '@/lib/course-converter';
 
 export default function CourseJsonConverter() {
@@ -417,11 +420,14 @@ export default function CourseJsonConverter() {
           throw new Error('Invalid JSON format: ' + jsonErr.message);
         }
 
-        setProcessStep('Normalizing structure, assessments & durations...');
+        setProcessStep(
+          'Normalizing structure, assessments, durations & purging random classes...'
+        );
         const res = enhanceAndCleanCourseJson(rawObj, {
           stripImages: !includeImages,
           includeQuizzes,
           course_title: courseTitleOverride || undefined,
+          preserveTailwind: false,
         });
 
         if (res.success && res.courseJson) {
@@ -1341,7 +1347,7 @@ export default function CourseJsonConverter() {
     if (!includeImages) {
       return wrapInLmsContainer(baseHtml, {
         stripImages: true,
-        preserveTailwind: hasTailwind,
+        preserveTailwind: false,
       });
     }
     return baseHtml;
@@ -1361,17 +1367,9 @@ export default function CourseJsonConverter() {
   const handleSaveTopicChanges = () => {
     if (!courseJson || !activeTopic) return;
 
-    const hasTailwind =
-      editedTopicHtml.includes('bg-[') ||
-      editedTopicHtml.includes('text-[') ||
-      editedTopicHtml.includes('grid') ||
-      editedTopicHtml.includes('flex') ||
-      editedTopicHtml.includes('rounded-') ||
-      editedTopicHtml.includes('bg-');
-
     const sanitizedHtml = wrapInLmsContainer(editedTopicHtml, {
       stripImages: !includeImages,
-      preserveTailwind: hasTailwind,
+      preserveTailwind: false,
     });
     const newDuration = calculateTopicDuration(sanitizedHtml);
     const newName = (editedTopicName || '').trim() || activeTopic.name;
@@ -1575,6 +1573,7 @@ export default function CourseJsonConverter() {
       const res = enhanceAndCleanCourseJson(target, {
         stripImages: !includeImages,
         includeQuizzes,
+        preserveTailwind: false,
       });
       if (res.success && res.courseJson) {
         setCourseJson(res.courseJson);
@@ -1614,6 +1613,59 @@ export default function CourseJsonConverter() {
       console.error('Enhance JSON error:', err);
       alert('Invalid JSON structure: ' + err.message);
     }
+  };
+
+  /**
+   * Purges all random classes and inline styles across all topics in the entire course.
+   * Strictly enforces:
+   * - <p class="mb-0"> for paragraphs ending in a colon preceding lists
+   * - <ol class="mt-0"> for ordered lists following colon paragraphs
+   * - <table class="table table-m table-bordered table-yellow"> for tables
+   * - Strips fake bullet spans, unwraps inner spans/divs, single clean outer <div>
+   */
+  const handlePurgeClassesAndStyles = () => {
+    if (!courseJson) return;
+    try {
+      const res = purgeCourseClassesAndStyles(courseJson, {
+        stripImages: !includeImages,
+      });
+      if (res && res.courseJson) {
+        setCourseJson(res.courseJson);
+        setValidation(res.validation);
+        setParsedData(res.courseJson);
+
+        if (activeTopic) {
+          const flat = (res.courseJson.modules || []).flatMap((m) =>
+            (m.lessons || []).flatMap((l) => l.topics || [])
+          );
+          const current = flat.find((t) => t.id === activeTopic.id);
+          if (current) {
+            setEditedTopicHtml(current.leftDiv?.editorHtml || '');
+          }
+        }
+
+        showToast(
+          `Purged random classes & styles across ${res.modifiedTopicsCount} slides! Strictly applied mb-0, mt-0, and table classes.`
+        );
+      }
+    } catch (err) {
+      console.error('Purge classes error:', err);
+      showToast('Error purging classes: ' + err.message, 'error');
+    }
+  };
+
+  /**
+   * Purges all random classes & styles from the currently edited slide
+   */
+  const handlePurgeActiveTopicClasses = () => {
+    if (!editedTopicHtml) return;
+    const cleaned = wrapInLmsContainer(editedTopicHtml, {
+      preserveTailwind: false,
+      stripImages: !includeImages,
+      topicTitle: editedTopicName || activeTopic?.name,
+    });
+    setEditedTopicHtml(cleaned);
+    showToast('Cleaned slide HTML: removed random classes and inline styles!');
   };
 
   /**
@@ -2295,6 +2347,19 @@ export default function CourseJsonConverter() {
             >
               <Layers className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
               Merge Intro &amp; Objectives
+            </Button>
+          )}
+
+          {courseJson && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePurgeClassesAndStyles}
+              className="gap-1.5 border-rose-300 dark:border-rose-800 bg-rose-50/70 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-xs shadow-2xs font-semibold"
+              title="Remove all random classes & styles coming from JSON. Strictly keeps only mb-0, mt-0, and table classes."
+            >
+              <Brush className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+              Purge Random Classes &amp; Styles
             </Button>
           )}
 
@@ -3804,10 +3869,22 @@ export default function CourseJsonConverter() {
                               <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                                 Instructional Topic HTML (editorHtml)
                               </label>
-                              <span className="text-[10px] text-slate-500">
-                                Wrapped in 1 parent &lt;div&gt; with zero
-                                classes
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handlePurgeActiveTopicClasses}
+                                  className="h-6 text-[10px] gap-1 px-2 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold shadow-2xs"
+                                  title="Remove random classes, styles, and fake bullet spans from this slide, keeping strictly mb-0, mt-0, and table classes"
+                                >
+                                  <Eraser className="h-3 w-3" />
+                                  Clean Slide Classes &amp; Styles
+                                </Button>
+                                <span className="text-[10px] text-slate-500 hidden sm:inline">
+                                  Wrapped in 1 parent &lt;div&gt;
+                                </span>
+                              </div>
                             </div>
                             <textarea
                               value={editedTopicHtml}

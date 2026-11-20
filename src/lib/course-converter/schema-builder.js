@@ -490,25 +490,18 @@ export function cleanTopicSlideContent(topic, options = {}) {
     }
   }
 
-  const hasTailwind =
-    rawHtml.includes('bg-[') ||
-    rawHtml.includes('text-[') ||
-    rawHtml.includes('grid') ||
-    rawHtml.includes('flex') ||
-    rawHtml.includes('rounded-') ||
-    rawHtml.includes('bg-') ||
-    rawHtml.includes('#EEF1F4') ||
-    rawHtml.includes('#E8761C') ||
-    rawHtml.includes('style=');
+  // Only preserve Tailwind if explicitly requested by caller (options.preserveTailwind === true)
+  // Otherwise default to strict LMS sanitation (purging random classes & styles, preserving mb-0, mt-0, and table classes)
+  const shouldPreserveTailwind = options.preserveTailwind === true;
 
   const cleanInner = normalizeHtmlContent(rawHtml, {
     stripImages,
-    preserveTailwind: hasTailwind,
+    preserveTailwind: shouldPreserveTailwind,
     topicTitle: topic.name || topic.headingContent,
   });
   const wrapped = wrapInLmsContainer(cleanInner, {
     stripImages,
-    preserveTailwind: hasTailwind,
+    preserveTailwind: shouldPreserveTailwind,
   });
   const duration = calculateTopicDuration(cleanInner);
 
@@ -742,6 +735,7 @@ export function enhanceAndCleanCourseJson(rawJson, options = {}) {
     options.course_title || parsed.course_title || 'Untitled Course';
   const stripImages = options.stripImages !== false;
   const includeQuizzes = options.includeQuizzes !== false;
+  const preserveTailwind = options.preserveTailwind === true;
 
   const enhanced = buildCourseJson(
     {
@@ -756,6 +750,8 @@ export function enhanceAndCleanCourseJson(rawJson, options = {}) {
       course_title: courseTitle,
       stripImages,
       includeQuizzes,
+      preserveTailwind,
+      purgeRandomClasses: true,
     }
   );
 
