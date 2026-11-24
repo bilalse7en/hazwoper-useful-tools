@@ -394,6 +394,11 @@ export default function BlogListPage() {
           )}
         </section>
 
+        {/* Centered Advertisement Above Newsletter */}
+        <div className="site-container">
+          <AdContainer position="footer" margin="tight" />
+        </div>
+
         {/* Newsletter / CTA */}
         <section className="site-container py-10 sm:py-14">
           <div className="relative rounded-2xl sm:rounded-3xl bg-slate-950 p-6 sm:p-8 md:p-10 overflow-hidden border border-white/10 shadow-2xl">

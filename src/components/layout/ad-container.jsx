@@ -124,13 +124,13 @@ export const AdContainer = forwardRef(function AdContainer(
         {/* Ad Unit Surface with Controlled Height & Aspect Ratio */}
         <div
           style={{ minHeight: `${formatConfig.minHeight}px` }}
-          className="w-full rounded-2xl overflow-hidden bg-card/40 dark:bg-card/20 border border-border/40 shadow-xs flex items-center justify-center transition-all"
+          className="w-full rounded-2xl overflow-hidden bg-card/40 dark:bg-card/20 border border-border/40 shadow-xs flex flex-col items-center justify-center transition-all p-1"
         >
           <AdSenseAd
             slot={activeSlot}
             format="auto"
             responsive={true}
-            className="w-full flex items-center justify-center"
+            className="w-full min-w-full"
           />
         </div>
       </div>

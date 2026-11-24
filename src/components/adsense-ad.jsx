@@ -6,11 +6,10 @@ import { cn } from '@/lib/utils';
 /**
  * Google AdSense Ad Container Component
  *
- * IMPORTANT: Replace slot IDs with your REAL ad unit IDs from
- * https://www.google.com/adsense → Ads → By ad unit → Create ad unit
+ * Configured for AdSense Publisher ID: ca-pub-9874465109252768
  *
  * Props:
- * - slot: Your REAL AdSense ad slot ID from your AdSense dashboard
+ * - slot: AdSense ad unit slot ID
  * - format: Ad format (auto, rectangle, horizontal, vertical)
  * - responsive: Whether ad should be responsive
  * - style: Custom styles for the container
@@ -31,16 +30,11 @@ export function AdSenseAd({
     setMounted(true);
   }, []);
 
-  const isProduction =
-    mounted &&
-    typeof window !== 'undefined' &&
-    window.location.hostname !== 'localhost';
-
   useEffect(() => {
-    // Don't render ads in development, unmounted, or if already loaded
-    if (!mounted || !isProduction || adLoaded || !adRef.current) return;
+    // Only attempt ad push once mounted on client
+    if (!mounted || adLoaded || !adRef.current) return;
 
-    // Don't push if no valid slot is provided or if it's a placeholder
+    // Filter out invalid placeholder slot IDs
     const isPlaceholder =
       !slot ||
       slot === '0000000000' ||
@@ -48,58 +42,46 @@ export function AdSenseAd({
       slot === '6543210987' ||
       slot === '9876543210';
 
-    if (isPlaceholder) {
-      if (!isProduction) {
-        console.warn(
-          `AdSenseAd: Placeholder slot ID "${slot}" detected. Replace with real ID from dashboard.`
-        );
-      }
-      return;
-    }
+    if (isPlaceholder) return;
 
-    // Check if the ins element already has ads rendered (data-ad-status)
+    // Guard: Check if the ins element already has ads rendered or pushed
     const insElement = adRef.current.querySelector('.adsbygoogle');
-    if (insElement?.getAttribute('data-ad-status')) {
-      return; // Already filled by Google
+    if (
+      !insElement ||
+      insElement.getAttribute('data-ad-status') ||
+      insElement.getAttribute('data-adsbygoogle-status')
+    ) {
+      return;
     }
 
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
       setAdLoaded(true);
     } catch (e) {
-      console.error('AdSense push error:', e);
+      console.warn('AdSense push notice:', e);
     }
-  }, [isProduction, slot, adLoaded]);
-
-  // Show placeholder during SSR, initial hydration, or in development
-  if (!mounted || !isProduction) {
-    return (
-      <div
-        className={cn(
-          'bg-muted/20 border border-dashed border-muted-foreground/20 rounded-lg p-4 text-center text-xs text-muted-foreground',
-          className
-        )}
-        style={{ minHeight: '90px', ...style }}
-        suppressHydrationWarning
-      >
-        Ad Placeholder — Slot: {slot || 'NOT SET'} (Production Only)
-      </div>
-    );
-  }
+  }, [mounted, slot, adLoaded]);
 
   // Don't render if no slot provided
   if (!slot) return null;
 
-  // Production: render actual ad
+  // Render responsive AdSense ad unit
   return (
     <div
       ref={adRef}
-      className={cn('adsense-container', className)}
+      className={cn(
+        'adsense-container w-full min-w-full overflow-hidden block text-center',
+        className
+      )}
       style={style}
     >
       <ins
         className="adsbygoogle"
-        style={{ display: 'block' }}
+        style={{
+          display: 'block',
+          width: '100%',
+          minWidth: '280px',
+        }}
         data-ad-client="ca-pub-9874465109252768"
         data-ad-slot={slot}
         data-ad-format={format}

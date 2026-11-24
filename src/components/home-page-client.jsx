@@ -99,6 +99,11 @@ export function HomePageClient() {
 
       <IndustryInsights />
       <ProfessionalOverview />
+
+      {/* Centered Footer Advertisement */}
+      <div className="site-container py-4">
+        <AdContainer position="footer" margin="tight" />
+      </div>
     </>
   );
 }

@@ -93,7 +93,7 @@ export default function RootLayout({ children }) {
         <meta name="google-adsense-account" content="ca-pub-9874465109252768" />
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; media-src 'self' blob: data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://adservice.google.com https://www.googletagservices.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.adtrafficquality.google https://js.puter.com https://*.google.com https://*.gstatic.com https://vercel.live https://*.vercel.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://tagmanager.google.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.puter.com wss://api.puter.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.google-analytics.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.adtrafficquality.google https://*.vercel.com https://*.vercel.live; frame-src 'self' https://*.google.com https://*.doubleclick.net https://*.googlesyndication.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.youtube.com https://*.youtube-nocookie.com https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live; object-src 'none'; upgrade-insecure-requests;"
+          content="default-src 'self'; media-src 'self' blob: data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://adservice.google.com https://www.googletagservices.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.adtrafficquality.google https://js.puter.com https://*.google.com https://*.gstatic.com https://vercel.live https://*.vercel.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://tagmanager.google.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.puter.com wss://api.puter.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.google-analytics.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.adtrafficquality.google https://*.vercel.com https://*.vercel.live; frame-src 'self' https://*.google.com https://*.doubleclick.net https://*.googlesyndication.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.youtube.com https://*.youtube-nocookie.com https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live; object-src 'none'; upgrade-insecure-requests;"
         />
         <script
           async
@@ -135,13 +135,12 @@ export default function RootLayout({ children }) {
 							window.dataLayer = window.dataLayer || [];
 							function gtag(){dataLayer.push(arguments);}
 							
-							// Default consent mode - denies all until user makes a choice
+							// Default consent mode - granted for advertising & analytics by default
 							gtag('consent', 'default', {
-								'ad_storage': 'denied',
-								'ad_user_data': 'denied',
-								'ad_personalization': 'denied',
-								'analytics_storage': 'denied',
-								'wait_for_update': 500
+								'ad_storage': 'granted',
+								'ad_user_data': 'granted',
+								'ad_personalization': 'granted',
+								'analytics_storage': 'granted'
 							});
 						`,
           }}
